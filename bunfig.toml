@@ -1,4 +1,4 @@
-# Bun configuration for minions-farm monorepo
+# Bun configuration for openfarm monorepo
 
 [install]
 # Don't auto-install peer dependencies (avoids Next.js from inngest)
