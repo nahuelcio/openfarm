@@ -2,11 +2,11 @@
  * Basic usage example of OpenFarm SDK
  */
 
-import { MinionsFarm } from "@openfarm/sdk";
+import { OpenFarm } from "@openfarm/sdk";
 
 async function main() {
   // Initialize the client
-  const client = new MinionsFarm({
+  const client = new OpenFarm({
     provider: "anthropic",
     apiKey: process.env.ANTHROPIC_API_KEY || "",
   });

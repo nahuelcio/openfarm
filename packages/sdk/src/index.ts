@@ -5,7 +5,7 @@ export { ClaudeCodeExecutor } from "./executors/claude-code";
 export { DirectAPIExecutor } from "./executors/direct-api";
 export { OpenCodeExecutor } from "./executors/opencode";
 // Main export
-export { MinionsFarm } from "./MinionsFarm";
+export { OpenFarm } from "./OpenFarm";
 // Repo
 export { RepoManager } from "./repo";
 // Executors
@@ -15,6 +15,6 @@ export type {
   ExecutionResult,
   Executor,
   ExecutorType,
-  MinionsFarmConfig,
+  OpenFarmConfig,
   ProviderInfo,
 } from "./types";
