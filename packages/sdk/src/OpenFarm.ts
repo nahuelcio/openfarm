@@ -8,7 +8,7 @@ import type {
 const DEFAULT_MAX_TOKENS = 4096;
 
 export class OpenFarm {
-  private config: OpenFarmConfig;
+  private readonly config: OpenFarmConfig;
 
   constructor(config: OpenFarmConfig = {}) {
     this.config = config;

@@ -180,7 +180,9 @@ describe("SqliteQueueAdapter", () => {
     const result = await adapter.send("cancellable-job", {}, { delay: 5000 });
 
     expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    if (!result.ok) {
+      return;
+    }
 
     const jobId = result.value;
 
@@ -202,7 +204,9 @@ describe("SqliteQueueAdapter", () => {
 
     const result = await customAdapter.send("completed-job", {});
     expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    if (!result.ok) {
+      return;
+    }
 
     const jobId = result.value;
 
@@ -234,7 +238,9 @@ describe("SqliteQueueAdapter", () => {
 
     const result = await customAdapter.send("timed-job", {});
     expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    if (!result.ok) {
+      return;
+    }
 
     const jobId = result.value;
 

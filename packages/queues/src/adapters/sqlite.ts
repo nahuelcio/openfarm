@@ -35,7 +35,7 @@ interface SqliteJobRow {
  * For Node.js environments, consider using InngestQueueAdapter or MemoryQueueAdapter.
  */
 export class SqliteQueueAdapter implements QueueAdapter {
-  private db: Database;
+  private readonly db: Database;
   private processInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor(
@@ -299,7 +299,9 @@ export class SqliteQueueAdapter implements QueueAdapter {
           >
         | undefined;
 
-      if (!job) return;
+      if (!job) {
+        return;
+      }
 
       // Mark as running
       const updateStmt = this.db.prepare(`

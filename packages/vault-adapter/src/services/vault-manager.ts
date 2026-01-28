@@ -124,7 +124,7 @@ export class VaultManager {
         sealed: health.sealed,
         initialized: health.initialized,
       };
-    } catch (error) {
+    } catch (_error) {
       return {
         healthy: false,
       };
@@ -198,7 +198,7 @@ export class VaultManager {
         missing,
         present,
       };
-    } catch (error) {
+    } catch (_error) {
       return {
         valid: false,
         missing: ["ANTHROPIC_API_KEY"],
