@@ -1,6 +1,6 @@
-import pino, { type Logger } from "pino";
+import pino from "pino";
 
-export type { Logger };
+export type { Logger } from "pino";
 
 export const createLogger = (options?: pino.LoggerOptions): Logger => {
   return pino({

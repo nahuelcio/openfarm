@@ -27,9 +27,7 @@ export function createExecutor(type: ExecutorType): Executor {
   }
 }
 
-export {
-  AiderExecutor,
-  ClaudeCodeExecutor,
-  DirectAPIExecutor,
-  OpenCodeExecutor,
-};
+export { AiderExecutor } from "./aider";
+export { ClaudeCodeExecutor } from "./claude-code";
+export { DirectAPIExecutor } from "./direct-api";
+export { OpenCodeExecutor } from "./opencode";

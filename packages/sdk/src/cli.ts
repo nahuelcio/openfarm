@@ -1,4 +1,4 @@
-import { OpenFarm } from "./OpenFarm";
+import { OpenFarm } from "./open-farm";
 import type { OpenFarmConfig } from "./types";
 
 export async function runCLI(

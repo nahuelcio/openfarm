@@ -5,7 +5,7 @@ export { ClaudeCodeExecutor } from "./executors/claude-code";
 export { DirectAPIExecutor } from "./executors/direct-api";
 export { OpenCodeExecutor } from "./executors/opencode";
 // Main export
-export { OpenFarm } from "./OpenFarm";
+export { OpenFarm } from "./open-farm";
 // Repo
 export { RepoManager } from "./repo";
 // Executors
