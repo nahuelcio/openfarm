@@ -144,10 +144,20 @@ We'll ask to revise if:
 - ❌ Secrets in code
 - ❌ No documentation
 
+## Versioning
+
+OpenFarm follows [Semantic Versioning 2.0.0](https://semver.org/).
+
+See [VERSIONING.md](./docs/VERSIONING.md) for:
+- When to bump MAJOR, MINOR, or PATCH versions
+- Release process
+- Pre-release guidelines
+
 ## Questions?
 
 - 📖 See [README.md](./README.md)
 - 🏗️ See [ARCHITECTURE.md](./docs/ARCHITECTURE.md)
+- 📦 See [VERSIONING.md](./docs/VERSIONING.md)
 - 💬 Open an issue to discuss first (for large changes)
 
 ---
