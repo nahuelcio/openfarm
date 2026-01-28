@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "target": "es2017",
+    "module": "esnext",
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@minions/core/*": ["../core/src/*"]
+    }
+  },
+  "exclude": ["test/**/*", "**/*.test.ts", "**/*.spec.ts"]
+}

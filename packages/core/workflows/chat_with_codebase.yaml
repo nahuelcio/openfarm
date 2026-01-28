@@ -1,0 +1,167 @@
+id: chat-with-codebase
+name: Chat with Codebase
+description: "Smart chat that conditionally analyzes code before answering. 1. Analyze Request, 2. Research Code (if needed), 3. Generate Answer, 4. Update Context."
+
+steps:
+  # ============================================
+  # STEP 1: ROUTER - Analyze Request
+  # ============================================
+  - id: router
+    name: Analyze Request
+    type: llm
+    action: agent.router
+    config:
+      model: "zai/glm-4.7"
+      systemPrompt: "You are an intelligent routing system that analyzes questions to determine the best strategy for answering them. You must respond with valid JSON only."
+      prompt: |
+        Analyze the following question and determine if it requires reading source code to answer.
+
+        QUESTION: ${workItem.title}
+
+        PREVIOUS CONTEXT: ${workItem.preInstructions || 'No previous context.'}
+
+        RECENT CONVERSATION:
+        ${workItem.chatMessages ? JSON.parse(workItem.chatMessages || '[]').slice(-3).map(m => `${m.role || 'user'}: ${m.content || ''}`).join('\n') : 'No recent conversation.'}
+
+        Determine if this question requires:
+        1. Reading source code files
+        2. Understanding code structure/architecture
+        3. Analyzing specific implementations
+        4. Or if it can be answered with general knowledge/conversation
+
+        Respond with a JSON object in this EXACT format:
+        {
+          "requiresCodeAnalysis": boolean,
+          "strategy": "opencode" | "direct-llm" | "cache" | "documentation",
+          "reasoning": "brief explanation of your decision",
+          "codeScope": "full" | "summary" | "targeted" (only if requiresCodeAnalysis is true),
+          "targetFiles": ["path/to/file1"] (only if codeScope is "targeted")
+        }
+
+        Guidelines:
+        - Use "opencode" strategy if the question requires reading/analyzing code
+        - Use "direct-llm" strategy if the question can be answered without code (general questions, explanations, etc.)
+        - Use "summary" for codeScope if the question needs a high-level overview
+        - Use "targeted" for codeScope if the question is about specific files/features
+        - Use "full" for codeScope if comprehensive code analysis is needed
+
+        Be concise and accurate.
+      customLabel: "🧠 Analyze Request"
+      customDescription: "Determines if code analysis is required"
+    timeout: 30000
+
+  # ============================================
+  # STEP 2: CONDITIONAL - Research if needed
+  # ============================================
+  - id: research-check
+    name: Check Analysis Needed
+    type: conditional
+    config:
+      customLabel: "🔀 Check Analysis Needed"
+      customDescription: "Executes research only if code analysis is required"
+    # CONDITION: Check if requiresCodeAnalysis is true
+    condition: ${JSON.parse(stepResults.router?.result || '{"requiresCodeAnalysis":true}').requiresCodeAnalysis === true}
+    
+    # IF BRANCH: Run Code Research
+    if:
+      - id: research
+        name: Research Codebase
+        type: code
+        action: agent.code
+        config:
+          provider: "opencode"
+          model: "zai/glm-4.7"
+          previewMode: true
+          readOnly: true
+          chatOnly: true
+          customLabel: "🔍 Research Codebase"
+          customDescription: "Investigates code to gather technical context"
+        timeout: 300000
+        prompt: |
+          Investigate the codebase to answer the user's question. Output a detailed technical report for internal use.
+
+          QUESTION:
+          ${workItem.title}
+
+          CONTEXT:
+          ${workItem.preInstructions || ''}
+
+          MODE: ${workItem.mode || 'investigate'}
+
+          SAFETY CONSTRAINTS:
+          ${workItem.mode === 'investigate' || workItem.mode === 'explain' ? 'READ-ONLY MODE: You cannot modify, create, or delete files. You can only read and analyze code.' : 'WRITE MODE: You can suggest changes but must explain them clearly and wait for confirmation before implementing.'}
+
+          RULES:
+          1. Be technically exhaustive.
+          2. Mention specific file paths and line numbers.
+          3. Do not worry about formatting for the end user, this is a technical briefing.
+          4. In 'investigate' or 'explain' modes: READ-ONLY - no file modifications allowed.
+          5. In 'modify' mode: identify potential changes but do not implement without explicit confirmation.
+          6. Always respect the safety constraints for the current mode.
+
+    # ELSE BRANCH: Empty (Skip research)
+    else: []
+
+  # ============================================
+  # STEP 3: ANSWER - Unified Response
+  # ============================================
+  - id: generate-answer
+    name: Generate Answer
+    type: llm
+    action: agent.author
+    config:
+      model: "zai/glm-4.7"
+      systemPrompt: "You are a friendly and professional software expert. Your goal is to answer the user's question clearly in the language they used. Use Markdown for a beautiful presentation."
+      customLabel: "✍️ Generate Answer"
+      customDescription: "Synthesizes findings into a user-friendly response"
+    prompt: |
+      USER QUESTION: ${workItem.title}
+
+      MODE: ${workItem.mode || 'investigate'}
+
+      # Router Context
+      ROUTER DECISION: ${stepResults.router?.result || '{"requiresCodeAnalysis":true}'}
+
+      # Technical Context (Available if research was performed)
+      TECHNICAL FINDINGS:
+      ${stepResults.research?.result || 'No code analysis was required for this query.'}
+
+      # Task
+      Using the information above, provide a helpful and well-formatted answer to the user.
+      
+      - If TECHNICAL FINDINGS are present, use them to provide a specific, evidence-based answer.
+      - If no code analysis was needed, answer directly based on your general knowledge and the conversation context.
+
+      MODE GUIDELINES:
+      - investigate: Focus on analysis and discovery
+      - modify: Suggest changes and implementation options (do not implement yet)
+      - explain: Provide clear explanations and educational content
+
+  # ============================================
+  # STEP 4: SUMMARIZE - Update Context
+  # ============================================
+  - id: summarize
+    name: Update Context
+    type: llm
+    action: agent.summarize
+    config:
+      model: "zai/glm-4.7"
+      systemPrompt: "You are a context summarization specialist. Create concise summaries that preserve key information for future reference."
+      customLabel: "📝 Update Context"
+      customDescription: "Summarizes conversation for continuity"
+    prompt: |
+      Analyze the current conversation and create a summary if the token budget is exceeded.
+
+      CHAT MESSAGES:
+      ${workItem.chatMessages || '[]'}
+
+      CURRENT SESSION ID: ${workItem.sessionId || ''}
+
+      PROJECT: ${workItem.project || ''}
+
+      REPOSITORY: ${workItem.repositoryUrl || ''}
+
+      BRANCH: ${workItem.branchName || ''}
+
+      Task: Determine if summarization is needed and create a project context summary if appropriate.
+    continueOnError: true

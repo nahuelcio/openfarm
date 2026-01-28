@@ -1,0 +1,8 @@
+# Bun configuration for minions-farm monorepo
+
+[install]
+# Don't auto-install peer dependencies (avoids Next.js from inngest)
+peer = false
+
+# Use hoisted mode for compatibility
+linker = "hoisted"

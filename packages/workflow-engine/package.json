@@ -1,0 +1,45 @@
+{
+  "name": "@openfarm/workflow-engine",
+  "version": "0.0.1",
+  "description": "OpenFarm Workflow Engine - Framework-agnostic workflow orchestration with event sourcing",
+  "license": "MIT",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./types": "./src/types.ts",
+    "./errors": "./src/errors/index.ts",
+    "./events": "./src/events/index.ts",
+    "./orchestrator": "./src/orchestrator/index.ts"
+  },
+  "scripts": {
+    "lint": "bunx biome check .",
+    "type-check": "bunx tsc -p tsconfig.json --noEmit",
+    "test": "bunx jest",
+    "clean": "rm -rf dist build .turbo"
+  },
+  "dependencies": {
+    "@openfarm/core": "workspace:*",
+    "@openfarm/agent-runner": "workspace:*",
+    "@openfarm/result": "workspace:*",
+    "@openfarm/logger": "workspace:*",
+    "@openfarm/types": "workspace:*",
+    "@openfarm/utils": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.0",
+    "typescript": "^5.6.0"
+  },
+  "keywords": [
+    "workflow",
+    "orchestration",
+    "event-sourcing",
+    "state-machine",
+    "ai-workflows"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/openfarm/openfarm.git",
+    "directory": "packages/workflow-engine"
+  }
+}

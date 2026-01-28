@@ -1,0 +1,30 @@
+{
+  "name": "@openfarm/core",
+  "version": "0.0.1",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./types": "./src/types/index.ts",
+    "./types/*": "./src/types/*.ts",
+    "./config": "./src/config.ts",
+    "./constants": "./src/constants/index.ts",
+    "./constants/*": "./src/constants/*.ts",
+    "./db": "./src/db/index.ts",
+    "./db/*": "./src/db/*.ts",
+    "./workflow-dsl": "./src/workflow-dsl/index.ts"
+  },
+  "scripts": {
+    "lint": "bunx biome check .",
+    "type-check": "bunx tsc -p tsconfig.json --noEmit",
+    "test": "bunx jest",
+    "clean": "rm -rf dist build .turbo"
+  },
+  "dependencies": {
+    "@openfarm/result": "workspace:*",
+    "@openfarm/logger": "workspace:*",
+    "@openfarm/utils": "workspace:*",
+    "@openfarm/types": "workspace:*",
+    "js-yaml": "^4.1.1"
+  }
+}

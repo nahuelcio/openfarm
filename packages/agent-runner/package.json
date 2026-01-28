@@ -1,0 +1,48 @@
+{
+  "name": "@openfarm/agent-runner",
+  "version": "0.0.1",
+  "description": "OpenFarm Agent Runner - Execute AI coding agents with multiple engine support",
+  "license": "MIT",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./engines": "./src/engines/factory.ts",
+    "./orchestration": "./src/orchestration/orchestrator.ts",
+    "./llm": "./src/llm/llm-service.ts",
+    "./services/opencode-auth": "./src/services/opencode-auth.ts",
+    "./services/opencode-server": "./src/services/opencode-server.ts"
+  },
+  "scripts": {
+    "lint": "bunx biome check .",
+    "type-check": "bunx tsc -p tsconfig.json --noEmit",
+    "test": "bunx jest",
+    "clean": "rm -rf dist build .turbo"
+  },
+  "dependencies": {
+    "@openfarm/core": "workspace:*",
+    "@openfarm/config": "workspace:*",
+    "@openfarm/result": "workspace:*",
+    "@openfarm/logger": "workspace:*",
+    "@openfarm/types": "workspace:*",
+    "@openfarm/utils": "workspace:*",
+    "ai": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.0",
+    "typescript": "^5.6.0"
+  },
+  "keywords": [
+    "ai",
+    "agent",
+    "runner",
+    "code-execution",
+    "opencode",
+    "claude-code"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/openfarm/openfarm.git",
+    "directory": "packages/agent-runner"
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "name": "@openfarm/sdk",
+  "version": "0.0.1",
+  "description": "OpenFarm SDK - AI-powered code editing for your applications",
+  "license": "MIT",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./types": "./src/types.ts",
+    "./repo": "./src/repo.ts",
+    "./cli": "./src/cli.ts",
+    "./executors": "./src/executors/index.ts",
+    "./executors/opencode": "./src/executors/opencode.ts",
+    "./executors/aider": "./src/executors/aider.ts",
+    "./executors/claude-code": "./src/executors/claude-code.ts",
+    "./executors/direct-api": "./src/executors/direct-api.ts"
+  },
+  "bin": {
+    "openfarm": "./src/cli.ts"
+  },
+  "scripts": {
+    "lint": "bunx biome check .",
+    "type-check": "bunx tsc -p tsconfig.json --noEmit",
+    "test": "bunx jest",
+    "clean": "rm -rf dist build .turbo"
+  },
+  "dependencies": {
+    "@openfarm/core": "workspace:*",
+    "@openfarm/types": "workspace:*",
+    "@openfarm/logger": "workspace:*",
+    "@openfarm/result": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.0",
+    "typescript": "^5.6.0"
+  },
+  "keywords": [
+    "ai",
+    "code-editing",
+    "sdk",
+    "anthropic",
+    "openai",
+    "opencode",
+    "aider",
+    "claude-code"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/openfarm/openfarm.git",
+    "directory": "packages/sdk"
+  },
+  "bugs": {
+    "url": "https://github.com/openfarm/openfarm/issues"
+  },
+  "homepage": "https://github.com/openfarm/openfarm#readme"
+}

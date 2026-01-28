@@ -1,0 +1,125 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "extends": ["ultracite/core"],
+  "files": {
+    "includes": ["**/*", "!!**/.claude"]
+  },
+
+  "javascript": {
+    "globals": [
+      "jest",
+      "describe",
+      "it",
+      "expect",
+      "beforeEach",
+      "afterEach",
+      "beforeAll",
+      "afterAll"
+    ]
+  },
+  "linter": {
+    "rules": {
+      "correctness": {
+        "noUnusedVariables": "warn",
+        "noUnusedImports": "warn",
+        "noUnusedFunctionParameters": "off"
+      },
+      "style": {
+        "noNonNullAssertion": "off",
+        "useConst": "warn",
+        "noParameterAssign": "off",
+        "noEnum": "off",
+        "noNestedTernary": "off",
+        "useConsistentMemberAccessibility": "off",
+        "noParameterProperties": "off",
+        "useForOf": "off",
+        "useCollapsedIf": "off",
+        "useCollapsedElseIf": "off",
+        "useDefaultSwitchClause": "off"
+      },
+      "suspicious": {
+        "noExplicitAny": "off",
+        "noArrayIndexKey": "off",
+        "useAwait": "off",
+        "noEvolvingTypes": "off",
+        "noImplicitAnyLet": "off",
+        "noEmptyBlockStatements": "off",
+        "useIterableCallbackReturn": "off",
+        "noBitwiseOperators": "off"
+      },
+      "complexity": {
+        "noForEach": "off",
+        "noExcessiveCognitiveComplexity": "off",
+        "noStaticOnlyClass": "off"
+      },
+      "performance": {
+        "noBarrelFile": "off",
+        "noNamespaceImport": "off",
+        "useTopLevelRegex": "off",
+        "noAccumulatingSpread": "off"
+      }
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["packages/**"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "noUnusedImports": "error"
+          }
+        }
+      }
+    },
+
+    {
+      "includes": ["**/*.vue"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "noUnusedImports": "off",
+            "noUnusedVariables": "off"
+          },
+          "style": {
+            "noNonNullAssertion": "off",
+            "useConst": "off",
+            "noParameterAssign": "off",
+            "useNamingConvention": "off",
+            "useFilenamingConvention": "off",
+            "useDefaultSwitchClause": "off",
+            "useCollapsedElseIf": "off"
+          },
+          "suspicious": {
+            "noExplicitAny": "off",
+            "noArrayIndexKey": "off",
+            "noConsole": "off",
+            "noDebugger": "off",
+            "noVar": "off",
+            "noAlert": "off",
+            "useIterableCallbackReturn": "off"
+          },
+          "complexity": {
+            "noForEach": "off",
+            "noExcessiveCognitiveComplexity": "off"
+          },
+          "performance": {
+            "useTopLevelRegex": "off"
+          }
+        }
+      },
+      "assist": {
+        "actions": {
+          "source": {
+            "organizeImports": "off"
+          }
+        }
+      },
+      "javascript": {
+        "formatter": {
+          "quoteStyle": "single",
+          "semicolons": "always"
+        }
+      }
+    }
+  ]
+}

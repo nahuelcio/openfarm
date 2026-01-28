@@ -1,0 +1,37 @@
+id: research_codebase
+name: Research Codebase
+description: Answers questions about the codebase without making changes.
+steps:
+  - id: analyze-code
+    name: Investigate Code
+    type: code
+    action: agent.code
+    config:
+      provider: "opencode"
+      model: "zai/glm-4.7"
+      previewMode: true
+      readOnly: true
+      customLabel: "🔎 Code Investigation"
+      customDescription: "Read-only analysis with OpenCode (no file changes)"
+    timeout: 600000
+    retryCount: 1
+    continueOnError: false
+    prompt: |
+      *** CRITICAL: YOU ARE IN READ-ONLY CONSULTATION MODE ***
+
+      YOU ARE ABSOLUTELY FORBIDDEN FROM:
+      - Creating ANY files (including .md, .txt, docs/, analysis/, etc.)
+      - Using <<<<<<< SEARCH / ======= / >>>>>>> REPLACE syntax
+      - Using /add, /drop, /clear or any tool-specific commands
+      - Modifying ANY existing files
+      - Suggesting file creation
+
+      YOUR ONLY ALLOWED ACTION:
+      - Respond with plain text explanation in the chat
+
+      QUESTION TO ANSWER:
+      ${workItem.title}
+
+      ${workItem.description}
+
+      You are a consultant being asked a question. Answer it conversationally in the chat/console output. You may paste code snippets into your response text, and reference file paths, but everything must be part of your TEXT response. Do not create files to store your response.

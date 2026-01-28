@@ -1,0 +1,65 @@
+id: _base_code
+name: Base Code Workflow
+description: Base workflow with common code operations (checkout, branch creation, commit, push, PR creation)
+abstract: true
+
+variables:
+  defaultBranch: "${workItem.defaultBranch || 'main'}"
+
+steps:
+  - id: setup
+    name: Checkout Base Branch
+    type: git
+    action: git.checkout
+    config:
+      branch: "${workItem.defaultBranch || 'main'}"
+      customLabel: "🌳 Checkout Base"
+      customDescription: "Switches to base branch (main/master)"
+    retryCount: 1
+    continueOnError: false
+
+  - id: create-branch
+    name: Create Task Branch
+    type: git
+    action: git.branch
+    config:
+      pattern: "${branchPattern || 'fix/' + (workItem.workItemType || 'task') + '-' + workItem.id}"
+      customLabel: "🌱 Create Branch"
+      customDescription: "Creates new feature/fix/refactor branch"
+    retryCount: 1
+    continueOnError: false
+
+  - id: commit
+    name: Commit Changes
+    type: git
+    action: git.commit
+    config:
+      message: "${commitMessage || 'Update code'}"
+      customLabel: "💾 Save Changes"
+      customDescription: "Commits all changes with message"
+    retryCount: 1
+    continueOnError: false
+
+  - id: push
+    name: Push Changes
+    type: git
+    action: git.push
+    config:
+      customLabel: "⬆️ Push to Remote"
+      customDescription: "Pushes committed changes to remote repository"
+    retryCount: 2
+    continueOnError: false
+
+  - id: finalize
+    name: Create Pull Request
+    type: platform
+    action: platform.create_pr
+    config:
+      title: "${prTitle || workItem.title}"
+      description: "${prDescription || workItem.description || ''}"
+      target: "${workItem.defaultBranch || 'main'}"
+      source: "${branchPattern || 'fix/' + (workItem.workItemType || 'task') + '-' + workItem.id}"
+      customLabel: "🔀 Create PR"
+      customDescription: "Opens pull request for code review"
+    retryCount: 2
+    continueOnError: true
