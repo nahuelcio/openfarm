@@ -1,12 +1,10 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "composite": true,
     "target": "es2017",
     "module": "esnext",
-    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.config.tsbuildinfo"
+    "noEmit": true
   },
   "include": ["src/**/*"],
-  "exclude": ["src/**/__tests__/*", "node_modules", "dist"],
-  "references": []
+  "exclude": ["src/**/__tests__/*", "node_modules", "dist"]
 }
