@@ -96,7 +96,7 @@ export async function getEnabledModels(
     } else {
       rows = await db`SELECT * FROM enabled_models ORDER BY provider, model`;
     }
-    return rows.map((row) => ({
+    return rows.map((row: any) => ({
       id: row.id,
       provider: row.provider,
       model: row.model,

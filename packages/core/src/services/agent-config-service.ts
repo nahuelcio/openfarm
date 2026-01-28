@@ -116,6 +116,11 @@ export class AgentConfigService {
     name: string;
     description?: string;
     enabled: boolean;
+    mode: string;
+    system_instructions: string;
+    permissions: string | object;
+    created_at: string;
+    updated_at: string;
   }): OpenCodeAgent {
     return {
       id: row.id,
@@ -137,11 +142,15 @@ export class AgentConfigService {
     name: string;
     description?: string;
     enabled: boolean;
+    instructions: string;
+    compatibility: string | object;
+    created_at: string;
+    updated_at: string;
   }): OpenCodeSkill {
     return {
       id: row.id,
       name: row.name,
-      description: row.description,
+      description: row.description || "",
       instructions: row.instructions,
       compatibility:
         typeof row.compatibility === "string"
