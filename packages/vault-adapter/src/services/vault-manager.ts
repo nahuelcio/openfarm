@@ -5,7 +5,7 @@ import { VaultClient } from "./vault-client";
 // TODO: Move to @openfarm/vault-adapter when splitting repos
 export class VaultManager {
   private readonly client: VaultClient;
-  private config: VaultConfig;
+  private readonly config: VaultConfig;
 
   constructor(config?: VaultConfig) {
     this.config = config || {

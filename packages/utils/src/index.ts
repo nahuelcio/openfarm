@@ -6,7 +6,9 @@ import { ok, type Result } from "@openfarm/result";
 
 // chunk from core/utils/array
 export function chunk<T>(array: T[], size: number): T[][] {
-  if (array.length === 0) return [];
+  if (array.length === 0) {
+    return [];
+  }
   const chunks: T[][] = [];
   for (let i = 0; i < array.length; i += size) {
     chunks.push(array.slice(i, i + size));

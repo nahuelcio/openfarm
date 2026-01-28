@@ -2,12 +2,12 @@
 
 // Engine factory and types
 export {
-  createCodingEngine,
   type CodingEngineFactoryOptions,
+  createCodingEngine,
 } from "./engines/factory";
 
 // Interaction
-export { askUser, type AskUserOptions } from "./interaction/ask-user";
+export { type AskUserOptions, askUser } from "./interaction/ask-user";
 
 // LLM Service
 export { LlmError, LlmService, llmService } from "./llm/llm-service";
@@ -23,14 +23,14 @@ export type {
 
 // Services - OpenCode
 export {
-  OpenCodeAuthAdapter,
-  getOpenCodeAuthAdapter,
-  resetOpenCodeAuthAdapter,
   type AuthStatus,
   type DeviceCode,
+  getOpenCodeAuthAdapter,
   type OAuthCallbackResult,
   type OAuthCompletionCallback,
+  OpenCodeAuthAdapter,
   type OpenCodeAuthAdapterConfig,
+  resetOpenCodeAuthAdapter,
 } from "./services/opencode-auth";
 
 export {
@@ -42,4 +42,3 @@ export {
 
 // Utils
 export { CircuitBreaker } from "./utils/circuit-breaker";
-

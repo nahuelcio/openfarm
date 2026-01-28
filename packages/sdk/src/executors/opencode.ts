@@ -34,7 +34,7 @@ interface FileDiff {
 
 export class OpenCodeExecutor implements Executor {
   type = "opencode" as const;
-  private config: OpenCodeConfig;
+  private readonly config: OpenCodeConfig;
 
   constructor(config: OpenCodeConfig = { mode: "local" }) {
     this.config = {
@@ -115,7 +115,7 @@ export class OpenCodeExecutor implements Executor {
       const auth = Buffer.from(`opencode:${this.config.password}`).toString(
         "base64"
       );
-      headers["Authorization"] = `Basic ${auth}`;
+      headers.Authorization = `Basic ${auth}`;
     }
 
     return headers;
@@ -247,9 +247,5 @@ export class OpenCodeExecutor implements Executor {
     }
 
     return summary.join("\n");
-  }
-
-  private extractModifiedFiles(diff: FileDiff[]): string[] {
-    return diff.map((file) => file.path);
   }
 }
