@@ -6,17 +6,20 @@ export {
   type CodingEngineFactoryOptions,
 } from "./engines/factory";
 
-// Orchestration
-export {
-  type Orchestrator,
-  type WorkspaceProvisionConfig,
-  type ExecuteOptions,
-  type ExecuteResult,
-  type WorkspaceInfo,
-} from "./orchestration/orchestrator";
+// Interaction
+export { askUser, type AskUserOptions } from "./interaction/ask-user";
 
 // LLM Service
-export { LlmService, LlmError, llmService } from "./llm/llm-service";
+export { LlmError, LlmService, llmService } from "./llm/llm-service";
+
+// Orchestration
+export type {
+  ExecuteOptions,
+  ExecuteResult,
+  Orchestrator,
+  WorkspaceInfo,
+  WorkspaceProvisionConfig,
+} from "./orchestration/orchestrator";
 
 // Services - OpenCode
 export {
@@ -31,14 +34,12 @@ export {
 } from "./services/opencode-auth";
 
 export {
-  startOpenCodeServer,
-  stopOpenCodeServer,
   getOpenCodeServerStatus,
   getOpenCodeServerUrl,
+  startOpenCodeServer,
+  stopOpenCodeServer,
 } from "./services/opencode-server";
 
 // Utils
 export { CircuitBreaker } from "./utils/circuit-breaker";
 
-// Interaction
-export { askUser, type AskUserOptions } from "./interaction/ask-user";

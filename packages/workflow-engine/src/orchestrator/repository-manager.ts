@@ -18,7 +18,7 @@ import type { AgentConfiguration, Workflow } from "@openfarm/core";
 import { getDb, getIntegrations } from "@openfarm/core/db";
 import { v4 as uuidv4 } from "uuid";
 import type { WorkflowLogger } from "../types";
-import type { ContextSetupResult } from "./ContextResolver";
+import type { ContextSetupResult } from "./context-resolver";
 
 export interface RepositorySetupResult {
   repoPath: string;
