@@ -19,7 +19,9 @@ export class DiffProcessor {
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-      if (!line) continue;
+      if (!line) {
+        continue;
+      }
 
       // File header
       if (line.startsWith("diff --git")) {
@@ -76,9 +78,9 @@ export class DiffProcessor {
       // Hunk header
       else if (line.startsWith("@@")) {
         const match = line.match(/@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/);
-        if (match && match[1] && match[2]) {
-          oldLineNumber = Number.parseInt(match[1]);
-          newLineNumber = Number.parseInt(match[2]);
+        if (match?.[1] && match[2]) {
+          oldLineNumber = Number.parseInt(match[1], 10);
+          newLineNumber = Number.parseInt(match[2], 10);
         }
       }
       // Content lines
@@ -89,8 +91,9 @@ export class DiffProcessor {
           newLineNumber: newLineNumber++,
         };
         currentLines.push(diffLine);
-        if (currentFile)
+        if (currentFile) {
           currentFile.additions = (currentFile.additions || 0) + 1;
+        }
       } else if (line.startsWith("-") && !line.startsWith("---")) {
         const diffLine: DiffLine = {
           type: "removed",
@@ -98,8 +101,9 @@ export class DiffProcessor {
           oldLineNumber: oldLineNumber++,
         };
         currentLines.push(diffLine);
-        if (currentFile)
+        if (currentFile) {
           currentFile.deletions = (currentFile.deletions || 0) + 1;
+        }
       } else if (line.startsWith(" ")) {
         const diffLine: DiffLine = {
           type: "context",
@@ -219,17 +223,23 @@ export class DiffProcessor {
       additions: partialFile.additions || 0,
       deletions: partialFile.deletions || 0,
       lines,
-      isBinary: partialFile.isBinary,
-      isNew: partialFile.isNew,
-      isDeleted: partialFile.isDeleted,
-      isRenamed: partialFile.isRenamed,
+      isBinary: partialFile.isBinary ?? false,
+      isNew: partialFile.isNew ?? false,
+      isDeleted: partialFile.isDeleted ?? false,
+      isRenamed: partialFile.isRenamed ?? false,
     };
   }
 
   private inferChangeType(file: Partial<DiffFile>): ChangeType {
-    if (file.isNew) return "added";
-    if (file.isDeleted) return "deleted";
-    if (file.isRenamed) return "renamed";
+    if (file.isNew) {
+      return "added";
+    }
+    if (file.isDeleted) {
+      return "deleted";
+    }
+    if (file.isRenamed) {
+      return "renamed";
+    }
     return "modified";
   }
 
@@ -255,7 +265,9 @@ export class DiffProcessor {
   }
 
   getLargestFile(diffChange: DiffChange): DiffFile | null {
-    if (diffChange.files.length === 0) return null;
+    if (diffChange.files.length === 0) {
+      return null;
+    }
 
     return diffChange.files.reduce((largest, current) => {
       const currentChanges = current.additions + current.deletions;
