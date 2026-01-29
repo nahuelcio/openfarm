@@ -14,5 +14,8 @@
   },
   "dependencies": {
     "@openfarm/result": "workspace:*"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

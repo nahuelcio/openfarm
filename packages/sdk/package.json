@@ -53,5 +53,8 @@
   "bugs": {
     "url": "https://github.com/openfarm/openfarm/issues"
   },
-  "homepage": "https://github.com/openfarm/openfarm#readme"
+  "homepage": "https://github.com/openfarm/openfarm#readme",
+  "publishConfig": {
+    "access": "public"
+  }
 }
