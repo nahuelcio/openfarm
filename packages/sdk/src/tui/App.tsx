@@ -15,7 +15,7 @@ interface AppProps {
 }
 
 export function App({ config }: AppProps) {
-  const { currentScreen, setConfig } = useAppStore();
+  const { currentScreen, setConfig, theme } = useAppStore();
 
   // Setup keyboard shortcuts
   useAppShortcuts();
@@ -24,6 +24,12 @@ export function App({ config }: AppProps) {
   React.useEffect(() => {
     setConfig(config);
   }, [config, setConfig]);
+
+  // Apply theme to global styles if needed
+  React.useEffect(() => {
+    // Theme is applied through useTheme hook in components
+    // This effect can be used for additional theme-specific logic
+  }, [theme]);
 
   const renderScreen = () => {
     switch (currentScreen) {

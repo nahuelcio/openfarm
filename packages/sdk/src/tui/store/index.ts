@@ -45,8 +45,8 @@ interface AppState {
   // UI State
   sidebarOpen: boolean;
   toggleSidebar: () => void;
-  theme: "dark" | "light";
-  setTheme: (theme: "dark" | "light") => void;
+  theme: "dark" | "light" | "dracula" | "monokai" | "nord" | "oneDark";
+  setTheme: (theme: "dark" | "light" | "dracula" | "monokai" | "nord" | "oneDark") => void;
 }
 
 export const useAppStore = create<AppState>()(
