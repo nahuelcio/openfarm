@@ -1,4 +1,3 @@
-#!/usr/bin/env bun
 import { OpenFarm } from "./open-farm";
 import type { OpenFarmConfig } from "./types";
 

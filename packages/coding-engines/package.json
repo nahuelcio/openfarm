@@ -1,6 +1,7 @@
 {
   "name": "@openfarm/coding-engines",
   "version": "0.0.1",
+  "private": true,
   "main": "src/index.ts",
   "types": "src/index.ts",
   "exports": {
@@ -17,8 +18,5 @@
     "type-check": "bunx tsc -p tsconfig.json --noEmit",
     "test": "bunx vitest run --passWithNoTests",
     "clean": "rm -rf dist build .turbo"
-  },
-  "publishConfig": {
-    "access": "public"
   }
 }

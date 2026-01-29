@@ -40,12 +40,10 @@
     "opencode",
     "claude-code"
   ],
+  "private": true,
   "repository": {
     "type": "git",
     "url": "https://github.com/openfarm/openfarm.git",
     "directory": "packages/agent-runner"
-  },
-  "publishConfig": {
-    "access": "public"
   }
 }
