@@ -5,3 +5,5 @@ export { ProgressBar } from "./ProgressBar";
 export { Badge } from "./Badge";
 export { Divider } from "./Divider";
 export { Card } from "./Card";
+export { FocusButton } from "./FocusButton";
+export { FocusSelect } from "./FocusSelect";

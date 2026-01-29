@@ -1,15 +1,42 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useEffect } from "react";
 import { useTheme } from "../theme/styles";
 import { useAppStore } from "../store";
-import { Button, Card } from "../components/ui";
+import { Card } from "../components/ui";
+import { useRenderer } from "@opentui/react";
 
 export function Dashboard() {
   const theme = useTheme("dark");
   const { setScreen, executions } = useAppStore();
+  const renderer = useRenderer();
 
   const successCount = executions.filter((e) => e.status === "completed").length;
   const failCount = executions.filter((e) => e.status === "failed").length;
-  const runningCount = executions.filter((e) => e.status === "running").length;
+
+  // Number key navigation
+  useEffect(() => {
+    if (!renderer) return;
+
+    const handleKey = (event: { name: string; ctrl: boolean }) => {
+      if (event.ctrl) return;
+
+      switch (event.name) {
+        case "1":
+          setScreen("execute");
+          break;
+        case "2":
+          setScreen("history");
+          break;
+        case "3":
+          setScreen("settings");
+          break;
+      }
+    };
+
+    renderer.keyInput.on("key", handleKey);
+    return () => {
+      renderer.keyInput.off("key", handleKey);
+    };
+  }, [renderer, setScreen]);
 
   const goToExecute = useCallback(() => setScreen("execute"), [setScreen]);
   const goToHistory = useCallback(() => setScreen("history"), [setScreen]);
@@ -41,24 +68,35 @@ export function Dashboard() {
           color={theme.colors.error}
           icon="❌"
         />
-        {runningCount > 0 && (
-          <StatCard
-            label="Running"
-            value={runningCount}
-            color={theme.colors.warning}
-            icon="🔄"
-          />
-        )}
       </box>
 
-      {/* Quick Actions */}
+      {/* Quick Actions with Number Keys */}
       <box flexDirection="column" gap={1} marginTop={1}>
         <text>
-          <span fg={theme.colors.text.secondary}>Quick Actions</span>
+          <span fg={theme.colors.text.secondary}>Quick Actions (press number key)</span>
         </text>
         <box flexDirection="row" gap={2}>
-          <Button onPress={goToExecute}>🚀 New Task</Button>
-          <Button onPress={goToHistory}>📜 History</Button>
+          <ActionButton 
+            number="1" 
+            label="New Task" 
+            icon="🚀"
+            onPress={goToExecute}
+            color={theme.colors.accent}
+          />
+          <ActionButton 
+            number="2" 
+            label="History" 
+            icon="📜"
+            onPress={goToHistory}
+            color={theme.colors.info}
+          />
+          <ActionButton 
+            number="3" 
+            label="Settings" 
+            icon="⚙️"
+            onPress={() => setScreen("settings")}
+            color={theme.colors.warning}
+          />
         </box>
       </box>
 
@@ -70,7 +108,9 @@ export function Dashboard() {
         {executions.length === 0 ? (
           <Card>
             <text>
-              <span fg={theme.colors.text.muted}>No executions yet. Press Ctrl+N to start!</span>
+              <span fg={theme.colors.text.muted}>
+                No executions yet. Press <strong>1</strong> to start or Ctrl+N
+              </span>
             </text>
           </Card>
         ) : (
@@ -88,8 +128,8 @@ export function Dashboard() {
               <box flexGrow={1}>
                 <text>
                   <span fg={theme.colors.text.primary}>
-                    {exec.task.substring(0, 50)}
-                    {exec.task.length > 50 ? "..." : ""}
+                    {exec.task.substring(0, 45)}
+                    {exec.task.length > 45 ? "..." : ""}
                   </span>
                 </text>
               </box>
@@ -101,14 +141,68 @@ export function Dashboard() {
         )}
       </box>
 
-      {/* Keyboard hint */}
-      <box marginTop={2}>
+      {/* Keyboard Help */}
+      <box marginTop={2} flexDirection="column" gap={1}>
         <text>
-          <span fg={theme.colors.text.muted}>
-            Press Ctrl+N for new task • Ctrl+H for history • Ctrl+Q to quit
-          </span>
+          <span fg={theme.colors.text.muted}>Quick Keys:</span>
         </text>
+        <box flexDirection="row" gap={4}>
+          <text>
+            <span fg={theme.colors.accent}><strong>1</strong></span>
+            <span fg={theme.colors.text.muted}> New</span>
+          </text>
+          <text>
+            <span fg={theme.colors.info}><strong>2</strong></span>
+            <span fg={theme.colors.text.muted}> History</span>
+          </text>
+          <text>
+            <span fg={theme.colors.warning}><strong>3</strong></span>
+            <span fg={theme.colors.text.muted}> Settings</span>
+          </text>
+          <text>
+            <span fg={theme.colors.text.secondary}><strong>Ctrl+N</strong></span>
+            <span fg={theme.colors.text.muted}> New Task</span>
+          </text>
+          <text>
+            <span fg={theme.colors.text.secondary}><strong>Ctrl+Q</strong></span>
+            <span fg={theme.colors.text.muted}> Quit</span>
+          </text>
+        </box>
       </box>
+    </box>
+  );
+}
+
+function ActionButton({
+  number,
+  label,
+  icon,
+  onPress,
+  color,
+}: {
+  number: string;
+  label: string;
+  icon: string;
+  onPress: () => void;
+  color: string;
+}) {
+  const theme = useTheme("dark");
+
+  return (
+    <box
+      flexDirection="column"
+      alignItems="center"
+      padding={1}
+      borderStyle="single"
+      borderColor={color}
+      onMouseDown={onPress}
+    >
+      <text>
+        <span fg={color}><strong>{number}</strong></span>
+      </text>
+      <text>
+        <span fg={theme.colors.text.primary}>{icon} {label}</span>
+      </text>
     </box>
   );
 }
