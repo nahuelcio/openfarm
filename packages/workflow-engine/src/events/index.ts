@@ -17,4 +17,4 @@ export {
   createWorkflowStartedEvent,
   DatabaseEventBus,
   InMemoryEventBus,
-} from "./EventBus";
+} from "./event-bus";

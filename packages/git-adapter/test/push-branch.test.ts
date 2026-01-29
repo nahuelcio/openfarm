@@ -1,4 +1,5 @@
 import type { GitConfig } from "@openfarm/core/types/git";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { type ExecFunction, type FileSystem, pushBranch } from "../src/index";
 
 describe("pushBranch", () => {
@@ -10,17 +11,17 @@ describe("pushBranch", () => {
   };
 
   const mockFs: FileSystem = {
-    existsSync: jest.fn(),
+    existsSync: vi.fn(),
   };
 
-  const mockExec: ExecFunction = jest.fn();
+  const mockExec: ExecFunction = vi.fn();
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it("should return error when repository directory does not exist", async () => {
-    (mockFs.existsSync as jest.Mock).mockReturnValue(false);
+    (mockFs.existsSync as any).mockReturnValue(false);
 
     const result = await pushBranch(
       mockConfig,
@@ -38,8 +39,8 @@ describe("pushBranch", () => {
   });
 
   it("should push branch successfully without PAT", async () => {
-    (mockFs.existsSync as jest.Mock).mockReturnValue(true);
-    (mockExec as jest.Mock)
+    (mockFs.existsSync as any).mockReturnValue(true);
+    (mockExec as any)
       .mockResolvedValueOnce({ stdout: "", stderr: "" }) // git config user.email
       .mockResolvedValueOnce({ stdout: "", stderr: "" }) // git config user.name
       .mockResolvedValueOnce({ stdout: "", stderr: "" }); // push
@@ -62,8 +63,8 @@ describe("pushBranch", () => {
       ...mockConfig,
       pat: "test-pat-token",
     };
-    (mockFs.existsSync as jest.Mock).mockReturnValue(true);
-    (mockExec as jest.Mock)
+    (mockFs.existsSync as any).mockReturnValue(true);
+    (mockExec as any)
       .mockResolvedValueOnce({ stdout: "", stderr: "" }) // git config user.email
       .mockResolvedValueOnce({ stdout: "", stderr: "" }) // git config user.name
       .mockResolvedValueOnce({ stdout: "", stderr: "" }) // remote set-url
@@ -83,8 +84,8 @@ describe("pushBranch", () => {
   });
 
   it("should return error when push fails", async () => {
-    (mockFs.existsSync as jest.Mock).mockReturnValue(true);
-    (mockExec as jest.Mock)
+    (mockFs.existsSync as any).mockReturnValue(true);
+    (mockExec as any)
       .mockResolvedValueOnce({ stdout: "", stderr: "" }) // git config user.email
       .mockResolvedValueOnce({ stdout: "", stderr: "" }) // git config user.name
       .mockRejectedValueOnce(new Error("push failed")); // push

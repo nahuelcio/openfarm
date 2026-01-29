@@ -1,3 +1,4 @@
+import { describe, expect, it } from "vitest";
 import * as core from "../src/index";
 import { AgentConfigService } from "../src/services/agent-config-service";
 

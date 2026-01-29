@@ -1,3 +1,4 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildConfigMap,
   type ConfigEntry,
@@ -102,17 +103,15 @@ describe("OpenCodeConfigService resolveModel", () => {
 
   beforeEach(() => {
     process.env = { ...originalEnv };
-    jest
-      .spyOn(
-        service as unknown as { loadConfigMap: () => Promise<unknown> },
-        "loadConfigMap"
-      )
-      .mockResolvedValue(buildConfigMap(baseEntries));
+    vi.spyOn(
+      service as unknown as { loadConfigMap: () => Promise<unknown> },
+      "loadConfigMap"
+    ).mockResolvedValue(buildConfigMap(baseEntries));
   });
 
   afterEach(() => {
     process.env = originalEnv;
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   it("uses step config when provided", async () => {
@@ -135,7 +134,8 @@ describe("OpenCodeConfigService resolveModel", () => {
       updatedAt: new Date().toISOString(),
     });
 
-    expect(resolved.provider).toBe("copilot");
+    // Uses OPENCODE_DEFAULTS.server.defaultProvider which is "zai"
+    expect(resolved.provider).toBe("zai");
     expect(resolved.model).toBe("opencode/agent-model");
   });
 

@@ -1,8 +1,10 @@
 import type { Integration } from "@openfarm/core/types/adapters";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GitHubPlatformAdapter } from "../src/index";
 
 // Mock fetch globally
-global.fetch = jest.fn();
+const mockFetch = vi.fn();
+global.fetch = mockFetch as any;
 
 describe("GitHubPlatformAdapter", () => {
   const mockIntegration: Integration = {
@@ -20,7 +22,7 @@ describe("GitHubPlatformAdapter", () => {
 
   beforeEach(() => {
     adapter = new GitHubPlatformAdapter(mockIntegration, owner, repo);
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it("should be correctly instantiated", () => {
@@ -38,7 +40,7 @@ describe("GitHubPlatformAdapter", () => {
         assignee: { login: "test-user" },
       };
 
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => mockIssue,
       });
@@ -74,7 +76,7 @@ describe("GitHubPlatformAdapter", () => {
         labels: [],
       };
 
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => mockIssue,
       });
@@ -88,7 +90,7 @@ describe("GitHubPlatformAdapter", () => {
     });
 
     it("should return error when fetch fails", async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      mockFetch.mockResolvedValueOnce({
         ok: false,
         statusText: "Not Found",
         json: async () => ({ message: "Not Found" }),
@@ -117,7 +119,7 @@ describe("GitHubPlatformAdapter", () => {
 
     it("should create PR successfully", async () => {
       // Mock branch check
-      (global.fetch as jest.Mock)
+      mockFetch
         .mockResolvedValueOnce({
           ok: true,
           json: async () => ({}),
@@ -164,7 +166,7 @@ describe("GitHubPlatformAdapter", () => {
         html_url: "https://github.com/test-owner/test-repo/pull/1",
       };
 
-      (global.fetch as jest.Mock)
+      mockFetch
         .mockResolvedValueOnce({
           ok: true,
           json: async () => ({}),
@@ -190,7 +192,7 @@ describe("GitHubPlatformAdapter", () => {
 
   describe("postComment", () => {
     it("should post comment successfully", async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 201,
         json: async () => ({}),
@@ -209,7 +211,7 @@ describe("GitHubPlatformAdapter", () => {
     });
 
     it("should return error when comment post fails", async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      mockFetch.mockResolvedValueOnce({
         ok: false,
         statusText: "Forbidden",
         json: async () => ({ message: "Forbidden" }),
@@ -223,7 +225,7 @@ describe("GitHubPlatformAdapter", () => {
 
   describe("testConnection", () => {
     it("should return ok when connection succeeds", async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ login: "test-user" }),
       });
@@ -237,7 +239,7 @@ describe("GitHubPlatformAdapter", () => {
     });
 
     it("should return error when connection fails", async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      mockFetch.mockResolvedValueOnce({
         ok: false,
         statusText: "Unauthorized",
         json: async () => ({ message: "Bad credentials" }),

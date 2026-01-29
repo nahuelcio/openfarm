@@ -1,11 +1,11 @@
-import { MinionsFarm } from "./MinionsFarm";
-import type { MinionsFarmConfig } from "./types";
+import { OpenFarm } from "./open-farm";
+import type { OpenFarmConfig } from "./types";
 
 export async function runCLI(
   args: string[],
-  config: MinionsFarmConfig
+  config: OpenFarmConfig
 ): Promise<void> {
-  const client = new MinionsFarm(config);
+  const client = new OpenFarm(config);
 
   if (args.length === 0) {
     console.log("Minions Farm SDK - CLI");

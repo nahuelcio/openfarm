@@ -61,7 +61,7 @@ interface AppConfig {
 }
 
 export class ConfigService {
-  private config: AppConfig;
+  private readonly config: AppConfig;
 
   constructor(config?: Partial<AppConfig>) {
     this.config = this.mergeWithDefaults(config || {});

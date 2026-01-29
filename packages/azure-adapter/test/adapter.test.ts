@@ -1,4 +1,5 @@
 import type { Integration } from "@openfarm/core/types/domain";
+import { describe, expect, it } from "vitest";
 import { AzurePlatformAdapter } from "../src/adapter";
 
 describe("AzurePlatformAdapter", () => {

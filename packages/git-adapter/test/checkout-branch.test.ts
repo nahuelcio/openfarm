@@ -1,4 +1,5 @@
 import type { GitConfig } from "@openfarm/core/types/git";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   checkoutBranch,
   type ExecFunction,
@@ -14,17 +15,17 @@ describe("checkoutBranch", () => {
   };
 
   const mockFs: FileSystem = {
-    existsSync: jest.fn(),
+    existsSync: vi.fn(),
   };
 
-  const mockExec: ExecFunction = jest.fn();
+  const mockExec: ExecFunction = vi.fn();
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it("should return error when repository directory does not exist", async () => {
-    (mockFs.existsSync as jest.Mock).mockReturnValue(false);
+    (mockFs.existsSync as any).mockReturnValue(false);
 
     const result = await checkoutBranch(
       mockConfig,
@@ -43,8 +44,8 @@ describe("checkoutBranch", () => {
   });
 
   it("should return error when path exists but is not a git repository", async () => {
-    (mockFs.existsSync as jest.Mock).mockReturnValue(true);
-    (mockExec as jest.Mock).mockRejectedValue(
+    (mockFs.existsSync as any).mockReturnValue(true);
+    (mockExec as any).mockRejectedValue(
       new Error("fatal: not a git repository")
     );
 
@@ -65,8 +66,8 @@ describe("checkoutBranch", () => {
   });
 
   it("should return ok when already on target branch", async () => {
-    (mockFs.existsSync as jest.Mock).mockReturnValue(true);
-    (mockExec as jest.Mock)
+    (mockFs.existsSync as any).mockReturnValue(true);
+    (mockExec as any)
       .mockResolvedValueOnce({ stdout: "", stderr: "" }) // rev-parse --git-dir
       .mockResolvedValueOnce({ stdout: "", stderr: "" }) // git config user.email
       .mockResolvedValueOnce({ stdout: "", stderr: "" }) // git config user.name
@@ -85,8 +86,8 @@ describe("checkoutBranch", () => {
   });
 
   it("should checkout default branch successfully", async () => {
-    (mockFs.existsSync as jest.Mock).mockReturnValue(true);
-    (mockExec as jest.Mock)
+    (mockFs.existsSync as any).mockReturnValue(true);
+    (mockExec as any)
       .mockResolvedValueOnce({ stdout: "", stderr: "" }) // rev-parse --git-dir
       .mockResolvedValueOnce({ stdout: "", stderr: "" }) // git config user.email
       .mockResolvedValueOnce({ stdout: "", stderr: "" }) // git config user.name
@@ -106,8 +107,8 @@ describe("checkoutBranch", () => {
   });
 
   it("should handle worktree conflicts gracefully", async () => {
-    (mockFs.existsSync as jest.Mock).mockReturnValue(true);
-    (mockExec as jest.Mock)
+    (mockFs.existsSync as any).mockReturnValue(true);
+    (mockExec as any)
       .mockResolvedValueOnce({ stdout: "", stderr: "" }) // rev-parse --git-dir
       .mockResolvedValueOnce({ stdout: "", stderr: "" }) // git config user.email
       .mockResolvedValueOnce({ stdout: "", stderr: "" }) // git config user.name

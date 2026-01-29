@@ -6,7 +6,7 @@ export interface Executor {
   testConnection(): Promise<boolean>;
 }
 
-export interface MinionsFarmConfig {
+export interface OpenFarmConfig {
   apiUrl?: string;
   apiKey?: string;
   defaultProvider?: string;

@@ -1,17 +1,17 @@
-import { createExecutor, type Executor, type ExecutorType } from "./executors";
+import { createExecutor, type ExecutorType } from "./executors";
 import type {
   ExecutionOptions,
   ExecutionResult,
-  MinionsFarmConfig,
+  OpenFarmConfig,
 } from "./types";
 
 const DEFAULT_MAX_TOKENS = 4096;
 
-export class MinionsFarm {
-  private config: MinionsFarmConfig;
-  private executor: Executor;
+export class OpenFarm {
+  private readonly config: OpenFarmConfig;
+  private executor: ReturnType<typeof createExecutor>;
 
-  constructor(config: MinionsFarmConfig = {}) {
+  constructor(config: OpenFarmConfig = {}) {
     this.config = config;
     const executorType = (config.defaultProvider || "opencode") as ExecutorType;
     this.executor = createExecutor(executorType);

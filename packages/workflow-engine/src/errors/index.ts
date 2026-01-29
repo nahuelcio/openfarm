@@ -19,4 +19,4 @@ export {
   WorkflowErrors,
   WorkflowErrorType,
   wrapOperation,
-} from "./ErrorSerializer";
+} from "./error-serializer";

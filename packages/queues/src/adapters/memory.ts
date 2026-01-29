@@ -14,8 +14,8 @@ import type {
  * In-memory queue adapter for testing
  */
 export class MemoryQueueAdapter implements QueueAdapter {
-  private jobs: Map<string, QueueJob> = new Map();
-  private results: Map<string, QueueJobResult> = new Map();
+  private readonly jobs: Map<string, QueueJob> = new Map();
+  private readonly results: Map<string, QueueJobResult> = new Map();
   private jobCounter = 0;
 
   getName(): string {
@@ -157,7 +157,9 @@ export class MemoryQueueAdapter implements QueueAdapter {
    */
   private processJob(jobId: string): void {
     const job = this.jobs.get(jobId);
-    if (!job) return;
+    if (!job) {
+      return;
+    }
 
     // Simulate successful execution
     this.results.set(jobId, {

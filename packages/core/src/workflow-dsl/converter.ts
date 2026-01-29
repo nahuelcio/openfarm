@@ -163,7 +163,7 @@ function workflowToPlainObject(workflow: Workflow): Record<string, unknown> {
 /**
  * Converts a step to plain object for YAML serialization
  */
-function stepToPlainObject(step: Record<string, unknown>): unknown {
+function stepToPlainObject(step: any): unknown {
   const obj: Record<string, unknown> = {
     id: step.id,
     type: step.type,
@@ -189,10 +189,10 @@ function stepToPlainObject(step: Record<string, unknown>): unknown {
   if (step.type === "conditional") {
     obj.condition = step.condition;
     if (step.if) {
-      obj.if = step.if.map(stepToPlainObject);
+      obj.if = (step.if as any[]).map(stepToPlainObject);
     }
     if (step.else) {
-      obj.else = step.else.map(stepToPlainObject);
+      obj.else = (step.else as any[]).map(stepToPlainObject);
     }
     if (step.switch) {
       obj.switch = Object.fromEntries(
@@ -203,7 +203,7 @@ function stepToPlainObject(step: Record<string, unknown>): unknown {
       );
     }
     if (step.default) {
-      obj.default = step.default.map(stepToPlainObject);
+      obj.default = (step.default as any[]).map(stepToPlainObject);
     }
   }
 
@@ -216,7 +216,7 @@ function stepToPlainObject(step: Record<string, unknown>): unknown {
     if (step.maxIterations !== undefined) {
       obj.maxIterations = step.maxIterations;
     }
-    obj.steps = step.steps.map(stepToPlainObject);
+    obj.steps = (step.steps as any[]).map(stepToPlainObject);
     if (step.breakOn) {
       obj.breakOn = step.breakOn;
     }
@@ -227,7 +227,7 @@ function stepToPlainObject(step: Record<string, unknown>): unknown {
 
   // Parallel step
   if (step.type === "parallel") {
-    obj.steps = step.steps.map(stepToPlainObject);
+    obj.steps = (step.steps as any[]).map(stepToPlainObject);
     if (step.maxConcurrency !== undefined) {
       obj.maxConcurrency = step.maxConcurrency;
     }

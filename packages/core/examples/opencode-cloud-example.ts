@@ -3,7 +3,7 @@ import { ConfigService, OpenCodeCloudService } from "../src/services";
 
 async function example() {
   // Create configuration from environment variables
-  const configService = ConfigService.fromEnvironment();
+  const _configService = ConfigService.fromEnvironment();
 
   // Or create with custom config
   const customConfig = new ConfigService({
@@ -70,7 +70,7 @@ async function example() {
 }
 
 // Health check example
-async function healthCheckExample() {
+async function _healthCheckExample() {
   const cloudService = new OpenCodeCloudService();
 
   const health = await cloudService.healthCheck();

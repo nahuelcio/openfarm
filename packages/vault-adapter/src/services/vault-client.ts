@@ -2,7 +2,7 @@ import type { VaultConfig, VaultHealthStatus, VaultResponse } from "../types";
 
 // TODO: Move to @openfarm/vault-adapter when splitting repos
 export class VaultClient {
-  private config: VaultConfig;
+  private readonly config: VaultConfig;
 
   constructor(config: VaultConfig) {
     this.config = config;
@@ -116,7 +116,7 @@ export class VaultClient {
 
       // Handle empty responses (like DELETE)
       const contentType = response.headers.get("content-type");
-      if (!(contentType && contentType.includes("application/json"))) {
+      if (!contentType?.includes("application/json")) {
         return {};
       }
 

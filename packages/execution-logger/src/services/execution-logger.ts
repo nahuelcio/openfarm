@@ -8,7 +8,7 @@ import type {
 // TODO: Move to @openfarm/execution-logger when splitting repos
 export class ExecutionLogger {
   private logs: ExecutionLog[] = [];
-  private metrics: Map<string, ExecutionMetrics> = new Map();
+  private readonly metrics: Map<string, ExecutionMetrics> = new Map();
 
   log(
     jobId: string,
@@ -153,9 +153,15 @@ export class ExecutionLogger {
     toDate?: Date
   ): ExecutionLog[] {
     return this.logs.filter((log) => {
-      if (log.tenantId !== tenantId) return false;
-      if (fromDate && log.timestamp < fromDate) return false;
-      if (toDate && log.timestamp > toDate) return false;
+      if (log.tenantId !== tenantId) {
+        return false;
+      }
+      if (fromDate && log.timestamp < fromDate) {
+        return false;
+      }
+      if (toDate && log.timestamp > toDate) {
+        return false;
+      }
       return true;
     });
   }
@@ -236,7 +242,9 @@ export class ExecutionLogger {
       executions = executions.filter((m) => m.tenantId === tenantId);
     }
 
-    if (executions.length === 0) return 0;
+    if (executions.length === 0) {
+      return 0;
+    }
 
     const totalDuration = executions.reduce(
       (sum, m) => sum + (m.duration || 0),
@@ -254,7 +262,9 @@ export class ExecutionLogger {
       executions = executions.filter((m) => m.tenantId === tenantId);
     }
 
-    if (executions.length === 0) return 0;
+    if (executions.length === 0) {
+      return 0;
+    }
 
     const successful = executions.filter(
       (m) => m.status === "completed"
@@ -293,7 +303,9 @@ export class ExecutionLogger {
     const searchTerm = query.toLowerCase();
 
     return this.logs.filter((log) => {
-      if (tenantId && log.tenantId !== tenantId) return false;
+      if (tenantId && log.tenantId !== tenantId) {
+        return false;
+      }
 
       return (
         log.message.toLowerCase().includes(searchTerm) ||
@@ -306,7 +318,9 @@ export class ExecutionLogger {
 
   getLogsWithMetadata(key: string, value?: unknown): ExecutionLog[] {
     return this.logs.filter((log) => {
-      if (!(log.metadata && key in log.metadata)) return false;
+      if (!(log.metadata && key in log.metadata)) {
+        return false;
+      }
       if (value !== undefined) {
         return log.metadata[key] === value;
       }

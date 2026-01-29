@@ -1,3 +1,4 @@
+import { describe, expect, it } from "vitest";
 import type { Workflow } from "../src/types/workflow";
 import { mergeWorkflows } from "../src/workflow-dsl/resolver/inheritance-merger";
 

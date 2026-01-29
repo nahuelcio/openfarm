@@ -4,8 +4,8 @@ import { VaultClient } from "./vault-client";
 
 // TODO: Move to @openfarm/vault-adapter when splitting repos
 export class VaultManager {
-  private client: VaultClient;
-  private config: VaultConfig;
+  private readonly client: VaultClient;
+  private readonly config: VaultConfig;
 
   constructor(config?: VaultConfig) {
     this.config = config || {
@@ -124,7 +124,7 @@ export class VaultManager {
         sealed: health.sealed,
         initialized: health.initialized,
       };
-    } catch (error) {
+    } catch (_error) {
       return {
         healthy: false,
       };
@@ -198,7 +198,7 @@ export class VaultManager {
         missing,
         present,
       };
-    } catch (error) {
+    } catch (_error) {
       return {
         valid: false,
         missing: ["ANTHROPIC_API_KEY"],

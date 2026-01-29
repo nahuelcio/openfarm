@@ -16,7 +16,7 @@ OpenFarm is a modular SDK for AI-powered code automation. It separates concerns 
 
 ### `@openfarm/sdk`
 Public API. What users import.
-- `MinionsFarm` class
+- `OpenFarm` class
 - Workflow definition
 - Results handling
 

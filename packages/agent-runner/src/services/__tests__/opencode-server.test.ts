@@ -2,29 +2,54 @@ import {
   afterAll,
   afterEach,
   beforeAll,
+  beforeEach,
   describe,
   expect,
   it,
-  jest,
-} from "@jest/globals";
+  vi,
+} from "vitest";
 import {
   getOpenCodeServerUrl,
   startOpenCodeServer,
   stopOpenCodeServer,
 } from "../opencode-server";
 
+// Mock the core module to avoid Bun dependency in tests
+vi.mock("@openfarm/core", () => ({
+  OpenCodeConfigService: {
+    create: vi.fn().mockResolvedValue({
+      resolveOpenCodeConfig: vi.fn().mockResolvedValue({
+        server: { defaultProvider: "copilot", defaultModel: "copilot/gpt-4o" },
+        providers: {
+          copilot: { token: null, apiBase: null },
+          anthropic: { apiKey: null, apiBase: null },
+          openrouter: { apiKey: null, apiBase: null },
+          zai: { apiKey: null, apiBase: null },
+        },
+      }),
+    }),
+  },
+}));
+
 describe("OpenCode Server Manager", () => {
+  const originalEnv = process.env;
+
   beforeAll(() => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
   });
 
   afterAll(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
+    process.env = originalEnv;
+  });
+
+  beforeEach(() => {
+    process.env = { ...originalEnv };
   });
 
   afterEach(async () => {
     await stopOpenCodeServer();
-    jest.clearAllTimers();
+    vi.clearAllTimers();
   });
 
   describe("startOpenCodeServer", () => {
@@ -50,13 +75,11 @@ describe("OpenCode Server Manager", () => {
 
       const url = getOpenCodeServerUrl();
       expect(url).toBe("http://localhost:9999");
-
-      process.env.OPENCODE_PORT = undefined;
-      process.env.OPENCODE_HOST = undefined;
     });
 
     it("should use default port when OPENCODE_PORT not set", () => {
-      process.env.OPENCODE_PORT = undefined;
+      // biome-ignore lint/performance/noDelete: delete is needed to remove env var
+      delete process.env.OPENCODE_PORT;
       process.env.OPENCODE_HOST = "127.0.0.1";
 
       const url = getOpenCodeServerUrl();
@@ -64,7 +87,8 @@ describe("OpenCode Server Manager", () => {
     });
 
     it("should use default host when OPENCODE_HOST not set", () => {
-      process.env.OPENCODE_HOST = undefined;
+      // biome-ignore lint/performance/noDelete: delete is needed to remove env var
+      delete process.env.OPENCODE_HOST;
       process.env.OPENCODE_PORT = "4096";
 
       const url = getOpenCodeServerUrl();

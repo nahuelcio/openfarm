@@ -10,14 +10,14 @@
 export {
   type ContextSetupResult,
   setupWorkflowContext,
-} from "./ContextResolver";
+} from "./context-resolver";
 export {
   cleanupWorkflowResources,
   finishWorkflowExecution,
   handleCancellation,
-} from "./LifecycleHandlers";
+} from "./lifecycle-handlers";
 export {
   type RepositorySetupResult,
   setupRepository,
-} from "./RepositoryManager";
-export { executeWorkflow } from "./WorkflowOrchestrator";
+} from "./repository-manager";
+export { executeWorkflow } from "./workflow-orchestrator";

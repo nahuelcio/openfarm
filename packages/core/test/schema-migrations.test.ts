@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { addColumnSafely } from "../src/db/utils/add-column-safely";
 
 /**
@@ -12,12 +12,9 @@ import { addColumnSafely } from "../src/db/utils/add-column-safely";
 
 describe("schema-migrations", () => {
   describe("addColumnSafely", () => {
-    // RED: Test for function that doesn't exist yet
     it("should add column to table that doesn't have it yet", async () => {
       const mockDb = {
-        exec: async (sql: string) => {
-          return [];
-        },
+        exec: vi.fn().mockResolvedValue([]),
       };
 
       await addColumnSafely(
@@ -27,30 +24,29 @@ describe("schema-migrations", () => {
         "new_column_def TEXT"
       );
 
-      // Verify column was added - would need to check if column exists
-      // For now, we're just testing it doesn't throw
-      expect(true).toBe(true);
+      expect(mockDb.exec).toHaveBeenCalledWith(
+        "ALTER TABLE test_table ADD COLUMN new_column new_column_def TEXT"
+      );
     });
 
     it("should handle duplicate column error gracefully", async () => {
       const mockDb = {
-        exec: async (sql: string) => {
-          const error = new Error("duplicate column name: new_column");
-          throw error;
-        },
+        exec: vi.fn().mockImplementation(() => {
+          throw new Error("duplicate column name: new_column");
+        }),
       };
 
+      // Should not throw when column already exists (handled gracefully)
       await expect(
         addColumnSafely(mockDb as any, "test_table", "new_column", "TEXT")
-      ).rejects.toThrow("duplicate column name: new_column");
+      ).resolves.not.toThrow();
     });
 
     it("should handle unknown database errors", async () => {
       const mockDb = {
-        exec: async (sql: string) => {
-          const error = new Error("database connection failed");
-          throw error;
-        },
+        exec: vi.fn().mockImplementation(() => {
+          throw new Error("database connection failed");
+        }),
       };
 
       await expect(

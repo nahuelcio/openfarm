@@ -1,12 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type {
-  Execution,
-  Job,
-  Mission,
-  Step,
-  Workflow,
-  WorkItem,
-} from "../src/index";
+import type { Execution, Job, Mission, Step, Workflow, WorkItem } from "../src";
 
 describe("Types", () => {
   describe("WorkItem", () => {

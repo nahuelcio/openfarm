@@ -1,3 +1,4 @@
+import { describe, expect, it } from "vitest";
 import { authenticateAzureDevOpsUrl } from "../src/index";
 
 describe("authenticateAzureDevOpsUrl", () => {

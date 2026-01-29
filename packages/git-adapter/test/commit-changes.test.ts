@@ -1,4 +1,5 @@
 import type { GitConfig } from "@openfarm/core/types/git";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   commitChanges,
   type ExecFunction,
@@ -14,17 +15,17 @@ describe("commitChanges", () => {
   };
 
   const mockFs: FileSystem = {
-    existsSync: jest.fn(),
+    existsSync: vi.fn(),
   };
 
-  const mockExec: ExecFunction = jest.fn();
+  const mockExec: ExecFunction = vi.fn();
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it("should return error when repository directory does not exist", async () => {
-    (mockFs.existsSync as jest.Mock).mockReturnValue(false);
+    (mockFs.existsSync as any).mockReturnValue(false);
 
     const result = await commitChanges(
       mockConfig,
@@ -42,8 +43,8 @@ describe("commitChanges", () => {
   });
 
   it("should return error when there are no changes to commit", async () => {
-    (mockFs.existsSync as jest.Mock).mockReturnValue(true);
-    (mockExec as jest.Mock)
+    (mockFs.existsSync as any).mockReturnValue(true);
+    (mockExec as any)
       .mockResolvedValueOnce({ stdout: "", stderr: "" }) // git config user.email
       .mockResolvedValueOnce({ stdout: "", stderr: "" }) // git config user.name
       .mockResolvedValueOnce({ stdout: "", stderr: "" }); // status --porcelain (no changes)
@@ -62,8 +63,8 @@ describe("commitChanges", () => {
   });
 
   it("should commit changes successfully", async () => {
-    (mockFs.existsSync as jest.Mock).mockReturnValue(true);
-    (mockExec as jest.Mock)
+    (mockFs.existsSync as any).mockReturnValue(true);
+    (mockExec as any)
       .mockResolvedValueOnce({ stdout: "", stderr: "" }) // git config user.email
       .mockResolvedValueOnce({ stdout: "", stderr: "" }) // git config user.name
       .mockResolvedValueOnce({ stdout: "M file.txt\n", stderr: "" }) // status --porcelain (has changes)
@@ -87,8 +88,8 @@ describe("commitChanges", () => {
   });
 
   it("should return error when there is nothing to commit", async () => {
-    (mockFs.existsSync as jest.Mock).mockReturnValue(true);
-    (mockExec as jest.Mock)
+    (mockFs.existsSync as any).mockReturnValue(true);
+    (mockExec as any)
       .mockResolvedValueOnce({ stdout: "", stderr: "" }) // git config user.email
       .mockResolvedValueOnce({ stdout: "", stderr: "" }) // git config user.name
       .mockResolvedValueOnce({ stdout: "M file.txt\n", stderr: "" }) // status --porcelain
@@ -114,8 +115,8 @@ describe("commitChanges", () => {
   });
 
   it("should escape quotes in commit message", async () => {
-    (mockFs.existsSync as jest.Mock).mockReturnValue(true);
-    (mockExec as jest.Mock)
+    (mockFs.existsSync as any).mockReturnValue(true);
+    (mockExec as any)
       .mockResolvedValueOnce({ stdout: "", stderr: "" }) // git config user.email
       .mockResolvedValueOnce({ stdout: "", stderr: "" }) // git config user.name
       .mockResolvedValueOnce({ stdout: "M file.txt\n", stderr: "" }) // status
@@ -126,7 +127,7 @@ describe("commitChanges", () => {
     await commitChanges(mockConfig, 'Test "quoted" message', mockFs, mockExec);
 
     // Check that commit was called with escaped quotes
-    const commitCall = (mockExec as jest.Mock).mock.calls.find((call) =>
+    const commitCall = (mockExec as any).mock.calls.find((call) =>
       call[0].includes("commit -m")
     );
     expect(commitCall).toBeDefined();

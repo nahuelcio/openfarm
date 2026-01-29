@@ -18,7 +18,7 @@ import type { AgentConfiguration, Workflow } from "@openfarm/core";
 import { getDb, getIntegrations } from "@openfarm/core/db";
 import { v4 as uuidv4 } from "uuid";
 import type { WorkflowLogger } from "../types";
-import type { ContextSetupResult } from "./ContextResolver";
+import type { ContextSetupResult } from "./context-resolver";
 
 export interface RepositorySetupResult {
   repoPath: string;
@@ -136,39 +136,9 @@ export async function setupRepository(
   };
 
   // Check for active Kubernetes pod
-  let hasActivePod = false;
-  let podName: string | undefined;
-
-  const shouldCheckK8s =
-    process.env.ENABLE_KUBERNETES === "true" || !!process.env.KUBECONFIG;
-
-  if (shouldCheckK8s) {
-    try {
-      const { KubernetesOrchestrator } = await import("@openfarm/agent-runner");
-      const k8sNamespace = "minions-farm";
-      const kubernetesOrchestrator = new KubernetesOrchestrator(k8sNamespace);
-
-      const activePodResult = await kubernetesOrchestrator.hasActivePodForJob(
-        jobId,
-        k8sNamespace
-      );
-      if (activePodResult.ok && activePodResult.value) {
-        hasActivePod = true;
-        const podsResult = await kubernetesOrchestrator.listPodsByJobId(
-          jobId,
-          k8sNamespace
-        );
-        if (podsResult.ok && podsResult.value.length > 0) {
-          podName = podsResult.value[0];
-          await logger.info(`Kubernetes pod detected: ${podName}`);
-        }
-      }
-    } catch (k8sError) {
-      await logger.debug(
-        `Kubernetes check skipped: ${k8sError instanceof Error ? k8sError.message : String(k8sError)}`
-      );
-    }
-  }
+  // NOTE: Kubernetes integration is disabled until @openfarm/orchestration package is properly set up
+  const hasActivePod = false;
+  const podName: string | undefined = undefined;
 
   // Initialize paths
   let repoPath = mainRepoPath;

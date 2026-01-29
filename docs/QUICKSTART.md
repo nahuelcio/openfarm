@@ -13,9 +13,9 @@ bun add @openfarm/sdk
 ## Basic Usage
 
 ```typescript
-import { MinionsFarm } from '@openfarm/sdk'
+import { OpenFarm } from '@openfarm/sdk'
 
-const client = new MinionsFarm({
+const client = new OpenFarm({
   provider: 'anthropic',
   apiKey: process.env.ANTHROPIC_API_KEY
 })

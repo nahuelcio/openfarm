@@ -2,7 +2,7 @@ import type { MetricPoint, MetricSeries } from "../types";
 
 // TODO: Move to @openfarm/execution-logger when splitting repos
 export class MetricsCollector {
-  private metrics: Map<string, MetricSeries> = new Map();
+  private readonly metrics: Map<string, MetricSeries> = new Map();
 
   recordMetric(
     name: string,
@@ -74,7 +74,9 @@ export class MetricsCollector {
     }
   ): number {
     const metric = this.metrics.get(name);
-    if (!metric) return 0;
+    if (!metric) {
+      return 0;
+    }
 
     let points = metric.points;
 
@@ -87,7 +89,9 @@ export class MetricsCollector {
       );
     }
 
-    if (points.length === 0) return 0;
+    if (points.length === 0) {
+      return 0;
+    }
 
     const values = points.map((p) => p.value);
 
@@ -115,7 +119,9 @@ export class MetricsCollector {
     value: number;
   }> {
     const metric = this.metrics.get(name);
-    if (!metric) return [];
+    if (!metric) {
+      return [];
+    }
 
     // Group points into time buckets
     const buckets = new Map<number, number[]>();
@@ -248,13 +254,17 @@ export class MetricsCollector {
     labelFilter?: Record<string, string>
   ): number {
     const metric = this.metrics.get(name);
-    if (!metric) return 0;
+    if (!metric) {
+      return 0;
+    }
 
     let points = metric.points;
 
     if (labelFilter) {
       points = points.filter((point) => {
-        if (!point.labels) return false;
+        if (!point.labels) {
+          return false;
+        }
         return Object.entries(labelFilter).every(
           ([key, value]) => point.labels![key] === value
         );
@@ -273,12 +283,24 @@ export class MetricsCollector {
   private categorizeError(error: string): string {
     const errorLower = error.toLowerCase();
 
-    if (errorLower.includes("quota")) return "quota_exceeded";
-    if (errorLower.includes("timeout")) return "timeout";
-    if (errorLower.includes("auth")) return "authentication";
-    if (errorLower.includes("permission")) return "authorization";
-    if (errorLower.includes("network")) return "network";
-    if (errorLower.includes("pod")) return "infrastructure";
+    if (errorLower.includes("quota")) {
+      return "quota_exceeded";
+    }
+    if (errorLower.includes("timeout")) {
+      return "timeout";
+    }
+    if (errorLower.includes("auth")) {
+      return "authentication";
+    }
+    if (errorLower.includes("permission")) {
+      return "authorization";
+    }
+    if (errorLower.includes("network")) {
+      return "network";
+    }
+    if (errorLower.includes("pod")) {
+      return "infrastructure";
+    }
 
     return "unknown";
   }

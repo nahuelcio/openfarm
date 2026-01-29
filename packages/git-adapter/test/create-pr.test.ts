@@ -1,4 +1,5 @@
 import type { GitConfig } from "@openfarm/core/types/git";
+import { describe, expect, it } from "vitest";
 import { createPr } from "../src/index";
 
 describe("createPr", () => {

@@ -12,8 +12,7 @@
     "declarationMap": true,
     "sourceMap": true,
     "outDir": "./dist",
-    "rootDir": "./src",
-    "composite": true,
+    "noEmit": true,
     "paths": {
       "@openfarm/core": ["../core/src"],
       "@openfarm/core/*": ["../core/src/*"],
@@ -25,13 +24,5 @@
     }
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "**/*.test.ts"],
-  "references": [
-    { "path": "../core" },
-    { "path": "../agent-runner" },
-    { "path": "../result" },
-    { "path": "../logger" },
-    { "path": "../types" },
-    { "path": "../utils" }
-  ]
+  "exclude": ["node_modules", "dist", "**/*.test.ts"]
 }
