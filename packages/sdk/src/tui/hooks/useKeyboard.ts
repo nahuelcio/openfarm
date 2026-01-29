@@ -1,44 +1,49 @@
-// Keyboard shortcuts for OpenTUI
-// Uses OpenTUI's built-in keyboard handling via renderer.keyInput
-
-import { useEffect } from "react";
+// Keyboard shortcuts for OpenTUI - Optimized for responsiveness
+import { useEffect, useRef } from "react";
 import { useRenderer } from "@opentui/react";
 import { useAppStore } from "../store";
 
 interface ShortcutConfig {
   key: string;
   ctrl?: boolean;
+  alt?: boolean;
+  shift?: boolean;
   handler: () => void;
 }
 
 export function useKeyboard(shortcuts: ShortcutConfig[]) {
   const renderer = useRenderer();
+  const lastKeyTime = useRef<number>(0);
+  const DEBOUNCE_MS = 50;
 
   useEffect(() => {
     if (!renderer) return;
 
-    const handleKey = (event: { name: string; ctrl: boolean }) => {
+    const handleKey = (event: { name: string; ctrl: boolean; alt?: boolean; shift?: boolean }) => {
+      const now = Date.now();
+      if (now - lastKeyTime.current < DEBOUNCE_MS) return;
+      
       for (const shortcut of shortcuts) {
         const keyMatch = event.name.toLowerCase() === shortcut.key.toLowerCase();
         const ctrlMatch = !!shortcut.ctrl === event.ctrl;
+        const altMatch = !!shortcut.alt === event.alt;
+        const shiftMatch = !!shortcut.shift === event.shift;
 
-        if (keyMatch && ctrlMatch) {
+        if (keyMatch && ctrlMatch && altMatch && shiftMatch) {
+          lastKeyTime.current = now;
           shortcut.handler();
           return;
         }
       }
     };
 
-    // Add keyboard listener through renderer
     renderer.keyInput.on("key", handleKey);
-
     return () => {
       renderer.keyInput.off("key", handleKey);
     };
   }, [renderer, shortcuts]);
 }
 
-// Predefined shortcuts for the app
 export function useAppShortcuts() {
   const { setScreen } = useAppStore();
   const renderer = useRenderer();
@@ -47,34 +52,32 @@ export function useAppShortcuts() {
     if (!renderer) return;
 
     const handleKey = (event: { name: string; ctrl: boolean }) => {
-      // Ctrl+N - New Task
-      if (event.ctrl && event.name === "n") {
-        setScreen("execute");
-        return;
+      if (event.ctrl) {
+        switch (event.name.toLowerCase()) {
+          case "n":
+            setScreen("execute");
+            return;
+          case "h":
+            setScreen("history");
+            return;
+          case "s":
+            setScreen("settings");
+            return;
+          case "d":
+            setScreen("dashboard");
+            return;
+          case "q":
+            process.exit(0);
+            return;
+        }
       }
-      // Ctrl+H - History
-      if (event.ctrl && event.name === "h") {
-        setScreen("history");
-        return;
-      }
-      // Ctrl+S - Settings
-      if (event.ctrl && event.name === "s") {
-        setScreen("settings");
-        return;
-      }
-      // Ctrl+D - Dashboard
-      if (event.ctrl && event.name === "d") {
+      
+      if (event.name === "escape") {
         setScreen("dashboard");
-        return;
-      }
-      // Ctrl+Q or Escape - Quit
-      if ((event.ctrl && event.name === "q") || event.name === "escape") {
-        process.exit(0);
       }
     };
 
     renderer.keyInput.on("key", handleKey);
-
     return () => {
       renderer.keyInput.off("key", handleKey);
     };
