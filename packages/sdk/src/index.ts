@@ -1,4 +1,5 @@
-export { runCLI } from "./cli";
+export { runTUIApp } from "./tui-cli";
+export { runLegacyCLI } from "./cli-legacy";
 export { createExecutor } from "./executors";
 export { AiderExecutor } from "./executors/aider";
 export { ClaudeCodeExecutor } from "./executors/claude-code";
