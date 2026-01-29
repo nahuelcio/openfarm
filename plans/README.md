@@ -29,11 +29,11 @@ Esta carpeta contiene los planes detallados para implementar features en OpenFar
    - Manejo de errores con códigos específicos
    - Progress bar con porcentaje
 
-4. **[Fase 4: Polish y Extras](./phase-4-polish.md)** 🚧
-   - Animaciones y transiciones
-   - Temas adicionales (dracula, monokai)
-   - Export/Import de historial
-   - Tests del TUI
+4. **[Fase 4: Polish y Extras](./phase-4-polish.md)** ✅
+   - 6 themes: dark, light, dracula, monokai, nord, oneDark
+   - Nuevos componentes UI: ProgressBar, Badge, Divider, Card
+   - Tests del store
+   - Export con clipboard fallback
 
 4. **[Fase 4: Polish y Extras](./phase-4-polish.md)**
    - Animaciones y transiciones
