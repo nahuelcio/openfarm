@@ -13,12 +13,27 @@ const providers: { id: ExecutorType; name: string }[] = [
 
 export function Execute() {
   const theme = useTheme("dark");
-  const { config, setScreen } = useAppStore();
+  const { config, setScreen, addExecution } = useAppStore();
 
   const [task, setTask] = useState("");
   const [provider, setProvider] = useState<ExecutorType>(
     (config.defaultProvider as ExecutorType) || "opencode"
   );
+
+  const handleExecute = () => {
+    if (!task.trim()) return;
+
+    const execution = {
+      id: `exec_${Date.now()}`,
+      task: task.trim(),
+      provider,
+      status: "pending" as const,
+      startedAt: new Date(),
+    };
+
+    addExecution(execution);
+    setScreen("executing");
+  };
 
   return (
     <box flexDirection="column" gap={1}>
@@ -72,6 +87,9 @@ export function Execute() {
 
       {/* Actions */}
       <box flexDirection="row" gap={2} marginTop={2}>
+        <Button onPress={handleExecute} variant="primary">
+          ▶️ Execute
+        </Button>
         <Button variant="secondary" onPress={() => setScreen("dashboard")}>
           Cancel
         </Button>
