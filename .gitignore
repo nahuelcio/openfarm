@@ -35,3 +35,6 @@ temp
 tmp
 .tmp
 .osgrep
+
+# Turbo cache
+.turbo/
