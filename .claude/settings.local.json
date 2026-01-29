@@ -4,7 +4,14 @@
       "Bash(git checkout:*)",
       "Bash(git add:*)",
       "Bash(git commit -m \"$\\(cat <<''EOF''\nchore: fix linting and formatting issues\n\n- Fix formatting: add missing newlines to JSON and tsconfig files\n- Rename workflow-engine files to kebab-case convention\n- Organize imports in agent-runner/src/index.ts\n- Convert type-only exports to use ''export type'' syntax\n- Prefix unused variables with underscore in examples\n- Add readonly modifier to VaultManager client property\n- Update all import paths for renamed workflow-engine files\n- Fix formatter issues in examples/basic-usage.ts\n\nFixes linting errors found by ultracite and biome.\n\nCo-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
-      "Bash(npm run lint:*)"
+      "Bash(npm run lint:*)",
+      "Bash(grep:*)",
+      "Bash(find:*)",
+      "Bash(bun run test:*)",
+      "Bash(bunx vitest --help:*)",
+      "Bash(bun run lint:*)",
+      "Bash(bun run type-check:*)",
+      "Bash(bun run build:*)"
     ]
   }
 }

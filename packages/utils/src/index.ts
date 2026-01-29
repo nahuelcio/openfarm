@@ -146,3 +146,7 @@ export const defaultFetch: FetchFunction =
           "fetch is not available. Please use a runtime with native fetch support."
         );
       };
+// Re-export utilities
+export { CircuitBreaker } from "./circuit-breaker";
+export { metrics } from "./metrics";
+export { validateInstruction } from "./validation";

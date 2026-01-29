@@ -1,3 +1,4 @@
+import { describe, expect, it } from "vitest";
 import * as dbExports from "../../src/db/index";
 
 describe("DB Exports", () => {

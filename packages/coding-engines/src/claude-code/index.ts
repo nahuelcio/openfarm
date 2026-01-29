@@ -1,6 +1,6 @@
 import {
-  CLAUDE_CODE_SUPPORTED_MODELS,
   CLAUDE_DEFAULT_MODEL,
+  CLAUDE_SUPPORTED_MODELS,
 } from "@openfarm/config";
 import type {
   ChangesSummary,
@@ -47,7 +47,7 @@ export class ClaudeCodeCodingEngine implements CodingEngine {
    * Claude Code supports various Claude models.
    */
   async getSupportedModels(): Promise<string[]> {
-    return [...CLAUDE_CODE_SUPPORTED_MODELS];
+    return [...CLAUDE_SUPPORTED_MODELS];
   }
 
   /**

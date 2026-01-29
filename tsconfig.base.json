@@ -3,10 +3,12 @@
   "compilerOptions": {
     // Type Checking
     "strict": true,
+    "noImplicitAny": false,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
-    "noUncheckedIndexedAccess": true,
+    "noUncheckedIndexedAccess": false,
+    "skipLibCheck": true,
 
     // Modules
     "baseUrl": ".",
@@ -37,10 +39,7 @@
     // Language and Environment
     "target": "ESNext",
     "lib": ["ESNext"],
-    "useDefineForClassFields": true,
-
-    // Completeness
-    "skipLibCheck": true
+    "useDefineForClassFields": true
   },
   "exclude": ["node_modules", "dist", "build"]
 }

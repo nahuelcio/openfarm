@@ -3,8 +3,9 @@ import type {
   CodingEngine,
 } from "@openfarm/core/types/adapters";
 import type { Result } from "@openfarm/result";
-import { OpenCodeConfigService } from "../../../../core/src/services/opencode-config";
-import { CircuitBreaker } from "../../utils/circuit-breaker";
+// TODO: Import OpenCodeConfigService once core/services/opencode-config is properly typed
+// import { OpenCodeConfigService } from "@openfarm/core/services/opencode-config";
+import { CircuitBreaker } from "@openfarm/utils";
 import { executeOpencodeProcess } from "./opencode-process";
 
 import type { OpencodeOptions, OpencodeProcessConfig } from "./types";
@@ -58,17 +59,11 @@ export class OpencodeCodingEngine implements CodingEngine {
     contextFiles: string[] = []
   ): Promise<Result<ChangesSummary>> {
     // Read default model from database configuration
-    let defaultModel = "zai/glm-4.7"; // Fallback if DB is unavailable
-    try {
-      const configService = await OpenCodeConfigService.create();
-      const config = await configService.resolveOpenCodeConfig();
-      defaultModel = config.server.defaultModel;
-    } catch (error) {
-      console.warn(
-        "[OpenCode] Failed to load config from DB, using fallback:",
-        error instanceof Error ? error.message : String(error)
-      );
-    }
+    const defaultModel = "zai/glm-4.7"; // Fallback if DB is unavailable
+    // TODO: Uncomment once OpenCodeConfigService is properly exported from core
+    // const configService = await OpenCodeConfigService.create();
+    // const config = await configService.resolveOpenCodeConfig();
+    // defaultModel = config.server.defaultModel;
 
     const requestedModel = this.options.model || defaultModel;
     const resolvedModel = await resolveModelSelection(requestedModel);

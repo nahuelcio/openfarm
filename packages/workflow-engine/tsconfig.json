@@ -12,8 +12,7 @@
     "declarationMap": true,
     "sourceMap": true,
     "outDir": "./dist",
-    "rootDir": "./src",
-    "composite": true,
+    "noEmit": true,
     "paths": {
       "@openfarm/core": ["../core/src"],
       "@openfarm/core/*": ["../core/src/*"],

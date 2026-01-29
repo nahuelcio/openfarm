@@ -1,4 +1,5 @@
-import { err, ok, type Result } from "@openfarm/result";
+import type { Result } from "@openfarm/result";
+import { err, ok } from "@openfarm/result";
 import { describe, expect, it } from "vitest";
 import {
   chunk,

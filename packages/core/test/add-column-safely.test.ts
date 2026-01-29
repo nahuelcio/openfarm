@@ -1,57 +1,52 @@
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  jest,
-} from "@jest/globals";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { addColumnSafely } from "../src/db/utils/add-column-safely";
-
-const mockDb = {
-  exec: async (sql: string) => {
-    return [];
-  },
-};
 
 describe("addColumnSafely", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it("should add column to table that doesn't have it yet", async () => {
+    const mockDb = {
+      exec: vi.fn().mockResolvedValue([]),
+    };
+
     await addColumnSafely(mockDb as any, "test_table", "new_column", "TEXT");
 
-    // Verify column was added - simplified test just logs success
-    expect(true).toBe(true);
+    expect(mockDb.exec).toHaveBeenCalledWith(
+      "ALTER TABLE test_table ADD COLUMN new_column TEXT"
+    );
   });
 
   it("should skip if column already exists", async () => {
-    const result = await addColumnSafely(
-      mockDb as any,
-      "test_table",
-      "new_column",
-      "TEXT"
-    );
+    const mockDb = {
+      exec: vi.fn().mockImplementation(() => {
+        const error = new Error("duplicate column name: new_column");
+        throw error;
+      }),
+    };
 
-    expect(result).toBe(true);
+    // Should not throw when column already exists
+    await expect(
+      addColumnSafely(mockDb as any, "test_table", "new_column", "TEXT")
+    ).resolves.not.toThrow();
   });
 
   it("should handle duplicate column error gracefully", async () => {
-    const result = await addColumnSafely(
-      mockDb as any,
-      "test_table",
-      "new_column",
-      "TEXT"
-    );
+    const mockDb = {
+      exec: vi.fn().mockImplementation(() => {
+        const error = new Error("duplicate column name: new_column");
+        throw error;
+      }),
+    };
 
-    expect(result).toEqual({
-      ok: false,
-      error: "duplicate column name: new_column",
-    });
+    // Should not throw for duplicate column errors (they are handled gracefully)
+    await expect(
+      addColumnSafely(mockDb as any, "test_table", "new_column", "TEXT")
+    ).resolves.not.toThrow();
   });
 });

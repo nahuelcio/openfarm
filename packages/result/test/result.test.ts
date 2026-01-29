@@ -25,7 +25,7 @@ describe("Result", () => {
 
   describe("err", () => {
     it("should create err result", () => {
-      const result = err("error" as const);
+      const result = err("error");
       expect(result.ok).toBe(false);
       if (!result.ok) {
         expect(result.error).toBe("error");

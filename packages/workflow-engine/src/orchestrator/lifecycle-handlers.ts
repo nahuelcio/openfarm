@@ -151,7 +151,8 @@ export async function cleanupWorkflowResources(
 
   try {
     const { removeWorktree } = await import("@openfarm/agent-runner");
-    await removeWorktree(mainRepoPath, worktreePath);
+    const { defaultFileSystem } = await import("@openfarm/core/db/connection");
+    await removeWorktree(mainRepoPath, worktreePath, defaultFileSystem);
     console.log(`Worktree cleanup attempted: ${worktreePath}`);
   } catch (cleanupError) {
     console.warn("Error during worktree cleanup:", cleanupError);

@@ -1,4 +1,4 @@
-import { describe, expect, it, jest } from "@jest/globals";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   getOpenCodeAuthAdapter,
   resetOpenCodeAuthAdapter,
@@ -13,7 +13,7 @@ describe("OpenCode Auth Adapter", () => {
 
   afterEach(() => {
     global.fetch = originalFetch;
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   describe("getOpenCodeAuthAdapter", () => {
@@ -27,7 +27,7 @@ describe("OpenCode Auth Adapter", () => {
 
   describe("isReady", () => {
     it("should return false when server is not running", async () => {
-      global.fetch = jest.fn(() => Promise.reject(new Error("offline"))) as any;
+      global.fetch = vi.fn(() => Promise.reject(new Error("offline"))) as any;
 
       const adapter = getOpenCodeAuthAdapter();
       const ready = await adapter.isReady();
@@ -37,15 +37,15 @@ describe("OpenCode Auth Adapter", () => {
   });
 
   describe("getAuthStatus", () => {
-    it("should return authenticated status when models endpoint is accessible", async () => {
-      global.fetch = jest.fn(() =>
+    it("should return authenticated status when provider endpoint returns connected providers", async () => {
+      global.fetch = vi.fn(() =>
         Promise.resolve({
           ok: true,
           headers: new Headers({ "content-type": "application/json" }),
-          json: async () => ({ data: [] }),
+          json: async () => ({ connected: ["github-copilot"] }),
         } as Response)
       );
-      const mockFetch = global.fetch as jest.Mock;
+      const mockFetch = global.fetch as any;
 
       const adapter = getOpenCodeAuthAdapter();
       const status = await adapter.getAuthStatus();
@@ -57,7 +57,7 @@ describe("OpenCode Auth Adapter", () => {
     }, 5000);
 
     it("should return needs auth status when models endpoint returns 401", async () => {
-      global.fetch = jest.fn(() =>
+      global.fetch = vi.fn(() =>
         Promise.resolve({
           ok: false,
           status: 401,
@@ -68,7 +68,7 @@ describe("OpenCode Auth Adapter", () => {
           }),
         } as Response)
       );
-      const mockFetch = global.fetch as jest.Mock;
+      const mockFetch = global.fetch as any;
 
       const adapter = getOpenCodeAuthAdapter();
       const status = await adapter.getAuthStatus();
@@ -82,19 +82,16 @@ describe("OpenCode Auth Adapter", () => {
 
   describe("getDeviceCode", () => {
     it("should return device code when available", async () => {
-      global.fetch = jest.fn(() =>
+      global.fetch = vi.fn(() =>
         Promise.resolve({
           ok: true,
           json: async () => ({
-            userCode: "ABCD-EFGH",
-            deviceCode: "test-device-code",
-            verificationUri: "https://github.com/login/device",
-            expiresIn: 900,
-            interval: 5,
+            url: "https://github.com/login/device",
+            instructions: "Enter code: ABCD-EFGH",
           }),
         } as Response)
       );
-      const mockFetch = global.fetch as jest.Mock;
+      const mockFetch = global.fetch as any;
 
       const adapter = getOpenCodeAuthAdapter();
       const deviceCode = await adapter.getDeviceCode();

@@ -9,7 +9,7 @@
   "scripts": {
     "lint": "bunx biome check .",
     "type-check": "bunx tsc -p tsconfig.json --noEmit",
-    "test": "bunx jest",
+    "test": "bunx vitest run",
     "clean": "rm -rf dist build .turbo"
   }
 }

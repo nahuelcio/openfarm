@@ -1,8 +1,18 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "rootDir": "src",
-    "outDir": "dist"
+    "outDir": "dist",
+    "noEmit": true,
+    "paths": {
+      "@openfarm/core": ["../core/src"],
+      "@openfarm/core/*": ["../core/src/*"],
+      "@openfarm/config": ["../config/src"],
+      "@openfarm/result": ["../result/src"],
+      "@openfarm/logger": ["../logger/src"],
+      "@openfarm/types": ["../types/src"],
+      "@openfarm/utils": ["../utils/src"],
+      "@openfarm/utils/*": ["../utils/src/*"]
+    }
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]

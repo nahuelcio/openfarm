@@ -9,6 +9,7 @@ const DEFAULT_MAX_TOKENS = 4096;
 
 export class OpenFarm {
   private readonly config: OpenFarmConfig;
+  private executor: ReturnType<typeof createExecutor>;
 
   constructor(config: OpenFarmConfig = {}) {
     this.config = config;

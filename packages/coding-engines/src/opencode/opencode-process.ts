@@ -3,8 +3,7 @@ import { OpencodeEventType } from "@openfarm/core/constants/enums";
 import type { ChangesSummary } from "@openfarm/core/types/adapters";
 import { logger } from "@openfarm/logger";
 import { err, ok, type Result } from "@openfarm/result";
-import { metrics } from "../../utils/metrics";
-import { validateInstruction } from "../../utils/validation";
+import { metrics, validateInstruction } from "@openfarm/utils";
 import type { CancellationToken, OpencodeProcessConfig } from "./types";
 
 /**
