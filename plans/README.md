@@ -6,34 +6,33 @@ Esta carpeta contiene los planes detallados para implementar features en OpenFar
 
 | Plan | Descripción | Estado | Prioridad |
 |------|-------------|--------|-----------|
-| [TUI Master Plan](./tui-master-plan.md) | Implementación del CLI/TUI con OpenTUI | 📝 Planificación | Alta |
+| [TUI Master Plan](./tui-master-plan.md) | Implementación del CLI/TUI con OpenTUI | 🚧 En progreso | Alta |
 
 ## 🎯 TUI Master Plan - Fases
 
-1. **[Fase 1: Setup e Instalación](./phase-1-setup.md)**
+1. **[Fase 1: Setup e Instalación](./phase-1-setup.md)** ✅
    - Instalar OpenTUI y dependencias
    - Configurar estructura del proyecto
    - Setup inicial del CLI
 
-2. **[Fase 2: Componentes Core](./phase-2-core-components.md)**
+2. **[Fase 2: Pantallas Principales](./phase-2-core-components.md)** ✅
    - Theme y diseño
    - Layout base
    - Componentes reutilizables
+   - Pantallas: Dashboard, Execute, Executing, History, ExecutionDetail, Settings
+   - Navegación y keyboard shortcuts
 
-3. **[Fase 3: Pantallas Principales](./phase-3-screens.md)**
-   - Dashboard
-   - Ejecución de tareas
-   - Historial y logs
+3. **[Fase 3: Integración con SDK](./phase-3-integration.md)** 🚧
+   - Mejorar integración con OpenFarm.execute
+   - Streaming real de respuestas
+   - Manejo de errores
+   - Persistencia de ejecuciones
 
-4. **[Fase 4: Integración con OpenFarm](./phase-4-integration.md)**
-   - Conectar con SDK
-   - Manejo de estado
-   - Streaming de respuestas
-
-5. **[Fase 5: Polish y Extras](./phase-5-polish.md)**
-   - Animaciones
-   - Configuración
-   - Shortcuts
+4. **[Fase 4: Polish y Extras](./phase-4-polish.md)**
+   - Animaciones y transiciones
+   - Temas adicionales
+   - Export/Import de historial
+   - Tests del TUI
 
 ## 🚀 Cómo usar estos planes
 
