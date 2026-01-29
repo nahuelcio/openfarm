@@ -19,5 +19,8 @@
     "@openfarm/logger": "workspace:*",
     "@openfarm/result": "workspace:*",
     "@openfarm/utils": "workspace:*"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

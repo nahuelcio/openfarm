@@ -91,9 +91,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build]
     if: github.event_name == 'release' && github.event.action == 'published'
-    permissions:
-      contents: read
-      id-token: write
     steps:
       - uses: actions/checkout@v4
       
@@ -101,6 +98,7 @@ jobs:
         uses: oven-sh/setup-bun@v1
         with:
           bun-version: 1.3.6
+          registry-url: 'https://registry.npmjs.org'
       
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -108,27 +106,57 @@ jobs:
       - name: Build
         run: bun run build
       
-      - name: Setup Node.js for NPM
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          registry-url: 'https://registry.npmjs.org'
-      
       - name: Publish packages
         run: |
-          # Publicar en orden de dependencias
-          cd packages/result && npm publish --access public || true
-          cd ../types && npm publish --access public || true
-          cd ../logger && npm publish --access public || true
-          cd ../utils && npm publish --access public || true
-          cd ../config && npm publish --access public || true
-          cd ../core && npm publish --access public || true
-          cd ../git-adapter && npm publish --access public || true
-          cd ../github-adapter && npm publish --access public || true
-          cd ../azure-adapter && npm publish --access public || true
-          cd ../agent-runner && npm publish --access public || true
-          cd ../workflow-engine && npm publish --access public || true
-          cd ../analysis && npm publish --access public || true
-          cd ../sdk && npm publish --access public || true
+          # Crear .npmrc para autenticación
+          echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
+          
+          # Función para publicar un package
+          publish_package() {
+            local pkg_dir=$1
+            echo "📦 Publishing $pkg_dir..."
+            cd "$pkg_dir" || return 1
+            
+            # Verificar si ya existe esta versión
+            local pkg_name
+            pkg_name=$(jq -r '.name' package.json)
+            local pkg_version
+            pkg_version=$(jq -r '.version' package.json)
+            
+            if npm view "$pkg_name@$pkg_version" version &>/dev/null; then
+              echo "  ⚠️  $pkg_name@$pkg_version ya existe, skip"
+              cd - > /dev/null || return
+              return 0
+            fi
+            
+            # Publicar con bun (maneja workspace:* automáticamente)
+            if bun publish --access public; then
+              echo "  ✅ Publicado $pkg_name@$pkg_version"
+            else
+              echo "  ❌ Falló $pkg_name"
+              cd - > /dev/null || return
+              return 1
+            fi
+            
+            cd - > /dev/null || return
+          }
+          
+          # Publicar en orden de dependencias (más básicos primero)
+          publish_package "packages/result" || true
+          publish_package "packages/types" || true
+          publish_package "packages/logger" || true
+          publish_package "packages/utils" || true
+          publish_package "packages/config" || true
+          publish_package "packages/core" || true
+          publish_package "packages/git-adapter" || true
+          publish_package "packages/github-adapter" || true
+          publish_package "packages/azure-adapter" || true
+          publish_package "packages/agent-runner" || true
+          publish_package "packages/workflow-engine" || true
+          publish_package "packages/analysis" || true
+          publish_package "packages/coding-engines" || true
+          publish_package "packages/sdk" || true
+          
+          rm ~/.npmrc
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
