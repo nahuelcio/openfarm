@@ -11,7 +11,7 @@ export const CLAUDE_MODELS = {
     provider: "anthropic",
   },
   "claude-3-5-sonnet": {
-    id: "claude-sonnet-4-20250514",
+    id: "claude-3-5-sonnet-20241022",
     name: "Claude 3.5 Sonnet",
     provider: "anthropic",
   },
