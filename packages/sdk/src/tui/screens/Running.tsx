@@ -1,6 +1,6 @@
 import { Box, Text, useInput } from "ink";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { createExecutor } from "../../executors";
+import { OpenFarm } from "../../open-farm";
 import { useStore } from "../store";
 
 const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
@@ -76,10 +76,12 @@ export function Running() {
 
         updateExecution(currentExecution.id, { status: "running" });
 
-        const executor = createExecutor(currentExecution.provider as any);
-        const result = await executor.execute({
+        const openFarm = new OpenFarm({
+          defaultProvider: currentExecution.provider,
+        });
+        
+        const result = await openFarm.execute({
           task: currentExecution.task,
-          provider: currentExecution.provider,
           workspace: currentExecution.workspace,
           onLog,
         });
