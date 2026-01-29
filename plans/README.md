@@ -22,11 +22,18 @@ Esta carpeta contiene los planes detallados para implementar features en OpenFar
    - Pantallas: Dashboard, Execute, Executing, History, ExecutionDetail, Settings
    - Navegación y keyboard shortcuts
 
-3. **[Fase 3: Integración con SDK](./phase-3-integration.md)** 🚧
-   - Mejorar integración con OpenFarm.execute
-   - Streaming real de respuestas
-   - Manejo de errores
-   - Persistencia de ejecuciones
+3. **[Fase 3: Integración con SDK](./phase-3-integration.md)** ✅
+   - Persistencia de ejecuciones a ~/.openfarm/executions.json
+   - Mejorado useExecution hook con cancelación y retry
+   - Config loader con .openfarmrc.json support
+   - Manejo de errores con códigos específicos
+   - Progress bar con porcentaje
+
+4. **[Fase 4: Polish y Extras](./phase-4-polish.md)** 🚧
+   - Animaciones y transiciones
+   - Temas adicionales (dracula, monokai)
+   - Export/Import de historial
+   - Tests del TUI
 
 4. **[Fase 4: Polish y Extras](./phase-4-polish.md)**
    - Animaciones y transiciones
