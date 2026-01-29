@@ -1,17 +1,59 @@
-import React from "react";
+import React, { useState } from "react";
 import { useTheme } from "../theme/styles";
 import { useAppStore } from "../store";
 import { Button } from "../components/ui";
+import { clearExecutions, exportExecutionsToFile } from "../store/storage";
 
 export function Settings() {
   const theme = useTheme("dark");
-  const { config, setScreen, theme: appTheme, setTheme } = useAppStore();
+  const { config, setScreen, theme: appTheme, setTheme, executions, clearExecutions: clearStore } = useAppStore();
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [exportPath, setExportPath] = useState("");
+  const [message, setMessage] = useState<string | null>(null);
+
+  const handleClearHistory = async () => {
+    clearStore();
+    await clearExecutions();
+    setShowClearConfirm(false);
+    setMessage("History cleared successfully");
+    setTimeout(() => setMessage(null), 3000);
+  };
+
+  const handleExport = async () => {
+    if (!exportPath) {
+      setMessage("Please enter a file path");
+      return;
+    }
+    
+    try {
+      await exportExecutionsToFile(executions, exportPath);
+      setMessage(`Exported ${executions.length} executions to ${exportPath}`);
+      setExportPath("");
+      setTimeout(() => setMessage(null), 5000);
+    } catch (error) {
+      setMessage(`Export failed: ${error}`);
+    }
+  };
 
   return (
     <box flexDirection="column" gap={2}>
       <text>
         <span fg={theme.colors.text.primary}><strong>⚙️ Settings</strong></span>
       </text>
+
+      {/* Message */}
+      {message && (
+        <box
+          padding={1}
+          borderStyle="single"
+          borderColor={theme.colors.success}
+          backgroundColor={theme.colors.surface}
+        >
+          <text>
+            <span fg={theme.colors.success}>{message}</span>
+          </text>
+        </box>
+      )}
 
       {/* General Settings */}
       <box flexDirection="column" gap={1}>
@@ -45,6 +87,51 @@ export function Settings() {
             />
           </box>
         </SettingRow>
+      </box>
+
+      {/* History Management */}
+      <box flexDirection="column" gap={1}>
+        <text>
+          <span fg={theme.colors.accent}><strong>History</strong></span>
+        </text>
+
+        <SettingRow label="Executions">
+          <text>
+            <span fg={theme.colors.text.primary}>{executions.length} saved</span>
+          </text>
+        </SettingRow>
+
+        {/* Export */}
+        <box flexDirection="row" gap={2} alignItems="center">
+          <text>
+            <span fg={theme.colors.text.secondary}>Export to:</span>
+          </text>
+          <box flexGrow={1}>
+            <text>
+              <span fg={theme.colors.text.muted}>./openfarm-export.json</span>
+            </text>
+          </box>
+          <Button onPress={() => handleExport()}>📤 Export</Button>
+        </box>
+
+        {/* Clear History */}
+        {showClearConfirm ? (
+          <box flexDirection="row" gap={2} alignItems="center">
+            <text>
+              <span fg={theme.colors.error}>Are you sure? This cannot be undone.</span>
+            </text>
+            <Button onPress={handleClearHistory} variant="danger">
+              Yes, Clear
+            </Button>
+            <Button onPress={() => setShowClearConfirm(false)} variant="secondary">
+              Cancel
+            </Button>
+          </box>
+        ) : (
+          <Button onPress={() => setShowClearConfirm(true)} variant="danger">
+            🗑️ Clear History
+          </Button>
+        )}
       </box>
 
       {/* API Settings */}
@@ -83,6 +170,7 @@ export function Settings() {
         <ShortcutRow shortcut="Ctrl+N" action="New Task" />
         <ShortcutRow shortcut="Ctrl+H" action="History" />
         <ShortcutRow shortcut="Ctrl+S" action="Settings" />
+        <ShortcutRow shortcut="Ctrl+D" action="Dashboard" />
         <ShortcutRow shortcut="Ctrl+Q" action="Quit" />
         <ShortcutRow shortcut="Esc" action="Back" />
       </box>
@@ -90,10 +178,7 @@ export function Settings() {
       {/* Actions */}
       <box flexDirection="row" gap={2} marginTop={2}>
         <Button onPress={() => setScreen("dashboard")} variant="primary">
-          💾 Save
-        </Button>
-        <Button onPress={() => setScreen("dashboard")} variant="secondary">
-          Cancel
+          💾 Done
         </Button>
       </box>
     </box>
