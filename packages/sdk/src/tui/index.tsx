@@ -1,29 +1,17 @@
-#!/usr/bin/env bun
-import React from "react";
-import { createRoot } from "@opentui/react";
-import { createCliRenderer } from "@opentui/core";
-import { App } from "./App";
-import { loadConfig } from "./config/loader";
-import { useAppStore } from "./store";
+#!/usr/bin/env node
+import { render } from "ink";
 import type { OpenFarmConfig } from "../types";
+import { App } from "./App";
+import { useStore } from "./store";
 
 export async function runTUI(config?: OpenFarmConfig): Promise<void> {
-  // Load config from file/env if not provided
-  const loadedConfig = config || (await loadConfig());
+  if (config) {
+    useStore.setState({
+      config,
+      provider: config.defaultProvider || "opencode",
+    });
+  }
 
-  // Initialize store with loaded config
-  useAppStore.setState({ config: loadedConfig });
-
-  const renderer = await createCliRenderer({
-    exitOnCtrlC: true,
-    useAlternateScreen: true,
-    targetFps: 30,
-  });
-
-  const root = createRoot(renderer);
-  
-  root.render(<App config={loadedConfig} />);
-  
-  // Start the renderer
-  renderer.start();
+  const { waitUntilExit } = render(<App />);
+  await waitUntilExit();
 }

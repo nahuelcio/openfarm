@@ -1,4 +1,4 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 import { runTUIApp } from "./tui-cli";
 import type { OpenFarmConfig } from "./types";
 

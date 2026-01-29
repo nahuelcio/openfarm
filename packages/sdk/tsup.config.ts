@@ -41,10 +41,10 @@ export default defineConfig([
 		outDir: "dist",
 		target: "node18",
 	},
-	// CLI bundle (separate to add shebang)
+	// CLI bundle (ESM for Ink compatibility)
 	{
 		entry: ["src/cli.ts"],
-		format: ["cjs"],
+		format: ["esm"],
 		splitting: false,
 		sourcemap: true,
 		bundle: true,
@@ -76,10 +76,6 @@ export default defineConfig([
 		],
 		outDir: "dist",
 		target: "node18",
-		esbuildOptions(options) {
-			options.banner = {
-				js: "#!/usr/bin/env node",
-			};
-		},
+		outExtension: () => ({ js: ".mjs" }),
 	},
 ]);

@@ -14,7 +14,7 @@
     "outDir": "./dist",
     "noEmit": true,
     "jsx": "react-jsx",
-    "jsxImportSource": "@opentui/react",
+    "jsxImportSource": "react",
     "paths": {
       "@openfarm/core": ["../core/src"],
       "@openfarm/core/*": ["../core/src/*"],

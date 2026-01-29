@@ -1,132 +1,75 @@
-import React from "react";
-import { useTheme } from "../theme/styles";
-import { useAppStore } from "../store";
+import { Box, Text, useInput } from "ink";
+import { useStore } from "../store";
 
 export function History() {
-  const theme = useTheme("dark");
-  const { executions, setCurrentExecution, setScreen } = useAppStore();
+  const { setScreen, executions } = useStore();
 
-  const handleSelect = (id: string) => {
-    const execution = executions.find((e) => e.id === id);
-    if (execution) {
-      setCurrentExecution(execution);
-      setScreen("execution-detail");
+  useInput((input, key) => {
+    if (key.escape) {
+      setScreen("dashboard");
     }
-  };
+  });
 
   return (
-    <box flexDirection="column" gap={1}>
-      <text>
-        <span fg={theme.colors.text.primary}><strong>📜 Execution History</strong></span>
-      </text>
+    <Box flexDirection="column" gap={1}>
+      {/* Header */}
+      <Text bold color="cyan">
+        📜 History
+      </Text>
+      <Text color="gray">{"─".repeat(60)}</Text>
 
+      {/* List */}
       {executions.length === 0 ? (
-        <box
-          flexDirection="column"
-          alignItems="center"
-          justifyContent="center"
-          flexGrow={1}
-        >
-          <text>
-            <span fg={theme.colors.text.muted}>No executions yet</span>
-          </text>
-          <text>
-            <span fg={theme.colors.accent}>Press Ctrl+N to create one</span>
-          </text>
-        </box>
+        <Text color="gray">No executions yet.</Text>
       ) : (
-        <box flexDirection="column" gap={1}>
-          {/* Header Row */}
-          <box
-            flexDirection="row"
-            padding={1}
-            backgroundColor={theme.colors.surface}
-            borderStyle="single"
-            borderColor={theme.colors.border}
-          >
-            <box width={8}>
-              <text><span fg={theme.colors.text.secondary}><strong>ID</strong></span></text>
-            </box>
-            <box width={12}>
-              <text><span fg={theme.colors.text.secondary}><strong>Status</strong></span></text>
-            </box>
-            <box width={12}>
-              <text><span fg={theme.colors.text.secondary}><strong>Provider</strong></span></text>
-            </box>
-            <box flexGrow={1}>
-              <text><span fg={theme.colors.text.secondary}><strong>Task</strong></span></text>
-            </box>
-            <box width={16}>
-              <text><span fg={theme.colors.text.secondary}><strong>Time</strong></span></text>
-            </box>
-          </box>
-
-          {/* Execution Rows */}
-          {executions.map((exec) => (
-            <box
-              key={exec.id}
-              flexDirection="row"
-              padding={1}
-              borderStyle="single"
-              borderColor={theme.colors.border}
-              onMouseDown={() => handleSelect(exec.id)}
-            >
-              <box width={8}>
-                <text>
-                  <span fg={theme.colors.text.muted}>{exec.id.slice(-6)}</span>
-                </text>
-              </box>
-              <box width={12}>
-                <StatusText status={exec.status} />
-              </box>
-              <box width={12}>
-                <text>
-                  <span fg={theme.colors.text.primary}>{exec.provider}</span>
-                </text>
-              </box>
-              <box flexGrow={1}>
-                <text>
-                  <span fg={theme.colors.text.primary}>
-                    {exec.task.substring(0, 30)}
-                    {exec.task.length > 30 ? "..." : ""}
-                  </span>
-                </text>
-              </box>
-              <box width={16}>
-                <text>
-                  <span fg={theme.colors.text.secondary}>
-                    {exec.startedAt.toLocaleTimeString()}
-                  </span>
-                </text>
-              </box>
-            </box>
-          ))}
-        </box>
+        executions.map((e) => (
+          <Box key={e.id} flexDirection="row" gap={2}>
+            <Text color={getStatusColor(e.status)}>
+              {getStatusIcon(e.status)}
+            </Text>
+            <Box flexDirection="column" flexGrow={1}>
+              <Text>
+                {e.task.slice(0, 45)}
+                {e.task.length > 45 ? "..." : ""}
+              </Text>
+              <Text color="gray" dimColor>
+                {e.provider} • {e.startedAt.toLocaleTimeString()}
+              </Text>
+            </Box>
+          </Box>
+        ))
       )}
-    </box>
+
+      <Text color="gray">{"─".repeat(60)}</Text>
+
+      {/* Help */}
+      <Text color="gray">Esc to go back</Text>
+    </Box>
   );
 }
 
-function StatusText({ status }: { status: string }) {
-  const theme = useTheme("dark");
-  const colors: Record<string, string> = {
-    pending: theme.colors.warning,
-    running: theme.colors.accent,
-    completed: theme.colors.success,
-    failed: theme.colors.error,
-  };
-  const labels: Record<string, string> = {
-    pending: "⏳ Pending",
-    running: "🔄 Running",
-    completed: "✅ Done",
-    failed: "❌ Failed",
-  };
+function getStatusColor(status: string): string {
+  switch (status) {
+    case "completed":
+      return "green";
+    case "failed":
+      return "red";
+    case "running":
+      return "yellow";
+    default:
+      return "gray";
+  }
+}
 
-  return (
-    <text>
-      <span fg={colors[status] || theme.colors.text.muted}>
-        {labels[status] || status}
-      </span>
-    </text>
-  );
+function getStatusIcon(status: string): string {
+  switch (status) {
+    case "completed":
+      return "✓";
+    case "failed":
+      return "✗";
+    case "running":
+      return "◐";
+    default:
+      return "○";
+  }
 }

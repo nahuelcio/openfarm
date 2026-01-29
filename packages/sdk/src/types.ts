@@ -24,6 +24,7 @@ export interface ExecutionOptions {
   maxTokens?: number;
   stream?: boolean;
   onProgress?: (chunk: string) => void;
+  onLog?: (log: string) => void; // Callback para logs en tiempo real en TUI
 }
 
 export interface ExecutionResult {
