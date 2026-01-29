@@ -33,6 +33,7 @@
     "tui:cli": "bun run src/cli.ts --cli"
   },
   "dependencies": {
+    "@openfarm/git-worktree": "workspace:*",
     "ai": "^4.0.0",
     "better-sqlite3": "^12.6.2",
     "chalk": "4.1.2",

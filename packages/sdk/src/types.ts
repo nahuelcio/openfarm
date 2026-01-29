@@ -23,8 +23,10 @@ export interface ExecutionOptions {
   temperature?: number;
   maxTokens?: number;
   stream?: boolean;
+  verbose?: boolean;
   onProgress?: (chunk: string) => void;
-  onLog?: (log: string) => void; // Callback para logs en tiempo real en TUI
+  onLog?: (log: string) => void;
+  workspace?: string;
 }
 
 export interface ExecutionResult {

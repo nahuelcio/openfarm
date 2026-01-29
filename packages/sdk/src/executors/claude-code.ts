@@ -28,7 +28,8 @@ export class ClaudeCodeExecutor implements Executor {
       log("🔍 Checking Claude Code...");
       const isAvailable = await this.testConnection();
       if (!isAvailable) {
-        const error = "Claude Code CLI not found. Install: npm install -g @anthropic-ai/claude-code";
+        const error =
+          "Claude Code CLI not found. Install: npm install -g @anthropic-ai/claude-code";
         log(`❌ ${error}`);
         return {
           success: false,
@@ -47,16 +48,23 @@ export class ClaudeCodeExecutor implements Executor {
         "Read,Edit,Write,Bash,Glob,Grep,LS,Task,URLFetch",
       ];
 
+      // Verbose mode: show detailed output
+      if (options.verbose) {
+        args.push("--verbose", "--trace");
+      }
+
       if (options.model) {
         args.push("--model", options.model);
       }
 
-      log(`🚀 Running: claude ${args.map(a => a.includes(" ") ? `"${a}"` : a).join(" ")}`);
+      log(
+        `🚀 Running: claude ${args.map((a) => (a.includes(" ") ? `"${a}"` : a)).join(" ")}`
+      );
       log("");
 
       return new Promise((resolve) => {
         const child = spawn("claude", args, {
-          cwd: process.cwd(),
+          cwd: options.workspace || process.cwd(),
           env: { ...process.env, CLAUDE_CODE_DISABLE_PROMPTS: "1" },
           stdio: ["pipe", "pipe", "pipe"],
         });
@@ -90,7 +98,7 @@ export class ClaudeCodeExecutor implements Executor {
         child.stdout.setEncoding("utf8");
         child.stdout.on("data", (data: string) => {
           stdoutOutput += data;
-          
+
           // Split by newlines and log EACH line as-is
           const lines = data.split("\n");
           for (const line of lines) {

@@ -2,37 +2,11 @@
 type SQL = any;
 
 /**
- * Database interface that supports either:
- * - A Bun SQL tagged template literal function
- * - An object with an `exec` method (better-sqlite3 style)
- */
-interface DatabaseLike {
-  exec?(sql: string): Promise<unknown[]> | unknown[];
-}
-
-/**
  * Safely adds a column to a table if it doesn't exist.
  * Handles duplicate column errors gracefully.
- *
- * @param db - The SQL database instance (Bun SQL or better-sqlite3 style with exec method)
- * @param tableName - The name of the table to modify
- * @param columnName - The name of column to add
- * @param columnDefinition - The SQL column definition (e.g., 'TEXT', 'TEXT DEFAULT value CHECK(...)', 'INTEGER', 'REAL')
- *
- * @example
- * Simple type:
- * ```typescript
- * await addColumnSafely(db, "table", "name", "TEXT");
- * ```
- *
- * @example
- * With default and check constraints:
- * ```typescript
- * await addColumnSafely(db, "table", "priority", "TEXT DEFAULT 'medium' CHECK(priority IN ('low', 'medium', 'high'))");
- * ```
  */
 export async function addColumnSafely(
-  db: SQL | DatabaseLike,
+  db: SQL,
   tableName: string,
   columnName: string,
   columnDefinition: string
@@ -42,22 +16,20 @@ export async function addColumnSafely(
   );
 
   try {
-    // Support both Bun SQL tagged template and exec() style databases
-    if (
-      typeof db === "object" &&
-      db !== null &&
-      "exec" in db &&
-      typeof db.exec === "function"
-    ) {
-      // better-sqlite3 style with exec method
-      const sql = `ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${columnDefinition}`;
+    const sql = `ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${columnDefinition}`;
+    
+    // Bun SQL returns a function with properties like unsafe, exec, etc.
+    // Check for unsafe method (for DDL statements without parameterization)
+    if (db && typeof db.unsafe === "function") {
+      await db.unsafe(sql);
+    }
+    // Fall back to exec if available
+    else if (db && typeof db.exec === "function") {
       await db.exec(sql);
-    } else if (typeof db === "function") {
-      // Bun SQL tagged template literal style
-      await db`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${columnDefinition}`;
-    } else {
+    }
+    else {
       throw new Error(
-        "Database must be either a function (Bun SQL) or have an exec method"
+        "Database must support unsafe() or exec() for DDL operations"
       );
     }
 

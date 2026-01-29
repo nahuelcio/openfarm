@@ -1,5 +1,5 @@
-import { DEFAULT_HOSTS, DEFAULT_PORTS } from "@openfarm/core";
 import { spawn } from "node:child_process";
+import { DEFAULT_HOSTS, DEFAULT_PORTS } from "@openfarm/core";
 import type { ExecutionOptions, ExecutionResult, Executor } from "../types";
 
 interface OpenCodeConfig {
@@ -40,7 +40,7 @@ export class OpenCodeExecutor implements Executor {
   constructor(config: OpenCodeConfig = {}) {
     this.config = {
       mode: "local",
-      timeout: 600_000, // 10 minutes default
+      timeout: 600_000,
       ...config,
     };
   }
@@ -48,6 +48,7 @@ export class OpenCodeExecutor implements Executor {
   async execute(options: ExecutionOptions): Promise<ExecutionResult> {
     const startTime = Date.now();
     const { onLog } = options;
+    const verbose = options.verbose || false;
 
     const log = (msg: string) => {
       if (onLog) onLog(msg);
@@ -66,14 +67,11 @@ export class OpenCodeExecutor implements Executor {
           error,
         };
       }
-      log("✅ OpenCode ready");
-      log("");
+      log("✅ OpenCode ready\n");
 
-      if (this.config.mode === "local") {
-        return await this.executeViaCLI(options, startTime, log);
-      } else {
-        return await this.executeViaHTTP(options, startTime, log);
-      }
+      return this.config.mode === "local"
+        ? await this.executeViaCLI(options, startTime, log)
+        : await this.executeViaHTTP(options, startTime, log);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
       log(`✗ Error: ${message}`);
@@ -87,9 +85,7 @@ export class OpenCodeExecutor implements Executor {
   }
 
   async testConnection(): Promise<boolean> {
-    if (this.config.mode === "local") {
-      return true;
-    }
+    if (this.config.mode === "local") return true;
     try {
       const baseUrl = this.getBaseUrl();
       const response = await fetch(`${baseUrl}/global/health`, {
@@ -130,7 +126,6 @@ export class OpenCodeExecutor implements Executor {
       messageId,
       log
     );
-
     const diff = await this.getDiff(baseUrl, sessionId);
 
     return {
@@ -146,29 +141,18 @@ export class OpenCodeExecutor implements Executor {
     startTime: number,
     log: (msg: string) => void
   ): Promise<ExecutionResult> {
-    // Build CLI arguments
-    const args = ["opencode-ai", "run", options.task, "--format", "json"];
+    const verbose = options.verbose || false;
+    const args = this.buildCliArgs(options, verbose);
 
-    if (options.model) {
-      args.push("--model", options.model);
-    }
+    log(`🚀 Starting: bunx ${args.join(" ")}\n⏳ Executing...\n`);
 
-    log(`🚀 Starting: bunx ${args.map(a => a.includes(" ") ? `"${a}"` : a).join(" ")}`);
-    log("");
-    log("⏳ Executing...");
-    log("");
-
-    // Spawn the CLI process
     const child = spawn("bunx", args, {
-      cwd: process.cwd(),
+      cwd: options.workspace || process.cwd(),
       env: { ...process.env, COLUMNS: "200" },
       stdio: ["pipe", "pipe", "pipe"],
     });
 
-    // Close stdin immediately
-    if (child.stdin) {
-      child.stdin.end();
-    }
+    if (child.stdin) child.stdin.end();
 
     let outputText = "";
     let totalTokens = 0;
@@ -177,18 +161,14 @@ export class OpenCodeExecutor implements Executor {
     let stdoutBuffer = "";
 
     return new Promise((resolve) => {
-      // Set timeout
       const timeoutId = setTimeout(() => {
         if (!child.killed) {
           child.kill("SIGTERM");
           setTimeout(() => {
-            if (!child.killed) {
-              child.kill("SIGKILL");
-            }
+            if (!child.killed) child.kill("SIGKILL");
           }, 5000);
         }
-        log("");
-        log("✗ TIMEOUT: Execution took too long");
+        log("\n✗ TIMEOUT: Execution took too long");
         resolve({
           success: false,
           output: "OpenCode execution timed out",
@@ -197,17 +177,15 @@ export class OpenCodeExecutor implements Executor {
         });
       }, this.config.timeout);
 
-      // Activity checker
       let lastActivity = Date.now();
       const activityInterval = setInterval(() => {
         const elapsed = Date.now() - lastActivity;
-        if (elapsed > 3000 && elapsed < 10000) {
+        if (elapsed > 3000 && elapsed < 10_000) {
           log("⏳ Still working...");
           lastActivity = Date.now();
         }
       }, 3000);
 
-      // Parse stdout for JSON events
       child.stdout.on("data", (data) => {
         lastActivity = Date.now();
         const chunk = data.toString();
@@ -222,193 +200,67 @@ export class OpenCodeExecutor implements Executor {
 
           try {
             const event = JSON.parse(trimmed);
-            
-            // Log ALL event types for debugging (comment out in production)
-            // log(`[EVENT:${event.type}]`);
-
-            // Handle different event types
-            switch (event.type) {
-              case "text":
-                if (event.part?.text) {
-                  const text = event.part.text;
-                  outputText += text;
-                  // Log text chunks (truncated)
-                  if (text.trim()) {
-                    const lines = text.split("\n").filter((l: string) => l.trim());
-                    for (const l of lines) {
-                      if (l.length > 56) {
-                        log(`💬 ${l.slice(0, 53)}...`);
-                      } else {
-                        log(`💬 ${l}`);
-                      }
-                    }
-                  }
-                }
-                break;
-
-              case "thinking":
-              case "reasoning":
-                if (event.part?.text || event.text) {
-                  const text = event.part?.text || event.text;
-                  log(`🧠 ${text.slice(0, 56)}${text.length > 56 ? "..." : ""}`);
-                }
-                break;
-
-              case "tool_use":
-                if (event.part) {
-                  const part = event.part;
-                  const toolName = part.tool;
-                  const status = part.state?.status;
-
-                  if (status === "pending" || status === "running") {
-                    if (toolName === "edit" && part.state?.input?.filePath) {
-                      log(`📝 Editing: ${part.state.input.filePath}`);
-                    } else if (toolName === "write" && part.state?.input?.filePath) {
-                      log(`🔨 Writing: ${part.state.input.filePath}`);
-                    } else if (toolName === "read" && part.state?.input?.filePath) {
-                      log(`📖 Reading: ${part.state.input.filePath}`);
-                    } else if (toolName === "bash" && part.state?.input?.command) {
-                      log(`💻 $ ${part.state.input.command.slice(0, 50)}${part.state.input.command.length > 50 ? "..." : ""}`);
-                    } else if (toolName === "glob" && part.state?.input?.pattern) {
-                      log(`🔍 Searching: ${part.state.input.pattern}`);
-                    } else if (toolName === "grep" && part.state?.input?.pattern) {
-                      log(`🔎 Grepping: ${part.state.input.pattern}`);
-                    } else {
-                      log(`🔧 Using ${toolName}...`);
-                    }
-                  } else if (status === "completed") {
-                    if (toolName === "edit" && part.state?.input?.filePath) {
-                      modifiedFiles.add(part.state.input.filePath);
-                      log(`✅ Edited: ${part.state.input.filePath}`);
-                    } else if (toolName === "write" && part.state?.input?.filePath) {
-                      createdFiles.add(part.state.input.filePath);
-                      log(`✅ Created: ${part.state.input.filePath}`);
-                    } else if (toolName === "read" && part.state?.input?.filePath) {
-                      log(`✅ Read: ${part.state.input.filePath}`);
-                    } else if (toolName === "bash") {
-                      log(`✅ Command completed`);
-                    } else if (toolName === "glob" || toolName === "grep") {
-                      log(`✅ Search completed`);
-                    } else {
-                      log(`✅ ${toolName} completed`);
-                    }
-                  } else if (status === "failed") {
-                    log(`❌ ${toolName} failed: ${part.state?.error || "Unknown error"}`);
-                  }
-                }
-                break;
-
-              case "step_start":
-                log(`▶️  Starting step...`);
-                break;
-
-              case "step_finish":
-                if (event.part?.usage) {
-                  totalTokens += event.part.usage.total_tokens || 0;
-                  log(`📊 Tokens: ${event.part.usage.total_tokens} (total: ${totalTokens})`);
-                }
-                break;
-
-              case "error":
-                log(`❌ Error: ${event.message || event.error || "Unknown error"}`);
-                break;
-
-              case "system":
-                if (event.message) {
-                  log(`⚙️  ${event.message}`);
-                }
-                break;
-
-              case "progress":
-                if (event.message) {
-                  log(`⏳ ${event.message}`);
-                }
-                break;
-
-              default:
-                // Unknown event type - log it for debugging
-                if (event.message) {
-                  log(`📋 ${event.message}`);
-                }
-                break;
-            }
+            if (verbose) log(`[EVENT:${event.type}]`);
+            this.handleEvent(
+              event,
+              verbose,
+              log,
+              (text) => {
+                outputText += text;
+              },
+              (tokens) => {
+                totalTokens = tokens;
+              },
+              modifiedFiles,
+              createdFiles
+            );
           } catch {
-            // Not JSON, might be a log line
-            if (trimmed.length > 56) {
-              log(trimmed.slice(0, 53) + "...");
-            } else {
-              log(trimmed);
-            }
+            log(trimmed.length > 56 ? trimmed.slice(0, 53) + "..." : trimmed);
           }
         }
       });
 
-      // Capture stderr
-      let stderrOutput = "";
-      child.stderr.on("data", (data) => {
-        stderrOutput += data.toString();
+      child.stderr.on("data", (data: string) => {
+        if (verbose) {
+          const lines = data.toString().split("\n");
+          for (const line of lines) {
+            if (line.trim()) log(`[STDERR] ${line}`);
+          }
+        }
       });
 
-      // Handle process completion
       child.on("close", (code) => {
         clearTimeout(timeoutId);
         clearInterval(activityInterval);
-
         const duration = Date.now() - startTime;
 
         if (code !== 0 && code !== null) {
-          log("");
-          log(`✗ Failed with code ${code}`);
+          log(`\n✗ Failed with code ${code}`);
           resolve({
             success: false,
-            output: stderrOutput || "OpenCode process failed",
+            output: "OpenCode process failed",
             duration,
-            error: `Process exited with code ${code}`,
+            error: `Exit code ${code}`,
           });
           return;
         }
 
-        // Format output
-        log("");
-        log(`✅ Completed in ${duration}ms`);
-
-        const summary = [
-          "OpenCode execution completed successfully",
-          `Tokens used: ${totalTokens}`,
-          `Files modified: ${modifiedFiles.size}`,
-          `Files created: ${createdFiles.size}`,
-        ];
-
-        if (modifiedFiles.size > 0) {
-          summary.push("Modified files:");
-          modifiedFiles.forEach((file) => {
-            summary.push(`  - ${file}`);
-          });
-        }
-
-        if (createdFiles.size > 0) {
-          summary.push("Created files:");
-          createdFiles.forEach((file) => {
-            summary.push(`  - ${file}`);
-          });
-        }
-
+        log(`\n✅ Completed in ${duration}ms`);
         resolve({
           success: true,
-          output: summary.join("\n"),
+          output: this.formatSummary(totalTokens, modifiedFiles, createdFiles),
           duration,
           tokens: totalTokens,
         });
       });
 
-      // Handle spawn errors
       child.on("error", (error) => {
         clearTimeout(timeoutId);
         clearInterval(activityInterval);
         log(`❌ Failed to spawn: ${error.message}`);
         resolve({
           success: false,
-          output: `Failed to spawn OpenCode CLI: ${error.message}`,
+          output: `Failed to spawn: ${error.message}`,
           duration: Date.now() - startTime,
           error: error.message,
         });
@@ -416,15 +268,183 @@ export class OpenCodeExecutor implements Executor {
     });
   }
 
+  private buildCliArgs(options: ExecutionOptions, verbose: boolean): string[] {
+    const args = ["opencode-ai", "run", options.task, "--format", "json"];
+    if (verbose) args.push("--log-level", "DEBUG", "--print-logs");
+    if (options.model) args.push("--model", options.model);
+    return args;
+  }
+
+  private handleEvent(
+    event: any,
+    verbose: boolean,
+    log: (msg: string) => void,
+    addOutput: (text: string) => void,
+    setTokens: (tokens: number) => void,
+    modifiedFiles: Set<string>,
+    createdFiles: Set<string>
+  ): void {
+    const { type, part } = event;
+
+    switch (type) {
+      case "text":
+        if (part?.text) {
+          addOutput(part.text);
+          const lines = part.text.split("\n");
+          for (const l of lines) {
+            const display = verbose ? l : l.slice(0, 56);
+            log(`💬 ${display}${!verbose && l.length > 56 ? "..." : ""}`);
+          }
+        }
+        break;
+
+      case "thinking":
+      case "reasoning": {
+        const text = part?.text || event.text;
+        if (text) {
+          const display = verbose ? text : text.slice(0, 56);
+          log(`🧠 ${display}${!verbose && text.length > 56 ? "..." : ""}`);
+        }
+        break;
+      }
+
+      case "tool_use":
+        this.handleToolUse(part, verbose, log, modifiedFiles, createdFiles);
+        break;
+
+      case "step_start":
+        log(
+          verbose
+            ? `▶️  STEP START: ${event.name || "unnamed step"}`
+            : "▶️  Starting step..."
+        );
+        break;
+
+      case "step_finish":
+        if (part?.usage) {
+          setTokens(part.usage.total_tokens || 0);
+          if (verbose) {
+            log(
+              `📊 STEP FINISH - Tokens: ${part.usage.total_tokens} (input: ${part.usage.input_tokens}, output: ${part.usage.output_tokens})`
+            );
+          } else {
+            log(`📊 Tokens: ${part.usage.total_tokens}`);
+          }
+        }
+        break;
+
+      case "error":
+        log(`❌ Error: ${event.message || event.error || "Unknown error"}`);
+        break;
+
+      case "system":
+        if (event.message) log(`⚙️  ${event.message}`);
+        break;
+
+      case "progress":
+        if (event.message) log(`⏳ ${event.message}`);
+        break;
+
+      default:
+        if (event.message) log(`📋 ${event.message}`);
+    }
+  }
+
+  private handleToolUse(
+    part: any,
+    verbose: boolean,
+    log: (msg: string) => void,
+    modifiedFiles: Set<string>,
+    createdFiles: Set<string>
+  ): void {
+    if (!part) return;
+
+    const toolName = part.tool;
+    const status = part.state?.status;
+    const input = part.state?.input;
+
+    const toolLogs: Record<string, string> = {
+      edit: `📝 Editing: ${input?.filePath}`,
+      write: `🔨 Writing: ${input?.filePath}`,
+      read: `📖 Reading: ${input?.filePath}`,
+      bash: `💻 $ ${input?.command || ""}`,
+      glob: `🔍 Searching: ${input?.pattern}`,
+      grep: `🔎 Grepping: ${input?.pattern}`,
+    };
+
+    const completionLogs: Record<string, string> = {
+      edit: `✅ Edited: ${input?.filePath}`,
+      write: `✅ Created: ${input?.filePath}`,
+      read: `✅ Read: ${input?.filePath}`,
+      bash: "✅ Command completed",
+      glob: "✅ Search completed",
+      grep: "✅ Search completed",
+    };
+
+    if (status === "pending" || status === "running") {
+      if (toolLogs[toolName]) {
+        log(toolLogs[toolName]);
+      } else if (verbose) {
+        log(
+          `🔧 TOOL: ${toolName} (${status})\n   Input: ${JSON.stringify(input || {}, null, 2)}`
+        );
+      } else {
+        log(`🔧 Using ${toolName}...`);
+      }
+    } else if (status === "completed") {
+      if (completionLogs[toolName]) {
+        log(completionLogs[toolName]);
+        if (toolName === "edit" && input?.filePath)
+          modifiedFiles.add(input.filePath);
+        if (toolName === "write" && input?.filePath)
+          createdFiles.add(input.filePath);
+      } else if (verbose) {
+        log(`✅ TOOL COMPLETED: ${toolName}`);
+        if (part.state?.output)
+          log(`   Output: ${JSON.stringify(part.state.output, null, 2)}`);
+      } else {
+        log(`✅ ${toolName} completed`);
+      }
+    } else if (status === "failed") {
+      log(`❌ ${toolName} failed: ${part.state?.error || "Unknown error"}`);
+    }
+  }
+
+  private formatSummary(
+    totalTokens: number,
+    modifiedFiles: Set<string>,
+    createdFiles: Set<string>
+  ): string {
+    const summary = [
+      "OpenCode execution completed successfully",
+      `Tokens used: ${totalTokens}`,
+      `Files modified: ${modifiedFiles.size}`,
+      `Files created: ${createdFiles.size}`,
+    ];
+
+    if (modifiedFiles.size > 0) {
+      summary.push("Modified files:");
+      for (const file of modifiedFiles) {
+        summary.push(`  - ${file}`);
+      }
+    }
+
+    if (createdFiles.size > 0) {
+      summary.push("Created files:");
+      for (const file of createdFiles) {
+        summary.push(`  - ${file}`);
+      }
+    }
+
+    return summary.join("\n");
+  }
+
   private getBaseUrl(): string {
     if (this.config.mode === "local") {
       return `http://${DEFAULT_HOSTS.LOCALHOST_NAME}:${DEFAULT_PORTS.OPENCODE}`;
     }
-
-    if (!this.config.baseUrl) {
+    if (!this.config.baseUrl)
       throw new Error("baseUrl is required for cloud mode");
-    }
-
     return this.config.baseUrl;
   }
 
@@ -432,14 +452,9 @@ export class OpenCodeExecutor implements Executor {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
     };
-
     if (this.config.password) {
-      const auth = Buffer.from(`opencode:${this.config.password}`).toString(
-        "base64"
-      );
-      headers.Authorization = `Basic ${auth}`;
+      headers.Authorization = `Basic ${Buffer.from(`opencode:${this.config.password}`).toString("base64")}`;
     }
-
     return headers;
   }
 
@@ -447,17 +462,11 @@ export class OpenCodeExecutor implements Executor {
     const response = await fetch(`${baseUrl}/session`, {
       method: "POST",
       headers: this.getHeaders(),
-      body: JSON.stringify({
-        title: title.substring(0, 100),
-      }),
+      body: JSON.stringify({ title: title.substring(0, 100) }),
     });
-
-    if (!response.ok) {
+    if (!response.ok)
       throw new Error(`Failed to create session: ${response.statusText}`);
-    }
-
-    const session = (await response.json()) as OpenCodeSession;
-    return session.id;
+    return ((await response.json()) as OpenCodeSession).id;
   }
 
   private async sendMessage(
@@ -466,30 +475,19 @@ export class OpenCodeExecutor implements Executor {
     task: string,
     model?: string
   ): Promise<string> {
-    const requestBody: Record<string, unknown> = {
-      parts: [
-        {
-          type: "text",
-          text: task,
-        },
-      ],
+    const body: Record<string, unknown> = {
+      parts: [{ type: "text", text: task }],
     };
-
-    if (model) {
-      requestBody.model = model;
-    }
+    if (model) body.model = model;
 
     const response = await fetch(`${baseUrl}/session/${sessionId}/message`, {
       method: "POST",
       headers: this.getHeaders(),
-      body: JSON.stringify(requestBody),
+      body: JSON.stringify(body),
     });
-
-    if (!response.ok) {
+    if (!response.ok)
       throw new Error(`Failed to send message: ${response.statusText}`);
-    }
-
-    const result = (await response.json()) as any;
+    const result = (await response.json()) as { info: { id: string } };
     return result.info.id;
   }
 
@@ -497,7 +495,7 @@ export class OpenCodeExecutor implements Executor {
     baseUrl: string,
     sessionId: string,
     messageId: string,
-    log?: (msg: string) => void
+    _log?: (msg: string) => void
   ): Promise<OpenCodeMessage> {
     const maxAttempts = Math.floor(this.config.timeout! / 2000);
     let attempts = 0;
@@ -505,36 +503,22 @@ export class OpenCodeExecutor implements Executor {
     while (attempts < maxAttempts) {
       const response = await fetch(
         `${baseUrl}/session/${sessionId}/message/${messageId}`,
-        {
-          method: "GET",
-          headers: this.getHeaders(),
-        }
+        { method: "GET", headers: this.getHeaders() }
       );
+      if (!response.ok)
+        throw new Error(`Failed to check status: ${response.statusText}`);
 
-      if (!response.ok) {
-        throw new Error(
-          `Failed to check message status: ${response.statusText}`
-        );
-      }
+      const data = (await response.json()) as { info: OpenCodeMessage };
+      const message = data.info;
 
-      const data = (await response.json()) as any;
-      const message: OpenCodeMessage = data.info;
-
-      if (message.status === "completed") {
-        return message;
-      }
-
-      if (message.status === "failed") {
+      if (message.status === "completed") return message;
+      if (message.status === "failed")
         throw new Error("OpenCode execution failed");
-      }
 
       await new Promise((resolve) => setTimeout(resolve, 2000));
       attempts++;
     }
-
-    throw new Error(
-      `OpenCode execution timeout after ${this.config.timeout}ms`
-    );
+    throw new Error(`Timeout after ${this.config.timeout}ms`);
   }
 
   private async getDiff(
@@ -545,11 +529,8 @@ export class OpenCodeExecutor implements Executor {
       method: "GET",
       headers: this.getHeaders(),
     });
-
-    if (!response.ok) {
+    if (!response.ok)
       throw new Error(`Failed to get diff: ${response.statusText}`);
-    }
-
     return (await response.json()) as FileDiff[];
   }
 
@@ -562,11 +543,11 @@ export class OpenCodeExecutor implements Executor {
 
     if (diff.length > 0) {
       summary.push("Modified files:");
-      diff.forEach((file) => {
+      for (const file of diff) {
         summary.push(
           `  - ${file.path} (+${file.additions}/-${file.deletions})`
         );
-      });
+      }
     }
 
     return summary.join("\n");

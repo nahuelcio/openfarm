@@ -47,12 +47,14 @@ export class AiderExecutor implements Executor {
         args.push("--model", options.model);
       }
 
-      log(`🚀 Starting: aider ${args.map(a => a.includes(" ") ? `"${a}"` : a).join(" ")}`);
+      log(
+        `🚀 Starting: aider ${args.map((a) => (a.includes(" ") ? `"${a}"` : a)).join(" ")}`
+      );
       log("");
 
       return new Promise((resolve) => {
         const child = spawn("aider", args, {
-          cwd: process.cwd(),
+          cwd: options.workspace || process.cwd(),
           env: process.env,
           stdio: ["pipe", "pipe", "pipe"],
         });
@@ -68,7 +70,7 @@ export class AiderExecutor implements Executor {
         // Activity checker
         const activityInterval = setInterval(() => {
           const elapsed = Date.now() - lastActivity;
-          if (elapsed > 5000 && elapsed < 15000) {
+          if (elapsed > 5000 && elapsed < 15_000) {
             log("⏳ Still working...");
             lastActivity = Date.now();
           }
@@ -98,10 +100,10 @@ export class AiderExecutor implements Executor {
           lastActivity = Date.now();
           const chunk = data.toString();
           stdoutBuffer += chunk;
-          
+
           const lines = stdoutBuffer.split("\n");
           stdoutBuffer = lines.pop() || "";
-          
+
           for (const line of lines) {
             if (line.trim()) {
               stdoutOutput += line + "\n";
@@ -115,7 +117,7 @@ export class AiderExecutor implements Executor {
           lastActivity = Date.now();
           const text = data.toString();
           stderrOutput += text;
-          
+
           for (const line of text.split("\n")) {
             if (line.trim()) {
               log(`⚠️  ${line}`);
@@ -126,7 +128,7 @@ export class AiderExecutor implements Executor {
         child.on("close", (code) => {
           clearTimeout(timeoutId);
           clearInterval(activityInterval);
-          
+
           if (stdoutBuffer.trim()) {
             stdoutOutput += stdoutBuffer;
             this.formatAndLog(stdoutBuffer, log);
@@ -179,7 +181,7 @@ export class AiderExecutor implements Executor {
 
   private formatAndLog(line: string, log: (msg: string) => void): void {
     const trimmed = line.trim();
-    
+
     // Aider specific patterns
     if (trimmed.match(/^(Added|Adding) /i)) {
       log(`📁 ${trimmed}`);

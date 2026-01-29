@@ -38,3 +38,9 @@ tmp
 
 # Turbo cache
 .turbo/
+
+# SQLite databases
+*.db
+*.db-*
+*.sqlite
+*.sqlite3

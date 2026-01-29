@@ -9,6 +9,8 @@ export function Dashboard() {
       setScreen("execute");
     } else if (input === "2" || (key.ctrl && input === "h")) {
       setScreen("history");
+    } else if (input === "3" || (key.ctrl && input === "w")) {
+      setScreen("workflows");
     } else if (key.ctrl && input === "q") {
       process.exit(0);
     }
@@ -51,6 +53,10 @@ export function Dashboard() {
       <Text>
         {" "}
         <Text color="cyan">2</Text> - History
+      </Text>
+      <Text>
+        {" "}
+        <Text color="cyan">3</Text> - Workflows
       </Text>
       <Text>
         {" "}

@@ -1,12 +1,20 @@
 import { create } from "zustand";
 import type { OpenFarmConfig } from "../types";
+import type { Workflow, WorkflowStep } from "@openfarm/core";
 
-export type Screen = "dashboard" | "execute" | "running" | "history";
+export type Screen =
+  | "dashboard"
+  | "execute"
+  | "running"
+  | "history"
+  | "workflows"
+  | "workflow-editor";
 
 export interface Execution {
   id: string;
   task: string;
   provider: string;
+  workspace: string;
   status: "pending" | "running" | "completed" | "failed";
   startedAt: Date;
 }
@@ -24,12 +32,23 @@ interface AppState {
   provider: string;
   setProvider: (provider: string) => void;
 
+  workspace: string;
+  setWorkspace: (workspace: string) => void;
+
   executions: Execution[];
   addExecution: (execution: Execution) => void;
   updateExecution: (id: string, updates: Partial<Execution>) => void;
 
   currentExecution: Execution | null;
   setCurrentExecution: (execution: Execution | null) => void;
+
+  // Workflow editor state
+  workflows: Workflow[];
+  setWorkflows: (workflows: Workflow[]) => void;
+  currentWorkflow: Workflow | null;
+  setCurrentWorkflow: (workflow: Workflow | null) => void;
+  editingStep: WorkflowStep | null;
+  setEditingStep: (step: WorkflowStep | null) => void;
 }
 
 export const useStore = create<AppState>((set) => ({
@@ -45,6 +64,9 @@ export const useStore = create<AppState>((set) => ({
   provider: "opencode",
   setProvider: (provider) => set({ provider }),
 
+  workspace: process.cwd(),
+  setWorkspace: (workspace) => set({ workspace }),
+
   executions: [],
   addExecution: (execution) =>
     set((state) => ({ executions: [execution, ...state.executions] })),
@@ -57,4 +79,12 @@ export const useStore = create<AppState>((set) => ({
 
   currentExecution: null,
   setCurrentExecution: (execution) => set({ currentExecution: execution }),
+
+  // Workflow editor state
+  workflows: [],
+  setWorkflows: (workflows) => set({ workflows }),
+  currentWorkflow: null,
+  setCurrentWorkflow: (workflow) => set({ currentWorkflow: workflow }),
+  editingStep: null,
+  setEditingStep: (step) => set({ editingStep: step }),
 }));

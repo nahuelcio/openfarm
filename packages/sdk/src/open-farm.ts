@@ -5,7 +5,7 @@ import type {
   OpenFarmConfig,
 } from "./types";
 
-const DEFAULT_MAX_TOKENS = 4096;
+const DEFAULT_MAX_TOKENS = 30000;
 
 export class OpenFarm {
   private readonly config: OpenFarmConfig;
