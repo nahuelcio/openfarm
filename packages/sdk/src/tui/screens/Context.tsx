@@ -1,7 +1,6 @@
-import { AgentAnalyzer } from "@openfarm/context";
 import { Box, Text, useInput } from "ink";
 import React from "react";
-import { OpenFarm } from "../../open-farm.js";
+import { generateAgentsMd } from "../generators/agents-md";
 import { useStore } from "../store";
 
 export function ContextScreen() {
@@ -35,44 +34,32 @@ export function ContextScreen() {
         setContextStatus("extracting");
         setContextProgress(10);
 
-        const client = new OpenFarm({ defaultProvider: contextProvider });
-
-        const llmExecutor = {
-          async execute(opts: {
-            task: string;
-            workspace: string;
-            provider?: string;
-            model?: string;
-            temperature?: number;
-          }) {
-            return client.execute({
-              task: opts.task,
-              workspace: opts.workspace,
-              provider: opts.provider,
-              model: opts.model,
-              temperature: opts.temperature,
-            });
-          },
-        };
-
-        const analyzer = new AgentAnalyzer(workspace, llmExecutor);
-
-        setContextStatus("exploring");
-        setContextProgress(30);
-
-        const exploration = await analyzer.explore();
-
-        setContextStatus("analyzing");
-        setContextProgress(50);
-
-        const result = await analyzer.analyzeWithAgent(exploration, {
+        const result = await generateAgentsMd({
+          workspace,
           provider: contextProvider,
+          model: undefined,
+          onProgress: (message) => {
+            if (message.includes("structure")) {
+              setContextStatus("exploring");
+              setContextProgress(30);
+            } else if (
+              message.includes("tech stack") ||
+              message.includes("stack")
+            ) {
+              setContextStatus("analyzing");
+              setContextProgress(50);
+            } else if (
+              message.includes("Merging") ||
+              message.includes("existing")
+            ) {
+              setContextStatus("formatting");
+              setContextProgress(90);
+            }
+          },
         });
 
-        setContextStatus("formatting");
-        setContextProgress(90);
-
-        setContextResult(result.agentsMd);
+        setContextResult(result);
+        setContextStatus("complete");
         setContextProgress(100);
       } catch (error) {
         const errorMsg =
