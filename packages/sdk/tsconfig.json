@@ -13,12 +13,18 @@
     "sourceMap": true,
     "outDir": "./dist",
     "noEmit": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "react",
     "paths": {
       "@openfarm/core": ["../core/src"],
       "@openfarm/core/*": ["../core/src/*"],
       "@openfarm/types": ["../types/src"],
       "@openfarm/logger": ["../logger/src"],
-      "@openfarm/result": ["../result/src"]
+      "@openfarm/result": ["../result/src"],
+      "@openfarm/context": ["../context/src"],
+      "@openfarm/git-worktree": ["../git-worktree/src"],
+      "@openfarm/agent-runner": ["../agent-runner/src"],
+      "@openfarm/workflow-engine": ["../workflow-engine/src"]
     }
   },
   "include": ["src/**/*"],

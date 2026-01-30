@@ -1,0 +1,95 @@
+id: oneshot_with_git
+name: One Shot + Git
+description: One shot execution with worktree, commit and push - no PR creation
+
+parameters:
+  provider:
+    type: string
+    required: false
+    default: "opencode"
+    description: Provider to use for code execution
+  model:
+    type: string
+    required: false
+    description: Model to use (optional, uses provider default if not set)
+  commitMessage:
+    type: string
+    required: false
+    default: "${workItem.title}"
+    description: Commit message template
+
+variables:
+  worktreePath: ""
+  currentDate: "${new Date().toISOString()}"
+
+steps:
+  - id: create-branch
+    name: Create Task Branch
+    type: git
+    action: git.branch
+    config:
+      pattern: "task-${Date.now()}"
+    retryCount: 1
+    continueOnError: false
+
+  - id: create-worktree
+    name: Create Worktree
+    type: git
+    action: git.worktree
+    config:
+      operation: "create"
+    retryCount: 1
+    continueOnError: false
+
+  - id: execute
+    name: Execute Task
+    type: code
+    action: agent.code
+    config:
+      provider: "${provider}"
+      model: "${model}"
+      maxIterations: 5
+    timeout: 600000
+    retryCount: 1
+    continueOnError: false
+    prompt: |
+      # Task
+
+      ${task}
+
+      ## Instructions
+
+      You are an expert software engineer executing in ONESHOT+Git mode.
+
+      CRITICAL RULES:
+      - NEVER ask clarifying questions - make reasonable assumptions and proceed
+      - If information is missing, proceed with best effort
+      - Complete the task with minimal, focused changes
+      - Changes will be committed automatically after execution
+
+      ## Context
+
+      - Working in isolated worktree
+      - Branch will be committed after execution
+      - Date: ${currentDate}
+
+      Execute the task now.
+
+  - id: commit
+    name: Commit Changes
+    type: git
+    action: git.commit
+    config:
+      message: "${commitMessage}"
+    retryCount: 1
+    continueOnError: false
+
+  - id: push
+    name: Push Changes
+    type: git
+    action: git.push
+    config:
+      customLabel: "⬆️ Push to Remote"
+      customDescription: "Pushes committed changes to remote repository"
+    retryCount: 2
+    continueOnError: false

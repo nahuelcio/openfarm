@@ -1,0 +1,19 @@
+{
+  "defaultProvider": "opencode",
+  "defaultModel": "claude-3.5-sonnet",
+  "apiUrl": "http://localhost:3000",
+  "timeout": 600000,
+  "theme": "dark",
+  "shortcuts": {
+    "newTask": "Ctrl+N",
+    "history": "Ctrl+H",
+    "settings": "Ctrl+S",
+    "dashboard": "Ctrl+D",
+    "quit": "Ctrl+Q"
+  },
+  "ui": {
+    "sidebarOpen": true,
+    "showProgressBar": true,
+    "maxLogLines": 1000
+  }
+}

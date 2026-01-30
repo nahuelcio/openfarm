@@ -1,5 +1,7 @@
-export type { PodProvisionConfig } from "../../orchestration";
-export { KubernetesOrchestrator } from "../../orchestration";
+// @ts-expect-error - TODO: Move orchestration to a shared package or fix imports
+export type { PodProvisionConfig } from "@openfarm/agent-runner/orchestration";
+// @ts-expect-error - TODO: Move orchestration to a shared package or fix imports
+export { KubernetesOrchestrator } from "@openfarm/agent-runner/orchestration";
 export * from "./executors/advanced-executor";
 export * from "./executors/agent-executor";
 export * from "./executors/agent-router";

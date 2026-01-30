@@ -37,12 +37,10 @@
     "state-machine",
     "ai-workflows"
   ],
+  "private": true,
   "repository": {
     "type": "git",
     "url": "https://github.com/openfarm/openfarm.git",
     "directory": "packages/workflow-engine"
-  },
-  "publishConfig": {
-    "access": "public"
   }
 }

@@ -2,7 +2,7 @@ import { DEFAULT_FALLBACK_LLM_MODEL, SYSTEM_PROMPTS } from "@openfarm/config";
 import { OpenCodeConfigService } from "@openfarm/core";
 import { StepAction } from "@openfarm/core/constants/actions";
 import { ok, type Result } from "@openfarm/result";
-import { llmService } from "../../../llm";
+import { llmService } from "@openfarm/runner-utils/llm";
 import type { StepExecutionRequest } from "../types";
 import { type AgentRouterConfig, validateConfig } from "./validation";
 

@@ -1,5 +1,5 @@
 import type { ExecFunction, FileSystem } from "@openfarm/core/types/runtime";
-import { sanitizePath } from "../../../utils/git-config";
+import { sanitizePath } from "@openfarm/runner-utils/utils/git-config";
 
 /**
  * Prunes stale worktree references

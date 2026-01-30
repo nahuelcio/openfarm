@@ -9,6 +9,7 @@ import {
   type GitConfig,
   pushBranch,
 } from "@openfarm/git-adapter";
+import { createWorktree, removeWorktree } from "@openfarm/git-worktree";
 import { err, ok, type Result } from "@openfarm/result";
 import type { StepExecutionRequest } from "../types";
 import {
@@ -16,6 +17,7 @@ import {
   type GitCheckoutConfig,
   type GitCommitConfig,
   type GitPushConfig,
+  type GitWorktreeConfig,
   validateConfig,
 } from "./validation";
 
@@ -439,6 +441,113 @@ export async function executeGitPush(
 }
 
 /**
+ * Executes git.worktree action.
+ * Creates or removes a git worktree for isolated task execution.
+ *
+ * @param request - Step execution request containing step, context, logger, flags, and services
+ * @returns Result with worktree path or success message
+ */
+export async function executeGitWorktree(
+  request: StepExecutionRequest
+): Promise<Result<{ message: string; worktreePath?: string }>> {
+  const { step, context, logger, flags } = request;
+  const { config } = step;
+
+  const validation = validateConfig<GitWorktreeConfig>(
+    StepAction.GIT_WORKTREE,
+    config
+  );
+  if (!validation.ok) {
+    return validation;
+  }
+  const validatedConfig = validation.value;
+
+  const { operation, path, branch, baseBranch } = validatedConfig;
+
+  // Setup Pod-aware git configuration
+  const { updatedGitConfig, execFn } = setupPodAwareGit(context, logger, false);
+
+  if (operation === "create") {
+    // Generate worktree path if not provided
+    const worktreePath = path || `/tmp/openfarm-worktree-${Date.now()}`;
+    const worktreeBranch = branch || context.branchName || `task-${Date.now()}`;
+    const worktreeBase = baseBranch || context.defaultBranch || "main";
+
+    if (flags.previewMode) {
+      await logger(
+        `[Dry Run] Would create worktree: ${worktreePath} for branch ${worktreeBranch}`
+      );
+      return ok({
+        message: `[Dry Run] Would create worktree: ${worktreePath}`,
+        worktreePath,
+      });
+    }
+
+    await logger(`Creating worktree: ${worktreePath}`);
+
+    // First create the branch if it doesn't exist
+    await logger(`Ensuring branch exists: ${worktreeBranch}`);
+    try {
+      await execFn(
+        `git -C ${updatedGitConfig.repoPath} branch ${worktreeBranch}`
+      );
+    } catch {
+      // Branch might already exist, that's ok
+    }
+
+    const result = await createWorktree(updatedGitConfig.repoPath, {
+      path: worktreePath,
+      branch: worktreeBranch,
+      baseBranch: worktreeBase,
+    });
+
+    if (!result.ok) {
+      return err(result.error);
+    }
+
+    await logger(`✅ Worktree created: ${result.value.path}`);
+    return ok({
+      message: `Created worktree: ${result.value.path}`,
+      worktreePath: result.value.path,
+    });
+  }
+
+  if (operation === "remove") {
+    const worktreePath = path;
+
+    if (!worktreePath) {
+      return err(new Error("path is required for worktree remove operation"));
+    }
+
+    if (flags.previewMode) {
+      await logger(`[Dry Run] Would remove worktree: ${worktreePath}`);
+      return ok({
+        message: `[Dry Run] Would remove worktree: ${worktreePath}`,
+      });
+    }
+
+    await logger(`Removing worktree: ${worktreePath}`);
+
+    const result = await removeWorktree(
+      updatedGitConfig.repoPath,
+      worktreePath,
+      true
+    );
+
+    if (!result.ok) {
+      return err(result.error);
+    }
+
+    await logger(`✅ Worktree removed: ${worktreePath}`);
+    return ok({
+      message: `Removed worktree: ${worktreePath}`,
+    });
+  }
+
+  return err(new Error(`Unknown worktree operation: ${operation}`));
+}
+
+/**
  * Routes git actions to the appropriate executor.
  * This function delegates to executors that perform I/O operations, but receives all dependencies explicitly,
  * making it testable through dependency injection.
@@ -448,7 +557,13 @@ export async function executeGitPush(
  */
 export async function executeGitAction(
   request: StepExecutionRequest
-): Promise<Result<string | { message: string; newBranchName: string }>> {
+): Promise<
+  Result<
+    | string
+    | { message: string; newBranchName: string }
+    | { message: string; worktreePath?: string }
+  >
+> {
   const { step } = request;
   const action = step.action;
 
@@ -465,6 +580,9 @@ export async function executeGitAction(
   }
   if (action === StepAction.GIT_PUSH) {
     return executeGitPush(request);
+  }
+  if (action === StepAction.GIT_WORKTREE) {
+    return executeGitWorktree(request);
   }
 
   return err(new Error(`Unknown git action: ${action}`));

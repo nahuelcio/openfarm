@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "bun:test";
+import { beforeEach, describe, expect, it } from "vitest";
 import { MemoryQueueAdapter } from "../src/adapters/memory";
 import { Queue } from "../src/queue";
 

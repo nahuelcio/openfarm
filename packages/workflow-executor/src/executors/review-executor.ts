@@ -4,8 +4,8 @@ import { DEFAULT_FALLBACK_LLM_MODEL, SYSTEM_PROMPTS } from "@openfarm/config";
 import { OpenCodeConfigService } from "@openfarm/core";
 import { StepAction } from "@openfarm/core/constants/actions";
 import { err, map, ok, type Result } from "@openfarm/result";
-import { llmService } from "../../../llm";
-import { sanitizePath } from "../../../utils/git-config";
+import { llmService } from "@openfarm/runner-utils/llm";
+import { sanitizePath } from "@openfarm/runner-utils/utils/git-config";
 import type { StepExecutionRequest } from "../types";
 import { type ReviewCodeConfig, validateConfig } from "./validation";
 

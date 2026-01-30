@@ -5,7 +5,7 @@ import type { ActionableWorkflowStep } from "@openfarm/core/types";
 import type { CodingEngine } from "@openfarm/core/types/adapters";
 import type { WorkItem } from "@openfarm/core/types/domain";
 import { err, ok, type Result } from "@openfarm/result";
-import { sanitizePath } from "../../../utils/git-config";
+import { sanitizePath } from "@openfarm/runner-utils/utils/git-config";
 import type { StepExecutionRequest } from "../types";
 import { type PlanningPlanConfig, validateConfig } from "./validation";
 

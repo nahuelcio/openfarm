@@ -2,8 +2,8 @@
 // Version: 1.0.0
 // License: MIT
 
-import { Database } from "bun:sqlite";
 import { err, ok, type Result } from "@openfarm/result";
+import Database from "better-sqlite3";
 import type { QueueAdapter, QueueJobOptions, QueueJobResult } from "../types";
 
 // SQLite configuration constants
@@ -28,14 +28,11 @@ interface SqliteJobRow {
 }
 
 /**
- * SQLite-based queue adapter for local execution using bun:sqlite
+ * SQLite-based queue adapter for local execution using better-sqlite3
  * Perfect for TUI/SDK local usage without external dependencies
- *
- * NOTE: This adapter uses bun:sqlite, which is only available in Bun runtime.
- * For Node.js environments, consider using InngestQueueAdapter or MemoryQueueAdapter.
  */
 export class SqliteQueueAdapter implements QueueAdapter {
-  private readonly db: Database;
+  private readonly db: Database.Database;
   private processInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor(

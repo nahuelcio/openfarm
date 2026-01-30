@@ -1,0 +1,104 @@
+id: with_human_approval
+name: With Human Approval
+description: Plan → Human Approval → Execute → Commit → Push workflow
+
+parameters:
+  provider:
+    type: string
+    required: false
+    default: "opencode"
+    description: Provider to use for code execution
+  model:
+    type: string
+    required: false
+    description: Model to use (optional, uses provider default if not set)
+  commitMessage:
+    type: string
+    required: false
+    default: "${workItem.title}"
+    description: Commit message template
+
+variables:
+  worktreePath: ""
+  currentDate: "${new Date().toISOString()}"
+
+steps:
+  - id: create-branch
+    name: Create Task Branch
+    type: git
+    action: git.branch
+    config:
+      pattern: "task-${Date.now()}"
+    retryCount: 1
+    continueOnError: false
+
+  - id: create-worktree
+    name: Create Worktree
+    type: git
+    action: git.worktree
+    config:
+      operation: "create"
+    retryCount: 1
+    continueOnError: false
+
+  - id: plan
+    name: Generate Plan
+    type: planning
+    action: planning.plan
+    config:
+      provider: "${provider}"
+      model: "${model}"
+      format: "markdown"
+    timeout: 300000
+    retryCount: 1
+    continueOnError: false
+    prompt: |
+      Generate a detailed implementation plan for:
+
+      ${task}
+
+      Include:
+      1. Analysis of the requirements
+      2. Step-by-step implementation plan
+      3. Files that may need to be modified
+      4. Potential risks or considerations
+
+  - id: approval
+    name: Human Approval
+    type: human
+    action: human.approval
+    config:
+      timeout: 86400000
+    retryCount: 1
+    continueOnError: false
+
+  - id: execute
+    name: Execute Task
+    type: code
+    action: agent.implement
+    config:
+      provider: "${provider}"
+      model: "${model}"
+      maxIterations: 5
+    timeout: 600000
+    retryCount: 1
+    continueOnError: false
+
+  - id: commit
+    name: Commit Changes
+    type: git
+    action: git.commit
+    config:
+      message: "${commitMessage}"
+    retryCount: 1
+    continueOnError: false
+
+  - id: push
+    name: Push Changes
+    type: git
+    action: git.push
+    config:
+      customLabel: "⬆️ Push to Remote"
+      customDescription: "Pushes committed changes to remote repository"
+    retryCount: 2
+    continueOnError: false

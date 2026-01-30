@@ -20,7 +20,9 @@
       "@openfarm/result": ["../result/src"],
       "@openfarm/logger": ["../logger/src"],
       "@openfarm/types": ["../types/src"],
-      "@openfarm/utils": ["../utils/src"]
+      "@openfarm/utils": ["../utils/src"],
+      "@openfarm/git-worktree": ["../git-worktree/src"],
+      "@openfarm/git-adapter": ["../git-adapter/src"]
     }
   },
   "include": ["src/**/*"],

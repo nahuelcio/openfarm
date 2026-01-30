@@ -20,7 +20,8 @@ import type {
 
 export type { WorkflowStep } from "@openfarm/core/types/workflow";
 
-import type { KubernetesOrchestrator } from "../../orchestration";
+// @ts-expect-error - TODO: Move orchestration to a shared package or fix imports
+import type { KubernetesOrchestrator } from "@openfarm/agent-runner/orchestration";
 
 export interface WorkflowContext {
   workflowId: string;

@@ -1,0 +1,22 @@
+{
+  "name": "@openfarm/vault-adapter",
+  "version": "0.0.1",
+  "private": true,
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "bunx biome check .",
+    "type-check": "bunx tsc -p tsconfig.json --noEmit",
+    "test": "bunx vitest run --passWithNoTests",
+    "clean": "rm -rf dist build .turbo"
+  },
+  "dependencies": {
+    "@openfarm/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.0"
+  }
+}

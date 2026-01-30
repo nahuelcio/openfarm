@@ -1,0 +1,51 @@
+{
+  "name": "@openfarm/provider-opencode",
+  "version": "0.1.0",
+  "description": "OpenCode provider for OpenFarm - supports both local CLI and cloud HTTP modes",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest --run --passWithNoTests",
+    "test:run": "vitest --run --passWithNoTests",
+    "type-check": "tsc --noEmit",
+    "lint": "biome check .",
+    "lint:fix": "biome check . --fix"
+  },
+  "keywords": [
+    "openfarm",
+    "provider",
+    "opencode",
+    "ai",
+    "coding"
+  ],
+  "author": "OpenFarm Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/openfarm-ai/openfarm.git",
+    "directory": "packages/provider-opencode"
+  },
+  "dependencies": {
+    "@openfarm/core": "workspace:*",
+    "@openfarm/sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.0.0"
+  },
+  "peerDependencies": {
+    "@openfarm/sdk": "workspace:*"
+  }
+}

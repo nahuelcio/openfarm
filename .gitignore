@@ -21,6 +21,12 @@ coverage
 # Build artifacts
 *.tsbuildinfo
 
+# Compiled TypeScript files in packages
+packages/**/src/**/*.js
+packages/**/src/**/*.js.map
+packages/**/src/**/*.d.ts
+packages/**/src/**/*.d.ts.map
+
 # Logs
 logs
 *.log
@@ -38,3 +44,9 @@ tmp
 
 # Turbo cache
 .turbo/
+
+# SQLite databases
+*.db
+*.db-*
+*.sqlite
+*.sqlite3

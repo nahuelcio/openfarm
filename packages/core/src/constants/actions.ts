@@ -24,6 +24,7 @@ export enum StepAction {
   GIT_BRANCH = "git.branch",
   GIT_COMMIT = "git.commit",
   GIT_PUSH = "git.push",
+  GIT_WORKTREE = "git.worktree",
 
   // Agent Actions
   AGENT_CODE = "agent.code",

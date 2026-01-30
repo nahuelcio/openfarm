@@ -3,36 +3,67 @@
   "version": "0.0.1",
   "description": "OpenFarm SDK - AI-powered code editing for your applications",
   "license": "MIT",
-  "main": "src/index.ts",
-  "types": "src/index.ts",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./src/index.ts",
-    "./types": "./src/types.ts",
-    "./repo": "./src/repo.ts",
-    "./cli": "./src/cli.ts",
-    "./executors": "./src/executors/index.ts",
-    "./executors/opencode": "./src/executors/opencode.ts",
-    "./executors/aider": "./src/executors/aider.ts",
-    "./executors/claude-code": "./src/executors/claude-code.ts",
-    "./executors/direct-api": "./src/executors/direct-api.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
   },
   "bin": {
-    "openfarm": "./src/cli.ts"
+    "openfarm": "./dist/cli.mjs"
   },
+  "files": [
+    "dist"
+  ],
   "scripts": {
+    "build": "tsup",
+    "prepublishOnly": "bun run build",
     "lint": "bunx biome check .",
     "type-check": "bunx tsc -p tsconfig.json --noEmit",
-    "test": "bunx vitest run --passWithNoTests",
-    "clean": "rm -rf dist build .turbo"
+    "test": "bunx vitest run",
+    "clean": "rm -rf dist build .turbo",
+    "dev": "bun run src/cli.ts",
+    "dev:cli": "bun run src/cli.ts --cli",
+    "tui": "bun run src/cli.ts",
+    "tui:cli": "bun run src/cli.ts --cli"
   },
   "dependencies": {
+    "@openfarm/agent-runner": "workspace:*",
+    "@openfarm/context": "workspace:*",
     "@openfarm/core": "workspace:*",
-    "@openfarm/types": "workspace:*",
-    "@openfarm/logger": "workspace:*",
-    "@openfarm/result": "workspace:*"
+    "@openfarm/git-worktree": "workspace:*",
+    "@openfarm/workflow-engine": "workspace:*",
+    "ai": "^4.0.0",
+    "better-sqlite3": "^12.6.2",
+    "chalk": "4.1.2",
+    "ink": "^6.6.0",
+    "ink-select-input": "^6.2.0",
+    "ink-text-input": "^6.0.0",
+    "js-yaml": "^4.1.1",
+    "pino": "^10.1.0",
+    "pino-pretty": "^13.1.3",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "uuid": "^11.0.3",
+    "zod": "^4.1.11",
+    "zustand": "^5.0.10"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/ink-select-input": "^3.0.5",
+    "@types/ink-text-input": "^2.0.5",
+    "@types/js-yaml": "^4.0.9",
     "@types/node": "^25.0.0",
+    "@types/react": "^19.2.10",
+    "@types/react-dom": "^19.2.3",
+    "@types/uuid": "^10.0.0",
+    "fast-check": "^4.5.3",
+    "tsup": "^8.5.1",
     "typescript": "^5.6.0"
   },
   "keywords": [

@@ -7,7 +7,7 @@ import {
   getGitConfig,
   sanitizeGitConfig,
   sanitizePath,
-} from "../../utils/git-config";
+} from "@openfarm/runner-utils/utils/git-config";
 
 /**
  * Helper function to ensure main repository exists (for worktrees)

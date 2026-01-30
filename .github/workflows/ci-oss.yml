@@ -106,57 +106,28 @@ jobs:
       - name: Build
         run: bun run build
       
-      - name: Publish packages
+      - name: Publish SDK to NPM
         run: |
           # Crear .npmrc para autenticación
           echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
-          
-          # Función para publicar un package
-          publish_package() {
-            local pkg_dir=$1
-            echo "📦 Publishing $pkg_dir..."
-            cd "$pkg_dir" || return 1
-            
-            # Verificar si ya existe esta versión
-            local pkg_name
-            pkg_name=$(jq -r '.name' package.json)
-            local pkg_version
-            pkg_version=$(jq -r '.version' package.json)
-            
-            if npm view "$pkg_name@$pkg_version" version &>/dev/null; then
-              echo "  ⚠️  $pkg_name@$pkg_version ya existe, skip"
-              cd - > /dev/null || return
-              return 0
-            fi
-            
-            # Publicar con bun (maneja workspace:* automáticamente)
-            if bun publish --access public; then
-              echo "  ✅ Publicado $pkg_name@$pkg_version"
-            else
-              echo "  ❌ Falló $pkg_name"
-              cd - > /dev/null || return
-              return 1
-            fi
-            
-            cd - > /dev/null || return
-          }
-          
-          # Publicar en orden de dependencias (más básicos primero)
-          publish_package "packages/result" || true
-          publish_package "packages/types" || true
-          publish_package "packages/logger" || true
-          publish_package "packages/utils" || true
-          publish_package "packages/config" || true
-          publish_package "packages/core" || true
-          publish_package "packages/git-adapter" || true
-          publish_package "packages/github-adapter" || true
-          publish_package "packages/azure-adapter" || true
-          publish_package "packages/agent-runner" || true
-          publish_package "packages/workflow-engine" || true
-          publish_package "packages/analysis" || true
-          publish_package "packages/coding-engines" || true
-          publish_package "packages/sdk" || true
-          
+
+          cd packages/sdk
+
+          # Verificar si ya existe esta versión
+          PKG_NAME=$(jq -r '.name' package.json)
+          PKG_VERSION=$(jq -r '.version' package.json)
+
+          if npm view "$PKG_NAME@$PKG_VERSION" version &>/dev/null; then
+            echo "⚠️  $PKG_NAME@$PKG_VERSION ya existe en NPM, skip"
+            exit 0
+          fi
+
+          # Publicar SDK
+          echo "📦 Publishing $PKG_NAME@$PKG_VERSION..."
+          bun publish --access public
+          echo "✅ SDK publicado exitosamente"
+
+          cd ../..
           rm ~/.npmrc
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
