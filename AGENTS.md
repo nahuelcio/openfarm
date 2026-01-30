@@ -85,6 +85,30 @@ Frontend (Vue), Clean/Hexagonal/Screaming Architecture, TypeScript, testing, ato
 - **Explicit exports:** Return types on all public functions
 - **Module boundaries:** Clear separation of concerns, single responsibility
 - **Import order:** Standard library → Third-party → Local application
+- **File naming (kebab-case):** All filenames must use kebab-case (e.g., `my-component.tsx`, NOT `MyComponent.tsx`). This is enforced by Biome.
+
+### Git Case Sensitivity (macOS Warning)
+
+**THE PROBLEM:** macOS uses case-insensitive filesystems by default. Git may track `App.tsx` while your filesystem shows `app.tsx`. The rename appears clean locally, but CI (Linux, case-sensitive) and Biome will fail with "filename should be in kebab-case" errors.
+
+**DETECTION:** If `git status` shows "nothing to commit" but `bun run lint` fails with naming errors, Git is tracking the wrong casing.
+
+**VERIFICATION:**
+```bash
+# Check what Git thinks exists (case-sensitive)
+git ls-files | grep -i app.tsx
+# vs what your filesystem has
+ls packages/sdk/src/tui/
+```
+
+**FIX:**
+```bash
+# Force Git to recognize the case change
+git rm --cached packages/sdk/src/tui/App.tsx
+git add packages/sdk/src/tui/app.tsx
+```
+
+**PREVENTION:** Always verify with `git ls-files` after renaming files, especially when switching from PascalCase to kebab-case.
 
 ### Commit Standards
 
