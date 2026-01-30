@@ -23,9 +23,6 @@
       "@openfarm/result": ["../result/src"],
       "@openfarm/context": ["../context/src"],
       "@openfarm/git-worktree": ["../git-worktree/src"],
-      "@openfarm/provider-opencode": ["../provider-opencode/src"],
-      "@openfarm/provider-aider": ["../provider-aider/src"],
-      "@openfarm/provider-claude": ["../provider-claude/src"],
       "@openfarm/agent-runner": ["../agent-runner/src"],
       "@openfarm/workflow-engine": ["../workflow-engine/src"]
     }
