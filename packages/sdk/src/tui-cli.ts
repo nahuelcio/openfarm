@@ -12,6 +12,12 @@ export async function runTUIApp(
     return runLegacyCLI(args, config);
   }
 
+  // Si el primer argumento es "context", usar el CLI de contexto
+  if (args[0] === "context") {
+    const { runContextCLI } = await import("./cli-context");
+    return runContextCLI(args.slice(1), config);
+  }
+
   // Por defecto, usar TUI
   await runTUI(config);
 }

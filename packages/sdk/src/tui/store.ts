@@ -1,6 +1,6 @@
+import type { Workflow, WorkflowStep } from "@openfarm/core";
 import { create } from "zustand";
 import type { OpenFarmConfig } from "../types";
-import type { Workflow, WorkflowStep } from "@openfarm/core";
 
 export type Screen =
   | "dashboard"
@@ -8,12 +8,15 @@ export type Screen =
   | "running"
   | "history"
   | "workflows"
-  | "workflow-editor";
+  | "workflow-editor"
+  | "context"
+  | "context-config";
 
 export interface Execution {
   id: string;
   task: string;
   provider: string;
+  model?: string;
   workspace: string;
   status: "pending" | "running" | "completed" | "failed";
   startedAt: Date;
@@ -32,6 +35,12 @@ interface AppState {
   provider: string;
   setProvider: (provider: string) => void;
 
+  model: string;
+  setModel: (model: string) => void;
+
+  availableModels: string[];
+  setAvailableModels: (models: string[]) => void;
+
   workspace: string;
   setWorkspace: (workspace: string) => void;
 
@@ -49,6 +58,34 @@ interface AppState {
   setCurrentWorkflow: (workflow: Workflow | null) => void;
   editingStep: WorkflowStep | null;
   setEditingStep: (step: WorkflowStep | null) => void;
+
+  // Selected workflow for execution
+  selectedWorkflowId: string;
+  setSelectedWorkflowId: (id: string) => void;
+
+  // Context generation state
+  contextStatus:
+    | "idle"
+    | "selecting"
+    | "extracting"
+    | "exploring"
+    | "analyzing"
+    | "synthesizing"
+    | "formatting"
+    | "complete"
+    | "error";
+  contextProvider: string;
+  contextModel: string;
+  contextProgress: number;
+  contextResult: string | null;
+  contextError: string | null;
+  setContextStatus: (status: AppState["contextStatus"]) => void;
+  setContextProvider: (provider: string) => void;
+  setContextModel: (model: string) => void;
+  setContextProgress: (progress: number) => void;
+  setContextResult: (result: string) => void;
+  setContextError: (error: string) => void;
+  resetContext: () => void;
 }
 
 export const useStore = create<AppState>((set) => ({
@@ -63,6 +100,12 @@ export const useStore = create<AppState>((set) => ({
 
   provider: "opencode",
   setProvider: (provider) => set({ provider }),
+
+  model: "",
+  setModel: (model) => set({ model }),
+
+  availableModels: [],
+  setAvailableModels: (models) => set({ availableModels: models }),
 
   workspace: process.cwd(),
   setWorkspace: (workspace) => set({ workspace }),
@@ -87,4 +130,31 @@ export const useStore = create<AppState>((set) => ({
   setCurrentWorkflow: (workflow) => set({ currentWorkflow: workflow }),
   editingStep: null,
   setEditingStep: (step) => set({ editingStep: step }),
+
+  // Selected workflow for execution (default: task_runner)
+  selectedWorkflowId: "task_runner",
+  setSelectedWorkflowId: (id) => set({ selectedWorkflowId: id }),
+
+  // Context generation state
+  contextStatus: "idle",
+  contextProvider: "direct-api",
+  contextModel: "",
+  contextProgress: 0,
+  contextResult: null,
+  contextError: null,
+  setContextStatus: (status) => set({ contextStatus: status }),
+  setContextProvider: (provider) => set({ contextProvider: provider }),
+  setContextModel: (model) => set({ contextModel: model }),
+  setContextProgress: (progress) => set({ contextProgress: progress }),
+  setContextResult: (result) =>
+    set({ contextResult: result, contextStatus: "complete" }),
+  setContextError: (error) =>
+    set({ contextError: error, contextStatus: "error" }),
+  resetContext: () =>
+    set({
+      contextStatus: "idle",
+      contextProgress: 0,
+      contextResult: null,
+      contextError: null,
+    }),
 }));

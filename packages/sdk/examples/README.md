@@ -1,6 +1,6 @@
-# OpenCode SDK Examples
+# OpenFarm SDK Examples
 
-Examples of how to use the OpenCode SDK with **standalone** CLI mode (no server required).
+Examples of how to use the OpenFarm SDK with the new provider system.
 
 ## 📋 Prerequisites
 
@@ -14,60 +14,71 @@ Examples of how to use the OpenCode SDK with **standalone** CLI mode (no server 
    npm run build --workspace=@openfarm/sdk
    ```
 
-3. **Configure credentials** (at least one):
+3. **Install provider packages** (optional):
    ```bash
-   export ANTHROPIC_API_KEY="your-api-key"
-   # OR
-   export COPILOT_TOKEN="your-token"
-   # OR
-   export OPENROUTER_API_KEY="your-api-key"
-   # OR
-   export ZAI_API_KEY="your-api-key"
+   npm install @openfarm/provider-opencode
+   npm install @openfarm/provider-aider
+   npm install @openfarm/provider-claude
    ```
 
-**Note:** No server required! The `local` mode runs the CLI standalone.
+4. **Configure credentials** (depending on provider):
+   ```bash
+   # For OpenCode
+   export ANTHROPIC_API_KEY="your-api-key"
+   export COPILOT_TOKEN="your-token"
+   
+   # For Aider
+   pip install aider-chat
+   
+   # For Claude
+   npm install -g @anthropic-ai/claude-code
+   ```
 
 ## 🚀 Running Examples
 
 ### 1. Simple Demo (JavaScript)
 
-The simplest example - just executes a single task:
+The simplest example using the new provider system:
 
 ```bash
 node packages/sdk/examples/simple-demo.mjs
 ```
 
 **What it does:**
-- ✅ Creates an executor in standalone mode
-- ✅ Executes a simple task (create a file)
+- ✅ Creates an OpenFarm instance
+- ✅ Uses the new provider system
+- ✅ Executes a simple task
 - ✅ Displays formatted results
 
 ### 2. Full Example (TypeScript)
 
-Complete example with multiple tasks:
+Complete example with multiple providers:
 
 ```bash
 npx tsx packages/sdk/examples/opencode-cli-example.ts
 ```
 
 **What it does:**
-- ✅ Creates an executor instance
-- ✅ Executes a simple task (create file)
-- ✅ Executes a code task (TypeScript)
-- ✅ Shows cloud mode configuration example
+- ✅ Demonstrates provider switching
+- ✅ Shows different execution modes
+- ✅ Handles errors gracefully
+- ✅ Uses provider metadata
 
 ## 📚 Code Examples
 
 ### Basic Example
 
 ```typescript
-import { OpenCodeExecutor } from "@openfarm/sdk";
+import { OpenFarm } from "@openfarm/sdk";
 
-const executor = new OpenCodeExecutor({ mode: "local" });
+const openFarm = new OpenFarm({
+  defaultProvider: 'direct-api',
+  defaultModel: 'gpt-4o'
+});
 
-const result = await executor.execute({
+const result = await openFarm.execute({
   task: "Create a hello.txt file",
-  model: "github-copilot/gpt-5-mini"
+  workspace: './my-project'
 });
 
 console.log(result.success); // true/false
@@ -75,101 +86,157 @@ console.log(result.output);  // Description of changes
 console.log(result.tokens);  // Tokens used
 ```
 
-### Example with Custom Timeout
+### Provider Management
 
 ```typescript
-const executor = new OpenCodeExecutor({
-  mode: "local",
-  timeout: 30_000 // 30 seconds
-});
+// Get available providers
+const providers = openFarm.getAvailableProviders();
+console.log('Available providers:', providers);
+
+// Switch providers
+openFarm.setProvider('opencode');
+
+// Get provider metadata
+const metadata = openFarm.getProviderMetadata('opencode');
+console.log('Provider capabilities:', metadata.supportedFeatures);
 ```
 
-### Cloud Mode Example
+### Performance Optimization
 
 ```typescript
-const executor = new OpenCodeExecutor({
-  mode: "cloud",
-  baseUrl: "https://api.opencode.dev",
-  password: "my-password"
+// Preload providers for better performance
+await openFarm.preloadProvider('opencode');
+
+// Get registry statistics
+const stats = openFarm.getRegistryStats();
+console.log(`Loaded: ${stats.loadedProviders}, Cached: ${stats.cachedProviders}`);
+```
+
+### Testing with Mocks
+
+```typescript
+import { ProviderTestUtils } from '@openfarm/sdk';
+
+// Create isolated test environment
+const registry = ProviderTestUtils.createIsolatedRegistry();
+
+// Register mock provider
+const mockProvider = ProviderTestUtils.createMockProvider({
+  type: 'test-provider',
+  executionResult: {
+    success: true,
+    output: 'Mock result',
+    duration: 100
+  }
 });
+
+ProviderTestUtils.registerMockProvider(registry, 'test-provider');
 ```
 
 ## 🧪 Running Tests
 
-Run the E2E tests:
+Run the provider system tests:
 
 ```bash
-npm test --workspace=@openfarm/sdk -- opencode.test.ts
+npm test --workspace=@openfarm/sdk
 ```
 
 ## 🐛 Troubleshooting
 
-### "Process exited with code 1" or credential errors
+### "Provider 'X' is not available"
 
-- Verify you have at least one environment variable configured:
+- Check if the provider package is installed:
   ```bash
-  echo $ANTHROPIC_API_KEY
-  echo $COPILOT_TOKEN
+  npm list @openfarm/provider-opencode
   ```
-- Configure the one you need:
+- Install missing providers:
   ```bash
-  export ANTHROPIC_API_KEY="your-key-here"
+  npm install @openfarm/provider-opencode
   ```
 
-### "Process exited with code 1"
+### "Provider 'X' is lazy-loaded and must be created with createProviderAsync()"
 
-- Verify you have credentials configured
-- Check the CLI error output for more details
+- Use the async method for lazy-loaded providers:
+  ```typescript
+  const provider = await openFarm.providerRegistry.createProviderAsync('opencode');
+  ```
 
-### "Timeout after Xms"
+### Provider-specific issues
 
-- Increase the timeout in the configuration
-- Simplify the task
+- **OpenCode**: Verify CLI credentials are configured
+- **Aider**: Ensure `aider` command is available (`pip install aider-chat`)
+- **Claude**: Ensure Claude CLI is installed (`npm install -g @anthropic-ai/claude-code`)
 
 ## 📖 API Reference
 
-### `OpenCodeExecutor`
+### `OpenFarm`
 
 **Constructor:**
 ```typescript
-new OpenCodeExecutor(config?: OpenCodeConfig)
+new OpenFarm(config?: OpenFarmConfig)
 ```
 
 **Config:**
-- `mode`: `"local"` | `"cloud"` (default: `"local"`)
-- `timeout`: number in ms (default: 600000 = 10 min)
-- `baseUrl`: string (required if mode = `"cloud"`)
-- `password`: string (optional, for authentication)
+- `defaultProvider`: string (default: `"direct-api"`)
+- `defaultModel`: string (optional)
+- `timeout`: number in ms (optional)
+- `retries`: number (optional)
 
 **Methods:**
 
 #### `execute(options: ExecutionOptions): Promise<ExecutionResult>`
 
-Execute a task with OpenCode.
+Execute a task with the specified or default provider.
 
 **Options:**
 - `task`: string (required) - Task description
-- `model`: string (optional) - Model to use (e.g., `"github-copilot/gpt-5-mini"`)
-- `context`: string (optional) - Additional context
-- `provider`: string (optional) - Provider override
+- `provider`: string (optional) - Provider to use
+- `model`: string (optional) - Model to use
+- `workspace`: string (optional) - Working directory
+- `verbose`: boolean (optional) - Enable detailed logging
+- `onLog`: function (optional) - Custom logging function
 
 **Returns:**
 - `success`: boolean - Whether execution was successful
 - `output`: string - Description of changes/output
 - `duration`: number - Execution duration in ms
-- `tokens`: number - Tokens used
+- `tokens`: number - Tokens used (if available)
 - `error`: string (optional) - Error message if failed
+
+#### `getAvailableProviders(): string[]`
+
+Get list of all available providers.
+
+#### `getProviderMetadata(name: string): ProviderMetadata | undefined`
+
+Get metadata for a specific provider.
+
+#### `setProvider(provider: string): void`
+
+Set the current provider.
 
 #### `testConnection(): Promise<boolean>`
 
-Checks if the OpenCode CLI is available (always returns true in local mode).
+Test connection with the current provider.
+
+## 🏗️ Architecture
+
+The new provider system offers:
+
+- **Modular Design**: Each provider is a separate package
+- **Lazy Loading**: Providers are loaded only when needed
+- **Caching**: Provider instances are cached for performance
+- **Auto-Discovery**: External providers are automatically discovered
+- **Testing Support**: Comprehensive mocking and testing utilities
+- **Backward Compatibility**: Smooth migration from old executor system
 
 ## 🔥 Tips
 
-1. **Use small models for testing**: `github-copilot/gpt-5-mini` is faster and cheaper
-2. **Be specific**: Describe exactly what you want the task to do
-3. **Generous timeouts**: Complex tasks can take several minutes
-4. **Verify credentials**: The CLI needs access to at least one provider
+1. **Start with direct-api**: It's built-in and works out of the box
+2. **Install providers as needed**: Only install the providers you actually use
+3. **Use preloading**: Preload providers you use frequently for better performance
+4. **Leverage caching**: Provider instances are cached automatically
+5. **Test with mocks**: Use the testing utilities for reliable unit tests
 
 ## 📝 License
 

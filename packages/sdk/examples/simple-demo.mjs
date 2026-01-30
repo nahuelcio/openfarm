@@ -1,22 +1,20 @@
 #!/usr/bin/env node
 
 /**
- * OpenCode SDK Demo (ESM) - Standalone Mode
+ * OpenFarm SDK Demo (ESM) - New Provider System
  *
  * Usage: node packages/sdk/examples/simple-demo.mjs
  *
  * Prerequisites:
- * 1. Configure credentials (at least one):
- *    export ANTHROPIC_API_KEY="your-key"
- *    export COPILOT_TOKEN="your-token"
- *    export OPENROUTER_API_KEY="your-key"
- *    export ZAI_API_KEY="your-key"
- * 2. No server needed! CLI runs standalone
+ * 1. Install provider packages (optional):
+ *    npm install @openfarm/provider-opencode
+ *    npm install @openfarm/provider-aider
+ * 2. Configure credentials as needed for specific providers
  */
 
 import { existsSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
-import { OpenCodeExecutor } from "../dist/index.mjs";
+import { OpenFarm } from "../dist/index.mjs";
 
 // Configuration
 const CONFIG = {
@@ -25,45 +23,21 @@ const CONFIG = {
   tasks: [
     {
       name: "File Creation",
-      task: 'Create a file "greeting.txt" that says "Hello from OpenCode SDK!"',
-      model: "github-copilot/gpt-5-mini",
+      task: 'Create a file "greeting.txt" that says "Hello from OpenFarm SDK!"',
+      provider: "opencode",
     },
     {
       name: "JavaScript Function",
       task: 'Create a file "hello-function.js" with a function called greet(name) that returns "Hello, {name}!"',
-      model: "github-copilot/gpt-5-mini",
+      provider: "opencode",
     },
     {
       name: "JSON Configuration",
       task: 'Create a file "config.json" with sample app configuration including name, version, and features array',
-      model: "github-copilot/gpt-5-mini",
+      provider: "opencode",
     },
   ],
 };
-
-/**
- * Check which credentials are configured
- */
-function checkCredentials() {
-  const providers = [
-    { name: "Anthropic", key: "ANTHROPIC_API_KEY" },
-    { name: "GitHub Copilot", key: "COPILOT_TOKEN" },
-    { name: "OpenRouter", key: "OPENROUTER_API_KEY" },
-    { name: "ZAI", key: "ZAI_API_KEY" },
-  ];
-
-  const configured = providers.filter((p) => process.env[p.key]);
-
-  if (configured.length === 0) {
-    console.warn("\n⚠️  No credentials configured! Set at least one:");
-    providers.forEach((p) => {
-      console.warn(`   export ${p.key}="your-${p.name.toLowerCase()}-key"`);
-    });
-    console.warn("\n");
-  }
-
-  return configured;
-}
 
 /**
  * Format duration in human-readable format
@@ -98,59 +72,27 @@ async function cleanup() {
 /**
  * Execute a single task with real-time logging
  */
-async function runTask(executor, taskConfig, taskNumber) {
-  const { name, task, model } = taskConfig;
+async function runTask(openFarm, taskConfig, taskNumber) {
+  const { name, task, provider } = taskConfig;
   const totalTasks = CONFIG.tasks.length;
 
   console.log(`\n${"━".repeat(60)}`);
   console.log(`📋 Task ${taskNumber}/${totalTasks}: ${name}`);
-  console.log(`   Model: ${model}`);
+  console.log(`   Provider: ${provider}`);
   console.log(`   "${task}"`);
   console.log("━".repeat(60));
   console.log("");
 
   const startTime = Date.now();
 
-  const result = await executor.execute({
+  const result = await openFarm.execute({
     task,
-    model,
+    provider,
+    workspace: process.cwd(),
     onLog: (log) => {
       const lines = log.split("\n").filter((l) => l.trim());
       lines.forEach((line) => {
-        const prefix = line.startsWith("💬")
-          ? "   "
-          : line.startsWith("🧠")
-            ? "   "
-            : line.startsWith("🔧")
-              ? "   "
-              : line.startsWith("✅")
-                ? "   "
-                : line.startsWith("📝")
-                  ? "   "
-                  : line.startsWith("🔨")
-                    ? "   "
-                    : line.startsWith("📖")
-                      ? "   "
-                      : line.startsWith("💻")
-                        ? "   "
-                        : line.startsWith("🔍")
-                          ? "   "
-                          : line.startsWith("🔎")
-                            ? "   "
-                            : line.startsWith("📊")
-                              ? "   "
-                              : line.startsWith("▶️")
-                                ? "   "
-                                : line.startsWith("⚙️")
-                                  ? "   "
-                                  : line.startsWith("⏳")
-                                    ? "   "
-                                    : line.startsWith("❌")
-                                      ? "   "
-                                      : line.startsWith("📋")
-                                        ? "   "
-                                        : "   ";
-        console.log(`${prefix}${line}`);
+        console.log(`   ${line}`);
       });
     },
   });
@@ -166,7 +108,7 @@ async function runTask(executor, taskConfig, taskNumber) {
   console.log(`   Tokens:    ${result.tokens || 0}`);
 
   if (result.success) {
-    console.log("   Files:     Created/modified during execution");
+    console.log("   Output:    " + (result.output || "Task completed"));
   } else {
     console.log(`   Error:     ${result.error || "Unknown error"}`);
   }
@@ -180,29 +122,28 @@ async function runTask(executor, taskConfig, taskNumber) {
  * Main demo function
  */
 async function demo() {
-  console.log("\n🎯 OpenCode SDK - Interactive Demo (Standalone CLI)\n");
+  console.log("\n🎯 OpenFarm SDK - Interactive Demo (New Provider System)\n");
   console.log(`📂 Working directory: ${process.cwd()}`);
   console.log(`⏱️  Timeout per task: ${formatDuration(CONFIG.timeout)}`);
 
-  // Check credentials
-  const configuredProviders = checkCredentials();
-  if (configuredProviders.length > 0) {
-    console.log(
-      `✅ Configured providers: ${configuredProviders.map((p) => p.name).join(", ")}`
-    );
-  }
-
   console.log(`\n${"━".repeat(60)}`);
-  console.log("🚀 INITIALIZING EXECUTOR");
+  console.log("🚀 INITIALIZING OPENFARM");
   console.log("━".repeat(60));
 
-  // Create executor with local mode (standalone CLI)
-  const executor = new OpenCodeExecutor({
-    mode: "local",
+  // Create OpenFarm instance with new provider system
+  const openFarm = new OpenFarm({
+    defaultProvider: "opencode",
     timeout: CONFIG.timeout,
   });
 
-  console.log("✅ Executor ready (standalone mode - no server required)");
+  // Show available providers
+  const providers = await openFarm.getAvailableProviders();
+  console.log(`✅ Available providers: ${providers.join(", ")}`);
+  
+  // Show registry stats
+  const stats = await openFarm.getRegistryStats();
+  console.log(`📊 Registry stats: ${stats.totalProviders} total, ${stats.loadedProviders} loaded`);
+  
   console.log("━".repeat(60));
 
   // Run all tasks
@@ -211,7 +152,7 @@ async function demo() {
   let totalDuration = 0;
 
   for (let i = 0; i < CONFIG.tasks.length; i++) {
-    const result = await runTask(executor, CONFIG.tasks[i], i + 1);
+    const result = await runTask(openFarm, CONFIG.tasks[i], i + 1);
     results.push(result);
     totalTokens += result.tokens;
     totalDuration += result.duration;
@@ -239,8 +180,9 @@ async function demo() {
   );
   console.log("   • Check the docs: packages/sdk/examples/README.md");
   console.log(
-    '   • Build your own: import { OpenCodeExecutor } from "@openfarm/sdk"'
+    '   • Build your own: import { OpenFarm } from "@openfarm/sdk"'
   );
+  console.log("   • Install more providers: npm install @openfarm/provider-opencode");
   console.log("");
 }
 

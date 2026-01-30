@@ -124,18 +124,64 @@ export async function createWorktree(
 
     await gitExec(args, { cwd: repoPath });
 
+    // Small delay to ensure git has updated its state
+    await new Promise(resolve => setTimeout(resolve, 100));
+
     // Verify the worktree was created
     const worktreesResult = await listWorktrees(repoPath, { includeStale: true }, gitExec);
     if (!worktreesResult.ok) {
       return err(worktreesResult.error);
     }
 
+    // Normalize paths for comparison (resolve symlinks, normalize separators)
+    const { resolve } = await import("node:path");
+    const { realpathSync } = await import("node:fs");
+    
+    let normalizedPath: string;
+    try {
+      normalizedPath = realpathSync(options.path);
+    } catch {
+      // If realpath fails, use resolve as fallback
+      normalizedPath = resolve(options.path);
+    }
+    
+    logger.info({ normalizedPath, expectedPath: options.path }, "Looking for worktree");
+    
     const createdWorktree = worktreesResult.value.find(
-      (wt) => wt.path === options.path
+      (wt) => {
+        try {
+          const normalizedWorktreePath = realpathSync(wt.path);
+          const match = normalizedWorktreePath === normalizedPath;
+          logger.info({ 
+            worktreePath: wt.path, 
+            normalizedWorktreePath, 
+            normalizedPath, 
+            match 
+          }, "Comparing worktree path");
+          return match;
+        } catch {
+          // Fallback to resolve if realpath fails
+          try {
+            const resolvedWorktreePath = resolve(wt.path);
+            const resolvedExpectedPath = resolve(options.path);
+            return resolvedWorktreePath === resolvedExpectedPath;
+          } catch {
+            return wt.path === options.path;
+          }
+        }
+      }
     );
 
     if (!createdWorktree) {
-      return err(new Error("Worktree was not created successfully"));
+      // Log available worktrees for debugging
+      const availablePaths = worktreesResult.value.map(wt => {
+        try {
+          return `${wt.path} (real: ${realpathSync(wt.path)})`;
+        } catch {
+          return wt.path;
+        }
+      }).join(', ');
+      return err(new Error(`Worktree was not created successfully. Expected: ${normalizedPath}, Available: [${availablePaths}]`));
     }
 
     logger.info(

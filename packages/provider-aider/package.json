@@ -1,0 +1,51 @@
+{
+  "name": "@openfarm/provider-aider",
+  "version": "0.1.0",
+  "description": "Aider provider for OpenFarm - AI pair programming with your codebase",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest",
+    "test:run": "vitest --run",
+    "type-check": "tsc --noEmit",
+    "lint": "biome check .",
+    "lint:fix": "biome check . --fix"
+  },
+  "keywords": [
+    "openfarm",
+    "provider",
+    "aider",
+    "ai",
+    "pair-programming",
+    "coding"
+  ],
+  "author": "OpenFarm Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/openfarm-ai/openfarm.git",
+    "directory": "packages/provider-aider"
+  },
+  "dependencies": {
+    "@openfarm/sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.0.0"
+  },
+  "peerDependencies": {
+    "@openfarm/sdk": "workspace:*"
+  }
+}

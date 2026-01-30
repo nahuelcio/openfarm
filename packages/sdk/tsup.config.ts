@@ -27,6 +27,7 @@ export default defineConfig([
 			"@openfarm/git-adapter",
 			"@openfarm/github-adapter",
 			"@openfarm/azure-adapter",
+			"@openfarm/context",
 		],
 		// Keep external npm dependencies external
 		external: [
@@ -37,6 +38,10 @@ export default defineConfig([
 			"zod",
 			"js-yaml",
 			"ai",
+			// External providers are optional and loaded dynamically
+			"@openfarm/provider-opencode",
+			"@openfarm/provider-aider",
+			"@openfarm/provider-claude",
 		],
 		outDir: "dist",
 		target: "node18",
@@ -64,6 +69,7 @@ export default defineConfig([
 			"@openfarm/git-adapter",
 			"@openfarm/github-adapter",
 			"@openfarm/azure-adapter",
+			"@openfarm/context",
 		],
 		external: [
 			"better-sqlite3",
@@ -73,6 +79,10 @@ export default defineConfig([
 			"zod",
 			"js-yaml",
 			"ai",
+			// External providers are optional and loaded dynamically
+			"@openfarm/provider-opencode",
+			"@openfarm/provider-aider",
+			"@openfarm/provider-claude",
 		],
 		outDir: "dist",
 		target: "node18",

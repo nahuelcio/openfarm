@@ -84,14 +84,11 @@ export function WorkflowList() {
     } catch (e) {
       const errorMsg = e instanceof Error ? e.message : String(e);
       
-      // If it's an I/O error and first attempt, try resetting the DB
       if (attempt === 0 && errorMsg.includes("I/O error")) {
         setMessage("DB error, resetting...");
         const reset = await resetDatabase();
         if (reset) {
-          // Force re-initialization of DB singleton
           process.env.DB_PATH = process.env.DB_PATH || "db.db";
-          // Retry once
           return loadWorkflows(attempt + 1);
         }
       }
@@ -115,16 +112,21 @@ export function WorkflowList() {
       setSelectedIndex((i) => Math.max(0, i - 1));
     } else if (key.downArrow) {
       setSelectedIndex((i) => Math.min(workflows.length - 1, i + 1));
-    } else if (key.return && workflows[selectedIndex]) {
-      setCurrentWorkflow(workflows[selectedIndex]);
-      setScreen("workflow-editor");
+    } else if (key.return) {
+      const selected = workflows[selectedIndex];
+      if (selected) {
+        setCurrentWorkflow(selected);
+        setScreen("workflow-editor");
+      } else {
+        setMessage("No workflow selected");
+        setTimeout(() => setMessage(null), 2000);
+      }
     }
 
     if (input === "r" || input === "R") {
       loadWorkflows();
     }
 
-    // Import from YAML files
     if (input === "i" || input === "I") {
       const importWorkflows = async () => {
         try {
@@ -157,7 +159,6 @@ export function WorkflowList() {
       importWorkflows();
     }
 
-    // Reset database
     if (input === "x" || input === "X") {
       const doReset = async () => {
         setMessage("Resetting DB...");
@@ -170,6 +171,9 @@ export function WorkflowList() {
     }
   });
 
+  // Validar índice
+  const safeIndex = selectedIndex >= workflows.length ? 0 : selectedIndex;
+
   return (
     <Box flexDirection="column" gap={1}>
       <Box flexDirection="row" justifyContent="space-between">
@@ -177,9 +181,7 @@ export function WorkflowList() {
           Workflows
         </Text>
         <Box flexDirection="row" gap={2}>
-          {message && (
-            <Text color="yellow">{message}</Text>
-          )}
+          {message && <Text color="yellow">{message}</Text>}
           <Text color="gray">{workflows.length} found</Text>
         </Box>
       </Box>
@@ -195,32 +197,24 @@ export function WorkflowList() {
       ) : workflows.length === 0 ? (
         <Box flexDirection="column" gap={1}>
           <Text color="yellow">No workflows found in database</Text>
-          <Text color="gray" dimColor>
-            Press I to import from YAML files
-          </Text>
-          <Text color="gray" dimColor>
-            or R to retry loading
-          </Text>
+          <Text color="gray" dimColor>Press I to import from YAML</Text>
         </Box>
       ) : (
         <Box flexDirection="column" gap={0}>
           {workflows.map((workflow, index) => (
             <Box
               key={workflow.id}
-              borderColor={index === selectedIndex ? "cyan" : undefined}
-              borderStyle={index === selectedIndex ? "single" : undefined}
+              borderColor={index === safeIndex ? "cyan" : undefined}
+              borderStyle={index === safeIndex ? "single" : undefined}
               flexDirection="row"
               gap={1}
               padding={1}
             >
-              <Text color={index === selectedIndex ? "yellow" : "gray"}>
-                {index === selectedIndex ? ">" : " "}
+              <Text color={index === safeIndex ? "yellow" : "gray"}>
+                {index === safeIndex ? ">" : " "}
               </Text>
               <Box flexDirection="column" gap={0}>
-                <Text
-                  bold={index === selectedIndex}
-                  color={index === selectedIndex ? "white" : "gray"}
-                >
+                <Text bold={index === safeIndex} color={index === safeIndex ? "white" : "gray"}>
                   {workflow.name || workflow.id}
                 </Text>
                 {workflow.description && (
@@ -232,7 +226,6 @@ export function WorkflowList() {
                 )}
                 <Text color="gray" dimColor>
                   ID: {workflow.id} • {workflow.steps?.length || 0} steps
-                  {workflow.extends ? ` • extends: ${workflow.extends}` : ""}
                 </Text>
               </Box>
             </Box>

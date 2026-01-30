@@ -29,6 +29,15 @@ export const GitPushSchema = z.object({}).optional();
 
 export type GitPushConfig = z.infer<typeof GitPushSchema>;
 
+export const GitWorktreeSchema = z.object({
+  operation: z.enum(["create", "remove"]),
+  path: z.string().optional(), // Auto-generated if not provided
+  branch: z.string().optional(), // Required for create
+  baseBranch: z.string().optional(), // Base for new branch
+});
+
+export type GitWorktreeConfig = z.infer<typeof GitWorktreeSchema>;
+
 // Agent actions
 export const AgentCodeSchema = z.object({
   prompt: z.string().optional(),
@@ -165,6 +174,7 @@ const actionSchemas: Record<string, z.ZodTypeAny> = {
   [StepAction.GIT_BRANCH]: GitBranchSchema,
   [StepAction.GIT_COMMIT]: GitCommitSchema,
   [StepAction.GIT_PUSH]: GitPushSchema || z.object({}),
+  [StepAction.GIT_WORKTREE]: GitWorktreeSchema,
 
   // Agent
   [StepAction.AGENT_CODE]: AgentCodeSchema,
@@ -200,6 +210,7 @@ export interface ActionConfigMap {
   [StepAction.GIT_BRANCH]: GitBranchConfig;
   [StepAction.GIT_COMMIT]: GitCommitConfig;
   [StepAction.GIT_PUSH]: GitPushConfig;
+  [StepAction.GIT_WORKTREE]: GitWorktreeConfig;
   [StepAction.AGENT_CODE]: AgentCodeConfig;
   [StepAction.AGENT_IMPLEMENT]: AgentImplementConfig;
   [StepAction.AGENT_AUTHOR]: AgentAuthorConfig;

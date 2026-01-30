@@ -47,17 +47,23 @@ async function buildPossiblePaths(fileSystem: FileSystem): Promise<string[]> {
   const { join, resolve } = await import("node:path");
   const possiblePaths: string[] = [];
 
-  // Docker-specific paths FIRST (highest priority when running in container)
+  // Add the correct path for the current project structure FIRST (highest priority)
+  const cwd = fileSystem.cwd();
+  possiblePaths.push(join(cwd, "../core/workflows"));
+  possiblePaths.push(join(cwd, "../../packages/core/workflows"));
+  possiblePaths.push(join(cwd, "../../../packages/core/workflows"));
+  
+  // Docker-specific paths
   possiblePaths.push("/app/packages/core/workflows");
   possiblePaths.push(join("/app", "packages", "core", "workflows"));
 
   if (typeof __dirname !== "undefined") {
     possiblePaths.push(join(__dirname, "../workflows"));
     possiblePaths.push(join(__dirname, "../../workflows"));
+    possiblePaths.push(join(__dirname, "../../../workflows")); // Add this path
     possiblePaths.push(join(__dirname, "../../../packages/core/workflows"));
   }
 
-  const cwd = fileSystem.cwd();
   possiblePaths.push(join(cwd, "packages", "core", "workflows"));
   possiblePaths.push(join(cwd, "..", "packages", "core", "workflows"));
   possiblePaths.push(join(cwd, "../..", "packages", "core", "workflows"));

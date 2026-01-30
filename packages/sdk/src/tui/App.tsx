@@ -1,4 +1,6 @@
 import { Box } from "ink";
+import { ContextScreen } from "./screens/Context";
+import { ContextConfigScreen } from "./screens/ContextConfig";
 import { Dashboard } from "./screens/Dashboard";
 import { Execute } from "./screens/Execute";
 import { History } from "./screens/History";
@@ -18,6 +20,8 @@ export function App() {
       {screen === "history" && <History />}
       {screen === "workflows" && <WorkflowList />}
       {screen === "workflow-editor" && <WorkflowEditor />}
+      {screen === "context-config" && <ContextConfigScreen />}
+      {screen === "context" && <ContextScreen />}
     </Box>
   );
 }

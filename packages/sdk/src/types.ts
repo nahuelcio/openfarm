@@ -1,11 +1,3 @@
-export type ExecutorType = "opencode" | "aider" | "claude-code" | "direct-api";
-
-export interface Executor {
-  type: ExecutorType;
-  execute(options: ExecutionOptions): Promise<ExecutionResult>;
-  testConnection(): Promise<boolean>;
-}
-
 export interface OpenFarmConfig {
   apiUrl?: string;
   apiKey?: string;

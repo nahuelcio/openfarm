@@ -11,6 +11,8 @@ export function Dashboard() {
       setScreen("history");
     } else if (input === "3" || (key.ctrl && input === "w")) {
       setScreen("workflows");
+    } else if (input === "4") {
+      setScreen("context-config");
     } else if (key.ctrl && input === "q") {
       process.exit(0);
     }
@@ -60,6 +62,10 @@ export function Dashboard() {
       </Text>
       <Text>
         {" "}
+        <Text color="cyan">4</Text> - Generate Context
+      </Text>
+      <Text>
+        {" "}
         <Text color="cyan">Ctrl+Q</Text> - Quit
       </Text>
 
@@ -71,7 +77,7 @@ export function Dashboard() {
         <Text color="gray">No executions yet. Press 1 to start.</Text>
       ) : (
         executions.slice(0, 5).map((e) => (
-          <Box key={e.id} flexDirection="row" gap={2}>
+          <Box flexDirection="row" gap={2} key={e.id}>
             <Text color={getStatusColor(e.status)}>
               {getStatusIcon(e.status)}
             </Text>
