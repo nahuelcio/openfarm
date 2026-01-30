@@ -128,46 +128,54 @@ class TestProvider extends BaseProvider {
 
 describe("Property 3: Base Provider Inheritance", () => {
   it("should inherit common execution behavior from BaseProvider", async () => {
-    await fc.assert(
-      fc.asyncProperty(
-        fc
-          .string({ minLength: 1, maxLength: 20 })
-          .filter((s) => /^[a-zA-Z0-9_-]+$/.test(s)),
-        fc.string({ minLength: 1, maxLength: 20 }),
-        fc.boolean(),
-        async (type, name, strategySuccess) => {
-          // Arrange
-          const strategy = new MockCommunicationStrategy(strategySuccess);
-          const parser = new MockResponseParser();
-          const configManager = new MockConfigurationManager();
+    // Mock console.error to avoid stderr noise in test output
+    const originalConsoleError = console.error;
+    console.error = () => {};
 
-          const provider = new TestProvider(
-            type,
-            name,
-            strategy,
-            parser,
-            configManager
-          );
+    try {
+      await fc.assert(
+        fc.asyncProperty(
+          fc
+            .string({ minLength: 1, maxLength: 20 })
+            .filter((s) => /^[a-zA-Z0-9_-]+$/.test(s)),
+          fc.string({ minLength: 1, maxLength: 20 }),
+          fc.boolean(),
+          async (type, name, strategySuccess) => {
+            // Arrange
+            const strategy = new MockCommunicationStrategy(strategySuccess);
+            const parser = new MockResponseParser();
+            const configManager = new MockConfigurationManager();
 
-          // Act
-          const result = await provider.execute({ task: "test-task" });
+            const provider = new TestProvider(
+              type,
+              name,
+              strategy,
+              parser,
+              configManager
+            );
 
-          // Assert - All providers follow the same execution pattern
-          expect(result).toBeDefined();
-          expect(typeof result.success).toBe("boolean");
-          expect(typeof result.duration).toBe("number");
+            // Act
+            const result = await provider.execute({ task: "test-task" });
 
-          if (strategySuccess) {
-            expect(result.success).toBe(true);
-            expect(result.output).toContain("Result:");
-          } else {
-            expect(result.success).toBe(false);
-            expect(result.error).toBeDefined();
+            // Assert - All providers follow the same execution pattern
+            expect(result).toBeDefined();
+            expect(typeof result.success).toBe("boolean");
+            expect(typeof result.duration).toBe("number");
+
+            if (strategySuccess) {
+              expect(result.success).toBe(true);
+              expect(result.output).toContain("Result:");
+            } else {
+              expect(result.success).toBe(false);
+              expect(result.error).toBeDefined();
+            }
           }
-        }
-      ),
-      { numRuns: 50 }
-    );
+        ),
+        { numRuns: 50 }
+      );
+    } finally {
+      console.error = originalConsoleError;
+    }
   });
 
   it("should delegate testConnection to communication strategy", async () => {
