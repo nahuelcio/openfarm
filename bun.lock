@@ -226,6 +226,7 @@
       },
       "dependencies": {
         "@openfarm/agent-runner": "workspace:*",
+        "@openfarm/context": "workspace:*",
         "@openfarm/core": "workspace:*",
         "@openfarm/git-worktree": "workspace:*",
         "@openfarm/workflow-engine": "workspace:*",
@@ -245,7 +246,9 @@
         "zustand": "^5.0.10",
       },
       "devDependencies": {
-        "@openfarm/context": "workspace:*",
+        "@openfarm/provider-aider": "workspace:*",
+        "@openfarm/provider-claude": "workspace:*",
+        "@openfarm/provider-opencode": "workspace:*",
         "@types/better-sqlite3": "^7.6.13",
         "@types/ink-select-input": "^3.0.5",
         "@types/ink-text-input": "^2.0.5",

@@ -33,10 +33,11 @@
     "tui:cli": "bun run src/cli.ts --cli"
   },
   "dependencies": {
+    "@openfarm/agent-runner": "workspace:*",
+    "@openfarm/context": "workspace:*",
+    "@openfarm/core": "workspace:*",
     "@openfarm/git-worktree": "workspace:*",
     "@openfarm/workflow-engine": "workspace:*",
-    "@openfarm/core": "workspace:*",
-    "@openfarm/agent-runner": "workspace:*",
     "ai": "^4.0.0",
     "better-sqlite3": "^12.6.2",
     "chalk": "4.1.2",
@@ -53,7 +54,6 @@
     "zustand": "^5.0.10"
   },
   "devDependencies": {
-    "@openfarm/context": "workspace:*",
     "@types/better-sqlite3": "^7.6.13",
     "@types/ink-select-input": "^3.0.5",
     "@types/ink-text-input": "^2.0.5",
