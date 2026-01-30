@@ -12,7 +12,8 @@
     "lint:fix": "ultracite check --fix",
     "type-check": "turbo run type-check",
     "test": "turbo run test",
-    "clean": "turbo run clean && rm -rf node_modules"
+    "clean": "turbo run clean && rm -rf node_modules",
+    "prepare": "lefthook install"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.31",
@@ -35,6 +36,7 @@
     "@types/uuid": "^10.0.0",
     "jest": "^30.2.0",
     "js-yaml": "^4.1.1",
+    "lefthook": "^2.0.16",
     "react": "^19.2.4",
     "ts-jest": "^29.4.6",
     "turbo": "^2.4.1",

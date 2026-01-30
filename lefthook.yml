@@ -1,0 +1,28 @@
+# Lefthook configuration
+# Docs: https://github.com/evilmartians/lefthook/blob/master/docs/configuration.md
+
+# Pre-push hooks - same validations as CI
+pre-push:
+  parallel: false
+  commands:
+    lint:
+      run: bun run lint
+      tags: [lint, style]
+    type-check:
+      run: bun run type-check
+      tags: [types, typescript]
+    test:
+      run: bun run test
+      tags: [test]
+    build:
+      run: bun run build
+      tags: [build]
+
+# Pre-commit hooks - quick checks
+pre-commit:
+  parallel: true
+  commands:
+    format:
+      glob: "*.{ts,tsx,js,jsx,json,md,yml,yaml}"
+      run: bunx biome format --write {staged_files}
+      tags: [format]
