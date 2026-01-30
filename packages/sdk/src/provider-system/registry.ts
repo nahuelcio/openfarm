@@ -479,6 +479,7 @@ export class ProviderRegistry implements IProviderRegistry {
         ],
         loader: async () => {
           try {
+            
             const mod = await import("@openfarm/provider-opencode");
             return (mod as any).OpenCodeProviderFactory;
           } catch (e) {
@@ -504,6 +505,7 @@ export class ProviderRegistry implements IProviderRegistry {
         ],
         loader: async () => {
           try {
+            
             const mod = await import("@openfarm/provider-aider");
             return (mod as any).AiderProviderFactory;
           } catch (e) {
@@ -531,6 +533,7 @@ export class ProviderRegistry implements IProviderRegistry {
         ],
         loader: async () => {
           try {
+            
             const mod = await import("@openfarm/provider-claude");
             return (mod as any).ClaudeProviderFactory;
           } catch (e) {

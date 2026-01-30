@@ -28,8 +28,8 @@ export class OpenCodeProvider implements Provider {
     config: OpenCodeConfig = {}
   ) {
     this.communicationStrategy = communicationStrategy;
-    this.responseParser = responseParser;
     this.configManager = configManager;
+    // Note: responseParser parameter is kept for API compatibility with Provider interface
 
     this.config = {
       mode: "local",
@@ -83,20 +83,20 @@ export class OpenCodeProvider implements Provider {
       }
       log("✅ OpenCode ready\n");
 
-      const args = this.buildCliArgs(options, verbose);
+      const args = this.buildCliArgs(options, verbose ?? false);
       log(`🚀 Starting: opencode ${args.join(" ")}\n⏳ Executing...\n`);
 
       const request: CommunicationRequest = {
         args,
         workingDirectory: options.workspace || process.cwd(),
         env: { ...process.env, COLUMNS: "200" },
-        timeout: options.timeout || this.config.timeout,
+        timeout: this.config.timeout,
       };
 
       const response = await this.communicationStrategy.execute(request);
 
       // Always parse output to extract error messages
-      const result = this.parseOutput(response.body, verbose, log);
+      const result = this.parseOutput(response.body, verbose ?? false, log);
 
       // Determine success based on both CLI response and parsed errors
       const hasErrors = result.hasErrors || !response.success;

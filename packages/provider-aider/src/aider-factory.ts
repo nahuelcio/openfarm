@@ -7,7 +7,7 @@ import type {
 } from "@openfarm/sdk";
 import {
   CliCommunicationStrategy,
-  createProviderConfigManager,
+  ConfigManagers,
   StreamResponseParser,
 } from "@openfarm/sdk";
 import { AiderProvider } from "./aider-provider";
@@ -131,7 +131,7 @@ export class AiderProviderFactory implements ProviderFactory {
   private createConfigurationManager(config: {
     timeout: number;
   }): ConfigurationManager {
-    return createProviderConfigManager(AiderConfigSchema, {
+    return ConfigManagers.cli("aider", {
       timeout: config.timeout,
     });
   }

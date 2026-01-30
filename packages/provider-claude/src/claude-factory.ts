@@ -7,7 +7,7 @@ import type {
 } from "@openfarm/sdk";
 import {
   CliCommunicationStrategy,
-  createProviderConfigManager,
+  ConfigManagers,
   StreamResponseParser,
 } from "@openfarm/sdk";
 import { ClaudeProvider } from "./claude-provider";
@@ -133,7 +133,7 @@ export class ClaudeProviderFactory implements ProviderFactory {
   private createConfigurationManager(config: {
     timeout: number;
   }): ConfigurationManager {
-    return createProviderConfigManager(ClaudeConfigSchema, {
+    return ConfigManagers.cli("claude", {
       timeout: config.timeout,
     });
   }

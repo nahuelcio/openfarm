@@ -1,10 +1,27 @@
-import type { ProviderResponse, ResponseParser } from "@openfarm/sdk";
+import type { CommunicationResponse, ResponseParser } from "@openfarm/sdk";
 import type { OpenCodeEvent, OpenCodeExecutionState } from "./types";
 
-export class OpenCodeResponseParser implements ResponseParser {
-  parse(response: string, context?: Record<string, unknown>): ProviderResponse {
-    const verbose = context?.verbose === true;
-    const onLog = context?.onLog as ((msg: string) => void) | undefined;
+export interface OpenCodeParseResult {
+  success: boolean;
+  data?: string;
+  error?: string;
+  metadata?: {
+    tokens: number;
+    files: {
+      modified: string[];
+      created: string[];
+    };
+    output?: string;
+  };
+}
+
+export class OpenCodeResponseParser
+  implements ResponseParser<OpenCodeParseResult>
+{
+  readonly type = "opencode";
+
+  async parse(response: CommunicationResponse): Promise<OpenCodeParseResult> {
+    const body = response.body;
 
     const state: OpenCodeExecutionState = {
       outputText: "",
@@ -14,24 +31,34 @@ export class OpenCodeResponseParser implements ResponseParser {
     };
 
     // Handle streaming JSON events from CLI mode
-    if (this.isStreamingResponse(response)) {
-      return this.parseStreamingResponse(response, state, verbose, onLog);
+    if (this.isStreamingResponse(body)) {
+      return this.parseStreamingResponse(body, state);
     }
 
     // Handle HTTP API response
-    if (this.isHttpResponse(response)) {
-      return this.parseHttpResponse(response);
+    if (this.isHttpResponse(body)) {
+      return this.parseHttpResponse(body);
     }
 
     // Fallback for plain text
     return {
       success: true,
-      data: response,
+      data: body,
       metadata: {
         tokens: 0,
         files: { modified: [], created: [] },
       },
     };
+  }
+
+  canHandle(response: CommunicationResponse): boolean {
+    // Can handle JSON responses or text responses
+    const body = response.body;
+    return (
+      this.isStreamingResponse(body) ||
+      this.isHttpResponse(body) ||
+      typeof body === "string"
+    );
   }
 
   private isStreamingResponse(response: string): boolean {
@@ -57,22 +84,16 @@ export class OpenCodeResponseParser implements ResponseParser {
 
   private parseStreamingResponse(
     response: string,
-    state: OpenCodeExecutionState,
-    verbose: boolean,
-    onLog?: (msg: string) => void
-  ): ProviderResponse {
+    state: OpenCodeExecutionState
+  ): OpenCodeParseResult {
     const lines = response.split("\n").filter((line) => line.trim());
 
     for (const line of lines) {
       try {
         const event: OpenCodeEvent = JSON.parse(line);
-        this.handleEvent(event, state, verbose, onLog);
+        this.handleEvent(event, state);
       } catch {
         // Non-JSON line, treat as regular output
-        if (onLog) {
-          const display = line.length > 56 ? `${line.slice(0, 53)}...` : line;
-          onLog(display);
-        }
       }
     }
 
@@ -94,7 +115,7 @@ export class OpenCodeResponseParser implements ResponseParser {
     };
   }
 
-  private parseHttpResponse(response: string): ProviderResponse {
+  private parseHttpResponse(response: string): OpenCodeParseResult {
     try {
       const data = JSON.parse(response);
 
@@ -118,6 +139,7 @@ export class OpenCodeResponseParser implements ResponseParser {
         data: JSON.stringify(data, null, 2),
         metadata: {
           tokens: data.usage?.total_tokens || 0,
+          files: { modified: [], created: [] },
         },
       };
     } catch (error) {
@@ -130,9 +152,7 @@ export class OpenCodeResponseParser implements ResponseParser {
 
   private handleEvent(
     event: OpenCodeEvent,
-    state: OpenCodeExecutionState,
-    verbose: boolean,
-    onLog?: (msg: string) => void
+    state: OpenCodeExecutionState
   ): void {
     const { type, part } = event;
 
@@ -140,96 +160,43 @@ export class OpenCodeResponseParser implements ResponseParser {
       case "text":
         if (part?.text) {
           state.outputText += part.text;
-          if (onLog) {
-            const lines = part.text.split("\n");
-            for (const line of lines) {
-              const display = verbose ? line : line.slice(0, 56);
-              onLog(
-                `💬 ${display}${!verbose && line.length > 56 ? "..." : ""}`
-              );
-            }
-          }
         }
         break;
 
       case "thinking":
       case "reasoning": {
         const text = part?.text || event.text;
-        if (text && onLog) {
-          const display = verbose ? text : text.slice(0, 56);
-          onLog(`🧠 ${display}${!verbose && text.length > 56 ? "..." : ""}`);
+        if (text) {
+          state.outputText += text;
         }
         break;
       }
 
       case "tool_use":
-        this.handleToolUse(
-          part,
-          verbose,
-          onLog,
-          state.modifiedFiles,
-          state.createdFiles
-        );
-        break;
-
-      case "step_start":
-        if (onLog) {
-          onLog(
-            verbose
-              ? `▶️  STEP START: ${event.name || "unnamed step"}`
-              : "▶️  Starting step..."
-          );
-        }
+        this.handleToolUse(part, state.modifiedFiles, state.createdFiles);
         break;
 
       case "step_finish":
         if (part?.usage) {
           state.totalTokens = part.usage.total_tokens || 0;
-          if (onLog) {
-            if (verbose) {
-              onLog(
-                `📊 STEP FINISH - Tokens: ${part.usage.total_tokens} (input: ${part.usage.input_tokens}, output: ${part.usage.output_tokens})`
-              );
-            } else {
-              onLog(`📊 Tokens: ${part.usage.total_tokens}`);
-            }
-          }
         }
         break;
 
       case "error":
-        if (onLog) {
-          onLog(`❌ Error: ${event.message || event.error || "Unknown error"}`);
-        }
-        break;
-
-      case "system":
-        if (event.message && onLog) {
-          onLog(`⚙️  ${event.message}`);
-        }
-        break;
-
-      case "progress":
-        if (event.message && onLog) {
-          onLog(`⏳ ${event.message}`);
-        }
+        // Error events are handled at a higher level
         break;
 
       default:
-        if (event.message && onLog) {
-          onLog(`📋 ${event.message}`);
-        }
+      // Other event types
     }
   }
 
   private handleToolUse(
     part: any,
-    verbose: boolean,
-    onLog: ((msg: string) => void) | undefined,
     modifiedFiles: Set<string>,
     createdFiles: Set<string>
   ): void {
-    if (!(part && onLog)) {
+    if (!part) {
       return;
     }
 
@@ -237,53 +204,13 @@ export class OpenCodeResponseParser implements ResponseParser {
     const status = part.state?.status;
     const input = part.state?.input;
 
-    const toolLogs: Record<string, string> = {
-      edit: `📝 Editing: ${input?.filePath}`,
-      write: `🔨 Writing: ${input?.filePath}`,
-      read: `📖 Reading: ${input?.filePath}`,
-      bash: `💻 $ ${input?.command || ""}`,
-      glob: `🔍 Searching: ${input?.pattern}`,
-      grep: `🔎 Grepping: ${input?.pattern}`,
-    };
-
-    const completionLogs: Record<string, string> = {
-      edit: `✅ Edited: ${input?.filePath}`,
-      write: `✅ Created: ${input?.filePath}`,
-      read: `✅ Read: ${input?.filePath}`,
-      bash: "✅ Command completed",
-      glob: "✅ Search completed",
-      grep: "✅ Search completed",
-    };
-
-    if (status === "pending" || status === "running") {
-      if (toolLogs[toolName]) {
-        onLog(toolLogs[toolName]);
-      } else if (verbose) {
-        onLog(
-          `🔧 TOOL: ${toolName} (${status})\n   Input: ${JSON.stringify(input || {}, null, 2)}`
-        );
-      } else {
-        onLog(`🔧 Using ${toolName}...`);
+    if (status === "completed") {
+      if (toolName === "edit" && input?.filePath) {
+        modifiedFiles.add(input.filePath);
       }
-    } else if (status === "completed") {
-      if (completionLogs[toolName]) {
-        onLog(completionLogs[toolName]);
-        if (toolName === "edit" && input?.filePath) {
-          modifiedFiles.add(input.filePath);
-        }
-        if (toolName === "write" && input?.filePath) {
-          createdFiles.add(input.filePath);
-        }
-      } else if (verbose) {
-        onLog(`✅ TOOL COMPLETED: ${toolName}`);
-        if (part.state?.output) {
-          onLog(`   Output: ${JSON.stringify(part.state.output, null, 2)}`);
-        }
-      } else {
-        onLog(`✅ ${toolName} completed`);
+      if (toolName === "write" && input?.filePath) {
+        createdFiles.add(input.filePath);
       }
-    } else if (status === "failed") {
-      onLog(`❌ ${toolName} failed: ${part.state?.error || "Unknown error"}`);
     }
   }
 
