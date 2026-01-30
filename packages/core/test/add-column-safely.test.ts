@@ -24,7 +24,9 @@ describe("addColumnSafely", () => {
 
   it("should skip if column already exists", async () => {
     const mockDb = {
-      exec: vi.fn().mockRejectedValue(new Error("duplicate column name: new_column")),
+      exec: vi
+        .fn()
+        .mockRejectedValue(new Error("duplicate column name: new_column")),
     };
 
     // Should not throw when column already exists
@@ -35,7 +37,9 @@ describe("addColumnSafely", () => {
 
   it("should handle duplicate column error gracefully", async () => {
     const mockDb = {
-      exec: vi.fn().mockRejectedValue(new Error("duplicate column name: new_column")),
+      exec: vi
+        .fn()
+        .mockRejectedValue(new Error("duplicate column name: new_column")),
     };
 
     // Should not throw for duplicate column errors (they are handled gracefully)

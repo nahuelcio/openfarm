@@ -40,7 +40,7 @@ describe("CliCommunicationStrategy", () => {
 
     // Initialize mockSpawn
     mockSpawn = spawn as unknown as ReturnType<typeof vi.fn>;
-    
+
     // Reset mocks
     mockSpawn.mockClear();
 

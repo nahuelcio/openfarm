@@ -31,7 +31,9 @@ describe("schema-migrations", () => {
 
     it("should handle duplicate column error gracefully", async () => {
       const mockDb = {
-        exec: vi.fn().mockRejectedValue(new Error("duplicate column name: new_column")),
+        exec: vi
+          .fn()
+          .mockRejectedValue(new Error("duplicate column name: new_column")),
       };
 
       // Should not throw when column already exists (handled gracefully)
@@ -42,7 +44,9 @@ describe("schema-migrations", () => {
 
     it("should handle unknown database errors", async () => {
       const mockDb = {
-        exec: vi.fn().mockRejectedValue(new Error("database connection failed")),
+        exec: vi
+          .fn()
+          .mockRejectedValue(new Error("database connection failed")),
       };
 
       await expect(

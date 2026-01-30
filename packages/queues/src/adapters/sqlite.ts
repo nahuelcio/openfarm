@@ -2,8 +2,8 @@
 // Version: 1.0.0
 // License: MIT
 
-import Database from "better-sqlite3";
 import { err, ok, type Result } from "@openfarm/result";
+import Database from "better-sqlite3";
 import type { QueueAdapter, QueueJobOptions, QueueJobResult } from "../types";
 
 // SQLite configuration constants

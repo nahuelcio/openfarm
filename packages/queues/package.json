@@ -16,7 +16,8 @@
   },
   "dependencies": {
     "@openfarm/result": "workspace:*",
-    "@openfarm/core": "workspace:*"
+    "@openfarm/core": "workspace:*",
+    "inngest": "^3.0.0"
   },
   "devDependencies": {
     "@types/node": "^25.0.0",

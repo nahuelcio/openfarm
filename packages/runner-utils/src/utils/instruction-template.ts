@@ -1,6 +1,6 @@
-import type { WorkflowStep } from "@openfarm/core/types";
 // @ts-expect-error - TODO: Move AgentCodeConfig to a shared package
 import type { AgentCodeConfig } from "@openfarm/agent-runner/engines/workflow/executors/validation";
+import type { WorkflowStep } from "@openfarm/core/types";
 
 export interface WorkItemTemplateData {
   title: string;

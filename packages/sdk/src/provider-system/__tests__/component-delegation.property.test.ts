@@ -291,65 +291,65 @@ describe("Property 5: Component Delegation", () => {
     console.error = () => {};
 
     try {
-    await fc.assert(
-      fc.asyncProperty(
-        providerTypeArb,
-        fc.string({ minLength: 1, maxLength: 20 }),
-        executionOptionsArb,
-        fc.boolean(),
-        fc.string({ minLength: 1, maxLength: 100 }),
-        async (type, name, options, strategySuccess, responseBody) => {
-          // Arrange
-          const strategy = new MockCommunicationStrategy(
-            type,
-            strategySuccess,
-            responseBody
-          );
-          const parser = new MockResponseParser("json", true, {
-            data: "parsed",
-          });
-          const configManager = new MockConfigurationManager(true);
+      await fc.assert(
+        fc.asyncProperty(
+          providerTypeArb,
+          fc.string({ minLength: 1, maxLength: 20 }),
+          executionOptionsArb,
+          fc.boolean(),
+          fc.string({ minLength: 1, maxLength: 100 }),
+          async (type, name, options, strategySuccess, responseBody) => {
+            // Arrange
+            const strategy = new MockCommunicationStrategy(
+              type,
+              strategySuccess,
+              responseBody
+            );
+            const parser = new MockResponseParser("json", true, {
+              data: "parsed",
+            });
+            const configManager = new MockConfigurationManager(true);
 
-          const provider = new TestProvider(
-            type,
-            name,
-            strategy,
-            parser,
-            configManager
-          );
+            const provider = new TestProvider(
+              type,
+              name,
+              strategy,
+              parser,
+              configManager
+            );
 
-          // Act
-          const result = await provider.execute(options);
+            // Act
+            const result = await provider.execute(options);
 
-          // Assert - BaseProvider delegates to communication strategy
-          const strategyCalls = strategy.getExecuteCalls();
-          expect(strategyCalls).toHaveLength(1);
+            // Assert - BaseProvider delegates to communication strategy
+            const strategyCalls = strategy.getExecuteCalls();
+            expect(strategyCalls).toHaveLength(1);
 
-          const call = strategyCalls[0];
-          expect(call.request).toBeDefined();
-          expect(call.request.endpoint).toBe("/test");
-          expect(call.request.method).toBe("POST");
-          expect(call.request.body).toEqual({
-            task: options.task,
-            provider: type,
-          });
+            const call = strategyCalls[0];
+            expect(call.request).toBeDefined();
+            expect(call.request.endpoint).toBe("/test");
+            expect(call.request.method).toBe("POST");
+            expect(call.request.body).toEqual({
+              task: options.task,
+              provider: type,
+            });
 
-          // Verify provider prepared the request correctly
-          const prepareRequestCalls = provider.getPrepareRequestCalls();
-          expect(prepareRequestCalls).toHaveLength(1);
-          expect(prepareRequestCalls[0].options).toEqual(options);
+            // Verify provider prepared the request correctly
+            const prepareRequestCalls = provider.getPrepareRequestCalls();
+            expect(prepareRequestCalls).toHaveLength(1);
+            expect(prepareRequestCalls[0].options).toEqual(options);
 
-          // Verify result matches strategy success
-          expect(result.success).toBe(strategySuccess);
-          if (strategySuccess) {
-            expect(result.output).toContain(type);
-          } else {
-            expect(result.error).toBeDefined();
+            // Verify result matches strategy success
+            expect(result.success).toBe(strategySuccess);
+            if (strategySuccess) {
+              expect(result.output).toContain(type);
+            } else {
+              expect(result.error).toBeDefined();
+            }
           }
-        }
-      ),
-      { numRuns: 50 }
-    );
+        ),
+        { numRuns: 50 }
+      );
     } finally {
       console.error = originalConsoleError;
     }
@@ -636,59 +636,59 @@ describe("Property 5: Component Delegation", () => {
     console.error = () => {};
 
     try {
-    await fc.assert(
-      fc.asyncProperty(
-        providerTypeArb,
-        fc.string({ minLength: 1, maxLength: 20 }),
-        executionOptionsArb,
-        fc.constantFrom("strategy", "parser"),
-        async (type, name, options, errorComponent) => {
-          // Arrange - Create components with one that will fail
-          const strategy = new MockCommunicationStrategy(
-            type,
-            errorComponent !== "strategy",
-            '{"test": true}'
-          );
-          const parser = new MockResponseParser(
-            "json",
-            errorComponent !== "parser",
-            { test: true }
-          );
-          const configManager = new MockConfigurationManager(true);
+      await fc.assert(
+        fc.asyncProperty(
+          providerTypeArb,
+          fc.string({ minLength: 1, maxLength: 20 }),
+          executionOptionsArb,
+          fc.constantFrom("strategy", "parser"),
+          async (type, name, options, errorComponent) => {
+            // Arrange - Create components with one that will fail
+            const strategy = new MockCommunicationStrategy(
+              type,
+              errorComponent !== "strategy",
+              '{"test": true}'
+            );
+            const parser = new MockResponseParser(
+              "json",
+              errorComponent !== "parser",
+              { test: true }
+            );
+            const configManager = new MockConfigurationManager(true);
 
-          const provider = new TestProvider(
-            type,
-            name,
-            strategy,
-            parser,
-            configManager
-          );
+            const provider = new TestProvider(
+              type,
+              name,
+              strategy,
+              parser,
+              configManager
+            );
 
-          // Act
-          const result = await provider.execute(options);
+            // Act
+            const result = await provider.execute(options);
 
-          // Assert - BaseProvider should still delegate to components
-          if (errorComponent === "strategy") {
-            // Strategy error should be handled
-            expect(strategy.getExecuteCalls()).toHaveLength(1);
-            expect(result.success).toBe(false);
-            expect(result.error).toBeDefined();
-          } else if (errorComponent === "parser") {
-            // Parser error should be handled
-            expect(strategy.getExecuteCalls()).toHaveLength(1);
-            expect(parser.getParseCalls()).toHaveLength(1);
-            expect(result.success).toBe(false);
-            expect(result.error).toBeDefined();
+            // Assert - BaseProvider should still delegate to components
+            if (errorComponent === "strategy") {
+              // Strategy error should be handled
+              expect(strategy.getExecuteCalls()).toHaveLength(1);
+              expect(result.success).toBe(false);
+              expect(result.error).toBeDefined();
+            } else if (errorComponent === "parser") {
+              // Parser error should be handled
+              expect(strategy.getExecuteCalls()).toHaveLength(1);
+              expect(parser.getParseCalls()).toHaveLength(1);
+              expect(result.success).toBe(false);
+              expect(result.error).toBeDefined();
+            }
+
+            // Verify BaseProvider doesn't bypass delegation even on errors
+            expect(result).toBeDefined();
+            expect(typeof result.success).toBe("boolean");
+            expect(typeof result.duration).toBe("number");
           }
-
-          // Verify BaseProvider doesn't bypass delegation even on errors
-          expect(result).toBeDefined();
-          expect(typeof result.success).toBe("boolean");
-          expect(typeof result.duration).toBe("number");
-        }
-      ),
-      { numRuns: 50 }
-    );
+        ),
+        { numRuns: 50 }
+      );
     } finally {
       console.error = originalConsoleError;
     }
