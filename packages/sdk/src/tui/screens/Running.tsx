@@ -38,7 +38,7 @@ async function executeWorkflowWithEngine(
     const db = await getDb();
     await initializePredefinedWorkflows(db);
 
-    const executionId = `exec-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const executionId = `exec-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
     const jobId = `job-${Date.now()}`;
 
     // Create workflow context
@@ -468,7 +468,9 @@ export function Running() {
         
         // Show actual steps from workflow
         if (currentWorkflow?.steps && currentWorkflow.steps.length > 0) {
-          const stepNames = currentWorkflow.steps.map(step => step.id).join(' → ');
+          const stepNames = currentWorkflow.steps
+            .map((step) => step.id)
+            .join(" → ");
           onLog(`   Steps: ${stepNames}`);
         }
         
@@ -476,9 +478,6 @@ export function Running() {
         onLog(`🔧 Provider: ${currentExecution.provider}`);
         if (currentExecution.model) {
           onLog(`🤖 Model: ${currentExecution.model}`);
-        }
-        if (currentExecution.model) {
-          onLog(`🤖 ${currentExecution.model}`);
         }
         onLog(`📁 ${currentExecution.workspace}`);
         onLog(`📝 ${currentExecution.task}`);
@@ -523,7 +522,7 @@ export function Running() {
     run();
   }, [currentExecution, onLog, updateExecution, selectedWorkflowId]);
 
-  useInput((input, key) => {
+  useInput((_input, key) => {
     if (key.escape) {
       if (!isDone) {
         aborted.current = true;
