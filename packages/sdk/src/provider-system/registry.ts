@@ -5,6 +5,7 @@
  * It supports both built-in providers and external provider packages.
  */
 
+import { FactoryRegistry } from "./factory";
 import type {
   ProviderRegistry as IProviderRegistry,
   Provider,
@@ -12,7 +13,6 @@ import type {
   ProviderFactory,
   ProviderMetadata,
 } from "./types";
-import { FactoryRegistry } from "./factory";
 
 /**
  * Lazy provider factory wrapper for deferred loading
@@ -77,7 +77,10 @@ export class ProviderRegistry implements IProviderRegistry {
     this.validateProviderMetadata(metadata);
 
     // Check for conflicts
-    if (this.factoryRegistry.has(metadata.type) || this.lazyFactories.has(metadata.type)) {
+    if (
+      this.factoryRegistry.has(metadata.type) ||
+      this.lazyFactories.has(metadata.type)
+    ) {
       throw this.createRegistryError(
         "PROVIDER_CONFLICT",
         `Provider type '${metadata.type}' is already registered`,
@@ -109,7 +112,7 @@ export class ProviderRegistry implements IProviderRegistry {
 
     // Check if it's a lazy factory that needs loading
     const lazyFactory = this.lazyFactories.get(type);
-    if (lazyFactory && lazyFactory.loaded) {
+    if (lazyFactory?.loaded) {
       return lazyFactory.loaded;
     }
 
@@ -138,12 +141,12 @@ export class ProviderRegistry implements IProviderRegistry {
         const lazyFactory = this.lazyFactories.get(type);
         if (lazyFactory) {
           console.debug(`[ProviderRegistry] Lazy loading provider: ${type}`);
-          
+
           if (!lazyFactory.loaded) {
             lazyFactory.loaded = await lazyFactory.loader();
             this.factoryRegistry.register(lazyFactory.loaded);
           }
-          
+
           factory = lazyFactory.loaded;
         }
       }
@@ -209,9 +212,18 @@ export class ProviderRegistry implements IProviderRegistry {
       );
     }
 
-    const provider = factory.create(config);
-    this.providerCache.set(cacheKey, provider);
-    return provider;
+    try {
+      const provider = factory.create(config);
+      this.providerCache.set(cacheKey, provider);
+      return provider;
+    } catch (error) {
+      throw this.createRegistryError(
+        "PROVIDER_CREATION_FAILED",
+        `Failed to create provider '${type}'`,
+        { type, config },
+        error instanceof Error ? error : undefined
+      );
+    }
   }
 
   /**
@@ -307,7 +319,7 @@ export class ProviderRegistry implements IProviderRegistry {
    */
   clearCache(): void {
     this.providerCache.clear();
-    console.debug('[ProviderRegistry] Provider cache cleared');
+    console.debug("[ProviderRegistry] Provider cache cleared");
   }
 
   /**
@@ -326,11 +338,11 @@ export class ProviderRegistry implements IProviderRegistry {
    * Preload all lazy providers.
    */
   async preloadAllProviders(): Promise<void> {
-    const preloadPromises = Array.from(this.lazyFactories.keys()).map(type => 
+    const preloadPromises = Array.from(this.lazyFactories.keys()).map((type) =>
       this.preloadProvider(type)
     );
     await Promise.all(preloadPromises);
-    console.debug('[ProviderRegistry] All lazy providers preloaded');
+    console.debug("[ProviderRegistry] All lazy providers preloaded");
   }
 
   /**
@@ -339,7 +351,7 @@ export class ProviderRegistry implements IProviderRegistry {
    */
   registerTestProvider(factory: ProviderFactory): void {
     const metadata = factory.getMetadata();
-    
+
     // Skip validation for test providers
     this.factoryRegistry.register(factory);
     this.metadata.set(metadata.type, metadata);
@@ -354,7 +366,8 @@ export class ProviderRegistry implements IProviderRegistry {
    */
   isTestMode(): boolean {
     return Array.from(this.metadata.values()).some(
-      metadata => metadata.name.includes('Mock') || metadata.name.includes('Test')
+      (metadata) =>
+        metadata.name.includes("Mock") || metadata.name.includes("Test")
     );
   }
 
@@ -402,7 +415,7 @@ export class ProviderRegistry implements IProviderRegistry {
     if (!config) {
       return type;
     }
-    
+
     // Create a stable hash of the config for caching
     const configHash = JSON.stringify(config, Object.keys(config).sort());
     return `${type}:${configHash}`;
@@ -416,11 +429,16 @@ export class ProviderRegistry implements IProviderRegistry {
 
     try {
       // Register Direct API Provider (built-in simple provider)
-      const { DirectApiProviderFactory } = await import("../providers/direct-api-factory");
+      const { DirectApiProviderFactory } = await import(
+        "../providers/direct-api-factory"
+      );
       const directApiFactory = new DirectApiProviderFactory();
       this.registerProvider(directApiFactory);
     } catch (error) {
-      console.warn("[ProviderRegistry] Failed to load DirectApiProvider:", error);
+      console.warn(
+        "[ProviderRegistry] Failed to load DirectApiProvider:",
+        error
+      );
     }
 
     // Future built-in providers can be added here
@@ -445,53 +463,83 @@ export class ProviderRegistry implements IProviderRegistry {
       loader: () => Promise<new () => ProviderFactory>;
     }> = [
       {
-        type: 'opencode',
-        packageName: '@openfarm/provider-opencode',
-        name: 'OpenCode',
-        description: 'OpenCode AI coding assistant - supports both local CLI and cloud HTTP modes',
-        features: ['code-generation', 'code-editing', 'debugging', 'refactoring', 'streaming', 'local-execution', 'cloud-execution'],
+        type: "opencode",
+        packageName: "@openfarm/provider-opencode",
+        name: "OpenCode",
+        description:
+          "OpenCode AI coding assistant - supports both local CLI and cloud HTTP modes",
+        features: [
+          "code-generation",
+          "code-editing",
+          "debugging",
+          "refactoring",
+          "streaming",
+          "local-execution",
+          "cloud-execution",
+        ],
         loader: async () => {
           try {
-            // @ts-ignore - Optional dependency
-            const mod = await import('@openfarm/provider-opencode');
+            const mod = await import("@openfarm/provider-opencode");
             return (mod as any).OpenCodeProviderFactory;
           } catch (e) {
-            throw new Error(`@openfarm/provider-opencode not installed: ${e instanceof Error ? e.message : 'Unknown error'}`);
+            throw new Error(
+              `@openfarm/provider-opencode not installed: ${e instanceof Error ? e.message : "Unknown error"}`
+            );
           }
-        }
+        },
       },
       {
-        type: 'aider',
-        packageName: '@openfarm/provider-aider', 
-        name: 'Aider',
-        description: 'Aider AI pair programming assistant - works directly with your codebase',
-        features: ['code-generation', 'code-editing', 'refactoring', 'debugging', 'git-integration', 'streaming'],
+        type: "aider",
+        packageName: "@openfarm/provider-aider",
+        name: "Aider",
+        description:
+          "Aider AI pair programming assistant - works directly with your codebase",
+        features: [
+          "code-generation",
+          "code-editing",
+          "refactoring",
+          "debugging",
+          "git-integration",
+          "streaming",
+        ],
         loader: async () => {
           try {
-            // @ts-ignore - Optional dependency
-            const mod = await import('@openfarm/provider-aider');
+            const mod = await import("@openfarm/provider-aider");
             return (mod as any).AiderProviderFactory;
           } catch (e) {
-            throw new Error(`@openfarm/provider-aider not installed: ${e instanceof Error ? e.message : 'Unknown error'}`);
+            throw new Error(
+              `@openfarm/provider-aider not installed: ${e instanceof Error ? e.message : "Unknown error"}`
+            );
           }
-        }
+        },
       },
       {
-        type: 'claude',
-        packageName: '@openfarm/provider-claude',
-        name: 'Claude Code',
-        description: 'Claude Code AI assistant with advanced code understanding and editing capabilities',
-        features: ['code-generation', 'code-editing', 'refactoring', 'debugging', 'code-analysis', 'file-operations', 'bash-execution', 'web-search'],
+        type: "claude",
+        packageName: "@openfarm/provider-claude",
+        name: "Claude Code",
+        description:
+          "Claude Code AI assistant with advanced code understanding and editing capabilities",
+        features: [
+          "code-generation",
+          "code-editing",
+          "refactoring",
+          "debugging",
+          "code-analysis",
+          "file-operations",
+          "bash-execution",
+          "web-search",
+        ],
         loader: async () => {
           try {
-            // @ts-ignore - Optional dependency
-            const mod = await import('@openfarm/provider-claude');
+            const mod = await import("@openfarm/provider-claude");
             return (mod as any).ClaudeProviderFactory;
           } catch (e) {
-            throw new Error(`@openfarm/provider-claude not installed: ${e instanceof Error ? e.message : 'Unknown error'}`);
+            throw new Error(
+              `@openfarm/provider-claude not installed: ${e instanceof Error ? e.message : "Unknown error"}`
+            );
           }
-        }
-      }
+        },
+      },
     ];
 
     for (const providerInfo of knownProviders) {
@@ -500,7 +548,7 @@ export class ProviderRegistry implements IProviderRegistry {
         const metadata: ProviderMetadata = {
           type: providerInfo.type,
           name: providerInfo.name,
-          version: '1.0.0',
+          version: "1.0.0",
           description: providerInfo.description,
           packageName: providerInfo.packageName,
           supportedFeatures: providerInfo.features,
@@ -513,9 +561,14 @@ export class ProviderRegistry implements IProviderRegistry {
           return new FactoryClass();
         });
 
-        console.debug(`[ProviderRegistry] Registered lazy external provider: ${providerInfo.type}`);
+        console.debug(
+          `[ProviderRegistry] Registered lazy external provider: ${providerInfo.type}`
+        );
       } catch (error) {
-        console.warn(`[ProviderRegistry] Failed to register lazy provider ${providerInfo.type}:`, error);
+        console.warn(
+          `[ProviderRegistry] Failed to register lazy provider ${providerInfo.type}:`,
+          error
+        );
       }
     }
 

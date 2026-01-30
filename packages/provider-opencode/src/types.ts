@@ -1,5 +1,5 @@
 export interface OpenCodeConfig {
-  mode?: 'local' | 'cloud';
+  mode?: "local" | "cloud";
   baseUrl?: string;
   password?: string;
   timeout?: number;
@@ -13,7 +13,7 @@ export interface OpenCodeSession {
 
 export interface OpenCodeMessage {
   id: string;
-  status: 'pending' | 'running' | 'completed' | 'failed';
+  status: "pending" | "running" | "completed" | "failed";
   created_at: string;
   usage?: {
     total_tokens: number;

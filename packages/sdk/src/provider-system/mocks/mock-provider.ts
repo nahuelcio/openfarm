@@ -1,5 +1,5 @@
-import type { Provider, ProviderMetadata } from '../types.js';
-import type { ExecutionOptions, ExecutionResult } from '../../types.js';
+import type { ExecutionOptions, ExecutionResult } from "../../types.js";
+import type { Provider, ProviderMetadata } from "../types.js";
 
 export interface MockProviderOptions {
   /** Provider type identifier */
@@ -25,27 +25,27 @@ export interface MockProviderOptions {
 export class MockProvider implements Provider {
   readonly type: string;
   readonly name: string;
-  
+
   private readonly options: MockProviderOptions;
   private readonly executionHistory: ExecutionOptions[] = [];
   private readonly configValidationHistory: unknown[] = [];
 
   constructor(options: MockProviderOptions = {}) {
     this.options = {
-      type: 'mock',
-      name: 'Mock Provider',
+      type: "mock",
+      name: "Mock Provider",
       connectionAvailable: true,
       configValid: true,
       shouldFail: false,
-      errorMessage: 'Mock provider failure',
+      errorMessage: "Mock provider failure",
       delay: 0,
       executionResult: {
         success: true,
-        output: 'Mock execution completed successfully',
-        duration: 100
+        output: "Mock execution completed successfully",
+        duration: 100,
       },
       metadata: {},
-      ...options
+      ...options,
     };
 
     this.type = this.options.type!;
@@ -58,7 +58,7 @@ export class MockProvider implements Provider {
 
     // Simulate delay if specified
     if (this.options.delay && this.options.delay > 0) {
-      await new Promise(resolve => setTimeout(resolve, this.options.delay));
+      await new Promise((resolve) => setTimeout(resolve, this.options.delay));
     }
 
     // Simulate failure if specified
@@ -68,7 +68,7 @@ export class MockProvider implements Provider {
 
     // Return mock result
     return {
-      ...this.options.executionResult!
+      ...this.options.executionResult!,
     };
   }
 
@@ -89,10 +89,10 @@ export class MockProvider implements Provider {
     return {
       type: this.type,
       name: this.name,
-      version: '1.0.0',
-      description: 'Mock provider for testing',
-      supportedFeatures: ['testing', 'mocking'],
-      ...this.options.metadata
+      version: "1.0.0",
+      description: "Mock provider for testing",
+      supportedFeatures: ["testing", "mocking"],
+      ...this.options.metadata,
     };
   }
 
@@ -107,7 +107,7 @@ export class MockProvider implements Provider {
    * Get the last execution options used
    */
   getLastExecution(): ExecutionOptions | undefined {
-    return this.executionHistory[this.executionHistory.length - 1];
+    return this.executionHistory.at(-1);
   }
 
   /**

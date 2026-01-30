@@ -28,8 +28,8 @@ import type {
 // Mock implementations for testing
 class MockCommunicationStrategy implements CommunicationStrategy {
   readonly type = "mock";
-  
-  constructor(private id: string) {}
+
+  constructor(private readonly id: string) {}
 
   async execute(): Promise<CommunicationResponse> {
     return {
@@ -47,8 +47,8 @@ class MockCommunicationStrategy implements CommunicationStrategy {
 
 class MockResponseParser implements ResponseParser {
   readonly type = "mock";
-  
-  constructor(private id: string) {}
+
+  constructor(private readonly id: string) {}
 
   async parse(response: CommunicationResponse): Promise<string> {
     return `parsed-${this.id}: ${response.body}`;
@@ -60,13 +60,24 @@ class MockResponseParser implements ResponseParser {
 }
 
 class MockConfigurationManager implements ConfigurationManager {
-  validate(): boolean { return true; }
-  getValidationErrors(): string[] { return []; }
-  getDefaults(): Record<string, unknown> { return { timeout: 30_000 }; }
-  mergeWithDefaults(config: unknown): Record<string, unknown> {
-    return { ...this.getDefaults(), ...((config as Record<string, unknown>) || {}) };
+  validate(): boolean {
+    return true;
   }
-  getSchema(): Record<string, unknown> { return { type: "object" }; }
+  getValidationErrors(): string[] {
+    return [];
+  }
+  getDefaults(): Record<string, unknown> {
+    return { timeout: 30_000 };
+  }
+  mergeWithDefaults(config: unknown): Record<string, unknown> {
+    return {
+      ...this.getDefaults(),
+      ...((config as Record<string, unknown>) || {}),
+    };
+  }
+  getSchema(): Record<string, unknown> {
+    return { type: "object" };
+  }
 }
 
 // Discoverable test provider
@@ -86,10 +97,12 @@ class DiscoverableProvider extends BaseProvider {
     this.name = name;
   }
 
-  protected async prepareRequest(options: ExecutionOptions): Promise<CommunicationRequest> {
-    return { 
-      endpoint: "/discover", 
-      body: { task: options.task, provider: this.type } 
+  protected async prepareRequest(
+    options: ExecutionOptions
+  ): Promise<CommunicationRequest> {
+    return {
+      endpoint: "/discover",
+      body: { task: options.task, provider: this.type },
     };
   }
 
@@ -119,10 +132,6 @@ class DiscoverableProvider extends BaseProvider {
 
 // Factory for discoverable providers
 class DiscoverableProviderFactory extends BaseProviderFactory {
-  constructor(metadata: ProviderMetadata) {
-    super(metadata);
-  }
-
   protected createCommunicationStrategy(): CommunicationStrategy {
     return new MockCommunicationStrategy(this.metadata.type);
   }
@@ -162,7 +171,9 @@ class TestableProviderRegistry extends ProviderRegistry {
   // Override discovery to use simulated providers
   protected async discoverBuiltInProviders(): Promise<void> {
     // Simulate discovering built-in providers
-    for (const metadata of this.simulatedProviders.filter(p => !p.packageName)) {
+    for (const metadata of this.simulatedProviders.filter(
+      (p) => !p.packageName
+    )) {
       const factory = new DiscoverableProviderFactory(metadata);
       this.registerProvider(factory);
     }
@@ -170,7 +181,9 @@ class TestableProviderRegistry extends ProviderRegistry {
 
   protected async discoverExternalProviders(): Promise<void> {
     // Simulate discovering external provider packages
-    for (const metadata of this.simulatedProviders.filter(p => p.packageName)) {
+    for (const metadata of this.simulatedProviders.filter(
+      (p) => p.packageName
+    )) {
       const factory = new DiscoverableProviderFactory(metadata);
       this.registerProvider(factory);
     }
@@ -178,8 +191,9 @@ class TestableProviderRegistry extends ProviderRegistry {
 }
 
 // Generators for property-based testing
-const providerTypeArb = fc.string({ minLength: 1, maxLength: 15 })
-  .filter(s => /^[a-zA-Z][a-zA-Z0-9_-]*$/.test(s));
+const providerTypeArb = fc
+  .string({ minLength: 1, maxLength: 15 })
+  .filter((s) => /^[a-zA-Z][a-zA-Z0-9_-]*$/.test(s));
 
 const builtInProviderArb = fc.record({
   type: providerTypeArb,
@@ -187,7 +201,7 @@ const builtInProviderArb = fc.record({
   description: fc.string({ minLength: 5, maxLength: 50 }),
   version: fc.constantFrom("1.0.0", "1.1.0", "2.0.0", "2.1.0"),
   supportedFeatures: fc.array(
-    fc.constantFrom("basic", "advanced", "streaming", "local"), 
+    fc.constantFrom("basic", "advanced", "streaming", "local"),
     { minLength: 1, maxLength: 3 }
   ),
   // Built-in providers don't have packageName
@@ -197,61 +211,66 @@ const externalProviderArb = fc.record({
   type: providerTypeArb,
   name: fc.string({ minLength: 1, maxLength: 25 }),
   description: fc.string({ minLength: 5, maxLength: 50 }),
-  packageName: fc.string({ minLength: 5, maxLength: 30 }).map(s => `@openfarm/provider-${s}`),
+  packageName: fc
+    .string({ minLength: 5, maxLength: 30 })
+    .map((s) => `@openfarm/provider-${s}`),
   version: fc.constantFrom("1.0.0", "1.1.0", "2.0.0", "2.1.0"),
   supportedFeatures: fc.array(
-    fc.constantFrom("basic", "advanced", "streaming", "external"), 
+    fc.constantFrom("basic", "advanced", "streaming", "external"),
     { minLength: 1, maxLength: 3 }
   ),
 });
 
-const mixedProvidersArb = fc.tuple(
-  fc.array(builtInProviderArb, { minLength: 0, maxLength: 3 }),
-  fc.array(externalProviderArb, { minLength: 0, maxLength: 3 })
-).map(([builtIn, external]) => [...builtIn, ...external]);
+const mixedProvidersArb = fc
+  .tuple(
+    fc.array(builtInProviderArb, { minLength: 0, maxLength: 3 }),
+    fc.array(externalProviderArb, { minLength: 0, maxLength: 3 })
+  )
+  .map(([builtIn, external]) => [...builtIn, ...external]);
 
 describe("Property 2: Automatic Provider Discovery", () => {
   it("should discover all available providers automatically during initialization", async () => {
     await fc.assert(
-      fc.asyncProperty(
-        mixedProvidersArb,
-        async (providers) => {
-          // Skip empty provider lists
-          fc.pre(providers.length > 0);
+      fc.asyncProperty(mixedProvidersArb, async (providers) => {
+        // Skip empty provider lists
+        fc.pre(providers.length > 0);
 
-          // Ensure unique provider types
-          const uniqueProviders = providers.reduce((acc, provider, index) => {
-            const uniqueType = `${provider.type}_${index}`;
-            acc.push({ ...provider, type: uniqueType });
-            return acc;
-          }, [] as ProviderMetadata[]);
+        // Ensure unique provider types
+        const uniqueProviders = providers.reduce((acc, provider, index) => {
+          const uniqueType = `${provider.type}_${index}`;
+          acc.push({ ...provider, type: uniqueType });
+          return acc;
+        }, [] as ProviderMetadata[]);
 
-          // Create registry and simulate provider placement
-          const registry = new TestableProviderRegistry();
-          registry.simulateProviderPlacement(uniqueProviders);
+        // Create registry and simulate provider placement
+        const registry = new TestableProviderRegistry();
+        registry.simulateProviderPlacement(uniqueProviders);
 
-          // Verify no providers are registered before discovery
-          expect(registry.getAvailableProviders()).toHaveLength(0);
+        // Verify no providers are registered before discovery
+        expect(registry.getAvailableProviders()).toHaveLength(0);
 
-          // Trigger automatic discovery
-          await registry.discoverProviders();
+        // Trigger automatic discovery
+        await registry.discoverProviders();
 
-          // Verify all providers were discovered
-          const discoveredProviders = registry.getAvailableProviders();
-          expect(discoveredProviders).toHaveLength(uniqueProviders.length);
+        // Verify all providers were discovered
+        const discoveredProviders = registry.getAvailableProviders();
+        expect(discoveredProviders).toHaveLength(uniqueProviders.length);
 
-          // Verify each provider was discovered correctly
-          for (const expectedProvider of uniqueProviders) {
-            expect(registry.hasProvider(expectedProvider.type)).toBe(true);
-            
-            const discoveredMetadata = registry.getProviderMetadata(expectedProvider.type);
-            expect(discoveredMetadata).toBeDefined();
-            expect(discoveredMetadata?.type).toBe(expectedProvider.type);
-            expect(discoveredMetadata?.name).toBe(expectedProvider.name);
-            expect(discoveredMetadata?.packageName).toBe(expectedProvider.packageName);
-          }
+        // Verify each provider was discovered correctly
+        for (const expectedProvider of uniqueProviders) {
+          expect(registry.hasProvider(expectedProvider.type)).toBe(true);
+
+          const discoveredMetadata = registry.getProviderMetadata(
+            expectedProvider.type
+          );
+          expect(discoveredMetadata).toBeDefined();
+          expect(discoveredMetadata?.type).toBe(expectedProvider.type);
+          expect(discoveredMetadata?.name).toBe(expectedProvider.name);
+          expect(discoveredMetadata?.packageName).toBe(
+            expectedProvider.packageName
+          );
         }
-      ),
+      }),
       { numRuns: 50 }
     );
   });
@@ -264,7 +283,7 @@ describe("Property 2: Automatic Provider Discovery", () => {
           // Ensure unique types
           const uniqueProviders = providers.map((provider, index) => ({
             ...provider,
-            type: `builtin_${provider.type}_${index}`
+            type: `builtin_${provider.type}_${index}`,
           }));
 
           // Create registry and simulate provider placement
@@ -278,7 +297,9 @@ describe("Property 2: Automatic Provider Discovery", () => {
           await registry.discoverProviders();
 
           // All providers should be available without manual registration
-          expect(registry.getAvailableProviders()).toHaveLength(uniqueProviders.length);
+          expect(registry.getAvailableProviders()).toHaveLength(
+            uniqueProviders.length
+          );
 
           // Each provider should be functional
           for (const provider of uniqueProviders) {
@@ -309,12 +330,12 @@ describe("Property 2: Automatic Provider Discovery", () => {
           // Ensure unique types across both arrays
           const uniqueBuiltIn = builtInProviders.map((provider, index) => ({
             ...provider,
-            type: `builtin_${index}`
+            type: `builtin_${index}`,
           }));
-          
+
           const uniqueExternal = externalProviders.map((provider, index) => ({
             ...provider,
-            type: `external_${index}`
+            type: `external_${index}`,
           }));
 
           const allProviders = [...uniqueBuiltIn, ...uniqueExternal];
@@ -331,11 +352,11 @@ describe("Property 2: Automatic Provider Discovery", () => {
           expect(discovered).toHaveLength(allProviders.length);
 
           // Verify built-in providers (no packageName)
-          const discoveredBuiltIn = discovered.filter(p => !p.packageName);
+          const discoveredBuiltIn = discovered.filter((p) => !p.packageName);
           expect(discoveredBuiltIn).toHaveLength(uniqueBuiltIn.length);
 
           // Verify external providers (have packageName)
-          const discoveredExternal = discovered.filter(p => p.packageName);
+          const discoveredExternal = discovered.filter((p) => p.packageName);
           expect(discoveredExternal).toHaveLength(uniqueExternal.length);
 
           // Verify all providers are functional
@@ -358,7 +379,7 @@ describe("Property 2: Automatic Provider Discovery", () => {
           const uniqueProviders = externalProviders.map((provider, index) => ({
             ...provider,
             type: `pkg_${index}`,
-            packageName: `@openfarm/provider-pkg-${index}`
+            packageName: `@openfarm/provider-pkg-${index}`,
           }));
 
           // Create registry and simulate external package installation
@@ -375,16 +396,18 @@ describe("Property 2: Automatic Provider Discovery", () => {
           // All discovered providers should be external (have packageName)
           for (const discoveredProvider of discovered) {
             expect(discoveredProvider.packageName).toBeDefined();
-            expect(discoveredProvider.packageName).toMatch(/^@openfarm\/provider-/);
+            expect(discoveredProvider.packageName).toMatch(
+              /^@openfarm\/provider-/
+            );
           }
 
           // Verify providers are properly registered and functional
           for (const provider of uniqueProviders) {
             expect(registry.hasProvider(provider.type)).toBe(true);
-            
+
             const instance = registry.createProvider(provider.type);
             expect(instance.type).toBe(provider.type);
-            
+
             const result = await instance.execute({ task: "external-test" });
             expect(result.success).toBe(true);
           }
@@ -405,24 +428,28 @@ describe("Property 2: Automatic Provider Discovery", () => {
           // Ensure all providers have unique types
           const uniqueManual = manualProviders.map((provider, index) => ({
             ...provider,
-            type: `manual_${index}`
+            type: `manual_${index}`,
           }));
-          
-          const uniqueDiscovered = discoveredProviders.map((provider, index) => ({
-            ...provider,
-            type: `discovered_${index}`
-          }));
+
+          const uniqueDiscovered = discoveredProviders.map(
+            (provider, index) => ({
+              ...provider,
+              type: `discovered_${index}`,
+            })
+          );
 
           // Create registry and manually register some providers
           const registry = new TestableProviderRegistry();
-          
+
           for (const provider of uniqueManual) {
             const factory = new DiscoverableProviderFactory(provider);
             registry.registerProvider(factory);
           }
 
           // Verify manual providers are registered
-          expect(registry.getAvailableProviders()).toHaveLength(uniqueManual.length);
+          expect(registry.getAvailableProviders()).toHaveLength(
+            uniqueManual.length
+          );
 
           // Simulate discoverable providers and trigger discovery
           registry.simulateProviderPlacement(uniqueDiscovered);
@@ -430,7 +457,9 @@ describe("Property 2: Automatic Provider Discovery", () => {
 
           // Verify both manual and discovered providers are available
           const allProviders = registry.getAvailableProviders();
-          expect(allProviders).toHaveLength(uniqueManual.length + uniqueDiscovered.length);
+          expect(allProviders).toHaveLength(
+            uniqueManual.length + uniqueDiscovered.length
+          );
 
           // Verify manual providers still work
           for (const provider of uniqueManual) {
@@ -461,7 +490,7 @@ describe("Property 2: Automatic Provider Discovery", () => {
           // Ensure unique types
           const uniqueProviders = providers.map((provider, index) => ({
             ...provider,
-            type: `idempotent_${index}`
+            type: `idempotent_${index}`,
           }));
 
           // Create registry and simulate provider placement

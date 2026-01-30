@@ -4,8 +4,8 @@
  * Test script to verify workflow engine integration
  */
 
-import { executeWorkflow, InMemoryEventBus } from "@openfarm/workflow-engine";
 import { getDb, initializePredefinedWorkflows } from "@openfarm/core/db";
+import { executeWorkflow, InMemoryEventBus } from "@openfarm/workflow-engine";
 
 async function testWorkflowIntegration() {
   console.log("🧪 Testing workflow engine integration...");
@@ -15,12 +15,12 @@ async function testWorkflowIntegration() {
     console.log("📦 Initializing database and workflows...");
     const db = await getDb();
     const result = await initializePredefinedWorkflows(db);
-    
+
     if (!result.ok) {
       console.error("❌ Failed to initialize workflows:", result.error.message);
       return;
     }
-    
+
     console.log("✅ Workflows initialized successfully");
 
     // Test basic workflow structure
@@ -34,11 +34,11 @@ async function testWorkflowIntegration() {
       repoUrl: "",
       branchName: "",
       defaultBranch: "main",
-      gitConfig: { 
-        repoPath: process.cwd(), 
+      gitConfig: {
+        repoPath: process.cwd(),
         repoUrl: "",
         gitUserName: "test",
-        gitUserEmail: "test@example.com"
+        gitUserEmail: "test@example.com",
       },
       workItem: {
         id: "test-task",
@@ -48,7 +48,7 @@ async function testWorkflowIntegration() {
         workItemType: "Task",
         source: "local",
         status: "new",
-        project: "test"
+        project: "test",
       },
       jobId,
       executionId,
@@ -56,8 +56,8 @@ async function testWorkflowIntegration() {
         task: "echo 'Hello from workflow engine!'",
         provider: "direct-api",
         model: undefined,
-        currentDate: new Date().toISOString()
-      }
+        currentDate: new Date().toISOString(),
+      },
     };
 
     const request = {
@@ -68,46 +68,51 @@ async function testWorkflowIntegration() {
       context,
       previewMode: true, // Preview mode to avoid actual execution
       agentConfig: {
-        provider: "direct-api"
-      }
+        provider: "direct-api",
+      },
     };
 
     const eventBus = new InMemoryEventBus();
-    
+
     const engineConfig = {
       db,
       logger: {
         debug: async (message) => console.log(`[DEBUG] ${message}`),
         info: async (message) => console.log(`[INFO] ${message}`),
-        error: async (message) => console.log(`[ERROR] ${message}`)
+        error: async (message) => console.log(`[ERROR] ${message}`),
       },
       eventBus,
       stepExecutor: {
         execute: async (stepRequest, executionContext) => {
           console.log(`🔧 Executing step: ${stepRequest.action}`);
-          
+
           // Mock execution for testing
           if (stepRequest.action === "git.branch") {
             return { success: true, value: "test-branch" };
-          } else if (stepRequest.action === "git.worktree") {
+          }
+          if (stepRequest.action === "git.worktree") {
             return { success: true, value: "/tmp/test-worktree" };
-          } else if (stepRequest.action === "agent.code") {
+          }
+          if (stepRequest.action === "agent.code") {
             return { success: true, value: "Mock agent execution completed" };
           }
-          
-          return { success: false, error: new Error(`Unsupported action: ${stepRequest.action}`) };
-        }
+
+          return {
+            success: false,
+            error: new Error(`Unsupported action: ${stepRequest.action}`),
+          };
+        },
       },
       errorHandler: {
         handle: async (error, context) => {
           console.error(`[ERROR] ${error}`);
-        }
+        },
       },
       approvalHandler: {
         waitForApproval: async () => {
           throw new Error("Approval not supported in test");
-        }
-      }
+        },
+      },
     };
 
     console.log("🚀 Executing workflow...");
@@ -115,11 +120,12 @@ async function testWorkflowIntegration() {
 
     if (workflowResult.success) {
       console.log("✅ Workflow executed successfully!");
-      console.log(`   Completed steps: ${workflowResult.completedSteps}/${workflowResult.totalSteps}`);
+      console.log(
+        `   Completed steps: ${workflowResult.completedSteps}/${workflowResult.totalSteps}`
+      );
     } else {
       console.log("❌ Workflow execution failed:", workflowResult.error);
     }
-
   } catch (error) {
     console.error("❌ Test failed:", error.message);
     console.error(error.stack);

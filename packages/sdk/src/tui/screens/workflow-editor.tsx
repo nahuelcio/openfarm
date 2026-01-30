@@ -1,18 +1,18 @@
+import type { Workflow, WorkflowStep } from "@openfarm/core";
+import { StepType } from "@openfarm/core";
+import { getDb, updateWorkflow } from "@openfarm/core/db";
 import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
 import { useState } from "react";
 import { useStore } from "../store";
-import { getDb, updateWorkflow } from "@openfarm/core/db";
-import { StepType } from "@openfarm/core";
-import type { Workflow, WorkflowStep } from "@openfarm/core";
 
-type EditMode = 
-  | "view" 
-  | "edit-id" 
-  | "edit-name" 
-  | "edit-desc" 
+type EditMode =
+  | "view"
+  | "edit-id"
+  | "edit-name"
+  | "edit-desc"
   | "edit-step-id"
-  | "edit-step-action" 
+  | "edit-step-action"
   | "edit-step-type"
   | "edit-step-prompt"
   | "edit-step-timeout"
@@ -68,7 +68,7 @@ export function WorkflowEditor() {
     try {
       const db = await getDb();
       const result = await updateWorkflow(db, updated.id, () => updated);
-      
+
       if (!result.ok) {
         setMessage(`Error: ${result.error.message}`);
         return;
@@ -86,36 +86,59 @@ export function WorkflowEditor() {
   };
 
   const updateStep = (index: number, updates: Partial<WorkflowStep>) => {
-    if (!workflow) return;
+    if (!workflow) {
+      return;
+    }
     const newSteps = [...steps];
     newSteps[index] = { ...newSteps[index], ...updates } as WorkflowStep;
-    const updated = { ...workflow, steps: newSteps, updatedAt: new Date().toISOString() };
+    const updated = {
+      ...workflow,
+      steps: newSteps,
+      updatedAt: new Date().toISOString(),
+    };
     setCurrentWorkflow(updated);
     return updated;
   };
 
-  const updateStepConfig = (index: number, configUpdates: Record<string, unknown>) => {
-    if (!workflow || !currentStep) return;
+  const updateStepConfig = (
+    index: number,
+    configUpdates: Record<string, unknown>
+  ) => {
+    if (!(workflow && currentStep)) {
+      return;
+    }
     const newConfig = { ...currentStep.config, ...configUpdates };
     return updateStep(index, { config: newConfig });
   };
 
   const getStepFieldValue = (field: EditMode): string => {
-    if (!currentStep) return "";
+    if (!currentStep) {
+      return "";
+    }
     switch (field) {
-      case "edit-step-id": return currentStep.id;
-      case "edit-step-action": return currentStep.action;
-      case "edit-step-type": return currentStep.type;
-      case "edit-step-prompt": return currentStep.prompt || "";
-      case "edit-step-timeout": return currentStep.timeout?.toString() || "";
-      case "edit-step-retry": return currentStep.retryCount?.toString() || "0";
-      case "edit-step-model": return (currentStep.config?.model as string) || "";
-      default: return "";
+      case "edit-step-id":
+        return currentStep.id;
+      case "edit-step-action":
+        return currentStep.action;
+      case "edit-step-type":
+        return currentStep.type;
+      case "edit-step-prompt":
+        return currentStep.prompt || "";
+      case "edit-step-timeout":
+        return currentStep.timeout?.toString() || "";
+      case "edit-step-retry":
+        return currentStep.retryCount?.toString() || "0";
+      case "edit-step-model":
+        return (currentStep.config?.model as string) || "";
+      default:
+        return "";
     }
   };
 
   const saveEdit = () => {
-    if (!workflow) return;
+    if (!workflow) {
+      return;
+    }
 
     const trimmed = editValue.trim();
     let updated: Workflow | undefined;
@@ -123,48 +146,78 @@ export function WorkflowEditor() {
     switch (mode) {
       case "edit-id":
         if (trimmed) {
-          updated = { ...workflow, id: trimmed, updatedAt: new Date().toISOString() };
+          updated = {
+            ...workflow,
+            id: trimmed,
+            updatedAt: new Date().toISOString(),
+          };
           setCurrentWorkflow(updated);
         }
         break;
       case "edit-name":
-        updated = { ...workflow, name: trimmed || undefined, updatedAt: new Date().toISOString() };
+        updated = {
+          ...workflow,
+          name: trimmed || undefined,
+          updatedAt: new Date().toISOString(),
+        };
         setCurrentWorkflow(updated);
         break;
       case "edit-desc":
-        updated = { ...workflow, description: trimmed || undefined, updatedAt: new Date().toISOString() };
+        updated = {
+          ...workflow,
+          description: trimmed || undefined,
+          updatedAt: new Date().toISOString(),
+        };
         setCurrentWorkflow(updated);
         break;
       case "edit-step-id":
-        if (trimmed && currentStep) updated = updateStep(selectedStep, { id: trimmed });
+        if (trimmed && currentStep) {
+          updated = updateStep(selectedStep, { id: trimmed });
+        }
         break;
       case "edit-step-action":
-        if (trimmed && currentStep) updated = updateStep(selectedStep, { action: trimmed });
+        if (trimmed && currentStep) {
+          updated = updateStep(selectedStep, { action: trimmed });
+        }
         break;
       case "edit-step-type":
-        if (trimmed && currentStep) updated = updateStep(selectedStep, { type: trimmed as StepType });
+        if (trimmed && currentStep) {
+          updated = updateStep(selectedStep, { type: trimmed as StepType });
+        }
         break;
       case "edit-step-prompt":
-        if (currentStep) updated = updateStep(selectedStep, { prompt: trimmed || undefined });
+        if (currentStep) {
+          updated = updateStep(selectedStep, { prompt: trimmed || undefined });
+        }
         break;
       case "edit-step-timeout":
         if (currentStep) {
-          const timeout = parseInt(trimmed);
-          if (!isNaN(timeout)) updated = updateStep(selectedStep, { timeout });
+          const timeout = Number.parseInt(trimmed, 10);
+          if (!Number.isNaN(timeout)) {
+            updated = updateStep(selectedStep, { timeout });
+          }
         }
         break;
       case "edit-step-retry":
         if (currentStep) {
-          const retry = parseInt(trimmed);
-          if (!isNaN(retry)) updated = updateStep(selectedStep, { retryCount: retry });
+          const retry = Number.parseInt(trimmed, 10);
+          if (!Number.isNaN(retry)) {
+            updated = updateStep(selectedStep, { retryCount: retry });
+          }
         }
         break;
       case "edit-step-model":
-        if (currentStep) updated = updateStepConfig(selectedStep, { model: trimmed || undefined });
+        if (currentStep) {
+          updated = updateStepConfig(selectedStep, {
+            model: trimmed || undefined,
+          });
+        }
         break;
     }
 
-    if (updated) saveToDb(updated);
+    if (updated) {
+      saveToDb(updated);
+    }
     setMode("view");
     setEditValue("");
     setEditingField(null);
@@ -189,7 +242,9 @@ export function WorkflowEditor() {
     }
 
     if (mode !== "view") {
-      if (key.return) saveEdit();
+      if (key.return) {
+        saveEdit();
+      }
       return;
     }
 
@@ -208,10 +263,12 @@ export function WorkflowEditor() {
         setSelectedField((f) => Math.min(maxField, f + 1));
       }
     } else if (key.return) {
-      if (!workflow) return;
-      
+      if (!workflow) {
+        return;
+      }
+
       const field = ["id", "name", "description", "steps"][selectedField];
-      
+
       if (field === "id") {
         setMode("edit-id");
         setEditValue(workflow.id);
@@ -251,11 +308,16 @@ export function WorkflowEditor() {
       setSelectedField(3);
     }
 
-    if ((input === "d" || input === "D") && selectedField === 3 && steps.length > 0 && workflow) {
+    if (
+      (input === "d" || input === "D") &&
+      selectedField === 3 &&
+      steps.length > 0 &&
+      workflow
+    ) {
       const newSteps = [...steps];
       newSteps.splice(selectedStep, 1);
-      const updated = { 
-        ...workflow, 
+      const updated = {
+        ...workflow,
         steps: newSteps,
         updatedAt: new Date().toISOString(),
       };
@@ -269,22 +331,44 @@ export function WorkflowEditor() {
     // Direct field editing with number keys
     if (selectedField === 3 && currentStep) {
       switch (input) {
-        case "1": startEdit("edit-step-id"); break;
-        case "2": startEdit("edit-step-action"); break;
-        case "3": startEdit("edit-step-type"); break;
-        case "4": startEdit("edit-step-prompt"); break;
-        case "5": startEdit("edit-step-timeout"); break;
-        case "6": startEdit("edit-step-retry"); break;
-        case "7": startEdit("edit-step-model"); break;
+        case "1":
+          startEdit("edit-step-id");
+          break;
+        case "2":
+          startEdit("edit-step-action");
+          break;
+        case "3":
+          startEdit("edit-step-type");
+          break;
+        case "4":
+          startEdit("edit-step-prompt");
+          break;
+        case "5":
+          startEdit("edit-step-timeout");
+          break;
+        case "6":
+          startEdit("edit-step-retry");
+          break;
+        case "7":
+          startEdit("edit-step-model");
+          break;
       }
 
       const currentTypeIndex = STEP_TYPES.indexOf(currentStep.type);
       if (key.leftArrow && currentTypeIndex > 0) {
-        const updated = updateStep(selectedStep, { type: STEP_TYPES[currentTypeIndex - 1] });
-        if (updated) saveToDb(updated);
+        const updated = updateStep(selectedStep, {
+          type: STEP_TYPES[currentTypeIndex - 1],
+        });
+        if (updated) {
+          saveToDb(updated);
+        }
       } else if (key.rightArrow && currentTypeIndex < STEP_TYPES.length - 1) {
-        const updated = updateStep(selectedStep, { type: STEP_TYPES[currentTypeIndex + 1] });
-        if (updated) saveToDb(updated);
+        const updated = updateStep(selectedStep, {
+          type: STEP_TYPES[currentTypeIndex + 1],
+        });
+        if (updated) {
+          saveToDb(updated);
+        }
       }
     }
   });
@@ -307,31 +391,31 @@ export function WorkflowEditor() {
           Workflow Editor
         </Text>
         <Box flexDirection="row" gap={2}>
-          {editingField && (
-            <Text color="yellow">Editing: {editingField}</Text>
-          )}
+          {editingField && <Text color="yellow">Editing: {editingField}</Text>}
           {message && (
-            <Text color={message.startsWith("S") ? "green" : "red"}>{message}</Text>
+            <Text color={message.startsWith("S") ? "green" : "red"}>
+              {message}
+            </Text>
           )}
         </Box>
       </Box>
       <Text color="gray">{"─".repeat(60)}</Text>
 
       {isEditing && (
-        <Box 
-          borderColor="yellow" 
-          borderStyle="double" 
-          padding={1}
+        <Box
+          borderColor="yellow"
+          borderStyle="double"
           flexDirection="column"
           gap={1}
+          padding={1}
         >
           <Text bold color="yellow">
             ✏️ EDITING: {editingField}
           </Text>
-          <TextInput 
-            onChange={setEditValue} 
-            value={editValue}
+          <TextInput
+            onChange={setEditValue}
             placeholder={`Enter ${editingField?.toLowerCase()}...`}
+            value={editValue}
           />
           <Text color="gray" dimColor>
             Press Enter to save • Esc to cancel
@@ -341,19 +425,28 @@ export function WorkflowEditor() {
 
       <Box flexDirection="column" gap={1}>
         <Box flexDirection="column">
-          <Text bold={selectedField === 0} color={selectedField === 0 ? "cyan" : "gray"}>
+          <Text
+            bold={selectedField === 0}
+            color={selectedField === 0 ? "cyan" : "gray"}
+          >
             ID: {workflow.id}
           </Text>
         </Box>
 
         <Box flexDirection="column">
-          <Text bold={selectedField === 1} color={selectedField === 1 ? "cyan" : "gray"}>
+          <Text
+            bold={selectedField === 1}
+            color={selectedField === 1 ? "cyan" : "gray"}
+          >
             Name: {workflow.name || "(none)"}
           </Text>
         </Box>
 
         <Box flexDirection="column">
-          <Text bold={selectedField === 2} color={selectedField === 2 ? "cyan" : "gray"}>
+          <Text
+            bold={selectedField === 2}
+            color={selectedField === 2 ? "cyan" : "gray"}
+          >
             Description:
           </Text>
           <Text color="gray" dimColor>
@@ -362,40 +455,56 @@ export function WorkflowEditor() {
         </Box>
 
         <Box flexDirection="column" gap={1}>
-          <Text bold={selectedField === 3} color={selectedField === 3 ? "cyan" : "gray"}>
+          <Text
+            bold={selectedField === 3}
+            color={selectedField === 3 ? "cyan" : "gray"}
+          >
             Steps ({steps.length}):
           </Text>
 
           <Box flexDirection="column" paddingLeft={2}>
             {steps.map((step, index) => {
-              if (!isWorkflowStep(step)) return null;
+              if (!isWorkflowStep(step)) {
+                return null;
+              }
               const isSelected = selectedField === 3 && index === selectedStep;
-              
+
               return (
                 <Box
-                  key={`${step.id}-${index}`}
                   borderColor={isSelected ? "yellow" : undefined}
                   borderStyle={isSelected ? "single" : undefined}
                   flexDirection="column"
                   gap={0}
+                  key={`${step.id}-${index}`}
                   padding={1}
                 >
                   <Text color={isSelected ? "yellow" : "gray"}>
                     Step {index + 1}: {step.id}
                   </Text>
-                  
+
                   {isSelected && (
                     <Box flexDirection="column" gap={0} paddingLeft={2}>
                       <Text color="cyan">1-ID: {step.id}</Text>
                       <Text color="cyan">2-Action: {step.action}</Text>
-                      <Text color="cyan">3-Type: {STEP_TYPE_LABELS[step.type] || step.type}</Text>
-                      <Text color="cyan">4-Prompt: {step.prompt ? step.prompt.slice(0, 40) + "..." : "(none)"}</Text>
-                      <Text color="cyan">5-Timeout: {step.timeout || "(none)"}ms</Text>
+                      <Text color="cyan">
+                        3-Type: {STEP_TYPE_LABELS[step.type] || step.type}
+                      </Text>
+                      <Text color="cyan">
+                        4-Prompt:{" "}
+                        {step.prompt
+                          ? `${step.prompt.slice(0, 40)}...`
+                          : "(none)"}
+                      </Text>
+                      <Text color="cyan">
+                        5-Timeout: {step.timeout || "(none)"}ms
+                      </Text>
                       <Text color="cyan">6-Retry: {step.retryCount || 0}</Text>
-                      <Text color="cyan">7-Model: {(step.config?.model as string) || "(default)"}</Text>
+                      <Text color="cyan">
+                        7-Model: {(step.config?.model as string) || "(default)"}
+                      </Text>
                     </Box>
                   )}
-                  
+
                   {!isSelected && (
                     <Text color="gray" dimColor>
                       {step.action} • {STEP_TYPE_LABELS[step.type] || step.type}

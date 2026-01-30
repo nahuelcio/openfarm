@@ -1,19 +1,20 @@
 import type {
+  CommunicationRequest,
   CommunicationStrategy,
   ConfigurationManager,
+  ExecutionOptions,
+  ExecutionResult,
+  Provider,
   ProviderMetadata,
-} from '@openfarm/sdk';
-import type { Provider } from '@openfarm/sdk';
-import type { StreamResponseParser } from '@openfarm/sdk';
-import type { ExecutionOptions, ExecutionResult } from '@openfarm/sdk';
-import type { CommunicationRequest } from '@openfarm/sdk';
+  StreamResponseParser,
+} from "@openfarm/sdk";
 
 /**
  * Aider provider implementation
  */
 export class AiderProvider implements Provider {
-  readonly type = 'aider';
-  readonly name = 'Aider';
+  readonly type = "aider";
+  readonly name = "Aider";
 
   private readonly config: { timeout: number };
   private readonly communicationStrategy: CommunicationStrategy;
@@ -38,27 +39,28 @@ export class AiderProvider implements Provider {
 
   getMetadata(): ProviderMetadata {
     return {
-      type: 'aider',
-      name: 'Aider',
-      version: '1.0.0',
-      description: 'Aider AI pair programming assistant - works directly with your codebase',
-      packageName: '@openfarm/provider-aider',
+      type: "aider",
+      name: "Aider",
+      version: "1.0.0",
+      description:
+        "Aider AI pair programming assistant - works directly with your codebase",
+      packageName: "@openfarm/provider-aider",
       supportedFeatures: [
-        'code-generation',
-        'code-editing',
-        'refactoring',
-        'debugging',
-        'git-integration',
-        'streaming',
+        "code-generation",
+        "code-editing",
+        "refactoring",
+        "debugging",
+        "git-integration",
+        "streaming",
       ],
       configSchema: {
-        type: 'object',
+        type: "object",
         properties: {
           timeout: {
-            type: 'number',
-            default: 600000,
+            type: "number",
+            default: 600_000,
             minimum: 1000,
-            description: 'Timeout in milliseconds',
+            description: "Timeout in milliseconds",
           },
         },
         required: [],
@@ -73,23 +75,25 @@ export class AiderProvider implements Provider {
     const onLog = options.onLog;
 
     const log = (msg: string) => {
-      if (onLog) onLog(msg);
+      if (onLog) {
+        onLog(msg);
+      }
     };
 
     try {
       // Validate options
       if (!options.task?.trim()) {
-        throw new Error('Task is required and cannot be empty');
+        throw new Error("Task is required and cannot be empty");
       }
 
       if (!options.workspace) {
-        throw new Error('Workspace path is required for Aider');
+        throw new Error("Workspace path is required for Aider");
       }
 
-      log('🔍 Checking Aider installation...');
+      log("🔍 Checking Aider installation...");
       const isAvailable = await this.testConnection();
       if (!isAvailable) {
-        const error = 'Aider not found. Install: pip install aider-chat';
+        const error = "Aider not found. Install: pip install aider-chat";
         log(`❌ ${error}`);
         return {
           success: false,
@@ -98,13 +102,15 @@ export class AiderProvider implements Provider {
           error,
         };
       }
-      log('✅ Aider found');
-      log('');
+      log("✅ Aider found");
+      log("");
 
       const args = this.buildCliArgs(options);
 
-      log(`🚀 Starting: aider ${args.map((a) => (a.includes(' ') ? `"${a}"` : a)).join(' ')}`);
-      log('');
+      log(
+        `🚀 Starting: aider ${args.map((a) => (a.includes(" ") ? `"${a}"` : a)).join(" ")}`
+      );
+      log("");
 
       const request: CommunicationRequest = {
         args,
@@ -122,14 +128,14 @@ export class AiderProvider implements Provider {
           success: false,
           output: response.body,
           duration: Date.now() - startTime,
-          error: response.error || 'Execution failed',
+          error: response.error || "Execution failed",
         };
       }
 
       // Parse the response
       const parsed = await this.responseParser.parse(response);
       const formatted = this.parseAiderOutput(
-        typeof parsed === 'string' ? parsed : response.body
+        typeof parsed === "string" ? parsed : response.body
       );
 
       return {
@@ -138,7 +144,7 @@ export class AiderProvider implements Provider {
         duration: Date.now() - startTime,
       };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : "Unknown error";
       log(`❌ Error: ${message}`);
       return {
         success: false,
@@ -152,7 +158,7 @@ export class AiderProvider implements Provider {
   async testConnection(): Promise<boolean> {
     try {
       const request: CommunicationRequest = {
-        args: ['--version'],
+        args: ["--version"],
         options: {
           timeout: 5000,
         },
@@ -170,17 +176,17 @@ export class AiderProvider implements Provider {
   }
 
   private buildCliArgs(options: ExecutionOptions): string[] {
-    const args = ['--message', options.task];
+    const args = ["--message", options.task];
 
     if (options.model) {
-      args.push('--model', options.model);
+      args.push("--model", options.model);
     }
 
     return args;
   }
 
   private parseAiderOutput(output: string): string {
-    const lines = output.split('\n');
+    const lines = output.split("\n");
     const summary: string[] = [];
     const fileChanges: string[] = [];
     let hasChanges = false;
@@ -194,26 +200,29 @@ export class AiderProvider implements Provider {
         hasChanges = true;
       } else if (trimmed.match(/^\d+ files? (added|modified)/i)) {
         summary.push(trimmed);
-      } else if (trimmed.includes('git commit') || trimmed.includes('git add')) {
+      } else if (
+        trimmed.includes("git commit") ||
+        trimmed.includes("git add")
+      ) {
         summary.push(`Git: ${trimmed}`);
       }
     }
 
-    const result = ['Aider execution completed successfully'];
+    const result = ["Aider execution completed successfully"];
 
     if (hasChanges) {
       result.push(`Files processed: ${fileChanges.length}`);
       if (fileChanges.length > 0) {
-        result.push('Changes made:');
+        result.push("Changes made:");
         result.push(...fileChanges.map((change) => `  - ${change}`));
       }
     }
 
     if (summary.length > 0) {
-      result.push('Summary:');
+      result.push("Summary:");
       result.push(...summary.map((item) => `  - ${item}`));
     }
 
-    return result.join('\n');
+    return result.join("\n");
   }
 }

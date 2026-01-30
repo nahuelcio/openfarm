@@ -1,25 +1,9 @@
 {
-  // Default AI provider
-  // Options: "opencode", "claude-code", "aider", "direct-api"
   "defaultProvider": "opencode",
-  
-  // Default model to use
   "defaultModel": "claude-3.5-sonnet",
-  
-  // API URL (optional, uses provider default if not set)
   "apiUrl": "http://localhost:3000",
-  
-  // API Key (optional, uses env var OPENFARM_API_KEY if not set)
-  // "apiKey": "your-api-key-here",
-  
-  // Request timeout in milliseconds
   "timeout": 600000,
-  
-  // UI Theme
-  // Options: "dark", "light"
   "theme": "dark",
-  
-  // Keyboard shortcuts
   "shortcuts": {
     "newTask": "Ctrl+N",
     "history": "Ctrl+H",
@@ -27,8 +11,6 @@
     "dashboard": "Ctrl+D",
     "quit": "Ctrl+Q"
   },
-  
-  // UI settings
   "ui": {
     "sidebarOpen": true,
     "showProgressBar": true,

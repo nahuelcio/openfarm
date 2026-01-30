@@ -1,4 +1,4 @@
-import type { ResponseParser, CommunicationResponse } from '../types.js';
+import type { CommunicationResponse, ResponseParser } from "../types.js";
 
 export interface MockResponseParserOptions<T = unknown> {
   /** Mock parsed result to return */
@@ -14,8 +14,8 @@ export interface MockResponseParserOptions<T = unknown> {
 }
 
 export class MockResponseParser<T = unknown> implements ResponseParser<T> {
-  readonly type = 'mock';
-  
+  readonly type = "mock";
+
   private readonly options: MockResponseParserOptions<T>;
   private readonly parseHistory: CommunicationResponse[] = [];
 
@@ -23,10 +23,10 @@ export class MockResponseParser<T = unknown> implements ResponseParser<T> {
     this.options = {
       canHandleResponse: true,
       shouldFail: false,
-      errorMessage: 'Mock parsing failure',
+      errorMessage: "Mock parsing failure",
       delay: 0,
-      result: 'Mock parsed result' as T,
-      ...options
+      result: "Mock parsed result" as T,
+      ...options,
     };
   }
 
@@ -36,7 +36,7 @@ export class MockResponseParser<T = unknown> implements ResponseParser<T> {
 
     // Simulate delay if specified
     if (this.options.delay && this.options.delay > 0) {
-      await new Promise(resolve => setTimeout(resolve, this.options.delay));
+      await new Promise((resolve) => setTimeout(resolve, this.options.delay));
     }
 
     // Simulate failure if specified
@@ -63,7 +63,7 @@ export class MockResponseParser<T = unknown> implements ResponseParser<T> {
    * Get the last response parsed by this parser
    */
   getLastResponse(): CommunicationResponse | undefined {
-    return this.parseHistory[this.parseHistory.length - 1];
+    return this.parseHistory.at(-1);
   }
 
   /**

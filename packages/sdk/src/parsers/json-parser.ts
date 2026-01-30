@@ -1,16 +1,19 @@
 /**
  * JSON Response Parser for OpenFarm Provider System.
- * 
+ *
  * Provides robust JSON parsing with error handling, validation, and type safety.
  * Supports nested JSON objects, arrays, and various JSON content types.
  */
 
-import type { ResponseParser, CommunicationResponse } from "../provider-system/types";
+import type {
+  CommunicationResponse,
+  ResponseParser,
+} from "../provider-system/types";
 import type { JsonParserOptions } from "./types";
 
 /**
  * Parser for JSON responses with comprehensive error handling and validation.
- * 
+ *
  * Features:
  * - Type-safe parsing with generic support
  * - Content-Type validation for JSON responses
@@ -21,10 +24,10 @@ import type { JsonParserOptions } from "./types";
  */
 export class JsonResponseParser<T = unknown> implements ResponseParser<T> {
   readonly type = "json";
-  
-  private readonly options: JsonParserOptions & { 
-    validate: boolean; 
-    throwOnError: boolean; 
+
+  private readonly options: JsonParserOptions & {
+    validate: boolean;
+    throwOnError: boolean;
   };
 
   constructor(options: JsonParserOptions = {}) {
@@ -38,7 +41,7 @@ export class JsonResponseParser<T = unknown> implements ResponseParser<T> {
 
   /**
    * Parse a communication response into structured JSON data.
-   * 
+   *
    * @param response - The communication response to parse
    * @returns Promise resolving to parsed JSON data
    * @throws Error if parsing fails and throwOnError is true
@@ -66,34 +69,34 @@ export class JsonResponseParser<T = unknown> implements ResponseParser<T> {
     try {
       // Parse JSON with optional reviver function
       const parsed = JSON.parse(response.body, this.options.reviver) as T;
-      
+
       // Validate against schema if provided
       if (this.options.schema && this.options.validate) {
         this.validateAgainstSchema(parsed, this.options.schema);
       }
-      
+
       return parsed;
     } catch (error) {
       const parseError = new Error(
-        `JSON parsing failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `JSON parsing failed: ${error instanceof Error ? error.message : "Unknown error"}`
       );
-      
+
       if (this.options.throwOnError) {
         throw parseError;
       }
-      
+
       return null as T;
     }
   }
 
   /**
    * Check if this parser can handle the given response.
-   * 
+   *
    * Validates:
    * - Response success status
    * - Content-Type headers for JSON
    * - Body content for valid JSON structure
-   * 
+   *
    * @param response - The communication response to check
    * @returns true if the response can be parsed as JSON
    */
@@ -114,26 +117,26 @@ export class JsonResponseParser<T = unknown> implements ResponseParser<T> {
 
   /**
    * Check if the response has a JSON Content-Type header.
-   * 
+   *
    * Accepts various JSON content types:
    * - application/json
    * - text/json
    * - application/ld+json
    * - application/vnd.api+json
-   * 
+   *
    * @param headers - Response headers to check
    * @returns true if Content-Type indicates JSON
    */
   private hasJsonContentType(headers: Record<string, string>): boolean {
     const contentType = Object.keys(headers).find(
-      key => key.toLowerCase() === "content-type"
+      (key) => key.toLowerCase() === "content-type"
     );
-    
+
     if (!contentType) {
       // No Content-Type header - allow parsing attempt
       return true;
     }
-    
+
     const value = headers[contentType].toLowerCase();
     return (
       value.includes("application/json") ||
@@ -145,7 +148,7 @@ export class JsonResponseParser<T = unknown> implements ResponseParser<T> {
 
   /**
    * Validate if a string contains valid JSON.
-   * 
+   *
    * @param body - String to validate
    * @returns true if the string is valid JSON
    */
@@ -164,7 +167,7 @@ export class JsonResponseParser<T = unknown> implements ResponseParser<T> {
 
   /**
    * Get a descriptive reason why parsing failed.
-   * 
+   *
    * @param response - The response that failed parsing
    * @returns Human-readable error reason
    */
@@ -175,7 +178,7 @@ export class JsonResponseParser<T = unknown> implements ResponseParser<T> {
 
     if (response.headers && !this.hasJsonContentType(response.headers)) {
       const contentType = Object.keys(response.headers).find(
-        key => key.toLowerCase() === "content-type"
+        (key) => key.toLowerCase() === "content-type"
       );
       const value = contentType ? response.headers[contentType] : "unknown";
       return `Content-Type '${value}' is not a JSON type`;
@@ -194,15 +197,18 @@ export class JsonResponseParser<T = unknown> implements ResponseParser<T> {
 
   /**
    * Validate parsed JSON against a schema.
-   * 
+   *
    * Basic schema validation - checks for required properties and types.
    * For more complex validation, consider using a JSON schema library.
-   * 
+   *
    * @param data - Parsed JSON data to validate
    * @param schema - Schema to validate against
    * @throws Error if validation fails
    */
-  private validateAgainstSchema(data: unknown, schema: Record<string, unknown>): void {
+  private validateAgainstSchema(
+    data: unknown,
+    schema: Record<string, unknown>
+  ): void {
     if (typeof data !== "object" || data === null) {
       throw new Error("Parsed data is not an object");
     }
@@ -223,17 +229,19 @@ export class JsonResponseParser<T = unknown> implements ResponseParser<T> {
 
   /**
    * Create a new JsonResponseParser with different options.
-   * 
+   *
    * @param options - Parser options to use
    * @returns New parser instance with the specified options
    */
-  static create<T = unknown>(options: JsonParserOptions = {}): JsonResponseParser<T> {
+  static create<T = unknown>(
+    options: JsonParserOptions = {}
+  ): JsonResponseParser<T> {
     return new JsonResponseParser<T>(options);
   }
 
   /**
    * Create a parser that doesn't throw on errors.
-   * 
+   *
    * @returns Parser that returns null instead of throwing
    */
   static createSafe<T = unknown>(): JsonResponseParser<T> {
@@ -242,11 +250,13 @@ export class JsonResponseParser<T = unknown> implements ResponseParser<T> {
 
   /**
    * Create a parser with schema validation.
-   * 
+   *
    * @param schema - JSON schema to validate against
    * @returns Parser with schema validation enabled
    */
-  static createWithSchema<T = unknown>(schema: Record<string, unknown>): JsonResponseParser<T> {
+  static createWithSchema<T = unknown>(
+    schema: Record<string, unknown>
+  ): JsonResponseParser<T> {
     return new JsonResponseParser<T>({ schema, validate: true });
   }
 }

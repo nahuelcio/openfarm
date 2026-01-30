@@ -1,13 +1,13 @@
 /**
  * Unit tests for JsonResponseParser.
- * 
+ *
  * Tests JSON parsing functionality, error handling, validation,
  * and edge cases for the JsonResponseParser implementation.
  */
 
-import { describe, it, expect } from "vitest";
-import { JsonResponseParser } from "../json-parser";
+import { describe, expect, it } from "vitest";
 import type { CommunicationResponse } from "../../provider-system/types";
+import { JsonResponseParser } from "../json-parser";
 
 describe("JsonResponseParser", () => {
   describe("Basic JSON Parsing", () => {
@@ -168,7 +168,9 @@ describe("JsonResponseParser", () => {
         success: true,
       };
 
-      await expect(parser.parse(response)).rejects.toThrow("Cannot parse response: Response body is not valid JSON");
+      await expect(parser.parse(response)).rejects.toThrow(
+        "Cannot parse response: Response body is not valid JSON"
+      );
     });
 
     it("should return null for malformed JSON when throwOnError is false", async () => {
@@ -191,7 +193,9 @@ describe("JsonResponseParser", () => {
         success: true,
       };
 
-      await expect(parser.parse(response)).rejects.toThrow("Cannot parse response: Response body is empty");
+      await expect(parser.parse(response)).rejects.toThrow(
+        "Cannot parse response: Response body is empty"
+      );
     });
 
     it("should return null for empty response when throwOnError is false", async () => {
@@ -283,7 +287,9 @@ describe("JsonResponseParser", () => {
         success: true,
       };
 
-      await expect(parser.parse(response)).rejects.toThrow("Required property 'id' is missing");
+      await expect(parser.parse(response)).rejects.toThrow(
+        "Required property 'id' is missing"
+      );
     });
 
     it("should skip validation when validate is false", async () => {
@@ -383,7 +389,9 @@ describe("JsonResponseParser", () => {
         success: true,
       };
 
-      await expect(parser.parse(response)).rejects.toThrow("Required property 'id' is missing");
+      await expect(parser.parse(response)).rejects.toThrow(
+        "Required property 'id' is missing"
+      );
     });
   });
 
@@ -430,7 +438,12 @@ describe("JsonResponseParser", () => {
 
     it("should handle large JSON objects", async () => {
       const parser = new JsonResponseParser();
-      const largeObject = { items: Array.from({ length: 1000 }, (_, i) => ({ id: i, name: `item${i}` })) };
+      const largeObject = {
+        items: Array.from({ length: 1000 }, (_, i) => ({
+          id: i,
+          name: `item${i}`,
+        })),
+      };
       const response: CommunicationResponse = {
         status: 200,
         body: JSON.stringify(largeObject),

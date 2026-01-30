@@ -1,5 +1,5 @@
-import type { ProviderFactory, ProviderMetadata, Provider } from '../types.js';
-import { MockProvider, type MockProviderOptions } from './mock-provider.js';
+import type { Provider, ProviderFactory, ProviderMetadata } from "../types.js";
+import { MockProvider, type MockProviderOptions } from "./mock-provider.js";
 
 export interface MockProviderFactoryOptions {
   /** Provider metadata */
@@ -20,16 +20,16 @@ export class MockProviderFactory implements ProviderFactory {
   constructor(options: MockProviderFactoryOptions = {}) {
     this.options = {
       metadata: {
-        type: 'mock',
-        name: 'Mock Provider',
-        version: '1.0.0',
-        description: 'Mock provider factory for testing',
-        supportedFeatures: ['testing', 'mocking']
+        type: "mock",
+        name: "Mock Provider",
+        version: "1.0.0",
+        description: "Mock provider factory for testing",
+        supportedFeatures: ["testing", "mocking"],
       },
       providerOptions: {},
       shouldFailCreation: false,
-      creationErrorMessage: 'Mock factory creation failure',
-      ...options
+      creationErrorMessage: "Mock factory creation failure",
+      ...options,
     };
   }
 
@@ -46,7 +46,7 @@ export class MockProviderFactory implements ProviderFactory {
     const provider = new MockProvider({
       type: this.options.metadata!.type,
       name: this.options.metadata!.name,
-      ...this.options.providerOptions
+      ...this.options.providerOptions,
     });
 
     this.createdProviders.push(provider);
@@ -79,7 +79,7 @@ export class MockProviderFactory implements ProviderFactory {
    * Get the last provider created
    */
   getLastCreatedProvider(): MockProvider | undefined {
-    return this.createdProviders[this.createdProviders.length - 1];
+    return this.createdProviders.at(-1);
   }
 
   /**

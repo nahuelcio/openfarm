@@ -29,8 +29,8 @@ class MockCommunicationStrategy implements CommunicationStrategy {
     timestamp: number;
   }> = [];
   private testConnectionCalls = 0;
-  private shouldSucceed: boolean;
-  private responseBody: string;
+  private readonly shouldSucceed: boolean;
+  private readonly responseBody: string;
 
   constructor(
     type: string,
@@ -88,8 +88,8 @@ class MockResponseParser implements ResponseParser<any> {
     response: CommunicationResponse;
     timestamp: number;
   }> = [];
-  private shouldSucceed: boolean;
-  private parseResult: any;
+  private readonly shouldSucceed: boolean;
+  private readonly parseResult: any;
 
   constructor(
     type: string,
@@ -141,8 +141,8 @@ class MockResponseParser implements ResponseParser<any> {
 class MockConfigurationManager implements ConfigurationManager {
   private validateCalls: Array<{ config: unknown; timestamp: number }> = [];
   private getDefaultsCalls = 0;
-  private isValid: boolean;
-  private defaults: Record<string, unknown>;
+  private readonly isValid: boolean;
+  private readonly defaults: Record<string, unknown>;
 
   constructor(
     isValid = true,
@@ -196,11 +196,11 @@ class MockConfigurationManager implements ConfigurationManager {
 class TestProvider extends BaseProvider {
   readonly type: string;
   readonly name: string;
-  private prepareRequestCalls: Array<{
+  private readonly prepareRequestCalls: Array<{
     options: ExecutionOptions;
     timestamp: number;
   }> = [];
-  private formatResultCalls: Array<{
+  private readonly formatResultCalls: Array<{
     parsedResult: unknown;
     timestamp: number;
   }> = [];

@@ -25,7 +25,7 @@ import type {
 class MockCommunicationStrategy implements CommunicationStrategy {
   readonly type = "mock";
 
-  constructor(private shouldSucceed = true) {}
+  constructor(private readonly shouldSucceed = true) {}
 
   async execute(): Promise<CommunicationResponse> {
     return {
@@ -55,7 +55,7 @@ class MockResponseParser implements ResponseParser {
 }
 
 class MockConfigurationManager implements ConfigurationManager {
-  constructor(private isValid = true) {}
+  constructor(private readonly isValid = true) {}
 
   validate(): boolean {
     return this.isValid;

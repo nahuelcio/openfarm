@@ -188,9 +188,10 @@ export class HttpCommunicationStrategy implements CommunicationStrategy {
     request: CommunicationRequest
   ): Promise<CommunicationResponse> {
     let lastError: Error | null = null;
-    const maxRetries = typeof request.options?.maxRetries === 'number' 
-      ? request.options.maxRetries 
-      : this.config.retryConfig.maxRetries;
+    const maxRetries =
+      typeof request.options?.maxRetries === "number"
+        ? request.options.maxRetries
+        : this.config.retryConfig.maxRetries;
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
@@ -420,7 +421,11 @@ export class HttpCommunicationStrategy implements CommunicationStrategy {
   private setupConnectionPooling(): void {
     // In Node.js environment, we could use http.Agent for connection pooling
     // For now, we'll rely on the fetch implementation's built-in pooling
-    if (typeof globalThis !== "undefined" && !("window" in globalThis) && this.config.pooling.reuse) {
+    if (
+      typeof globalThis !== "undefined" &&
+      !("window" in globalThis) &&
+      this.config.pooling.reuse
+    ) {
       try {
         // This would be implemented with http.Agent in a real Node.js environment
         // For now, we'll use the default fetch behavior

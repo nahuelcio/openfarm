@@ -4,25 +4,25 @@ import type {
   Provider,
   ProviderFactory,
   ProviderMetadata,
-} from '@openfarm/sdk';
+} from "@openfarm/sdk";
 import {
   CliCommunicationStrategy,
   createProviderConfigManager,
-} from '@openfarm/sdk';
-import { StreamResponseParser } from '@openfarm/sdk';
-import { AiderProvider } from './aider-provider';
+  StreamResponseParser,
+} from "@openfarm/sdk";
+import { AiderProvider } from "./aider-provider";
 
 /**
  * Configuration schema for Aider provider
  */
 const AiderConfigSchema = {
-  type: 'object',
+  type: "object",
   properties: {
     timeout: {
-      type: 'number',
-      default: 600000,
+      type: "number",
+      default: 600_000,
       minimum: 1000,
-      description: 'Timeout in milliseconds',
+      description: "Timeout in milliseconds",
     },
   },
   required: [],
@@ -34,18 +34,19 @@ const AiderConfigSchema = {
  */
 export class AiderProviderFactory implements ProviderFactory {
   private readonly metadata: ProviderMetadata = {
-    type: 'aider',
-    name: 'Aider',
-    version: '1.0.0',
-    description: 'Aider AI pair programming assistant - works directly with your codebase',
-    packageName: '@openfarm/provider-aider',
+    type: "aider",
+    name: "Aider",
+    version: "1.0.0",
+    description:
+      "Aider AI pair programming assistant - works directly with your codebase",
+    packageName: "@openfarm/provider-aider",
     supportedFeatures: [
-      'code-generation',
-      'code-editing',
-      'refactoring',
-      'debugging',
-      'git-integration',
-      'streaming',
+      "code-generation",
+      "code-editing",
+      "refactoring",
+      "debugging",
+      "git-integration",
+      "streaming",
     ],
     configSchema: AiderConfigSchema,
     requiresExternal: true,
@@ -56,7 +57,7 @@ export class AiderProviderFactory implements ProviderFactory {
   }
 
   canCreate(type: string): boolean {
-    return type === 'aider';
+    return type === "aider";
   }
 
   create(config?: unknown): Provider {
@@ -67,7 +68,8 @@ export class AiderProviderFactory implements ProviderFactory {
 
     // Create dependencies
     const parsedConfig = this.parseConfig(config);
-    const communicationStrategy = this.createCommunicationStrategy(parsedConfig);
+    const communicationStrategy =
+      this.createCommunicationStrategy(parsedConfig);
     const responseParser = this.createResponseParser();
     const configManager = this.createConfigurationManager(parsedConfig);
 
@@ -81,16 +83,16 @@ export class AiderProviderFactory implements ProviderFactory {
   }
 
   private validateConfig(config: unknown): void {
-    if (typeof config !== 'object' || config === null) {
-      throw new Error('Configuration must be an object');
+    if (typeof config !== "object" || config === null) {
+      throw new Error("Configuration must be an object");
     }
 
     const configObj = config as Record<string, unknown>;
 
     // Validate timeout if provided
     if (configObj.timeout !== undefined) {
-      if (typeof configObj.timeout !== 'number' || configObj.timeout < 1000) {
-        throw new Error('Timeout must be a number >= 1000');
+      if (typeof configObj.timeout !== "number" || configObj.timeout < 1000) {
+        throw new Error("Timeout must be a number >= 1000");
       }
     }
   }
@@ -102,7 +104,7 @@ export class AiderProviderFactory implements ProviderFactory {
       timeout: 600_000,
     };
 
-    if (!config || typeof config !== 'object') {
+    if (!config || typeof config !== "object") {
       return defaults;
     }
 
@@ -117,7 +119,7 @@ export class AiderProviderFactory implements ProviderFactory {
     timeout: number;
   }): CommunicationStrategy {
     return new CliCommunicationStrategy({
-      executable: 'aider',
+      executable: "aider",
       timeout: config.timeout,
     });
   }

@@ -52,7 +52,7 @@ async function buildPossiblePaths(fileSystem: FileSystem): Promise<string[]> {
   possiblePaths.push(join(cwd, "../core/workflows"));
   possiblePaths.push(join(cwd, "../../packages/core/workflows"));
   possiblePaths.push(join(cwd, "../../../packages/core/workflows"));
-  
+
   // Docker-specific paths
   possiblePaths.push("/app/packages/core/workflows");
   possiblePaths.push(join("/app", "packages", "core", "workflows"));

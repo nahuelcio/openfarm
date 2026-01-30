@@ -1,4 +1,4 @@
-import type { ConfigurationManager } from '../types.js';
+import type { ConfigurationManager } from "../types.js";
 
 export interface MockConfigurationManagerOptions {
   /** Whether validation should succeed */
@@ -21,7 +21,7 @@ export class MockConfigurationManager implements ConfigurationManager {
       validationErrors: [],
       defaults: {},
       schema: {},
-      ...options
+      ...options,
     };
   }
 
@@ -43,14 +43,14 @@ export class MockConfigurationManager implements ConfigurationManager {
 
   mergeWithDefaults(config: unknown): Record<string, unknown> {
     const defaults = this.getDefaults();
-    
-    if (!config || typeof config !== 'object') {
+
+    if (!config || typeof config !== "object") {
       return defaults;
     }
 
     return {
       ...defaults,
-      ...(config as Record<string, unknown>)
+      ...(config as Record<string, unknown>),
     };
   }
 
@@ -69,7 +69,7 @@ export class MockConfigurationManager implements ConfigurationManager {
    * Get the last config validated by this manager
    */
   getLastValidatedConfig(): unknown {
-    return this.validationHistory[this.validationHistory.length - 1];
+    return this.validationHistory.at(-1);
   }
 
   /**

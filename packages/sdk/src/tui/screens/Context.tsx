@@ -1,7 +1,15 @@
+import { AgentAnalyzer } from "@openfarm/context";
 import { Box, Text, useInput } from "ink";
-import React from "react";
-import { generateAgentsMd } from "../generators/agents-md";
+import { useCallback, useEffect, useRef } from "react";
+import { OpenFarm } from "../../open-farm.js";
 import { useStore } from "../store";
+
+interface ExecutionResult {
+  success: boolean;
+  output?: string;
+  error?: string;
+  duration?: number;
+}
 
 export function ContextScreen() {
   const {
@@ -10,6 +18,7 @@ export function ContextScreen() {
     contextResult,
     contextError,
     contextProvider,
+    contextModel,
     setContextStatus,
     setContextProgress,
     setContextResult,
@@ -19,59 +28,83 @@ export function ContextScreen() {
     workspace,
   } = useStore();
 
-  const generateContextRef = React.useRef<(() => Promise<void>) | null>(null);
+  const generateContextRef = useRef<(() => Promise<void>) | null>(null);
 
-  React.useEffect(() => {
-    if (contextStatus === "idle" && !generateContextRef.current) {
-      generateContextRef.current = createGenerateContext();
-      generateContextRef.current();
-    }
-  }, [contextStatus]);
-
-  const createGenerateContext = () => {
+  const createGenerateContext = useCallback(() => {
     return async () => {
       try {
         setContextStatus("extracting");
         setContextProgress(10);
 
-        const result = await generateAgentsMd({
-          workspace,
-          provider: contextProvider,
-          model: undefined,
-          onProgress: (message) => {
-            if (message.includes("structure")) {
-              setContextStatus("exploring");
-              setContextProgress(30);
-            } else if (
-              message.includes("tech stack") ||
-              message.includes("stack")
-            ) {
-              setContextStatus("analyzing");
-              setContextProgress(50);
-            } else if (
-              message.includes("Merging") ||
-              message.includes("existing")
-            ) {
-              setContextStatus("formatting");
-              setContextProgress(90);
-            }
+        // Create LLM executor using OpenFarm
+        const client = new OpenFarm({ defaultProvider: contextProvider });
+
+        const llmExecutor = {
+          async execute(opts: {
+            task: string;
+            workspace: string;
+            provider?: string;
+            model?: string;
+            temperature?: number;
+          }): Promise<ExecutionResult> {
+            return (await client.execute({
+              task: opts.task,
+              workspace: opts.workspace,
+              provider: opts.provider,
+              model: opts.model,
+              temperature: opts.temperature,
+            })) as ExecutionResult;
           },
+        };
+
+        setContextStatus("exploring");
+        setContextProgress(30);
+
+        // Analyze repository using AgentAnalyzer
+        const analyzer = new AgentAnalyzer(workspace, llmExecutor);
+
+        setContextStatus("analyzing");
+        setContextProgress(50);
+
+        const exploration = await analyzer.explore();
+
+        setContextStatus("formatting");
+        setContextProgress(80);
+
+        const result = await analyzer.analyzeWithAgent(exploration, {
+          provider: contextProvider,
+          model: contextModel || undefined,
         });
 
-        setContextResult(result);
+        setContextResult(result.agentsMd);
         setContextStatus("complete");
         setContextProgress(100);
       } catch (error) {
         const errorMsg =
           error instanceof Error ? error.message : "Unknown error";
         if (errorMsg.includes("401") || errorMsg.includes("API key")) {
-          setContextError("API key required for " + contextProvider);
+          setContextError(`API key required for ${contextProvider}`);
         } else {
           setContextError(errorMsg);
         }
       }
     };
-  };
+  }, [
+    contextProvider,
+    contextModel,
+    workspace,
+    setContextStatus,
+    setContextProgress,
+    setContextResult,
+    setContextError,
+  ]);
+
+  useEffect(() => {
+    if (contextStatus === "idle" && !generateContextRef.current) {
+      generateContextRef.current = createGenerateContext();
+      generateContextRef.current();
+    }
+  }, [contextStatus, createGenerateContext]);
 
   useInput((input, key) => {
     if (input === "q") {
@@ -94,6 +127,12 @@ export function ContextScreen() {
         <Text color="gray">Provider: </Text>
         <Text color="green">{contextProvider}</Text>
       </Box>
+      {contextModel && (
+        <Box marginTop={0}>
+          <Text color="gray">Model: </Text>
+          <Text color="cyan">{contextModel}</Text>
+        </Box>
+      )}
       <Box marginTop={1}>
         {contextStatus === "extracting" && (
           <>

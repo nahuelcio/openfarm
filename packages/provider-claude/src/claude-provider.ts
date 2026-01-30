@@ -1,19 +1,20 @@
 import type {
+  CommunicationRequest,
   CommunicationStrategy,
   ConfigurationManager,
+  ExecutionOptions,
+  ExecutionResult,
+  Provider,
   ProviderMetadata,
-} from '@openfarm/sdk';
-import type { Provider } from '@openfarm/sdk';
-import type { StreamResponseParser } from '@openfarm/sdk';
-import type { ExecutionOptions, ExecutionResult } from '@openfarm/sdk';
-import type { CommunicationRequest } from '@openfarm/sdk';
+  StreamResponseParser,
+} from "@openfarm/sdk";
 
 /**
  * Claude provider implementation
  */
 export class ClaudeProvider implements Provider {
-  readonly type = 'claude';
-  readonly name = 'Claude Code';
+  readonly type = "claude";
+  readonly name = "Claude Code";
 
   private readonly config: { timeout: number };
   private readonly communicationStrategy: CommunicationStrategy;
@@ -38,29 +39,30 @@ export class ClaudeProvider implements Provider {
 
   getMetadata(): ProviderMetadata {
     return {
-      type: 'claude',
-      name: 'Claude Code',
-      version: '1.0.0',
-      description: 'Claude Code AI assistant with advanced code understanding and editing capabilities',
-      packageName: '@openfarm/provider-claude',
+      type: "claude",
+      name: "Claude Code",
+      version: "1.0.0",
+      description:
+        "Claude Code AI assistant with advanced code understanding and editing capabilities",
+      packageName: "@openfarm/provider-claude",
       supportedFeatures: [
-        'code-generation',
-        'code-editing',
-        'refactoring',
-        'debugging',
-        'code-analysis',
-        'file-operations',
-        'bash-execution',
-        'web-search',
+        "code-generation",
+        "code-editing",
+        "refactoring",
+        "debugging",
+        "code-analysis",
+        "file-operations",
+        "bash-execution",
+        "web-search",
       ],
       configSchema: {
-        type: 'object',
+        type: "object",
         properties: {
           timeout: {
-            type: 'number',
-            default: 600000,
+            type: "number",
+            default: 600_000,
             minimum: 1000,
-            description: 'Timeout in milliseconds',
+            description: "Timeout in milliseconds",
           },
         },
         required: [],
@@ -75,19 +77,22 @@ export class ClaudeProvider implements Provider {
     const onLog = options.onLog;
 
     const log = (msg: string) => {
-      if (onLog) onLog(msg);
+      if (onLog) {
+        onLog(msg);
+      }
     };
 
     try {
       // Validate options
       if (!options.task?.trim()) {
-        throw new Error('Task is required and cannot be empty');
+        throw new Error("Task is required and cannot be empty");
       }
 
-      log('🔍 Checking Claude Code...');
+      log("🔍 Checking Claude Code...");
       const isAvailable = await this.testConnection();
       if (!isAvailable) {
-        const error = 'Claude Code CLI not found. Install: npm install -g @anthropic-ai/claude-code';
+        const error =
+          "Claude Code CLI not found. Install: npm install -g @anthropic-ai/claude-code";
         log(`❌ ${error}`);
         return {
           success: false,
@@ -96,13 +101,15 @@ export class ClaudeProvider implements Provider {
           error,
         };
       }
-      log('✅ Claude Code found');
-      log('');
+      log("✅ Claude Code found");
+      log("");
 
       const args = this.buildCliArgs(options);
 
-      log(`🚀 Running: claude ${args.map((a) => (a.includes(' ') ? `"${a}"` : a)).join(' ')}`);
-      log('');
+      log(
+        `🚀 Running: claude ${args.map((a) => (a.includes(" ") ? `"${a}"` : a)).join(" ")}`
+      );
+      log("");
 
       const request: CommunicationRequest = {
         args,
@@ -110,7 +117,7 @@ export class ClaudeProvider implements Provider {
           workingDirectory: options.workspace || process.cwd(),
           env: {
             ...process.env,
-            CLAUDE_CODE_DISABLE_PROMPTS: '1',
+            CLAUDE_CODE_DISABLE_PROMPTS: "1",
           },
           timeout: this.config.timeout,
         },
@@ -123,7 +130,7 @@ export class ClaudeProvider implements Provider {
           success: false,
           output: response.body,
           duration: Date.now() - startTime,
-          error: response.error || 'Execution failed',
+          error: response.error || "Execution failed",
         };
       }
 
@@ -132,11 +139,11 @@ export class ClaudeProvider implements Provider {
 
       return {
         success: true,
-        output: typeof parsed === 'string' ? parsed : response.body,
+        output: typeof parsed === "string" ? parsed : response.body,
         duration: Date.now() - startTime,
       };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : "Unknown error";
       log(`❌ Error: ${message}`);
       return {
         success: false,
@@ -150,7 +157,7 @@ export class ClaudeProvider implements Provider {
   async testConnection(): Promise<boolean> {
     try {
       const request: CommunicationRequest = {
-        args: ['--version'],
+        args: ["--version"],
         options: {
           timeout: 5000,
         },
@@ -169,19 +176,19 @@ export class ClaudeProvider implements Provider {
 
   private buildCliArgs(options: ExecutionOptions): string[] {
     const args = [
-      '-p',
+      "-p",
       options.task,
-      '--allowedTools',
-      'Read,Edit,Write,Bash,Glob,Grep,LS,Task,URLFetch',
+      "--allowedTools",
+      "Read,Edit,Write,Bash,Glob,Grep,LS,Task,URLFetch",
     ];
 
     // Verbose mode: show detailed output
     if (options.verbose) {
-      args.push('--verbose');
+      args.push("--verbose");
     }
 
     if (options.model) {
-      args.push('--model', options.model);
+      args.push("--model", options.model);
     }
 
     return args;

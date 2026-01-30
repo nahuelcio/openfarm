@@ -1,10 +1,25 @@
-import { ProviderRegistry } from '../registry.js';
-import { MockProvider, type MockProviderOptions } from '../mocks/mock-provider.js';
-import { MockProviderFactory, type MockProviderFactoryOptions } from '../mocks/mock-provider-factory.js';
-import { MockCommunicationStrategy, type MockCommunicationOptions } from '../mocks/mock-communication-strategy.js';
-import { MockResponseParser, type MockResponseParserOptions } from '../mocks/mock-response-parser.js';
-import { MockConfigurationManager, type MockConfigurationManagerOptions } from '../mocks/mock-configuration-manager.js';
-import type { ProviderMetadata } from '../types.js';
+import {
+  type MockCommunicationOptions,
+  MockCommunicationStrategy,
+} from "../mocks/mock-communication-strategy.js";
+import {
+  MockConfigurationManager,
+  type MockConfigurationManagerOptions,
+} from "../mocks/mock-configuration-manager.js";
+import {
+  MockProvider,
+  type MockProviderOptions,
+} from "../mocks/mock-provider.js";
+import {
+  MockProviderFactory,
+  type MockProviderFactoryOptions,
+} from "../mocks/mock-provider-factory.js";
+import {
+  MockResponseParser,
+  type MockResponseParserOptions,
+} from "../mocks/mock-response-parser.js";
+import { ProviderRegistry } from "../registry.js";
+import type { ProviderMetadata } from "../types.js";
 
 /**
  * Test utilities for provider isolation and testing
@@ -27,28 +42,36 @@ export class ProviderTestUtils {
   /**
    * Create a mock provider factory with specified options
    */
-  static createMockProviderFactory(options: MockProviderFactoryOptions = {}): MockProviderFactory {
+  static createMockProviderFactory(
+    options: MockProviderFactoryOptions = {}
+  ): MockProviderFactory {
     return new MockProviderFactory(options);
   }
 
   /**
    * Create a mock communication strategy with specified options
    */
-  static createMockCommunicationStrategy(options: MockCommunicationOptions = {}): MockCommunicationStrategy {
+  static createMockCommunicationStrategy(
+    options: MockCommunicationOptions = {}
+  ): MockCommunicationStrategy {
     return new MockCommunicationStrategy(options);
   }
 
   /**
    * Create a mock response parser with specified options
    */
-  static createMockResponseParser<T = unknown>(options: MockResponseParserOptions<T> = {}): MockResponseParser<T> {
+  static createMockResponseParser<T = unknown>(
+    options: MockResponseParserOptions<T> = {}
+  ): MockResponseParser<T> {
     return new MockResponseParser<T>(options);
   }
 
   /**
    * Create a mock configuration manager with specified options
    */
-  static createMockConfigurationManager(options: MockConfigurationManagerOptions = {}): MockConfigurationManager {
+  static createMockConfigurationManager(
+    options: MockConfigurationManagerOptions = {}
+  ): MockConfigurationManager {
     return new MockConfigurationManager(options);
   }
 
@@ -66,9 +89,9 @@ export class ProviderTestUtils {
     const metadata: ProviderMetadata = {
       type: providerType,
       name: `Mock ${providerType} Provider`,
-      version: '1.0.0',
+      version: "1.0.0",
       description: `Mock ${providerType} provider for testing`,
-      supportedFeatures: ['testing', 'mocking']
+      supportedFeatures: ["testing", "mocking"],
     };
 
     const factory = new MockProviderFactory({
@@ -76,9 +99,9 @@ export class ProviderTestUtils {
       providerOptions: {
         type: providerType,
         name: metadata.name,
-        ...options.providerOptions
+        ...options.providerOptions,
       },
-      ...options.factoryOptions
+      ...options.factoryOptions,
     });
 
     registry.registerProvider(factory);
@@ -88,26 +111,32 @@ export class ProviderTestUtils {
   /**
    * Create a test scenario with multiple mock providers
    */
-  static createTestScenario(providers: Array<{
-    type: string;
-    name?: string;
-    providerOptions?: MockProviderOptions;
-    factoryOptions?: MockProviderFactoryOptions;
-  }>): {
+  static createTestScenario(
+    providers: Array<{
+      type: string;
+      name?: string;
+      providerOptions?: MockProviderOptions;
+      factoryOptions?: MockProviderFactoryOptions;
+    }>
+  ): {
     registry: ProviderRegistry;
     factories: Record<string, MockProviderFactory>;
   } {
-    const registry = this.createIsolatedRegistry();
+    const registry = ProviderTestUtils.createIsolatedRegistry();
     const factories: Record<string, MockProviderFactory> = {};
 
     for (const providerConfig of providers) {
-      const factory = this.registerMockProvider(registry, providerConfig.type, {
-        providerOptions: {
-          name: providerConfig.name,
-          ...providerConfig.providerOptions
-        },
-        factoryOptions: providerConfig.factoryOptions
-      });
+      const factory = ProviderTestUtils.registerMockProvider(
+        registry,
+        providerConfig.type,
+        {
+          providerOptions: {
+            name: providerConfig.name,
+            ...providerConfig.providerOptions,
+          },
+          factoryOptions: providerConfig.factoryOptions,
+        }
+      );
       factories[providerConfig.type] = factory;
     }
 
@@ -119,17 +148,17 @@ export class ProviderTestUtils {
    */
   static assertProviderExecuted(
     provider: MockProvider,
-    expectedOptions?: Partial<import('../../types.js').ExecutionOptions>
+    expectedOptions?: Partial<import("../../types.js").ExecutionOptions>
   ): void {
     const history = provider.getExecutionHistory();
-    
+
     if (history.length === 0) {
-      throw new Error('Expected provider to be executed, but it was not');
+      throw new Error("Expected provider to be executed, but it was not");
     }
 
     if (expectedOptions) {
       const lastExecution = provider.getLastExecution()!;
-      
+
       for (const [key, expectedValue] of Object.entries(expectedOptions)) {
         const actualValue = (lastExecution as any)[key];
         if (actualValue !== expectedValue) {
@@ -146,10 +175,10 @@ export class ProviderTestUtils {
    */
   static assertFactoryUsed(
     factory: MockProviderFactory,
-    expectedCreations: number = 1
+    expectedCreations = 1
   ): void {
     const createdProviders = factory.getCreatedProviders();
-    
+
     if (createdProviders.length !== expectedCreations) {
       throw new Error(
         `Expected factory to create ${expectedCreations} providers, but created ${createdProviders.length}`
@@ -160,15 +189,17 @@ export class ProviderTestUtils {
   /**
    * Reset all mock histories for clean test state
    */
-  static resetMocks(...mocks: Array<
-    MockProvider | 
-    MockProviderFactory | 
-    MockCommunicationStrategy | 
-    MockResponseParser | 
-    MockConfigurationManager
-  >): void {
+  static resetMocks(
+    ...mocks: Array<
+      | MockProvider
+      | MockProviderFactory
+      | MockCommunicationStrategy
+      | MockResponseParser
+      | MockConfigurationManager
+    >
+  ): void {
     for (const mock of mocks) {
-      if ('clearHistory' in mock) {
+      if ("clearHistory" in mock) {
         mock.clearHistory();
       }
     }

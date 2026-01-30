@@ -8,9 +8,7 @@
 /**
  * Get available models for a provider by loading from provider package.
  */
-export async function getAvailableModels(
-  provider: string
-): Promise<string[]> {
+export async function getAvailableModels(provider: string): Promise<string[]> {
   try {
     // Try to dynamically import the provider package
     const packageName = `@openfarm/provider-${provider}`;
@@ -28,7 +26,7 @@ export async function getAvailableModels(
 
     // Fallback: empty array (user can enter custom)
     return [];
-  } catch (error) {
+  } catch (_error) {
     // Provider package not found or doesn't export models
     // Return empty array so user can enter custom model
     return [];

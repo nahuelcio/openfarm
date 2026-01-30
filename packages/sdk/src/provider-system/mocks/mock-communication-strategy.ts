@@ -1,4 +1,8 @@
-import type { CommunicationStrategy, CommunicationRequest, CommunicationResponse } from '../types.js';
+import type {
+  CommunicationRequest,
+  CommunicationResponse,
+  CommunicationStrategy,
+} from "../types.js";
 
 export interface MockCommunicationOptions {
   /** Mock response to return */
@@ -14,8 +18,8 @@ export interface MockCommunicationOptions {
 }
 
 export class MockCommunicationStrategy implements CommunicationStrategy {
-  readonly type = 'mock';
-  
+  readonly type = "mock";
+
   private readonly options: MockCommunicationOptions;
   private readonly executionHistory: CommunicationRequest[] = [];
 
@@ -24,14 +28,14 @@ export class MockCommunicationStrategy implements CommunicationStrategy {
       connectionAvailable: true,
       shouldFail: false,
       delay: 0,
-      errorMessage: 'Mock communication failure',
+      errorMessage: "Mock communication failure",
       response: {
         status: 200,
         success: true,
-        body: 'Mock response',
-        duration: 100
+        body: "Mock response",
+        duration: 100,
       },
-      ...options
+      ...options,
     };
   }
 
@@ -41,7 +45,7 @@ export class MockCommunicationStrategy implements CommunicationStrategy {
 
     // Simulate delay if specified
     if (this.options.delay && this.options.delay > 0) {
-      await new Promise(resolve => setTimeout(resolve, this.options.delay));
+      await new Promise((resolve) => setTimeout(resolve, this.options.delay));
     }
 
     // Simulate failure if specified
@@ -53,13 +57,13 @@ export class MockCommunicationStrategy implements CommunicationStrategy {
     const defaultResponse: CommunicationResponse = {
       status: 200,
       success: true,
-      body: 'Mock response',
-      duration: this.options.delay || 0
+      body: "Mock response",
+      duration: this.options.delay || 0,
     };
 
     return {
       ...defaultResponse,
-      ...this.options.response
+      ...this.options.response,
     };
   }
 
@@ -78,7 +82,7 @@ export class MockCommunicationStrategy implements CommunicationStrategy {
    * Get the last request made to this strategy
    */
   getLastRequest(): CommunicationRequest | undefined {
-    return this.executionHistory[this.executionHistory.length - 1];
+    return this.executionHistory.at(-1);
   }
 
   /**

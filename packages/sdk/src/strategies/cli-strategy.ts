@@ -128,7 +128,7 @@ export class CliCommunicationStrategy implements CommunicationStrategy {
       const env = this.buildEnvironment(request.env);
 
       // Spawn options
-      const spawnOptions: import('child_process').SpawnOptions = {
+      const spawnOptions: import("child_process").SpawnOptions = {
         cwd: workingDirectory,
         env,
         shell: this.config.shell,

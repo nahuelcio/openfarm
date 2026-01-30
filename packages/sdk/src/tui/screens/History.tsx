@@ -23,7 +23,7 @@ export function History() {
         <Text color="gray">No executions yet.</Text>
       ) : (
         executions.map((e) => (
-          <Box key={e.id} flexDirection="row" gap={2}>
+          <Box flexDirection="row" gap={2} key={e.id}>
             <Text color={getStatusColor(e.status)}>
               {getStatusIcon(e.status)}
             </Text>

@@ -22,7 +22,7 @@ export class ArchitectureSynthesizer implements Synthesizer {
     _options: PrimingOptions | undefined,
     result: SynthesizedData
   ): Promise<void> {
-    const { details, summary } = analysisResult;
+    const { details, summary: _summary } = analysisResult;
     const { fileStructure, packageJson } = rawData;
 
     const packages = this.detectPackages(fileStructure, packageJson);

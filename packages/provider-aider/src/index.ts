@@ -1,8 +1,8 @@
-import { execSync } from 'node:child_process';
+import { execSync } from "node:child_process";
 
-export { AiderProvider } from './aider-provider';
-export { AiderProviderFactory } from './aider-factory';
-export type { AiderConfig } from './types';
+export { AiderProviderFactory } from "./aider-factory";
+export { AiderProvider } from "./aider-provider";
+export type { AiderConfig } from "./types";
 
 /**
  * Get list of available models for Aider provider.
@@ -11,22 +11,22 @@ export type { AiderConfig } from './types';
 export function getAvailableModels(): string[] {
   try {
     // Execute aider --models command
-    const output = execSync('aider --models', {
-      encoding: 'utf8',
+    const output = execSync("aider --models", {
+      encoding: "utf8",
       timeout: 5000,
-      stdio: ['ignore', 'pipe', 'ignore'],
+      stdio: ["ignore", "pipe", "ignore"],
     });
 
     // Parse output - extract model names
     const models = output
-      .split('\n')
-      .map(line => line.trim())
-      .filter(line => line && !line.startsWith('#') && !line.startsWith('-'));
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line && !line.startsWith("#") && !line.startsWith("-"));
 
     return models;
   } catch (error) {
     // If command fails, return empty array
-    console.error('Failed to load Aider models:', error);
+    console.error("Failed to load Aider models:", error);
     return [];
   }
 }

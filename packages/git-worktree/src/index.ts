@@ -1,20 +1,20 @@
 /**
  * @openfarm/git-worktree
- * 
+ *
  * Git worktree utilities for OpenFarm - manage multiple working trees efficiently
  */
 
 export type {
-  GitWorktree,
   CreateWorktreeOptions,
-  ListWorktreesOptions,
   GitExecFunction,
+  GitWorktree,
+  ListWorktreesOptions,
 } from "./types";
 
 export {
-  listWorktrees,
   createWorktree,
-  removeWorktree,
-  pruneWorktrees,
   getCurrentWorktree,
+  listWorktrees,
+  pruneWorktrees,
+  removeWorktree,
 } from "./worktree";

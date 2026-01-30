@@ -5,7 +5,7 @@
  * support for provider-specific extensions, and descriptive error messages.
  */
 
-import { z, type ZodSchema, type ZodError } from "zod";
+import { type ZodError, type ZodSchema, z } from "zod";
 import type { ConfigurationManager, ProviderConfig } from "./types";
 
 /**
@@ -42,7 +42,7 @@ export class ZodConfigurationManager implements ConfigurationManager {
 
   /**
    * Create a new configuration manager with the given schema.
-   * 
+   *
    * @param schema - Zod schema for validation (should extend BaseConfigSchema)
    * @param defaults - Default configuration values
    */
@@ -51,7 +51,7 @@ export class ZodConfigurationManager implements ConfigurationManager {
     defaults: Record<string, unknown> = {}
   ) {
     this.schema = schema;
-    
+
     // Only get defaults from optional fields, not required ones
     try {
       // Try to parse with empty object to get defaults for optional fields only
@@ -60,7 +60,7 @@ export class ZodConfigurationManager implements ConfigurationManager {
         ...parsedDefaults,
         ...defaults,
       };
-    } catch (error) {
+    } catch (_error) {
       // Fallback to just the provided defaults
       this.defaults = { ...defaults };
     }
@@ -74,7 +74,7 @@ export class ZodConfigurationManager implements ConfigurationManager {
     try {
       this.schema.parse(config);
       return true;
-    } catch (error) {
+    } catch (_error) {
       return false;
     }
   }
@@ -91,7 +91,9 @@ export class ZodConfigurationManager implements ConfigurationManager {
       if (error instanceof z.ZodError) {
         return this.formatZodErrors(error);
       }
-      return [`Validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`];
+      return [
+        `Validation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+      ];
     }
   }
 
@@ -109,13 +111,13 @@ export class ZodConfigurationManager implements ConfigurationManager {
   mergeWithDefaults(config: unknown): Record<string, unknown> {
     const merged = {
       ...this.defaults,
-      ...(typeof config === 'object' && config !== null ? config : {}),
+      ...(typeof config === "object" && config !== null ? config : {}),
     };
 
     const errors = this.getValidationErrors(merged);
     if (errors.length > 0) {
       throw new ConfigurationValidationError(
-        `Configuration validation failed: ${errors.join(', ')}`,
+        `Configuration validation failed: ${errors.join(", ")}`,
         errors,
         merged
       );
@@ -137,10 +139,13 @@ export class ZodConfigurationManager implements ConfigurationManager {
    * Create a new configuration manager with extended schema.
    * Useful for provider-specific configuration extensions.
    */
-  extend(extensionSchema: ZodSchema, additionalDefaults?: Record<string, unknown>): ZodConfigurationManager {
+  extend(
+    extensionSchema: ZodSchema,
+    additionalDefaults?: Record<string, unknown>
+  ): ZodConfigurationManager {
     // Merge the base schema with the extension
     const extendedSchema = this.schema.and(extensionSchema);
-    
+
     const extendedDefaults = {
       ...this.defaults,
       ...(additionalDefaults || {}),
@@ -159,7 +164,7 @@ export class ZodConfigurationManager implements ConfigurationManager {
       if (error instanceof z.ZodError) {
         const errors = this.formatZodErrors(error);
         throw new ConfigurationValidationError(
-          `Configuration validation failed: ${errors.join(', ')}`,
+          `Configuration validation failed: ${errors.join(", ")}`,
           errors,
           config
         );
@@ -173,36 +178,36 @@ export class ZodConfigurationManager implements ConfigurationManager {
    */
   private formatZodErrors(error: ZodError): string[] {
     return error.issues.map((err: any) => {
-      const path = err.path.length > 0 ? err.path.join('.') : 'root';
-      
+      const path = err.path.length > 0 ? err.path.join(".") : "root";
+
       switch (err.code) {
-        case 'invalid_type':
+        case "invalid_type":
           return `${path}: Expected ${err.expected}, received ${err.received}`;
-        
-        case 'too_small':
-          if (err.type === 'string') {
+
+        case "too_small":
+          if (err.type === "string") {
             return `${path}: Must be at least ${err.minimum} characters long`;
           }
-          if (err.type === 'number') {
+          if (err.type === "number") {
             return `${path}: Must be at least ${err.minimum}`;
           }
           return `${path}: Value is too small (minimum: ${err.minimum})`;
-        
-        case 'too_big':
-          if (err.type === 'string') {
+
+        case "too_big":
+          if (err.type === "string") {
             return `${path}: Must be at most ${err.maximum} characters long`;
           }
-          if (err.type === 'number') {
+          if (err.type === "number") {
             return `${path}: Must be at most ${err.maximum}`;
           }
           return `${path}: Value is too big (maximum: ${err.maximum})`;
-        
-        case 'invalid_string':
+
+        case "invalid_string":
           return `${path}: Invalid string format (${err.validation})`;
-        
-        case 'custom':
+
+        case "custom":
           return `${path}: ${err.message}`;
-        
+
         default:
           return `${path}: ${err.message}`;
       }
@@ -216,7 +221,7 @@ export class ZodConfigurationManager implements ConfigurationManager {
   private zodSchemaToJsonSchema(schema: ZodSchema): Record<string, unknown> {
     // This is a simplified implementation
     // In a production system, you might want to use a library like zod-to-json-schema
-    
+
     if (schema instanceof z.ZodObject) {
       const shape = schema.shape;
       const properties: Record<string, unknown> = {};
@@ -224,7 +229,7 @@ export class ZodConfigurationManager implements ConfigurationManager {
 
       for (const [key, value] of Object.entries(shape)) {
         properties[key] = this.zodTypeToJsonSchema(value as ZodSchema);
-        
+
         // Check if field is required (not optional)
         if (!(value as any).isOptional()) {
           required.push(key);
@@ -232,7 +237,7 @@ export class ZodConfigurationManager implements ConfigurationManager {
       }
 
       return {
-        type: 'object',
+        type: "object",
         properties,
         required: required.length > 0 ? required : undefined,
       };
@@ -246,28 +251,28 @@ export class ZodConfigurationManager implements ConfigurationManager {
    */
   private zodTypeToJsonSchema(schema: ZodSchema): Record<string, unknown> {
     if (schema instanceof z.ZodString) {
-      return { type: 'string' };
+      return { type: "string" };
     }
-    
+
     if (schema instanceof z.ZodNumber) {
-      return { type: 'number' };
+      return { type: "number" };
     }
-    
+
     if (schema instanceof z.ZodBoolean) {
-      return { type: 'boolean' };
+      return { type: "boolean" };
     }
-    
+
     if (schema instanceof z.ZodArray) {
       return {
-        type: 'array',
+        type: "array",
         items: this.zodTypeToJsonSchema((schema as any).element),
       };
     }
-    
+
     if (schema instanceof z.ZodOptional) {
       return this.zodTypeToJsonSchema((schema as any).unwrap());
     }
-    
+
     if (schema instanceof z.ZodDefault) {
       const inner = this.zodTypeToJsonSchema((schema as any).removeDefault());
       return {
@@ -277,7 +282,7 @@ export class ZodConfigurationManager implements ConfigurationManager {
     }
 
     // Fallback for unknown types
-    return { type: 'unknown' };
+    return { type: "unknown" };
   }
 }
 
@@ -296,7 +301,7 @@ export function createProviderConfigManager<T extends ProviderConfig>(
   });
 
   // Extend with provider-specific schema if provided
-  const finalSchema = extensionSchema 
+  const finalSchema = extensionSchema
     ? baseSchema.and(extensionSchema)
     : baseSchema;
 
@@ -335,30 +340,33 @@ export const CommonSchemas = {
   /**
    * Schema for providers that support both local and cloud modes.
    */
-  hybrid: z.object({
-    mode: z.enum(['local', 'cloud'], {
-      message: "Mode must be either 'local' or 'cloud'"
-    }),
-    // Local mode settings
-    executable: z.string().optional(),
-    // Cloud mode settings  
-    baseUrl: z.string().url().optional(),
-    apiKey: z.string().optional(),
-  }).refine(
-    (data) => {
-      if (data.mode === 'local') {
-        return !!data.executable;
+  hybrid: z
+    .object({
+      mode: z.enum(["local", "cloud"], {
+        message: "Mode must be either 'local' or 'cloud'",
+      }),
+      // Local mode settings
+      executable: z.string().optional(),
+      // Cloud mode settings
+      baseUrl: z.string().url().optional(),
+      apiKey: z.string().optional(),
+    })
+    .refine(
+      (data) => {
+        if (data.mode === "local") {
+          return !!data.executable;
+        }
+        if (data.mode === "cloud") {
+          return !!data.baseUrl;
+        }
+        return true;
+      },
+      {
+        message:
+          "Local mode requires 'executable', cloud mode requires 'baseUrl'",
+        path: ["mode"],
       }
-      if (data.mode === 'cloud') {
-        return !!data.baseUrl;
-      }
-      return true;
-    },
-    {
-      message: "Local mode requires 'executable', cloud mode requires 'baseUrl'",
-      path: ['mode'],
-    }
-  ),
+    ),
 };
 
 /**

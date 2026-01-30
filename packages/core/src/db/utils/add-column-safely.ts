@@ -17,7 +17,7 @@ export async function addColumnSafely(
 
   try {
     const sql = `ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${columnDefinition}`;
-    
+
     // Bun SQL returns a function with properties like unsafe, exec, etc.
     // Check for unsafe method (for DDL statements without parameterization)
     if (db && typeof db.unsafe === "function") {
@@ -26,8 +26,7 @@ export async function addColumnSafely(
     // Fall back to exec if available
     else if (db && typeof db.exec === "function") {
       await db.exec(sql);
-    }
-    else {
+    } else {
       throw new Error(
         "Database must support unsafe() or exec() for DDL operations"
       );

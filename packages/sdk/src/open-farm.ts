@@ -1,27 +1,24 @@
-import { 
-  ProviderRegistry, 
-  type Provider
-} from "./provider-system/index.js";
+import { type Provider, ProviderRegistry } from "./provider-system/index.js";
 import type {
   ExecutionOptions,
   ExecutionResult,
   OpenFarmConfig,
 } from "./types";
 
-const DEFAULT_MAX_TOKENS = 30000;
+const DEFAULT_MAX_TOKENS = 30_000;
 
 export class OpenFarm {
   private readonly config: OpenFarmConfig;
   private readonly providerRegistry: ProviderRegistry;
   private currentProvider?: Provider;
-  private initializationPromise: Promise<void>;
+  private readonly initializationPromise: Promise<void>;
 
   constructor(config: OpenFarmConfig = {}) {
     this.config = config;
 
     // Initialize new provider system
     this.providerRegistry = new ProviderRegistry();
-    
+
     // Auto-discover and register providers
     this.initializationPromise = this.initializeProviders();
   }
@@ -31,7 +28,11 @@ export class OpenFarm {
     await this.initializationPromise;
 
     // Use explicitly provided provider, or current provider if set, or default, or direct-api
-    const provider = options.provider || this.currentProvider?.type || this.config.defaultProvider || "direct-api";
+    const provider =
+      options.provider ||
+      this.currentProvider?.type ||
+      this.config.defaultProvider ||
+      "direct-api";
 
     // Use new provider system
     if (this.providerRegistry.isRegistered(provider)) {
@@ -41,7 +42,7 @@ export class OpenFarm {
     // Provider not found
     const availableProviders = await this.getAvailableProviders();
     throw new Error(
-      `Provider '${provider}' is not available. Available providers: ${availableProviders.join(', ')}`
+      `Provider '${provider}' is not available. Available providers: ${availableProviders.join(", ")}`
     );
   }
 
@@ -57,7 +58,8 @@ export class OpenFarm {
     // Test default provider
     const defaultProvider = this.config.defaultProvider || "direct-api";
     if (this.providerRegistry.isRegistered(defaultProvider)) {
-      const provider = await this.providerRegistry.createProviderAsync(defaultProvider);
+      const provider =
+        await this.providerRegistry.createProviderAsync(defaultProvider);
       return provider.testConnection();
     }
 
@@ -71,16 +73,19 @@ export class OpenFarm {
     // Use new provider system
     if (this.providerRegistry.isRegistered(provider)) {
       try {
-        this.currentProvider = await this.providerRegistry.createProviderAsync(provider);
+        this.currentProvider =
+          await this.providerRegistry.createProviderAsync(provider);
         return;
       } catch (error) {
-        throw new Error(`Failed to create provider ${provider}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        throw new Error(
+          `Failed to create provider ${provider}: ${error instanceof Error ? error.message : "Unknown error"}`
+        );
       }
     }
 
     const availableProviders = await this.getAvailableProviders();
     throw new Error(
-      `Provider '${provider}' is not available. Available providers: ${availableProviders.join(', ')}`
+      `Provider '${provider}' is not available. Available providers: ${availableProviders.join(", ")}`
     );
   }
 
@@ -126,7 +131,7 @@ export class OpenFarm {
   }
 
   private async executeWithNewProvider(
-    providerName: string, 
+    providerName: string,
     options: ExecutionOptions
   ): Promise<ExecutionResult> {
     const startTime = Date.now();
@@ -134,7 +139,8 @@ export class OpenFarm {
     try {
       // Create or reuse provider instance (use async for lazy loading)
       if (!this.currentProvider || this.currentProvider.type !== providerName) {
-        this.currentProvider = await this.providerRegistry.createProviderAsync(providerName);
+        this.currentProvider =
+          await this.providerRegistry.createProviderAsync(providerName);
       }
 
       // Execute with new provider using ExecutionOptions directly
@@ -147,7 +153,7 @@ export class OpenFarm {
 
       return result;
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : "Unknown error";
       return {
         success: false,
         output: `Provider execution failed: ${message}`,
@@ -162,7 +168,7 @@ export class OpenFarm {
       // Auto-discover providers from known packages
       await this.providerRegistry.discoverProviders();
     } catch (error) {
-      console.warn('Failed to auto-discover providers:', error);
+      console.warn("Failed to auto-discover providers:", error);
     }
   }
 }

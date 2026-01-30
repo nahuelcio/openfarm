@@ -108,7 +108,7 @@ async function runTask(openFarm, taskConfig, taskNumber) {
   console.log(`   Tokens:    ${result.tokens || 0}`);
 
   if (result.success) {
-    console.log("   Output:    " + (result.output || "Task completed"));
+    console.log(`   Output:    ${result.output || "Task completed"}`);
   } else {
     console.log(`   Error:     ${result.error || "Unknown error"}`);
   }
@@ -139,11 +139,13 @@ async function demo() {
   // Show available providers
   const providers = await openFarm.getAvailableProviders();
   console.log(`✅ Available providers: ${providers.join(", ")}`);
-  
+
   // Show registry stats
   const stats = await openFarm.getRegistryStats();
-  console.log(`📊 Registry stats: ${stats.totalProviders} total, ${stats.loadedProviders} loaded`);
-  
+  console.log(
+    `📊 Registry stats: ${stats.totalProviders} total, ${stats.loadedProviders} loaded`
+  );
+
   console.log("━".repeat(60));
 
   // Run all tasks
@@ -179,10 +181,10 @@ async function demo() {
     "   • Try the full example: npx tsx packages/sdk/examples/opencode-cli-example.ts"
   );
   console.log("   • Check the docs: packages/sdk/examples/README.md");
+  console.log('   • Build your own: import { OpenFarm } from "@openfarm/sdk"');
   console.log(
-    '   • Build your own: import { OpenFarm } from "@openfarm/sdk"'
+    "   • Install more providers: npm install @openfarm/provider-opencode"
   );
-  console.log("   • Install more providers: npm install @openfarm/provider-opencode");
   console.log("");
 }
 

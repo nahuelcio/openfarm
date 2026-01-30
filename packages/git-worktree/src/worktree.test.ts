@@ -9,7 +9,9 @@ import {
 } from "./worktree";
 
 // Mock git execution function
-const createMockGitExec = (responses: Record<string, string>): GitExecFunction => {
+const createMockGitExec = (
+  responses: Record<string, string>
+): GitExecFunction => {
   return vi.fn(async (args: string[]) => {
     const command = args.join(" ");
     const response = responses[command];
@@ -38,7 +40,11 @@ bare`;
       "worktree list --porcelain": mockOutput,
     });
 
-    const result = await listWorktrees("/repo", { includeStale: true }, mockGitExec);
+    const result = await listWorktrees(
+      "/repo",
+      { includeStale: true },
+      mockGitExec
+    );
 
     expect(result.ok).toBe(true);
     if (result.ok) {
@@ -68,9 +74,9 @@ bare`;
   });
 
   it("should handle git command failure", async () => {
-    const mockGitExec: GitExecFunction = vi.fn().mockRejectedValue(
-      new Error("Not a git repository")
-    );
+    const mockGitExec: GitExecFunction = vi
+      .fn()
+      .mockRejectedValue(new Error("Not a git repository"));
 
     const result = await listWorktrees("/repo", {}, mockGitExec);
 
@@ -83,13 +89,15 @@ bare`;
 
 describe("createWorktree", () => {
   it("should create worktree with new branch", async () => {
-    const mockGitExec: GitExecFunction = vi.fn()
+    const mockGitExec: GitExecFunction = vi
+      .fn()
       .mockResolvedValueOnce({ stdout: "", stderr: "" }) // worktree add command
-      .mockResolvedValueOnce({ // worktree list command
+      .mockResolvedValueOnce({
+        // worktree list command
         stdout: `worktree /path/to/worktree
 HEAD abcdef1234567890
 branch refs/heads/feature-branch`,
-        stderr: ""
+        stderr: "",
       });
 
     const result = await createWorktree(
@@ -110,13 +118,15 @@ branch refs/heads/feature-branch`,
   });
 
   it("should create worktree from existing branch", async () => {
-    const mockGitExec: GitExecFunction = vi.fn()
+    const mockGitExec: GitExecFunction = vi
+      .fn()
       .mockResolvedValueOnce({ stdout: "", stderr: "" }) // worktree add command
-      .mockResolvedValueOnce({ // worktree list command
+      .mockResolvedValueOnce({
+        // worktree list command
         stdout: `worktree /path/to/worktree
 HEAD 1234567890abcdef
 branch refs/heads/existing-branch`,
-        stderr: ""
+        stderr: "",
       });
 
     const result = await createWorktree(
@@ -138,7 +148,12 @@ describe("removeWorktree", () => {
       "worktree remove /path/to/worktree": "",
     });
 
-    const result = await removeWorktree("/repo", "/path/to/worktree", false, mockGitExec);
+    const result = await removeWorktree(
+      "/repo",
+      "/path/to/worktree",
+      false,
+      mockGitExec
+    );
 
     expect(result.ok).toBe(true);
   });
@@ -148,7 +163,12 @@ describe("removeWorktree", () => {
       "worktree remove --force /path/to/worktree": "",
     });
 
-    const result = await removeWorktree("/repo", "/path/to/worktree", true, mockGitExec);
+    const result = await removeWorktree(
+      "/repo",
+      "/path/to/worktree",
+      true,
+      mockGitExec
+    );
 
     expect(result.ok).toBe(true);
   });
@@ -187,9 +207,9 @@ describe("getCurrentWorktree", () => {
   });
 
   it("should return null for non-git directory", async () => {
-    const mockGitExec: GitExecFunction = vi.fn().mockRejectedValue(
-      new Error("Not a git repository")
-    );
+    const mockGitExec: GitExecFunction = vi
+      .fn()
+      .mockRejectedValue(new Error("Not a git repository"));
 
     const result = await getCurrentWorktree("/not/git", mockGitExec);
 

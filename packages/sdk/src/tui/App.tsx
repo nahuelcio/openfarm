@@ -1,12 +1,12 @@
 import { Box } from "ink";
-import { ContextScreen } from "./screens/Context";
-import { ContextConfigScreen } from "./screens/ContextConfig";
-import { Dashboard } from "./screens/Dashboard";
-import { Execute } from "./screens/Execute";
-import { History } from "./screens/History";
-import { Running } from "./screens/Running";
-import { WorkflowEditor } from "./screens/WorkflowEditor";
-import { WorkflowList } from "./screens/WorkflowList";
+import { ContextScreen } from "./screens/context";
+import { ContextConfigScreen } from "./screens/context-config";
+import { Dashboard } from "./screens/dashboard";
+import { Execute } from "./screens/execute";
+import { History } from "./screens/history";
+import { Running } from "./screens/running";
+import { WorkflowEditor } from "./screens/workflow-editor";
+import { WorkflowList } from "./screens/workflow-list";
 import { useStore } from "./store";
 
 export function App() {

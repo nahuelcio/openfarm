@@ -5,6 +5,7 @@
  * using HTTP requests. This is a simple provider that stays in the core SDK.
  */
 
+import { z } from "zod";
 import { JsonResponseParser } from "../parsers/json-parser";
 import { BaseProvider } from "../provider-system/base-provider";
 import { ZodConfigurationManager } from "../provider-system/configuration-manager";
@@ -16,7 +17,6 @@ import type {
 } from "../provider-system/types";
 import { HttpCommunicationStrategy } from "../strategies/http-strategy";
 import type { ExecutionOptions, ExecutionResult } from "../types";
-import { z } from "zod";
 
 /**
  * Configuration interface for Direct API Provider.

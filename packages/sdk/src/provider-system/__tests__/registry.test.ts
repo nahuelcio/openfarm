@@ -42,7 +42,7 @@ class MockProvider implements Provider {
 }
 
 class MockProviderFactory implements ProviderFactory {
-  private metadata: ProviderMetadata;
+  private readonly metadata: ProviderMetadata;
 
   constructor(metadata: ProviderMetadata) {
     this.metadata = metadata;

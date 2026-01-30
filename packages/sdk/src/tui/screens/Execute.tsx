@@ -1,12 +1,12 @@
+import { readdir, readFile } from "node:fs/promises";
+import { join, resolve } from "node:path";
+import type { Workflow } from "@openfarm/core";
 import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
+import YAML from "js-yaml";
 import { useEffect, useState } from "react";
 import { useStore } from "../store";
 import { getAvailableModels } from "../utils/models";
-import type { Workflow } from "@openfarm/core";
-import { readdir, readFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
-import YAML from "js-yaml";
 
 const PROVIDERS = [
   { id: "opencode", name: "OpenCode" },
@@ -31,17 +31,25 @@ async function loadWorkflowsFromYaml(): Promise<Workflow[]> {
   for (const dir of possiblePaths) {
     try {
       const files = await readdir(dir);
-      const yamlFiles = files.filter(f => f.endsWith(".yaml") || f.endsWith(".yml"));
+      const yamlFiles = files.filter(
+        (f) => f.endsWith(".yaml") || f.endsWith(".yml")
+      );
 
-      if (yamlFiles.length === 0) continue;
+      if (yamlFiles.length === 0) {
+        continue;
+      }
 
       const workflows: Workflow[] = [];
       for (const file of yamlFiles) {
         try {
           const content = await readFile(join(dir, file), "utf-8");
           const workflow = YAML.load(content) as Workflow;
-          if (!workflow.createdAt) workflow.createdAt = new Date().toISOString();
-          if (!workflow.updatedAt) workflow.updatedAt = new Date().toISOString();
+          if (!workflow.createdAt) {
+            workflow.createdAt = new Date().toISOString();
+          }
+          if (!workflow.updatedAt) {
+            workflow.updatedAt = new Date().toISOString();
+          }
           workflows.push(workflow);
         } catch {
           // Skip invalid files
@@ -50,8 +58,12 @@ async function loadWorkflowsFromYaml(): Promise<Workflow[]> {
 
       // Sort: task_runner first, then alphabetically
       return workflows.sort((a, b) => {
-        if (a.id === DEFAULT_WORKFLOW_ID) return -1;
-        if (b.id === DEFAULT_WORKFLOW_ID) return 1;
+        if (a.id === DEFAULT_WORKFLOW_ID) {
+          return -1;
+        }
+        if (b.id === DEFAULT_WORKFLOW_ID) {
+          return 1;
+        }
         return (a.name || a.id).localeCompare(b.name || b.id);
       });
     } catch {
@@ -94,7 +106,7 @@ export function Execute() {
       const data = await loadWorkflowsFromYaml();
       setWorkflows(data);
       // Find index of default workflow
-      const defaultIndex = data.findIndex(w => w.id === selectedWorkflowId);
+      const defaultIndex = data.findIndex((w) => w.id === selectedWorkflowId);
       if (defaultIndex >= 0) {
         setSelectedIndex(defaultIndex);
       }
@@ -122,9 +134,9 @@ export function Execute() {
   }, [provider]);
 
   // Filter models based on search
-  const filteredModels = modelOptions.filter(m =>
-    m.toLowerCase().includes(modelSearch.toLowerCase())
-  ).slice(0, 10);
+  const filteredModels = modelOptions
+    .filter((m) => m.toLowerCase().includes(modelSearch.toLowerCase()))
+    .slice(0, 10);
 
   useInput((input, key) => {
     // Escape vuelve al dashboard o paso anterior
@@ -134,7 +146,9 @@ export function Execute() {
       } else if (step === "provider") {
         setStep("workflow");
         // Reset to current workflow index
-        const currentIndex = workflows.findIndex(w => w.id === selectedWorkflowId);
+        const currentIndex = workflows.findIndex(
+          (w) => w.id === selectedWorkflowId
+        );
         setSelectedIndex(currentIndex >= 0 ? currentIndex : 0);
       } else if (step === "model") {
         if (isSelectingFromList) {
@@ -143,7 +157,7 @@ export function Execute() {
         } else {
           setModelSearch("");
           setStep("provider");
-          setSelectedIndex(PROVIDERS.findIndex(p => p.id === provider) || 0);
+          setSelectedIndex(PROVIDERS.findIndex((p) => p.id === provider) || 0);
         }
       } else if (step === "workspace") {
         setStep("model");
@@ -165,7 +179,7 @@ export function Execute() {
         const selected = workflows[selectedIndex];
         if (selected) {
           setSelectedWorkflowId(selected.id);
-          setSelectedIndex(PROVIDERS.findIndex(p => p.id === provider) || 0);
+          setSelectedIndex(PROVIDERS.findIndex((p) => p.id === provider) || 0);
           setStep("provider");
         }
       }
@@ -253,7 +267,9 @@ export function Execute() {
         setCustomPath("");
         setIsSelectingFromList(false);
         setStep("workflow");
-        setSelectedIndex(workflows.findIndex(w => w.id === selectedWorkflowId) || 0);
+        setSelectedIndex(
+          workflows.findIndex((w) => w.id === selectedWorkflowId) || 0
+        );
         setScreen("running");
       }
       return;
@@ -265,8 +281,8 @@ export function Execute() {
       ? customPath
       : workspace;
 
-  const currentWorkflow = workflows.find(w => w.id === selectedWorkflowId);
-  const selectedWorkflow = workflows[selectedIndex];
+  const currentWorkflow = workflows.find((w) => w.id === selectedWorkflowId);
+  const _selectedWorkflow = workflows[selectedIndex];
 
   return (
     <Box flexDirection="column" gap={1}>
@@ -283,7 +299,9 @@ export function Execute() {
           color={step === "workflow" ? "cyan" : "gray"}
         >
           0. Select Workflow{" "}
-          {step !== "workflow" && currentWorkflow && `(${currentWorkflow.name || currentWorkflow.id})`}
+          {step !== "workflow" &&
+            currentWorkflow &&
+            `(${currentWorkflow.name || currentWorkflow.id})`}
         </Text>
 
         {step === "workflow" && (
@@ -335,7 +353,8 @@ export function Execute() {
           color={step === "provider" ? "cyan" : "gray"}
         >
           1. Select Provider{" "}
-          {step !== "workflow" && step !== "provider" &&
+          {step !== "workflow" &&
+            step !== "provider" &&
             `(${PROVIDERS.find((p) => p.id === provider)?.name})`}
         </Text>
 
@@ -370,7 +389,11 @@ export function Execute() {
           color={step === "model" ? "cyan" : "gray"}
         >
           2. Select Model (optional){" "}
-          {step !== "workflow" && step !== "provider" && step !== "model" && model && `(${model})`}
+          {step !== "workflow" &&
+            step !== "provider" &&
+            step !== "model" &&
+            model &&
+            `(${model})`}
         </Text>
 
         {step === "model" && (
@@ -381,7 +404,11 @@ export function Execute() {
                   ? `Search ${modelOptions.length} models or type custom:`
                   : "Type model name:"}
               </Text>
-              <Box borderColor={isSelectingFromList ? "gray" : "yellow"} borderStyle="single" padding={1}>
+              <Box
+                borderColor={isSelectingFromList ? "gray" : "yellow"}
+                borderStyle="single"
+                padding={1}
+              >
                 <TextInput
                   onChange={setModelSearch}
                   placeholder="e.g. claude, gemini, gpt..."
@@ -393,16 +420,29 @@ export function Execute() {
             {filteredModels.length > 0 && (
               <Box flexDirection="column" gap={0} marginTop={1}>
                 <Text color="gray" dimColor>
-                  {filteredModels.length} match{filteredModels.length !== 1 ? "es" : ""}:
+                  {filteredModels.length} match
+                  {filteredModels.length !== 1 ? "es" : ""}:
                 </Text>
                 {filteredModels.map((m, index) => (
                   <Box flexDirection="row" gap={1} key={m}>
-                    <Text color={isSelectingFromList && index === selectedIndex ? "yellow" : "gray"}>
-                      {isSelectingFromList && index === selectedIndex ? "▶" : " "}
+                    <Text
+                      color={
+                        isSelectingFromList && index === selectedIndex
+                          ? "yellow"
+                          : "gray"
+                      }
+                    >
+                      {isSelectingFromList && index === selectedIndex
+                        ? "▶"
+                        : " "}
                     </Text>
                     <Text
                       bold={isSelectingFromList && index === selectedIndex}
-                      color={isSelectingFromList && index === selectedIndex ? "white" : "gray"}
+                      color={
+                        isSelectingFromList && index === selectedIndex
+                          ? "white"
+                          : "gray"
+                      }
                     >
                       {m}
                     </Text>
@@ -497,7 +537,10 @@ export function Execute() {
           <Box flexDirection="column" gap={1} paddingLeft={2}>
             <Box flexDirection="column" gap={0}>
               <Text color="gray" dimColor>
-                Using workflow: <Text bold color="cyan">{currentWorkflow?.name || selectedWorkflowId}</Text>
+                Using workflow:{" "}
+                <Text bold color="cyan">
+                  {currentWorkflow?.name || selectedWorkflowId}
+                </Text>
               </Text>
               <Text color="gray" dimColor>
                 Working in: {currentWorkspace}

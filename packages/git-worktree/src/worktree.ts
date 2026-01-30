@@ -40,7 +40,10 @@ export async function listWorktrees(
     });
 
     const worktrees: GitWorktree[] = [];
-    const lines = stdout.trim().split("\n").filter(line => line.trim() !== "");
+    const lines = stdout
+      .trim()
+      .split("\n")
+      .filter((line) => line.trim() !== "");
     let currentWorktree: Partial<GitWorktree> = {};
 
     for (const line of lines) {
@@ -53,7 +56,7 @@ export async function listWorktrees(
               path: currentWorktree.path,
               branch: currentWorktree.branch || "",
               commit: currentWorktree.commit || "",
-              isMain: currentWorktree.isMain || false,
+              isMain: currentWorktree.isMain ?? false,
               exists,
             });
           }
@@ -80,7 +83,7 @@ export async function listWorktrees(
           path: currentWorktree.path,
           branch: currentWorktree.branch || "",
           commit: currentWorktree.commit || "",
-          isMain: currentWorktree.isMain || false,
+          isMain: currentWorktree.isMain ?? false,
           exists,
         });
       }
@@ -125,10 +128,14 @@ export async function createWorktree(
     await gitExec(args, { cwd: repoPath });
 
     // Small delay to ensure git has updated its state
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 100));
 
     // Verify the worktree was created
-    const worktreesResult = await listWorktrees(repoPath, { includeStale: true }, gitExec);
+    const worktreesResult = await listWorktrees(
+      repoPath,
+      { includeStale: true },
+      gitExec
+    );
     if (!worktreesResult.ok) {
       return err(worktreesResult.error);
     }
@@ -136,7 +143,7 @@ export async function createWorktree(
     // Normalize paths for comparison (resolve symlinks, normalize separators)
     const { resolve } = await import("node:path");
     const { realpathSync } = await import("node:fs");
-    
+
     let normalizedPath: string;
     try {
       normalizedPath = realpathSync(options.path);
@@ -144,44 +151,54 @@ export async function createWorktree(
       // If realpath fails, use resolve as fallback
       normalizedPath = resolve(options.path);
     }
-    
-    logger.info({ normalizedPath, expectedPath: options.path }, "Looking for worktree");
-    
-    const createdWorktree = worktreesResult.value.find(
-      (wt) => {
+
+    logger.info(
+      { normalizedPath, expectedPath: options.path },
+      "Looking for worktree"
+    );
+
+    const createdWorktree = worktreesResult.value.find((wt) => {
+      try {
+        const normalizedWorktreePath = realpathSync(wt.path);
+        const match = normalizedWorktreePath === normalizedPath;
+        logger.info(
+          {
+            worktreePath: wt.path,
+            normalizedWorktreePath,
+            normalizedPath,
+            match,
+          },
+          "Comparing worktree path"
+        );
+        return match;
+      } catch {
+        // Fallback to resolve if realpath fails
         try {
-          const normalizedWorktreePath = realpathSync(wt.path);
-          const match = normalizedWorktreePath === normalizedPath;
-          logger.info({ 
-            worktreePath: wt.path, 
-            normalizedWorktreePath, 
-            normalizedPath, 
-            match 
-          }, "Comparing worktree path");
-          return match;
+          const resolvedWorktreePath = resolve(wt.path);
+          const resolvedExpectedPath = resolve(options.path);
+          return resolvedWorktreePath === resolvedExpectedPath;
         } catch {
-          // Fallback to resolve if realpath fails
-          try {
-            const resolvedWorktreePath = resolve(wt.path);
-            const resolvedExpectedPath = resolve(options.path);
-            return resolvedWorktreePath === resolvedExpectedPath;
-          } catch {
-            return wt.path === options.path;
-          }
+          return wt.path === options.path;
         }
       }
-    );
+    });
 
     if (!createdWorktree) {
       // Log available worktrees for debugging
-      const availablePaths = worktreesResult.value.map(wt => {
-        try {
-          return `${wt.path} (real: ${realpathSync(wt.path)})`;
-        } catch {
-          return wt.path;
-        }
-      }).join(', ');
-      return err(new Error(`Worktree was not created successfully. Expected: ${normalizedPath}, Available: [${availablePaths}]`));
+      const availablePaths = worktreesResult.value
+        .map((wt) => {
+          try {
+            return `${wt.path} (real: ${realpathSync(wt.path)})`;
+          } catch {
+            return wt.path;
+          }
+        })
+        .join(", ");
+      return err(
+        new Error(
+          `Worktree was not created successfully. Expected: ${normalizedPath}, Available: [${availablePaths}]`
+        )
+      );
     }
 
     logger.info(
@@ -286,7 +303,7 @@ export async function getCurrentWorktree(
       isMain,
       exists: true,
     });
-  } catch (error) {
+  } catch (_error) {
     // Not a git repository or other error
     return ok(null);
   }

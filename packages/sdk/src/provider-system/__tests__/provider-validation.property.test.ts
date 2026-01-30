@@ -57,13 +57,24 @@ class ValidResponseParser implements ResponseParser {
 }
 
 class ValidConfigurationManager implements ConfigurationManager {
-  validate(): boolean { return true; }
-  getValidationErrors(): string[] { return []; }
-  getDefaults(): Record<string, unknown> { return { timeout: 30_000 }; }
-  mergeWithDefaults(config: unknown): Record<string, unknown> {
-    return { ...this.getDefaults(), ...((config as Record<string, unknown>) || {}) };
+  validate(): boolean {
+    return true;
   }
-  getSchema(): Record<string, unknown> { return { type: "object" }; }
+  getValidationErrors(): string[] {
+    return [];
+  }
+  getDefaults(): Record<string, unknown> {
+    return { timeout: 30_000 };
+  }
+  mergeWithDefaults(config: unknown): Record<string, unknown> {
+    return {
+      ...this.getDefaults(),
+      ...((config as Record<string, unknown>) || {}),
+    };
+  }
+  getSchema(): Record<string, unknown> {
+    return { type: "object" };
+  }
 }
 
 // Valid provider implementation
@@ -83,7 +94,9 @@ class ValidProvider extends BaseProvider {
     this.name = name;
   }
 
-  protected async prepareRequest(options: ExecutionOptions): Promise<CommunicationRequest> {
+  protected async prepareRequest(
+    options: ExecutionOptions
+  ): Promise<CommunicationRequest> {
     return { endpoint: "/valid", body: { task: options.task } };
   }
 
@@ -113,10 +126,6 @@ class ValidProvider extends BaseProvider {
 
 // Valid factory implementation
 class ValidProviderFactory extends BaseProviderFactory {
-  constructor(metadata: ProviderMetadata) {
-    super(metadata);
-  }
-
   protected createCommunicationStrategy(): CommunicationStrategy {
     return new ValidCommunicationStrategy();
   }
@@ -146,7 +155,7 @@ class ValidProviderFactory extends BaseProviderFactory {
 
 // Invalid factory implementations for testing validation
 class InvalidFactoryMissingCreate implements Partial<ProviderFactory> {
-  constructor(private metadata: ProviderMetadata) {}
+  constructor(private readonly metadata: ProviderMetadata) {}
 
   getMetadata(): ProviderMetadata {
     return this.metadata;
@@ -178,10 +187,6 @@ class InvalidFactoryMissingMetadata implements Partial<ProviderFactory> {
 }
 
 class InvalidFactoryBadMetadata extends BaseProviderFactory {
-  constructor(metadata: ProviderMetadata) {
-    super(metadata);
-  }
-
   protected createCommunicationStrategy(): CommunicationStrategy {
     return new ValidCommunicationStrategy();
   }
@@ -241,7 +246,10 @@ class InvalidProviderMissingExecute implements Partial<Provider> {
 
 // Factory that creates invalid providers
 class InvalidProviderCreatingFactory extends BaseProviderFactory {
-  constructor(metadata: ProviderMetadata, private invalidType: "missing-type" | "missing-execute") {
+  constructor(
+    metadata: ProviderMetadata,
+    private readonly invalidType: "missing-type" | "missing-execute"
+  ) {
     super(metadata);
   }
 
@@ -260,23 +268,25 @@ class InvalidProviderCreatingFactory extends BaseProviderFactory {
   protected createProvider(): Provider {
     if (this.invalidType === "missing-type") {
       return new InvalidProviderMissingType() as Provider;
-    } else {
-      return new InvalidProviderMissingExecute() as Provider;
     }
+    return new InvalidProviderMissingExecute() as Provider;
   }
 }
 
 // Generators for property-based testing
-const validProviderTypeArb = fc.string({ minLength: 1, maxLength: 15 })
-  .filter(s => /^[a-zA-Z0-9_-]+$/.test(s) && s.trim().length > 0);
+const validProviderTypeArb = fc
+  .string({ minLength: 1, maxLength: 15 })
+  .filter((s) => /^[a-zA-Z0-9_-]+$/.test(s) && s.trim().length > 0);
 
 const validProviderMetadataArb = fc.record({
   type: validProviderTypeArb,
-  name: fc.string({ minLength: 1, maxLength: 25 }).filter(s => s.trim().length > 0),
+  name: fc
+    .string({ minLength: 1, maxLength: 25 })
+    .filter((s) => s.trim().length > 0),
   description: fc.string({ minLength: 5, maxLength: 50 }),
   version: fc.constantFrom("1.0.0", "1.1.0", "2.0.0"),
   supportedFeatures: fc.array(
-    fc.constantFrom("basic", "advanced", "validation"), 
+    fc.constantFrom("basic", "advanced", "validation"),
     { minLength: 1, maxLength: 3 }
   ),
 });
@@ -288,9 +298,13 @@ const invalidProviderMetadataArb = fc.oneof(
       fc.constant(""), // empty string
       fc.constant(null), // null
       fc.constant(123), // number
-      fc.string().filter(s => !/^[a-zA-Z0-9_-]+$/.test(s) && s.length > 0) // invalid format
+      fc
+        .string()
+        .filter((s) => !/^[a-zA-Z0-9_-]+$/.test(s) && s.length > 0) // invalid format
     ),
-    name: fc.string({ minLength: 1, maxLength: 25 }).filter(s => s.trim().length > 0),
+    name: fc
+      .string({ minLength: 1, maxLength: 25 })
+      .filter((s) => s.trim().length > 0),
     description: fc.string({ minLength: 5, maxLength: 50 }),
     version: fc.constantFrom("1.0.0", "1.1.0", "2.0.0"),
     supportedFeatures: fc.array(fc.string(), { minLength: 1, maxLength: 3 }),
@@ -306,7 +320,9 @@ const invalidProviderMetadataArb = fc.oneof(
   // Invalid version (empty or non-string)
   fc.record({
     type: validProviderTypeArb,
-    name: fc.string({ minLength: 1, maxLength: 25 }).filter(s => s.trim().length > 0),
+    name: fc
+      .string({ minLength: 1, maxLength: 25 })
+      .filter((s) => s.trim().length > 0),
     description: fc.string({ minLength: 5, maxLength: 50 }),
     version: fc.oneof(fc.constant(""), fc.constant(null), fc.constant(123)),
     supportedFeatures: fc.array(fc.string(), { minLength: 1, maxLength: 3 }),
@@ -314,87 +330,90 @@ const invalidProviderMetadataArb = fc.oneof(
   // Invalid supportedFeatures (not an array)
   fc.record({
     type: validProviderTypeArb,
-    name: fc.string({ minLength: 1, maxLength: 25 }).filter(s => s.trim().length > 0),
+    name: fc
+      .string({ minLength: 1, maxLength: 25 })
+      .filter((s) => s.trim().length > 0),
     description: fc.string({ minLength: 5, maxLength: 50 }),
     version: fc.constantFrom("1.0.0", "1.1.0", "2.0.0"),
-    supportedFeatures: fc.oneof(fc.constant(null), fc.constant("not-array"), fc.constant(123)),
+    supportedFeatures: fc.oneof(
+      fc.constant(null),
+      fc.constant("not-array"),
+      fc.constant(123)
+    ),
   })
 );
 
 describe("Property 13: Provider Validation", () => {
   it("should accept valid provider implementations", () => {
     fc.assert(
-      fc.property(
-        validProviderMetadataArb,
-        (metadata) => {
-          // Arrange
-          const registry = new ProviderRegistry();
-          const factory = new ValidProviderFactory(metadata);
+      fc.property(validProviderMetadataArb, (metadata) => {
+        // Arrange
+        const registry = new ProviderRegistry();
+        const factory = new ValidProviderFactory(metadata);
 
-          // Act & Assert - Should not throw
-          expect(() => registry.registerProvider(factory)).not.toThrow();
+        // Act & Assert - Should not throw
+        expect(() => registry.registerProvider(factory)).not.toThrow();
 
-          // Verify provider was registered successfully
-          expect(registry.hasProvider(metadata.type)).toBe(true);
-          expect(registry.getProviderMetadata(metadata.type)).toEqual(metadata);
+        // Verify provider was registered successfully
+        expect(registry.hasProvider(metadata.type)).toBe(true);
+        expect(registry.getProviderMetadata(metadata.type)).toEqual(metadata);
 
-          // Verify provider can be created and is functional
-          const provider = registry.createProvider(metadata.type);
-          expect(provider.type).toBe(metadata.type);
-          expect(provider.name).toBe(metadata.name);
-        }
-      ),
+        // Verify provider can be created and is functional
+        const provider = registry.createProvider(metadata.type);
+        expect(provider.type).toBe(metadata.type);
+        expect(provider.name).toBe(metadata.name);
+      }),
       { numRuns: 50 }
     );
   });
 
   it("should reject provider implementations with invalid metadata", () => {
     fc.assert(
-      fc.property(
-        invalidProviderMetadataArb,
-        (invalidMetadata) => {
-          // Arrange
-          const registry = new ProviderRegistry();
-          const factory = new InvalidFactoryBadMetadata(invalidMetadata as ProviderMetadata);
+      fc.property(invalidProviderMetadataArb, (invalidMetadata) => {
+        // Arrange
+        const registry = new ProviderRegistry();
+        const factory = new InvalidFactoryBadMetadata(
+          invalidMetadata as ProviderMetadata
+        );
 
-          // Act & Assert - Should throw validation error
-          expect(() => registry.registerProvider(factory)).toThrow();
+        // Act & Assert - Should throw validation error
+        expect(() => registry.registerProvider(factory)).toThrow();
 
-          // Verify provider was not registered
-          if (typeof invalidMetadata.type === "string" && invalidMetadata.type.length > 0) {
-            expect(registry.hasProvider(invalidMetadata.type)).toBe(false);
-          }
+        // Verify provider was not registered
+        if (
+          typeof invalidMetadata.type === "string" &&
+          invalidMetadata.type.length > 0
+        ) {
+          expect(registry.hasProvider(invalidMetadata.type)).toBe(false);
         }
-      ),
+      }),
       { numRuns: 50 }
     );
   });
 
   it("should reject factories missing required methods", () => {
     fc.assert(
-      fc.property(
-        validProviderMetadataArb,
-        (metadata) => {
-          // Arrange
-          const registry = new ProviderRegistry();
+      fc.property(validProviderMetadataArb, (metadata) => {
+        // Arrange
+        const registry = new ProviderRegistry();
 
-          // Test factory missing getMetadata method - this should fail immediately
-          const factoryMissingMetadata = new InvalidFactoryMissingMetadata();
-          expect(() => registry.registerProvider(factoryMissingMetadata as ProviderFactory))
-            .toThrow();
+        // Test factory missing getMetadata method - this should fail immediately
+        const factoryMissingMetadata = new InvalidFactoryMissingMetadata();
+        expect(() =>
+          registry.registerProvider(factoryMissingMetadata as ProviderFactory)
+        ).toThrow();
 
-          // Test factory missing create method - this might register but fail on creation
-          const factoryMissingCreate = new InvalidFactoryMissingCreate(metadata);
-          
-          // The registry might accept the factory if it has getMetadata
-          // But creating a provider should fail if create method is missing
-          registry.registerProvider(factoryMissingCreate as ProviderFactory);
-          expect(() => registry.createProvider(metadata.type)).toThrow();
+        // Test factory missing create method - this might register but fail on creation
+        const factoryMissingCreate = new InvalidFactoryMissingCreate(metadata);
 
-          // Verify provider creation failed (provider should not be functional)
-          expect(registry.hasProvider(metadata.type)).toBe(true); // Factory was registered
-        }
-      ),
+        // The registry might accept the factory if it has getMetadata
+        // But creating a provider should fail if create method is missing
+        registry.registerProvider(factoryMissingCreate as ProviderFactory);
+        expect(() => registry.createProvider(metadata.type)).toThrow();
+
+        // Verify provider creation failed (provider should not be functional)
+        expect(registry.hasProvider(metadata.type)).toBe(true); // Factory was registered
+      }),
       { numRuns: 50 }
     );
   });
@@ -407,7 +426,10 @@ describe("Property 13: Provider Validation", () => {
         (metadata, invalidType) => {
           // Arrange
           const registry = new ProviderRegistry();
-          const factory = new InvalidProviderCreatingFactory(metadata, invalidType);
+          const factory = new InvalidProviderCreatingFactory(
+            metadata,
+            invalidType
+          );
 
           // Act - Register factory (this should succeed since factory has valid interface)
           registry.registerProvider(factory);
@@ -416,7 +438,7 @@ describe("Property 13: Provider Validation", () => {
           // Assert - Creating provider should succeed but provider should be invalid
           // The validation happens when we try to use the provider, not when creating it
           const provider = registry.createProvider(metadata.type);
-          
+
           // The provider should be missing required properties/methods
           if (invalidType === "missing-type") {
             expect(provider.type).toBeUndefined();
@@ -437,12 +459,17 @@ describe("Property 13: Provider Validation", () => {
           name: fc.string({ minLength: 1, maxLength: 25 }),
           description: fc.string({ minLength: 5, maxLength: 50 }),
           version: fc.constantFrom("1.0.0", "1.1.0", "2.0.0"),
-          supportedFeatures: fc.array(fc.string(), { minLength: 1, maxLength: 3 }),
+          supportedFeatures: fc.array(fc.string(), {
+            minLength: 1,
+            maxLength: 3,
+          }),
         }),
         (invalidMetadata) => {
           // Arrange
           const registry = new ProviderRegistry();
-          const factory = new InvalidFactoryBadMetadata(invalidMetadata as ProviderMetadata);
+          const factory = new InvalidFactoryBadMetadata(
+            invalidMetadata as ProviderMetadata
+          );
 
           // Act & Assert
           try {
@@ -462,27 +489,24 @@ describe("Property 13: Provider Validation", () => {
 
   it("should prevent duplicate provider type registration", () => {
     fc.assert(
-      fc.property(
-        validProviderMetadataArb,
-        (metadata) => {
-          // Arrange
-          const registry = new ProviderRegistry();
-          const factory1 = new ValidProviderFactory(metadata);
-          const factory2 = new ValidProviderFactory(metadata); // Same type
+      fc.property(validProviderMetadataArb, (metadata) => {
+        // Arrange
+        const registry = new ProviderRegistry();
+        const factory1 = new ValidProviderFactory(metadata);
+        const factory2 = new ValidProviderFactory(metadata); // Same type
 
-          // Act - Register first provider
-          registry.registerProvider(factory1);
-          expect(registry.hasProvider(metadata.type)).toBe(true);
+        // Act - Register first provider
+        registry.registerProvider(factory1);
+        expect(registry.hasProvider(metadata.type)).toBe(true);
 
-          // Assert - Registering duplicate should fail
-          expect(() => registry.registerProvider(factory2)).toThrow();
+        // Assert - Registering duplicate should fail
+        expect(() => registry.registerProvider(factory2)).toThrow();
 
-          // Verify original provider is still registered and functional
-          expect(registry.hasProvider(metadata.type)).toBe(true);
-          const provider = registry.createProvider(metadata.type);
-          expect(provider.type).toBe(metadata.type);
-        }
-      ),
+        // Verify original provider is still registered and functional
+        expect(registry.hasProvider(metadata.type)).toBe(true);
+        const provider = registry.createProvider(metadata.type);
+        expect(provider.type).toBe(metadata.type);
+      }),
       { numRuns: 50 }
     );
   });
@@ -491,13 +515,30 @@ describe("Property 13: Provider Validation", () => {
     fc.assert(
       fc.property(
         fc.oneof(
-          fc.string().filter(s => s.includes(" ")), // Contains spaces
-          fc.string().filter(s => s.includes(".")), // Contains dots
-          fc.string().filter(s => s.includes("/")), // Contains slashes
-          fc.string().filter(s => /[^a-zA-Z0-9_-]/.test(s) && s.length > 0 && !s.includes(" ") && !s.includes(".") && !s.includes("/")), // Other invalid characters
+          fc
+            .string()
+            .filter((s) => s.includes(" ")), // Contains spaces
+          fc
+            .string()
+            .filter((s) => s.includes(".")), // Contains dots
+          fc
+            .string()
+            .filter((s) => s.includes("/")), // Contains slashes
+          fc
+            .string()
+            .filter(
+              (s) =>
+                /[^a-zA-Z0-9_-]/.test(s) &&
+                s.length > 0 &&
+                !s.includes(" ") &&
+                !s.includes(".") &&
+                !s.includes("/")
+            ), // Other invalid characters
           fc.constant("") // Empty string
         ),
-        fc.string({ minLength: 1, maxLength: 25 }).filter(s => s.trim().length > 0),
+        fc
+          .string({ minLength: 1, maxLength: 25 })
+          .filter((s) => s.trim().length > 0),
         (invalidType, name) => {
           // Skip if the invalid type would actually be valid
           fc.pre(!/^[a-zA-Z0-9_-]+$/.test(invalidType) || invalidType === "");
@@ -526,60 +567,54 @@ describe("Property 13: Provider Validation", () => {
 
   it("should validate that providers can be created successfully", async () => {
     await fc.assert(
-      fc.asyncProperty(
-        validProviderMetadataArb,
-        async (metadata) => {
-          // Arrange
-          const registry = new ProviderRegistry();
-          const factory = new ValidProviderFactory(metadata);
+      fc.asyncProperty(validProviderMetadataArb, async (metadata) => {
+        // Arrange
+        const registry = new ProviderRegistry();
+        const factory = new ValidProviderFactory(metadata);
 
-          // Act - Register and create provider
-          registry.registerProvider(factory);
-          const provider = registry.createProvider(metadata.type);
+        // Act - Register and create provider
+        registry.registerProvider(factory);
+        const provider = registry.createProvider(metadata.type);
 
-          // Assert - Provider should be fully functional
-          expect(provider.type).toBe(metadata.type);
-          expect(provider.name).toBe(metadata.name);
+        // Assert - Provider should be fully functional
+        expect(provider.type).toBe(metadata.type);
+        expect(provider.name).toBe(metadata.name);
 
-          // Test core provider functionality
-          expect(await provider.testConnection()).toBe(true);
-          expect(provider.validateConfig({})).toBe(true);
+        // Test core provider functionality
+        expect(await provider.testConnection()).toBe(true);
+        expect(provider.validateConfig({})).toBe(true);
 
-          // Test execution
-          const result = await provider.execute({ task: "validation-test" });
-          expect(result.success).toBe(true);
-          expect(result.output).toContain("Valid result");
-          expect(typeof result.duration).toBe("number");
-        }
-      ),
+        // Test execution
+        const result = await provider.execute({ task: "validation-test" });
+        expect(result.success).toBe(true);
+        expect(result.output).toContain("Valid result");
+        expect(typeof result.duration).toBe("number");
+      }),
       { numRuns: 50 }
     );
   });
 
   it("should validate provider capabilities are properly defined", () => {
     fc.assert(
-      fc.property(
-        validProviderMetadataArb,
-        (metadata) => {
-          // Arrange
-          const registry = new ProviderRegistry();
-          const factory = new ValidProviderFactory(metadata);
+      fc.property(validProviderMetadataArb, (metadata) => {
+        // Arrange
+        const registry = new ProviderRegistry();
+        const factory = new ValidProviderFactory(metadata);
 
-          // Act
-          registry.registerProvider(factory);
-          const provider = registry.createProvider(metadata.type);
+        // Act
+        registry.registerProvider(factory);
+        const provider = registry.createProvider(metadata.type);
 
-          // Assert - Capabilities should be properly defined
-          const capabilities = provider.getCapabilities();
-          expect(capabilities).toBeDefined();
-          expect(Array.isArray(capabilities.executionModes)).toBe(true);
-          expect(Array.isArray(capabilities.fileTypes)).toBe(true);
-          expect(Array.isArray(capabilities.features)).toBe(true);
-          expect(typeof capabilities.supportsStreaming).toBe("boolean");
-          expect(typeof capabilities.supportsLocal).toBe("boolean");
-          expect(typeof capabilities.requiresInternet).toBe("boolean");
-        }
-      ),
+        // Assert - Capabilities should be properly defined
+        const capabilities = provider.getCapabilities();
+        expect(capabilities).toBeDefined();
+        expect(Array.isArray(capabilities.executionModes)).toBe(true);
+        expect(Array.isArray(capabilities.fileTypes)).toBe(true);
+        expect(Array.isArray(capabilities.features)).toBe(true);
+        expect(typeof capabilities.supportsStreaming).toBe("boolean");
+        expect(typeof capabilities.supportsLocal).toBe("boolean");
+        expect(typeof capabilities.requiresInternet).toBe("boolean");
+      }),
       { numRuns: 50 }
     );
   });

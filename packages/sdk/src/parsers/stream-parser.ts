@@ -1,11 +1,14 @@
 /**
  * Stream Response Parser for OpenFarm Provider System.
- * 
+ *
  * Provides line-by-line parsing for streaming responses with mixed content.
  * Handles JSON events mixed with plain text output from CLI tools like Aider and OpenCode.
  */
 
-import type { ResponseParser, CommunicationResponse } from "../provider-system/types";
+import type {
+  CommunicationResponse,
+  ResponseParser,
+} from "../provider-system/types";
 import type { StreamParserOptions } from "./types";
 
 /**
@@ -14,16 +17,16 @@ import type { StreamParserOptions } from "./types";
 export interface StreamEvent {
   /** Original line content */
   raw: string;
-  
+
   /** Parsed JSON data (if line is valid JSON) */
   data?: unknown;
-  
+
   /** Whether this line contains valid JSON */
   isJson: boolean;
-  
+
   /** Line number in the stream (0-based) */
   lineNumber: number;
-  
+
   /** Whether this line was filtered out */
   filtered?: boolean;
 }
@@ -34,29 +37,29 @@ export interface StreamEvent {
 export interface StreamParseResult {
   /** All parsed events */
   events: StreamEvent[];
-  
+
   /** Only JSON events */
   jsonEvents: StreamEvent[];
-  
+
   /** Only plain text lines */
   textLines: StreamEvent[];
-  
+
   /** Total number of lines processed */
   totalLines: number;
-  
+
   /** Number of valid JSON events found */
   jsonCount: number;
-  
+
   /** Number of plain text lines found */
   textCount: number;
-  
+
   /** Number of empty/filtered lines */
   filteredCount: number;
 }
 
 /**
  * Parser for streaming responses with line-by-line JSON event detection.
- * 
+ *
  * Features:
  * - Line-by-line parsing with configurable separators
  * - Automatic JSON event detection and parsing
@@ -68,12 +71,12 @@ export interface StreamParseResult {
  */
 export class StreamResponseParser implements ResponseParser<StreamParseResult> {
   readonly type = "stream";
-  
+
   private readonly options: Required<StreamParserOptions>;
 
   constructor(options: StreamParserOptions = {}) {
     this.options = {
-      separator: options.separator ?? '\n',
+      separator: options.separator ?? "\n",
       skipEmpty: options.skipEmpty ?? true,
       trim: options.trim ?? true,
       filter: options.filter ?? (() => true),
@@ -83,7 +86,7 @@ export class StreamResponseParser implements ResponseParser<StreamParseResult> {
 
   /**
    * Parse a streaming communication response into structured events.
-   * 
+   *
    * @param response - The communication response to parse
    * @returns Promise resolving to parsed stream result with events and metadata
    */
@@ -101,23 +104,23 @@ export class StreamResponseParser implements ResponseParser<StreamParseResult> {
 
     // Split response into lines
     const lines = this.splitIntoLines(response.body);
-    
+
     // Process each line
     const events: StreamEvent[] = [];
     let filteredCount = 0;
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-      
+
       // Apply trimming if enabled
       const processedLine = this.options.trim ? line.trim() : line;
-      
+
       // Skip empty lines if configured
       if (this.options.skipEmpty && processedLine === "") {
         filteredCount++;
         continue;
       }
-      
+
       // Apply custom filter
       if (!this.options.filter(processedLine)) {
         filteredCount++;
@@ -129,11 +132,12 @@ export class StreamResponseParser implements ResponseParser<StreamParseResult> {
         });
         continue;
       }
-      
+
       // Apply transformation
       const transformedLine = this.options.transform(processedLine);
-      const finalLine = typeof transformedLine === 'string' ? transformedLine : processedLine;
-      
+      const finalLine =
+        typeof transformedLine === "string" ? transformedLine : processedLine;
+
       // Try to parse as JSON
       const event = this.parseLineAsEvent(finalLine, i);
       events.push(event);
@@ -144,10 +148,10 @@ export class StreamResponseParser implements ResponseParser<StreamParseResult> {
 
   /**
    * Check if this parser can handle the given response.
-   * 
+   *
    * Stream parser can handle any successful response with content.
    * It's designed to be permissive and handle mixed content.
-   * 
+   *
    * @param response - The communication response to check
    * @returns true if the response can be parsed as a stream
    */
@@ -168,23 +172,23 @@ export class StreamResponseParser implements ResponseParser<StreamParseResult> {
 
   /**
    * Split response body into lines using the configured separator.
-   * 
+   *
    * @param body - Response body to split
    * @returns Array of lines
    */
   private splitIntoLines(body: string): string[] {
     // Handle different line separators
-    if (this.options.separator === '\n') {
+    if (this.options.separator === "\n") {
       // Handle both \n and \r\n
       return body.split(/\r?\n/);
     }
-    
+
     return body.split(this.options.separator);
   }
 
   /**
    * Parse a single line as a stream event.
-   * 
+   *
    * @param line - Line to parse
    * @param lineNumber - Line number in the stream
    * @returns Stream event with parsed data
@@ -212,22 +216,22 @@ export class StreamResponseParser implements ResponseParser<StreamParseResult> {
 
   /**
    * Check if a line looks like it might be JSON.
-   * 
+   *
    * This is a quick heuristic check before attempting JSON.parse.
-   * 
+   *
    * @param line - Line to check
    * @returns true if line might be JSON
    */
   private looksLikeJson(line: string): boolean {
     const trimmed = line.trim();
-    
+
     // Must start and end with JSON delimiters
     return (
-      (trimmed.startsWith('{') && trimmed.endsWith('}')) ||
-      (trimmed.startsWith('[') && trimmed.endsWith(']')) ||
-      trimmed === 'null' ||
-      trimmed === 'true' ||
-      trimmed === 'false' ||
+      (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+      (trimmed.startsWith("[") && trimmed.endsWith("]")) ||
+      trimmed === "null" ||
+      trimmed === "true" ||
+      trimmed === "false" ||
       /^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(trimmed) || // Numbers
       (trimmed.startsWith('"') && trimmed.endsWith('"')) // Strings
     );
@@ -235,14 +239,17 @@ export class StreamResponseParser implements ResponseParser<StreamParseResult> {
 
   /**
    * Create the final parsing result with statistics.
-   * 
+   *
    * @param events - All parsed events
    * @param filteredCount - Number of filtered lines
    * @returns Complete stream parse result
    */
-  private createResult(events: StreamEvent[], filteredCount: number): StreamParseResult {
-    const jsonEvents = events.filter(e => e.isJson && !e.filtered);
-    const textLines = events.filter(e => !e.isJson && !e.filtered);
+  private createResult(
+    events: StreamEvent[],
+    filteredCount: number
+  ): StreamParseResult {
+    const jsonEvents = events.filter((e) => e.isJson && !e.filtered);
+    const textLines = events.filter((e) => !(e.isJson || e.filtered));
 
     return {
       events,
@@ -257,7 +264,7 @@ export class StreamResponseParser implements ResponseParser<StreamParseResult> {
 
   /**
    * Create an empty result for empty responses.
-   * 
+   *
    * @returns Empty stream parse result
    */
   private createEmptyResult(): StreamParseResult {
@@ -274,7 +281,7 @@ export class StreamResponseParser implements ResponseParser<StreamParseResult> {
 
   /**
    * Get a descriptive reason why parsing failed.
-   * 
+   *
    * @param response - The response that failed parsing
    * @returns Human-readable error reason
    */
@@ -292,7 +299,7 @@ export class StreamResponseParser implements ResponseParser<StreamParseResult> {
 
   /**
    * Create a new StreamResponseParser with different options.
-   * 
+   *
    * @param options - Parser options to use
    * @returns New parser instance with the specified options
    */
@@ -302,7 +309,7 @@ export class StreamResponseParser implements ResponseParser<StreamParseResult> {
 
   /**
    * Create a parser optimized for JSON-only events (filters out plain text).
-   * 
+   *
    * @returns Parser that only processes JSON events
    */
   static createJsonOnly(): StreamResponseParser {
@@ -310,8 +317,8 @@ export class StreamResponseParser implements ResponseParser<StreamParseResult> {
       filter: (line) => {
         const trimmed = line.trim();
         return (
-          (trimmed.startsWith('{') && trimmed.endsWith('}')) ||
-          (trimmed.startsWith('[') && trimmed.endsWith(']'))
+          (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+          (trimmed.startsWith("[") && trimmed.endsWith("]"))
         );
       },
     });
@@ -319,17 +326,19 @@ export class StreamResponseParser implements ResponseParser<StreamParseResult> {
 
   /**
    * Create a parser with custom line transformation.
-   * 
+   *
    * @param transform - Function to transform each line
    * @returns Parser with custom transformation
    */
-  static createWithTransform(transform: (line: string) => unknown): StreamResponseParser {
+  static createWithTransform(
+    transform: (line: string) => unknown
+  ): StreamResponseParser {
     return new StreamResponseParser({ transform });
   }
 
   /**
    * Create a parser with custom line separator.
-   * 
+   *
    * @param separator - Line separator to use
    * @returns Parser with custom separator
    */
@@ -339,7 +348,7 @@ export class StreamResponseParser implements ResponseParser<StreamParseResult> {
 
   /**
    * Create a parser that preserves empty lines and whitespace.
-   * 
+   *
    * @returns Parser that doesn't filter empty lines or trim whitespace
    */
   static createPreserveWhitespace(): StreamResponseParser {

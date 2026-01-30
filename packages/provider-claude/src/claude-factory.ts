@@ -4,25 +4,25 @@ import type {
   Provider,
   ProviderFactory,
   ProviderMetadata,
-} from '@openfarm/sdk';
+} from "@openfarm/sdk";
 import {
   CliCommunicationStrategy,
   createProviderConfigManager,
-} from '@openfarm/sdk';
-import { StreamResponseParser } from '@openfarm/sdk';
-import { ClaudeProvider } from './claude-provider';
+  StreamResponseParser,
+} from "@openfarm/sdk";
+import { ClaudeProvider } from "./claude-provider";
 
 /**
  * Configuration schema for Claude provider
  */
 const ClaudeConfigSchema = {
-  type: 'object',
+  type: "object",
   properties: {
     timeout: {
-      type: 'number',
-      default: 600000,
+      type: "number",
+      default: 600_000,
       minimum: 1000,
-      description: 'Timeout in milliseconds',
+      description: "Timeout in milliseconds",
     },
   },
   required: [],
@@ -34,20 +34,21 @@ const ClaudeConfigSchema = {
  */
 export class ClaudeProviderFactory implements ProviderFactory {
   private readonly metadata: ProviderMetadata = {
-    type: 'claude',
-    name: 'Claude Code',
-    version: '1.0.0',
-    description: "Claude Code AI assistant with advanced code understanding and editing capabilities",
-    packageName: '@openfarm/provider-claude',
+    type: "claude",
+    name: "Claude Code",
+    version: "1.0.0",
+    description:
+      "Claude Code AI assistant with advanced code understanding and editing capabilities",
+    packageName: "@openfarm/provider-claude",
     supportedFeatures: [
-      'code-generation',
-      'code-editing',
-      'refactoring',
-      'debugging',
-      'code-analysis',
-      'file-operations',
-      'bash-execution',
-      'web-search',
+      "code-generation",
+      "code-editing",
+      "refactoring",
+      "debugging",
+      "code-analysis",
+      "file-operations",
+      "bash-execution",
+      "web-search",
     ],
     configSchema: ClaudeConfigSchema,
     requiresExternal: true,
@@ -58,7 +59,7 @@ export class ClaudeProviderFactory implements ProviderFactory {
   }
 
   canCreate(type: string): boolean {
-    return type === 'claude';
+    return type === "claude";
   }
 
   create(config?: unknown): Provider {
@@ -69,7 +70,8 @@ export class ClaudeProviderFactory implements ProviderFactory {
 
     // Create dependencies
     const parsedConfig = this.parseConfig(config);
-    const communicationStrategy = this.createCommunicationStrategy(parsedConfig);
+    const communicationStrategy =
+      this.createCommunicationStrategy(parsedConfig);
     const responseParser = this.createResponseParser();
     const configManager = this.createConfigurationManager(parsedConfig);
 
@@ -83,16 +85,16 @@ export class ClaudeProviderFactory implements ProviderFactory {
   }
 
   private validateConfig(config: unknown): void {
-    if (typeof config !== 'object' || config === null) {
-      throw new Error('Configuration must be an object');
+    if (typeof config !== "object" || config === null) {
+      throw new Error("Configuration must be an object");
     }
 
     const configObj = config as Record<string, unknown>;
 
     // Validate timeout if provided
     if (configObj.timeout !== undefined) {
-      if (typeof configObj.timeout !== 'number' || configObj.timeout < 1000) {
-        throw new Error('Timeout must be a number >= 1000');
+      if (typeof configObj.timeout !== "number" || configObj.timeout < 1000) {
+        throw new Error("Timeout must be a number >= 1000");
       }
     }
   }
@@ -104,7 +106,7 @@ export class ClaudeProviderFactory implements ProviderFactory {
       timeout: 600_000,
     };
 
-    if (!config || typeof config !== 'object') {
+    if (!config || typeof config !== "object") {
       return defaults;
     }
 
@@ -119,7 +121,7 @@ export class ClaudeProviderFactory implements ProviderFactory {
     timeout: number;
   }): CommunicationStrategy {
     return new CliCommunicationStrategy({
-      executable: 'claude',
+      executable: "claude",
       timeout: config.timeout,
     });
   }

@@ -16,12 +16,14 @@
 import { OpenFarm } from "../src/open-farm.js";
 
 async function main() {
-  console.log("🚀 OpenFarm SDK - OpenCode Provider Example (Standalone Mode)\n");
+  console.log(
+    "🚀 OpenFarm SDK - OpenCode Provider Example (Standalone Mode)\n"
+  );
 
   // Create OpenFarm instance with OpenCode provider
   const openFarm = new OpenFarm({
     defaultProvider: "opencode",
-    timeout: 120_000 // 2 minutes
+    timeout: 120_000, // 2 minutes
   });
 
   console.log("✅ OpenFarm SDK initialized\n");
@@ -33,9 +35,13 @@ async function main() {
   // Get OpenCode provider metadata (if available)
   try {
     const metadata = await openFarm.getProviderMetadata("opencode");
-    console.log(`🔧 OpenCode provider: ${metadata?.description || "Available"}\n`);
-  } catch (error) {
-    console.log("⚠️  OpenCode provider not installed. Install with: npm install @openfarm/provider-opencode\n");
+    console.log(
+      `🔧 OpenCode provider: ${metadata?.description || "Available"}\n`
+    );
+  } catch (_error) {
+    console.log(
+      "⚠️  OpenCode provider not installed. Install with: npm install @openfarm/provider-opencode\n"
+    );
     console.log("   Falling back to direct-api provider for this demo.\n");
     await openFarm.setProvider("direct-api");
   }
@@ -52,9 +58,9 @@ async function main() {
     verbose: true,
     onLog: (log) => {
       // Real-time logging
-      const lines = log.split('\n').filter(l => l.trim());
-      lines.forEach(line => console.log(`   📝 ${line}`));
-    }
+      const lines = log.split("\n").filter((l) => l.trim());
+      lines.forEach((line) => console.log(`   📝 ${line}`));
+    },
   });
 
   console.log("\n📊 Result:");
@@ -80,9 +86,9 @@ async function main() {
     temperature: 0.3, // Lower temperature for more precise code
     maxTokens: 2000,
     onLog: (log) => {
-      const lines = log.split('\n').filter(l => l.trim());
-      lines.forEach(line => console.log(`   📝 ${line}`));
-    }
+      const lines = log.split("\n").filter((l) => l.trim());
+      lines.forEach((line) => console.log(`   📝 ${line}`));
+    },
   });
 
   console.log("\n📊 Result:");
@@ -112,35 +118,45 @@ async function main() {
     console.log("\n📊 Direct API Result:");
     console.log(`   Success: ${result3.success}`);
     console.log(`   Duration: ${result3.duration}ms`);
-    
+
     if (result3.success) {
       console.log(`   Output: ${result3.output?.substring(0, 100)}...`);
     } else {
       console.log(`   Error: ${result3.error}`);
     }
   } catch (error) {
-    console.error(`❌ Provider switching failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    console.error(
+      `❌ Provider switching failed: ${error instanceof Error ? error.message : "Unknown error"}`
+    );
   }
 
   // Example 4: Performance optimization
   console.log("\n4️⃣  Performance optimization example");
-  
+
   // Show registry stats
   const stats = await openFarm.getRegistryStats();
-  console.log(`📊 Registry stats: ${stats.totalProviders} total, ${stats.loadedProviders} loaded, ${stats.cachedProviders} cached`);
+  console.log(
+    `📊 Registry stats: ${stats.totalProviders} total, ${stats.loadedProviders} loaded, ${stats.cachedProviders} cached`
+  );
 
   // Preload providers for better performance
   console.log("\n🚀 Preloading all providers...");
   await openFarm.preloadAllProviders();
-  
+
   const newStats = await openFarm.getRegistryStats();
-  console.log(`📊 After preload: ${newStats.totalProviders} total, ${newStats.loadedProviders} loaded, ${newStats.cachedProviders} cached`);
+  console.log(
+    `📊 After preload: ${newStats.totalProviders} total, ${newStats.loadedProviders} loaded, ${newStats.cachedProviders} cached`
+  );
 
   console.log("\n✨ Example completed!\n");
   console.log("💡 Next steps:");
-  console.log("   • Install more providers: npm install @openfarm/provider-aider");
+  console.log(
+    "   • Install more providers: npm install @openfarm/provider-aider"
+  );
   console.log("   • Check the SDK docs: packages/sdk/README.md");
-  console.log("   • Try the simple demo: node packages/sdk/examples/simple-demo.mjs");
+  console.log(
+    "   • Try the simple demo: node packages/sdk/examples/simple-demo.mjs"
+  );
 }
 
 // Run the example

@@ -11,7 +11,6 @@
 
 import * as fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import type { ExecutionOptions, ExecutionResult } from "../../types";
 import { BaseProvider } from "../../provider-system/base-provider";
 import type {
   CommunicationRequest,
@@ -21,6 +20,7 @@ import type {
   ProviderCapabilities,
   ResponseParser,
 } from "../../provider-system/types";
+import type { ExecutionOptions, ExecutionResult } from "../../types";
 
 // Simple mock strategy that always succeeds
 class MockStrategy implements CommunicationStrategy {
@@ -35,10 +35,10 @@ class MockStrategy implements CommunicationStrategy {
     this.executionCount++;
     return {
       status: 200,
-      body: JSON.stringify({ 
-        strategy: this.type, 
+      body: JSON.stringify({
+        strategy: this.type,
         execution: this.executionCount,
-        task: request.body?.task || "default"
+        task: request.body?.task || "default",
       }),
       success: true,
       duration: 10,
@@ -78,13 +78,24 @@ class MockParser implements ResponseParser<any> {
 }
 
 class MockConfigurationManager implements ConfigurationManager {
-  validate(): boolean { return true; }
-  getValidationErrors(): string[] { return []; }
-  getDefaults(): Record<string, unknown> { return { timeout: 30_000 }; }
-  mergeWithDefaults(config: unknown): Record<string, unknown> {
-    return { ...this.getDefaults(), ...((config as Record<string, unknown>) || {}) };
+  validate(): boolean {
+    return true;
   }
-  getSchema(): Record<string, unknown> { return { type: "object" }; }
+  getValidationErrors(): string[] {
+    return [];
+  }
+  getDefaults(): Record<string, unknown> {
+    return { timeout: 30_000 };
+  }
+  mergeWithDefaults(config: unknown): Record<string, unknown> {
+    return {
+      ...this.getDefaults(),
+      ...((config as Record<string, unknown>) || {}),
+    };
+  }
+  getSchema(): Record<string, unknown> {
+    return { type: "object" };
+  }
 }
 
 // Test provider
@@ -105,10 +116,12 @@ class TestProvider extends BaseProvider {
     this.name = name;
   }
 
-  protected async prepareRequest(options: ExecutionOptions): Promise<CommunicationRequest> {
-    return { 
-      endpoint: "/test", 
-      body: { task: options.task, provider: this.type } 
+  protected async prepareRequest(
+    options: ExecutionOptions
+  ): Promise<CommunicationRequest> {
+    return {
+      endpoint: "/test",
+      body: { task: options.task, provider: this.type },
     };
   }
 
@@ -142,8 +155,9 @@ class TestProvider extends BaseProvider {
 }
 
 // Generators for property-based testing
-const providerTypeArb = fc.string({ minLength: 1, maxLength: 10 })
-  .filter(s => /^[a-zA-Z][a-zA-Z0-9_-]*$/.test(s));
+const providerTypeArb = fc
+  .string({ minLength: 1, maxLength: 10 })
+  .filter((s) => /^[a-zA-Z][a-zA-Z0-9_-]*$/.test(s));
 
 const providerSpecArb = fc.record({
   type: providerTypeArb,
@@ -161,13 +175,13 @@ describe("Property 4: Strategy and Parser Reuse", () => {
           // Ensure unique provider types
           const uniqueSpecs = providerSpecs.map((spec, index) => ({
             ...spec,
-            type: `${spec.type}_${index}`
+            type: `${spec.type}_${index}`,
           }));
 
           // Group providers by strategy type
           const httpProviders: TestProvider[] = [];
           const cliProviders: TestProvider[] = [];
-          
+
           // Create shared strategies
           const httpStrategy = new MockStrategy("http");
           const cliStrategy = new MockStrategy("cli");
@@ -175,8 +189,9 @@ describe("Property 4: Strategy and Parser Reuse", () => {
           // Create providers with shared strategies
           for (const spec of uniqueSpecs) {
             const parser = new MockParser(spec.parserType);
-            const strategy = spec.strategyType === "http" ? httpStrategy : cliStrategy;
-            
+            const strategy =
+              spec.strategyType === "http" ? httpStrategy : cliStrategy;
+
             const provider = new TestProvider(
               spec.type,
               spec.name,
@@ -196,7 +211,7 @@ describe("Property 4: Strategy and Parser Reuse", () => {
 
           // Execute all providers
           const results = await Promise.all(
-            allProviders.map(provider => 
+            allProviders.map((provider) =>
               provider.execute({ task: "strategy-reuse-test" })
             )
           );
@@ -209,10 +224,10 @@ describe("Property 4: Strategy and Parser Reuse", () => {
 
           // Verify strategy reuse - providers with same strategy type share instances
           for (const provider of httpProviders) {
-            expect(provider['communicationStrategy']).toBe(httpStrategy);
+            expect(provider.communicationStrategy).toBe(httpStrategy);
           }
           for (const provider of cliProviders) {
-            expect(provider['communicationStrategy']).toBe(cliStrategy);
+            expect(provider.communicationStrategy).toBe(cliStrategy);
           }
 
           // Verify strategies were used correctly
@@ -224,7 +239,7 @@ describe("Property 4: Strategy and Parser Reuse", () => {
           }
 
           // Verify outputs are unique (providers are independent)
-          const outputs = results.map(r => r.output);
+          const outputs = results.map((r) => r.output);
           const uniqueOutputs = new Set(outputs);
           expect(uniqueOutputs.size).toBe(outputs.length);
         }
@@ -241,13 +256,13 @@ describe("Property 4: Strategy and Parser Reuse", () => {
           // Ensure unique provider types
           const uniqueSpecs = providerSpecs.map((spec, index) => ({
             ...spec,
-            type: `parser_${spec.type}_${index}`
+            type: `parser_${spec.type}_${index}`,
           }));
 
           // Group providers by parser type
           const jsonProviders: TestProvider[] = [];
           const streamProviders: TestProvider[] = [];
-          
+
           // Create shared parsers
           const jsonParser = new MockParser("json");
           const streamParser = new MockParser("stream");
@@ -255,8 +270,9 @@ describe("Property 4: Strategy and Parser Reuse", () => {
           // Create providers with shared parsers
           for (const spec of uniqueSpecs) {
             const strategy = new MockStrategy(spec.strategyType);
-            const parser = spec.parserType === "json" ? jsonParser : streamParser;
-            
+            const parser =
+              spec.parserType === "json" ? jsonParser : streamParser;
+
             const provider = new TestProvider(
               spec.type,
               spec.name,
@@ -276,7 +292,7 @@ describe("Property 4: Strategy and Parser Reuse", () => {
 
           // Execute all providers
           const results = await Promise.all(
-            allProviders.map(provider => 
+            allProviders.map((provider) =>
               provider.execute({ task: "parser-reuse-test" })
             )
           );
@@ -289,10 +305,10 @@ describe("Property 4: Strategy and Parser Reuse", () => {
 
           // Verify parser reuse - providers with same parser type share instances
           for (const provider of jsonProviders) {
-            expect(provider['responseParser']).toBe(jsonParser);
+            expect(provider.responseParser).toBe(jsonParser);
           }
           for (const provider of streamProviders) {
-            expect(provider['responseParser']).toBe(streamParser);
+            expect(provider.responseParser).toBe(streamParser);
           }
 
           // Verify parsers were used correctly
@@ -304,7 +320,7 @@ describe("Property 4: Strategy and Parser Reuse", () => {
           }
 
           // Verify outputs are unique (providers are independent)
-          const outputs = results.map(r => r.output);
+          const outputs = results.map((r) => r.output);
           const uniqueOutputs = new Set(outputs);
           expect(uniqueOutputs.size).toBe(outputs.length);
         }
@@ -321,7 +337,7 @@ describe("Property 4: Strategy and Parser Reuse", () => {
           // Ensure unique provider types
           const uniqueSpecs = providerSpecs.map((spec, index) => ({
             ...spec,
-            type: `concurrent_${spec.type}_${index}`
+            type: `concurrent_${spec.type}_${index}`,
           }));
 
           // Create shared components
@@ -343,7 +359,7 @@ describe("Property 4: Strategy and Parser Reuse", () => {
 
           // Execute all providers concurrently
           const results = await Promise.all(
-            providers.map((provider, index) => 
+            providers.map((provider, index) =>
               provider.execute({ task: `concurrent-task-${index}` })
             )
           );
@@ -356,8 +372,8 @@ describe("Property 4: Strategy and Parser Reuse", () => {
 
           // Verify shared components were used
           for (const provider of providers) {
-            expect(provider['communicationStrategy']).toBe(sharedStrategy);
-            expect(provider['responseParser']).toBe(sharedParser);
+            expect(provider.communicationStrategy).toBe(sharedStrategy);
+            expect(provider.responseParser).toBe(sharedParser);
           }
 
           // Verify each provider executed exactly once
@@ -370,7 +386,7 @@ describe("Property 4: Strategy and Parser Reuse", () => {
           expect(sharedParser.getParseCount()).toBe(providers.length);
 
           // Verify outputs are unique (no interference)
-          const outputs = results.map(r => r.output);
+          const outputs = results.map((r) => r.output);
           const uniqueOutputs = new Set(outputs);
           expect(uniqueOutputs.size).toBe(outputs.length);
         }
@@ -388,7 +404,7 @@ describe("Property 4: Strategy and Parser Reuse", () => {
           // Ensure unique provider types
           const uniqueSpecs = providerSpecs.map((spec, index) => ({
             ...spec,
-            type: `state_${spec.type}_${index}`
+            type: `state_${spec.type}_${index}`,
           }));
 
           // Create shared components
@@ -411,7 +427,7 @@ describe("Property 4: Strategy and Parser Reuse", () => {
           // Execute multiple rounds to test state independence
           for (let round = 1; round <= executionRounds; round++) {
             const results = await Promise.all(
-              providers.map(provider => 
+              providers.map((provider) =>
                 provider.execute({ task: `round-${round}` })
               )
             );
@@ -429,8 +445,12 @@ describe("Property 4: Strategy and Parser Reuse", () => {
           }
 
           // Verify shared components tracked total usage across all providers and rounds
-          expect(sharedStrategy.getExecutionCount()).toBe(providers.length * executionRounds);
-          expect(sharedParser.getParseCount()).toBe(providers.length * executionRounds);
+          expect(sharedStrategy.getExecutionCount()).toBe(
+            providers.length * executionRounds
+          );
+          expect(sharedParser.getParseCount()).toBe(
+            providers.length * executionRounds
+          );
         }
       ),
       { numRuns: 50 }

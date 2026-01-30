@@ -474,7 +474,9 @@ export async function executeGitWorktree(
     const worktreeBase = baseBranch || context.defaultBranch || "main";
 
     if (flags.previewMode) {
-      await logger(`[Dry Run] Would create worktree: ${worktreePath} for branch ${worktreeBranch}`);
+      await logger(
+        `[Dry Run] Would create worktree: ${worktreePath} for branch ${worktreeBranch}`
+      );
       return ok({
         message: `[Dry Run] Would create worktree: ${worktreePath}`,
         worktreePath,
@@ -486,7 +488,9 @@ export async function executeGitWorktree(
     // First create the branch if it doesn't exist
     await logger(`Ensuring branch exists: ${worktreeBranch}`);
     try {
-      await execFn(`git -C ${updatedGitConfig.repoPath} branch ${worktreeBranch}`);
+      await execFn(
+        `git -C ${updatedGitConfig.repoPath} branch ${worktreeBranch}`
+      );
     } catch {
       // Branch might already exist, that's ok
     }
@@ -524,7 +528,11 @@ export async function executeGitWorktree(
 
     await logger(`Removing worktree: ${worktreePath}`);
 
-    const result = await removeWorktree(updatedGitConfig.repoPath, worktreePath, true);
+    const result = await removeWorktree(
+      updatedGitConfig.repoPath,
+      worktreePath,
+      true
+    );
 
     if (!result.ok) {
       return err(result.error);
@@ -549,7 +557,13 @@ export async function executeGitWorktree(
  */
 export async function executeGitAction(
   request: StepExecutionRequest
-): Promise<Result<string | { message: string; newBranchName: string } | { message: string; worktreePath?: string }>> {
+): Promise<
+  Result<
+    | string
+    | { message: string; newBranchName: string }
+    | { message: string; worktreePath?: string }
+  >
+> {
   const { step } = request;
   const action = step.action;
 
