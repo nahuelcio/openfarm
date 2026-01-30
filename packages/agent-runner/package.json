@@ -26,6 +26,8 @@
     "@openfarm/logger": "workspace:*",
     "@openfarm/types": "workspace:*",
     "@openfarm/utils": "workspace:*",
+    "@openfarm/git-worktree": "workspace:*",
+    "@openfarm/git-adapter": "workspace:*",
     "ai": "^4.0.0"
   },
   "devDependencies": {
