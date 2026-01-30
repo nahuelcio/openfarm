@@ -24,29 +24,23 @@ describe("addColumnSafely", () => {
 
   it("should skip if column already exists", async () => {
     const mockDb = {
-      exec: vi.fn().mockImplementation(() => {
-        const error = new Error("duplicate column name: new_column");
-        throw error;
-      }),
+      exec: vi.fn().mockRejectedValue(new Error("duplicate column name: new_column")),
     };
 
     // Should not throw when column already exists
     await expect(
       addColumnSafely(mockDb as any, "test_table", "new_column", "TEXT")
-    ).resolves.not.toThrow();
+    ).resolves.toBeUndefined();
   });
 
   it("should handle duplicate column error gracefully", async () => {
     const mockDb = {
-      exec: vi.fn().mockImplementation(() => {
-        const error = new Error("duplicate column name: new_column");
-        throw error;
-      }),
+      exec: vi.fn().mockRejectedValue(new Error("duplicate column name: new_column")),
     };
 
     // Should not throw for duplicate column errors (they are handled gracefully)
     await expect(
       addColumnSafely(mockDb as any, "test_table", "new_column", "TEXT")
-    ).resolves.not.toThrow();
+    ).resolves.toBeUndefined();
   });
 });

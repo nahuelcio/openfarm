@@ -4,7 +4,7 @@ import {
   sanitizeBranchName,
   sanitizeGitConfig,
   sanitizePath,
-} from "../../../utils/git-config";
+} from "@openfarm/runner-utils/utils/git-config";
 
 /**
  * Validates that the main repository exists before any operations

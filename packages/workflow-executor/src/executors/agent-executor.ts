@@ -9,7 +9,7 @@ import type {
 } from "@openfarm/core/types";
 import type { CodingEngine } from "@openfarm/core/types/adapters";
 import { err, ok, type Result } from "@openfarm/result";
-import { llmService } from "../../../llm";
+import { llmService } from "@openfarm/runner-utils/llm";
 import type { StepExecutionRequest } from "../types";
 import {
   type AgentAuthorConfig,

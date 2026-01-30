@@ -286,6 +286,11 @@ const executionOptionsArb = fc.record({
 
 describe("Property 5: Component Delegation", () => {
   it("should delegate execute operations to communication strategy", async () => {
+    // Mock console.error to avoid stderr noise from expected error cases
+    const originalConsoleError = console.error;
+    console.error = () => {};
+
+    try {
     await fc.assert(
       fc.asyncProperty(
         providerTypeArb,
@@ -345,6 +350,9 @@ describe("Property 5: Component Delegation", () => {
       ),
       { numRuns: 50 }
     );
+    } finally {
+      console.error = originalConsoleError;
+    }
   });
 
   it("should delegate parsing to response parser", async () => {
@@ -623,6 +631,11 @@ describe("Property 5: Component Delegation", () => {
   });
 
   it("should handle component errors without bypassing delegation", async () => {
+    // Mock console.error to avoid stderr noise from expected error cases
+    const originalConsoleError = console.error;
+    console.error = () => {};
+
+    try {
     await fc.assert(
       fc.asyncProperty(
         providerTypeArb,
@@ -676,5 +689,8 @@ describe("Property 5: Component Delegation", () => {
       ),
       { numRuns: 50 }
     );
+    } finally {
+      console.error = originalConsoleError;
+    }
   });
 });

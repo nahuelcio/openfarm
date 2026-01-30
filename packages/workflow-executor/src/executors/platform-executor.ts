@@ -1,6 +1,7 @@
 import { StepAction } from "@openfarm/core/constants/actions";
 import { err, ok, type Result } from "@openfarm/result";
-import type { PodProvisionConfig } from "../../../orchestration";
+// @ts-expect-error - TODO: Move orchestration to a shared package or fix imports
+import type { PodProvisionConfig } from "@openfarm/agent-runner/orchestration";
 import type { StepExecutionRequest } from "../types";
 import {
   type PlatformCreatePrConfig,

@@ -10,7 +10,7 @@ export class VaultClient {
 
   async readSecret(path: string): Promise<VaultResponse> {
     const response = await this.makeRequest("GET", `/v1/${path}`);
-    return response;
+    return response as VaultResponse;
   }
 
   async writeSecret(
@@ -20,7 +20,7 @@ export class VaultClient {
     const response = await this.makeRequest("POST", `/v1/${path}`, {
       data,
     });
-    return response;
+    return response as VaultResponse;
   }
 
   async deleteSecret(path: string): Promise<void> {
@@ -29,7 +29,7 @@ export class VaultClient {
 
   async listSecrets(path: string): Promise<VaultResponse<{ keys: string[] }>> {
     const response = await this.makeRequest("LIST", `/v1/${path}`);
-    return response;
+    return response as VaultResponse<{ keys: string[] }>;
   }
 
   async getHealth(): Promise<VaultHealthStatus> {
@@ -41,7 +41,7 @@ export class VaultClient {
         timeout: this.config.healthCheckTimeout,
       }
     );
-    return response;
+    return response as VaultHealthStatus;
   }
 
   private async makeRequest(
@@ -49,7 +49,7 @@ export class VaultClient {
     path: string,
     body?: Record<string, unknown>,
     options: { timeout?: number } = {}
-  ): Promise<Record<string, unknown>> {
+  ): Promise<unknown> {
     const url = `${this.config.url}${path}`;
 
     const headers: Record<string, string> = {
@@ -88,7 +88,7 @@ export class VaultClient {
     url: string,
     options: RequestInit,
     timeout?: number
-  ): Promise<any> {
+  ): Promise<unknown> {
     const controller = new AbortController();
     const timeoutId = timeout
       ? setTimeout(() => controller.abort(), timeout)

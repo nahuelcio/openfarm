@@ -1,8 +1,8 @@
 import { QuestionType } from "@openfarm/core/constants/enums";
 import type { ExecFunction, FileSystem } from "@openfarm/core/types/runtime";
 import { logger } from "@openfarm/logger";
-import { askUser } from "../../../interaction/ask-user";
-import { sanitizePath } from "../../../utils/git-config";
+import { askUser } from "@openfarm/runner-utils/interaction/ask-user";
+import { sanitizePath } from "@openfarm/runner-utils/utils/git-config";
 
 /**
  * Aggressive cleanup strategy when branch already exists error occurs

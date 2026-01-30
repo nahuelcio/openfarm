@@ -1,7 +1,8 @@
 import { defaultFileSystem } from "@openfarm/core/db/connection";
 import type { AgentConfiguration, WorkItem } from "@openfarm/core/types/domain";
 import type { FileSystem } from "@openfarm/core/types/runtime";
-import { getBlockedResources } from "../operations/rules/blocked";
+// @ts-expect-error - TODO: Move getBlockedResources to a shared package
+import { getBlockedResources } from "@openfarm/agent-runner/operations/rules/blocked";
 import { stripHtml } from "../utils/html";
 
 export function buildAgentMessage(

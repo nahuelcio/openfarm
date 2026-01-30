@@ -2,7 +2,7 @@
 // Version: 1.0.0
 // License: MIT
 
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { SqliteQueueAdapter } from "../src/adapters/sqlite";
 import { createSqliteQueue } from "../src/sqlite-client";
 

@@ -8,15 +8,15 @@ import type { ChildProcess } from "node:child_process";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock child_process module
-vi.mock("child_process", () => ({
+vi.mock("node:child_process", () => ({
   spawn: vi.fn(),
 }));
 
 import { spawn } from "node:child_process";
 import { CliCommunicationStrategy, type CliConfig } from "../cli-strategy";
 
-// Get the mocked spawn function
-const mockSpawn = vi.mocked(spawn);
+// Mock spawn function type
+let mockSpawn: ReturnType<typeof vi.fn>;
 
 // Mock process object
 const mockProcess = {
@@ -38,6 +38,9 @@ describe("CliCommunicationStrategy", () => {
     };
     strategy = new CliCommunicationStrategy(baseConfig);
 
+    // Initialize mockSpawn
+    mockSpawn = spawn as unknown as ReturnType<typeof vi.fn>;
+    
     // Reset mocks
     mockSpawn.mockClear();
 

@@ -3,7 +3,7 @@ import { promisify } from "node:util";
 import type { ExecFunction, FileSystem } from "@openfarm/core/types/runtime";
 import { defaultFileSystem } from "@openfarm/core/types/runtime";
 import { logger } from "@openfarm/logger";
-import { sanitizePath } from "../../../utils/git-config";
+import { sanitizePath } from "@openfarm/runner-utils/utils/git-config";
 
 const execFileAsync = promisify(execFile);
 

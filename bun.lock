@@ -169,6 +169,22 @@
       "name": "@openfarm/logger",
       "version": "0.0.1",
     },
+    "packages/operations": {
+      "name": "@openfarm/operations",
+      "version": "0.0.1",
+      "dependencies": {
+        "@openfarm/azure-adapter": "workspace:*",
+        "@openfarm/core": "workspace:*",
+        "@openfarm/git-adapter": "workspace:*",
+        "@openfarm/github-adapter": "workspace:*",
+        "@openfarm/logger": "workspace:*",
+        "@openfarm/result": "workspace:*",
+        "@openfarm/runner-utils": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/node": "^25.0.0",
+      },
+    },
     "packages/provider-aider": {
       "name": "@openfarm/provider-aider",
       "version": "0.1.0",
@@ -215,9 +231,36 @@
         "@openfarm/sdk": "workspace:*",
       },
     },
+    "packages/queues": {
+      "name": "@openfarm/queues",
+      "version": "0.0.1",
+      "dependencies": {
+        "@openfarm/core": "workspace:*",
+        "@openfarm/result": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/better-sqlite3": "^7.6.13",
+        "@types/node": "^25.0.0",
+        "better-sqlite3": "^12.6.2",
+      },
+    },
     "packages/result": {
       "name": "@openfarm/result",
       "version": "0.0.1",
+    },
+    "packages/runner-utils": {
+      "name": "@openfarm/runner-utils",
+      "version": "0.0.1",
+      "dependencies": {
+        "@openfarm/config": "workspace:*",
+        "@openfarm/core": "workspace:*",
+        "@openfarm/logger": "workspace:*",
+        "@openfarm/result": "workspace:*",
+        "@openfarm/utils": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/node": "^25.0.0",
+      },
     },
     "packages/sdk": {
       "name": "@openfarm/sdk",
@@ -271,6 +314,16 @@
         "@openfarm/result": "workspace:*",
       },
     },
+    "packages/vault-adapter": {
+      "name": "@openfarm/vault-adapter",
+      "version": "0.0.1",
+      "dependencies": {
+        "@openfarm/core": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/node": "^25.0.0",
+      },
+    },
     "packages/workflow-engine": {
       "name": "@openfarm/workflow-engine",
       "version": "0.0.1",
@@ -285,6 +338,20 @@
       "devDependencies": {
         "@types/node": "^25.0.0",
         "typescript": "^5.6.0",
+      },
+    },
+    "packages/workflow-executor": {
+      "name": "@openfarm/workflow-executor",
+      "version": "0.0.1",
+      "dependencies": {
+        "@openfarm/config": "workspace:*",
+        "@openfarm/core": "workspace:*",
+        "@openfarm/git-adapter": "workspace:*",
+        "@openfarm/result": "workspace:*",
+        "@openfarm/runner-utils": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/node": "^25.0.0",
       },
     },
   },
@@ -547,13 +614,19 @@
 
     "@openfarm/logger": ["@openfarm/logger@workspace:packages/logger"],
 
+    "@openfarm/operations": ["@openfarm/operations@workspace:packages/operations"],
+
     "@openfarm/provider-aider": ["@openfarm/provider-aider@workspace:packages/provider-aider"],
 
     "@openfarm/provider-claude": ["@openfarm/provider-claude@workspace:packages/provider-claude"],
 
     "@openfarm/provider-opencode": ["@openfarm/provider-opencode@workspace:packages/provider-opencode"],
 
+    "@openfarm/queues": ["@openfarm/queues@workspace:packages/queues"],
+
     "@openfarm/result": ["@openfarm/result@workspace:packages/result"],
+
+    "@openfarm/runner-utils": ["@openfarm/runner-utils@workspace:packages/runner-utils"],
 
     "@openfarm/sdk": ["@openfarm/sdk@workspace:packages/sdk"],
 
@@ -561,7 +634,11 @@
 
     "@openfarm/utils": ["@openfarm/utils@workspace:packages/utils"],
 
+    "@openfarm/vault-adapter": ["@openfarm/vault-adapter@workspace:packages/vault-adapter"],
+
     "@openfarm/workflow-engine": ["@openfarm/workflow-engine@workspace:packages/workflow-engine"],
+
+    "@openfarm/workflow-executor": ["@openfarm/workflow-executor@workspace:packages/workflow-executor"],
 
     "@opentelemetry/api": ["@opentelemetry/api@1.9.0", "", {}, "sha512-3giAOQvZiH5F9bMlMiv8+GSPMeqg0dbaeo58/0SlA9sxSqZhnUtxzX9/2FzyhS9sWQf5S0GJE0AKBrFqjpeYcg=="],
 

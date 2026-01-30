@@ -1,9 +1,10 @@
 # Lefthook configuration
 # Docs: https://github.com/evilmartians/lefthook/blob/master/docs/configuration.md
 
-# Pre-push hooks - same validations as CI
+# Pre-push hooks - FAST checks only (same as CI but quick)
+# Tests and build are slow -> run in CI only
 pre-push:
-  parallel: false
+  parallel: true
   commands:
     lint:
       run: bun run lint
@@ -11,14 +12,8 @@ pre-push:
     type-check:
       run: bun run type-check
       tags: [types, typescript]
-    test:
-      run: bun run test
-      tags: [test]
-    build:
-      run: bun run build
-      tags: [build]
 
-# Pre-commit hooks - quick checks
+# Pre-commit hooks - quick format
 pre-commit:
   parallel: true
   commands:
@@ -26,3 +21,16 @@ pre-commit:
       glob: "*.{ts,tsx,js,jsx,json,md,yml,yaml}"
       run: bunx biome format --write {staged_files}
       tags: [format]
+
+# Manual commands (run with: lefthook run ci)
+ci:
+  parallel: false
+  commands:
+    lint:
+      run: bun run lint
+    type-check:
+      run: bun run type-check
+    test:
+      run: bun run test
+    build:
+      run: bun run build

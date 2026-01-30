@@ -1,0 +1,26 @@
+{
+  "name": "@openfarm/queues",
+  "version": "0.0.1",
+  "private": true,
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./adapters/*": "./src/adapters/*.ts"
+  },
+  "scripts": {
+    "lint": "bunx biome check .",
+    "type-check": "bunx tsc -p tsconfig.json --noEmit",
+    "test": "bunx vitest run",
+    "clean": "rm -rf dist build .turbo"
+  },
+  "dependencies": {
+    "@openfarm/result": "workspace:*",
+    "@openfarm/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.0",
+    "better-sqlite3": "^12.6.2",
+    "@types/better-sqlite3": "^7.6.13"
+  }
+}
