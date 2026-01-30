@@ -1,5 +1,9 @@
 import type { WorkflowContext } from "@openfarm/agent-runner";
-import { getDb, initializePredefinedWorkflows, getWorkflows } from "@openfarm/core/db";
+import {
+  getDb,
+  getWorkflows,
+  initializePredefinedWorkflows,
+} from "@openfarm/core/db";
 import type {
   WorkflowEngineConfig,
   WorkflowExecutionRequest,
@@ -458,14 +462,18 @@ export function Running() {
         const db = await getDb();
         await initializePredefinedWorkflows(db);
         const workflows = await getWorkflows(db);
-        const currentWorkflow = workflows.find(w => w.id === selectedWorkflowId);
-        
+        const currentWorkflow = workflows.find(
+          (w) => w.id === selectedWorkflowId
+        );
+
         // Show workflow info
-        onLog(`🔄 Executing workflow: ${currentWorkflow?.name || selectedWorkflowId}`);
+        onLog(
+          `🔄 Executing workflow: ${currentWorkflow?.name || selectedWorkflowId}`
+        );
         if (currentWorkflow?.description) {
           onLog(`   ${currentWorkflow.description}`);
         }
-        
+
         // Show actual steps from workflow
         if (currentWorkflow?.steps && currentWorkflow.steps.length > 0) {
           const stepNames = currentWorkflow.steps
@@ -473,7 +481,7 @@ export function Running() {
             .join(" → ");
           onLog(`   Steps: ${stepNames}`);
         }
-        
+
         onLog("");
         onLog(`🔧 Provider: ${currentExecution.provider}`);
         if (currentExecution.model) {
