@@ -479,9 +479,11 @@ export class ProviderRegistry implements IProviderRegistry {
         ],
         loader: async () => {
           try {
-            // @ts-ignore - Dynamic import may not be resolved during type-check
-            const mod = await import("@openfarm/provider-opencode");
-            return (mod as any).OpenCodeProviderFactory;
+            // Type assertion for dynamic import that may not resolve during type-check
+            const mod = await import("@openfarm/provider-opencode") as unknown as {
+              OpenCodeProviderFactory: new () => ProviderFactory;
+            };
+            return mod.OpenCodeProviderFactory;
           } catch (e) {
             throw new Error(
               `@openfarm/provider-opencode not installed or not built: ${e instanceof Error ? e.message : "Unknown error"}`
@@ -504,11 +506,15 @@ export class ProviderRegistry implements IProviderRegistry {
           "streaming",
         ],
         loader: async () => {
-          try {            // @ts-ignore - Dynamic import may not be resolved during type-check            const mod = await import("@openfarm/provider-aider");
-            return (mod as any).AiderProviderFactory;
+          try {
+            // Type assertion for dynamic import that may not resolve during type-check
+            const mod = await import("@openfarm/provider-aider") as unknown as {
+              AiderProviderFactory: new () => ProviderFactory;
+            };
+            return mod.AiderProviderFactory;
           } catch (e) {
             throw new Error(
-              `@openfarm/provider-aider not installed: ${e instanceof Error ? e.message : "Unknown error"}`
+              `@openfarm/provider-aider not installed or not built: ${e instanceof Error ? e.message : "Unknown error"}`
             );
           }
         },
@@ -530,8 +536,12 @@ export class ProviderRegistry implements IProviderRegistry {
           "web-search",
         ],
         loader: async () => {
-          try {            // @ts-ignore - Dynamic import may not be resolved during type-check            const mod = await import("@openfarm/provider-claude");
-            return (mod as any).ClaudeProviderFactory;
+          try {
+            // Type assertion for dynamic import that may not resolve during type-check
+            const mod = await import("@openfarm/provider-claude") as unknown as {
+              ClaudeProviderFactory: new () => ProviderFactory;
+            };
+            return mod.ClaudeProviderFactory;
           } catch (e) {
             throw new Error(
               `@openfarm/provider-claude not installed: ${e instanceof Error ? e.message : "Unknown error"}`
