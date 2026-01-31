@@ -37,11 +37,11 @@
     "directory": "packages/provider-opencode"
   },
   "dependencies": {
-    "@openfarm/core": "workspace:*",
-    "@openfarm/sdk": "workspace:*"
+    "@openfarm/core": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "tsup": "^8.5.1",
     "typescript": "^5.6.0",
     "vitest": "^2.0.0"
   },
