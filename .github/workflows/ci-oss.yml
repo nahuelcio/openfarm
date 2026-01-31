@@ -76,6 +76,9 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen
 
+      - name: Build packages (required for tests with dynamic imports)
+        run: bun run build
+
       - name: Run tests
         run: bun run test
 
