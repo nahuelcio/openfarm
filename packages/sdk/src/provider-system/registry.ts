@@ -479,11 +479,12 @@ export class ProviderRegistry implements IProviderRegistry {
         ],
         loader: async () => {
           try {
+            // @ts-ignore - Dynamic import may not be resolved during type-check
             const mod = await import("@openfarm/provider-opencode");
             return (mod as any).OpenCodeProviderFactory;
           } catch (e) {
             throw new Error(
-              `@openfarm/provider-opencode not installed: ${e instanceof Error ? e.message : "Unknown error"}`
+              `@openfarm/provider-opencode not installed or not built: ${e instanceof Error ? e.message : "Unknown error"}`
             );
           }
         },
@@ -503,8 +504,7 @@ export class ProviderRegistry implements IProviderRegistry {
           "streaming",
         ],
         loader: async () => {
-          try {
-            const mod = await import("@openfarm/provider-aider");
+          try {            // @ts-ignore - Dynamic import may not be resolved during type-check            const mod = await import("@openfarm/provider-aider");
             return (mod as any).AiderProviderFactory;
           } catch (e) {
             throw new Error(
@@ -530,8 +530,7 @@ export class ProviderRegistry implements IProviderRegistry {
           "web-search",
         ],
         loader: async () => {
-          try {
-            const mod = await import("@openfarm/provider-claude");
+          try {            // @ts-ignore - Dynamic import may not be resolved during type-check            const mod = await import("@openfarm/provider-claude");
             return (mod as any).ClaudeProviderFactory;
           } catch (e) {
             throw new Error(
