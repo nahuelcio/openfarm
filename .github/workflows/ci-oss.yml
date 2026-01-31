@@ -152,21 +152,100 @@ jobs:
       - name: Build
         run: bun run build
 
-      - name: Publish SDK to NPM
-        working-directory: packages/sdk
+      - name: Publish all @openfarm/* packages to NPM
         run: |
-          # Verificar si ya existe esta versión
-          PKG_NAME=$(jq -r '.name' package.json)
-          PKG_VERSION=$(jq -r '.version' package.json)
+          # Publicar paquetes en orden de dependencias (base primero, dependientes después)
+          PACKAGES=(
+            # Base packages (sin dependencias internas)
+            "types"
+            "result"
+            "logger"
+            "config"
+            "utils"
+            
+            # Mid-level packages
+            "git-diff"
+            "git-adapter"
+            "git-worktree"
+            "github-adapter"
+            "azure-adapter"
+            "vault-adapter"
+            "context"
+            "analysis"
+            "queues"
+            "execution-logger"
+            "operations"
+            
+            # High-level packages
+            "core"
+            "coding-engines"
+            "runner-utils"
+            "agent-runner"
+            "workflow-engine"
+            "workflow-executor"
+            
+            # Provider packages
+            "provider-opencode"
+            "provider-aider"
+            "provider-claude"
+            
+            # Top-level SDK (depends on everything)
+            "sdk"
+          )
 
-          if npm view "$PKG_NAME@$PKG_VERSION" version 2>/dev/null; then
-            echo "⚠️  $PKG_NAME@$PKG_VERSION ya existe en NPM, skip"
-            exit 0
+          PUBLISHED=0
+          SKIPPED=0
+          FAILED=0
+
+          for pkg in "${PACKAGES[@]}"; do
+            PKG_DIR="packages/$pkg"
+            
+            if [ ! -d "$PKG_DIR" ]; then
+              echo "⚠️  Skipping $pkg - directory not found"
+              continue
+            fi
+
+            cd "$PKG_DIR"
+            
+            PKG_NAME=$(jq -r '.name' package.json)
+            PKG_VERSION=$(jq -r '.version' package.json)
+            
+            # Skip private packages
+            if [ "$(jq -r '.private // false' package.json)" = "true" ]; then
+              echo "⏭️  Skipping $PKG_NAME (private package)"
+              cd ../..
+              continue
+            fi
+
+            # Check if version already exists
+            if npm view "$PKG_NAME@$PKG_VERSION" version 2>/dev/null; then
+              echo "⏭️  $PKG_NAME@$PKG_VERSION already exists, skipping"
+              SKIPPED=$((SKIPPED + 1))
+              cd ../..
+              continue
+            fi
+
+            # Publish
+            echo "📦 Publishing $PKG_NAME@$PKG_VERSION..."
+            if npm publish --access public; then
+              echo "✅ $PKG_NAME published successfully"
+              PUBLISHED=$((PUBLISHED + 1))
+            else
+              echo "❌ Failed to publish $PKG_NAME"
+              FAILED=$((FAILED + 1))
+            fi
+            
+            cd ../..
+          done
+
+          echo ""
+          echo "📊 Summary:"
+          echo "   ✅ Published: $PUBLISHED"
+          echo "   ⏭️  Skipped: $SKIPPED"
+          echo "   ❌ Failed: $FAILED"
+          
+          if [ $FAILED -gt 0 ]; then
+            exit 1
           fi
-
-          # Publicar SDK
-          echo "📦 Publishing $PKG_NAME@$PKG_VERSION..."
-          npm publish --access public
-          echo "✅ SDK publicado exitosamente"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
