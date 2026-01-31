@@ -189,10 +189,11 @@
       "name": "@openfarm/provider-aider",
       "version": "0.1.0",
       "dependencies": {
-        "@openfarm/sdk": "workspace:*",
+        "@openfarm/core": "workspace:*",
       },
       "devDependencies": {
         "@types/node": "^22.0.0",
+        "tsup": "^8.5.1",
         "typescript": "^5.6.0",
         "vitest": "^2.0.0",
       },
@@ -204,10 +205,11 @@
       "name": "@openfarm/provider-claude",
       "version": "0.1.0",
       "dependencies": {
-        "@openfarm/sdk": "workspace:*",
+        "@openfarm/core": "workspace:*",
       },
       "devDependencies": {
         "@types/node": "^22.0.0",
+        "tsup": "^8.5.1",
         "typescript": "^5.6.0",
         "vitest": "^2.0.0",
       },
@@ -220,10 +222,10 @@
       "version": "0.1.0",
       "dependencies": {
         "@openfarm/core": "workspace:*",
-        "@openfarm/sdk": "workspace:*",
       },
       "devDependencies": {
         "@types/node": "^22.0.0",
+        "tsup": "^8.5.1",
         "typescript": "^5.6.0",
         "vitest": "^2.0.0",
       },

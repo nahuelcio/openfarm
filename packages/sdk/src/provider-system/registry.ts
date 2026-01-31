@@ -480,10 +480,10 @@ export class ProviderRegistry implements IProviderRegistry {
         loader: async () => {
           try {
             const mod = await import("@openfarm/provider-opencode");
-            return (mod as any).OpenCodeProviderFactory;
+            return mod.OpenCodeProviderFactory;
           } catch (e) {
             throw new Error(
-              `@openfarm/provider-opencode not installed: ${e instanceof Error ? e.message : "Unknown error"}`
+              `@openfarm/provider-opencode not installed or not built: ${e instanceof Error ? e.message : "Unknown error"}`
             );
           }
         },
@@ -505,10 +505,10 @@ export class ProviderRegistry implements IProviderRegistry {
         loader: async () => {
           try {
             const mod = await import("@openfarm/provider-aider");
-            return (mod as any).AiderProviderFactory;
+            return mod.AiderProviderFactory;
           } catch (e) {
             throw new Error(
-              `@openfarm/provider-aider not installed: ${e instanceof Error ? e.message : "Unknown error"}`
+              `@openfarm/provider-aider not installed or not built: ${e instanceof Error ? e.message : "Unknown error"}`
             );
           }
         },
@@ -532,7 +532,7 @@ export class ProviderRegistry implements IProviderRegistry {
         loader: async () => {
           try {
             const mod = await import("@openfarm/provider-claude");
-            return (mod as any).ClaudeProviderFactory;
+            return mod.ClaudeProviderFactory;
           } catch (e) {
             throw new Error(
               `@openfarm/provider-claude not installed: ${e instanceof Error ? e.message : "Unknown error"}`
