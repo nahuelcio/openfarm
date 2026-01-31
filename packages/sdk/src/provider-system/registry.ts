@@ -479,10 +479,7 @@ export class ProviderRegistry implements IProviderRegistry {
         ],
         loader: async () => {
           try {
-            // Type assertion for dynamic import that may not resolve during type-check
-            const mod = await import("@openfarm/provider-opencode") as unknown as {
-              OpenCodeProviderFactory: new () => ProviderFactory;
-            };
+            const mod = await import("@openfarm/provider-opencode");
             return mod.OpenCodeProviderFactory;
           } catch (e) {
             throw new Error(
@@ -507,10 +504,7 @@ export class ProviderRegistry implements IProviderRegistry {
         ],
         loader: async () => {
           try {
-            // Type assertion for dynamic import that may not resolve during type-check
-            const mod = await import("@openfarm/provider-aider") as unknown as {
-              AiderProviderFactory: new () => ProviderFactory;
-            };
+            const mod = await import("@openfarm/provider-aider");
             return mod.AiderProviderFactory;
           } catch (e) {
             throw new Error(
@@ -537,10 +531,7 @@ export class ProviderRegistry implements IProviderRegistry {
         ],
         loader: async () => {
           try {
-            // Type assertion for dynamic import that may not resolve during type-check
-            const mod = await import("@openfarm/provider-claude") as unknown as {
-              ClaudeProviderFactory: new () => ProviderFactory;
-            };
+            const mod = await import("@openfarm/provider-claude");
             return mod.ClaudeProviderFactory;
           } catch (e) {
             throw new Error(
