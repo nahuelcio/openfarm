@@ -296,6 +296,7 @@ jobs:
           bun build ./src/cli.ts \
             --compile \
             --target=${{ matrix.target }} \
+            --external react-devtools-core \
             --outfile=../../openfarm-${{ matrix.os_name }}-${{ matrix.arch }}${{ matrix.ext }}
 
       - name: Upload executable artifact
