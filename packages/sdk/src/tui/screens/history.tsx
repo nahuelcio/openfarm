@@ -1,12 +1,27 @@
 import { Box, Text, useInput } from "ink";
+import { useState } from "react";
 import { useStore } from "../store";
 
 export function History() {
-  const { setScreen, executions } = useStore();
+  const { setScreen, executions, setSelectedExecutionForDiff } = useStore();
+  const [selectedIndex, setSelectedIndex] = useState(0);
 
   useInput((input, key) => {
     if (key.escape) {
       setScreen("dashboard");
+    }
+    if (key.upArrow) {
+      setSelectedIndex(Math.max(0, selectedIndex - 1));
+    }
+    if (key.downArrow) {
+      setSelectedIndex(Math.min(executions.length - 1, selectedIndex + 1));
+    }
+    if (key.return && executions.length > 0) {
+      const selected = executions[selectedIndex];
+      if (selected?.diff) {
+        setSelectedExecutionForDiff(selected);
+        setScreen("diff-viewer");
+      }
     }
   });
 
@@ -22,18 +37,22 @@ export function History() {
       {executions.length === 0 ? (
         <Text color="gray">No executions yet.</Text>
       ) : (
-        executions.map((e) => (
-          <Box flexDirection="row" gap={2} key={e.id}>
+        executions.map((e, i) => (
+          <Box flexDirection="row" gap={1} key={e.id}>
+            <Text color={i === selectedIndex ? "yellow" : "gray"}>
+              {i === selectedIndex ? "▶" : " "}
+            </Text>
             <Text color={getStatusColor(e.status)}>
               {getStatusIcon(e.status)}
             </Text>
             <Box flexDirection="column" flexGrow={1}>
-              <Text>
+              <Text color={i === selectedIndex ? "white" : "gray"}>
                 {e.task.slice(0, 45)}
                 {e.task.length > 45 ? "..." : ""}
               </Text>
               <Text color="gray" dimColor>
                 {e.provider} • {e.startedAt.toLocaleTimeString()}
+                {e.diff && " • has diff"}
               </Text>
             </Box>
           </Box>
@@ -43,7 +62,7 @@ export function History() {
       <Text color="gray">{"─".repeat(60)}</Text>
 
       {/* Help */}
-      <Text color="gray">Esc to go back</Text>
+      <Text color="gray">Use ↑/↓ to navigate, Enter to view diff, Esc to go back</Text>
     </Box>
   );
 }

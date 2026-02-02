@@ -4,6 +4,7 @@ import {
   getWorkflows,
   initializePredefinedWorkflows,
 } from "@openfarm/core/db";
+import { captureGitChanges } from "@openfarm/operations/git/changes";
 import type {
   WorkflowEngineConfig,
   WorkflowExecutionRequest,
@@ -12,7 +13,9 @@ import { executeWorkflow, InMemoryEventBus } from "@openfarm/workflow-engine";
 import { Box, Text, useInput } from "ink";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { OpenFarm } from "../../open-farm";
+import { ErrorDisplay } from "../components/error-display";
 import { useStore } from "../store";
+import { type CategorizedError, categorizeError } from "../utils/error-handler";
 
 const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
@@ -403,6 +406,9 @@ export function Running() {
   const [startTime] = useState(Date.now());
   const [elapsed, setElapsed] = useState(0);
   const [stats, setStats] = useState({ tokens: 0, files: 0 });
+  const [categorizedError, setCategorizedError] =
+    useState<CategorizedError | null>(null);
+  const [currentStep, setCurrentStep] = useState<string>("");
   const aborted = useRef(false);
 
   // Timer para elapsed time
@@ -445,6 +451,20 @@ export function Running() {
       if (aborted.current) {
         return;
       }
+
+      // Detect step changes
+      if (msg.includes("Creating branch:")) {
+        setCurrentStep("Creating branch");
+      } else if (msg.includes("Creating worktree")) {
+        setCurrentStep("Setting up worktree");
+      } else if (msg.includes("Executing agent code")) {
+        setCurrentStep("Running AI agent");
+      } else if (msg.includes("Returning to original branch")) {
+        setCurrentStep("Cleaning up");
+      } else if (msg.includes("Executing workflow:")) {
+        setCurrentStep("Initializing");
+      }
+
       setLogs((prev) => [...prev, msg]);
       updateStats(msg);
     },
@@ -509,8 +529,45 @@ export function Running() {
 
         setSuccess(result.success);
 
+        // Capture git diff and file changes
+        let diffText = "";
+        let modifiedFiles: string[] = [];
+        try {
+          const changesResult = await captureGitChanges(
+            currentExecution.workspace,
+            async (file: string, args: string[]) => {
+              const { execFile } = await import("node:child_process");
+              const { promisify } = await import("node:util");
+              const execFileAsync = promisify(execFile);
+              return execFileAsync(file, args, {
+                cwd: currentExecution.workspace,
+              });
+            },
+            false
+          );
+          if (changesResult.ok) {
+            diffText = changesResult.value.diff || "";
+            modifiedFiles = [
+              ...(changesResult.value.filesModified || []),
+              ...(changesResult.value.filesCreated || []),
+            ];
+          }
+        } catch (diffError) {
+          console.error("Failed to capture git changes:", diffError);
+        }
+
+        const completedAt = new Date();
+        const duration = Date.now() - startTime;
+
         updateExecution(currentExecution.id, {
           status: result.success ? "completed" : "failed",
+          completedAt,
+          duration,
+          output: logs.join("\n"),
+          tokensUsed: stats.tokens || undefined,
+          filesModified: modifiedFiles.length > 0 ? modifiedFiles : undefined,
+          diff: diffText || undefined,
+          workflowId: selectedWorkflowId,
         });
 
         setIsDone(true);
@@ -519,9 +576,22 @@ export function Running() {
           return;
         }
 
+        const categorized = categorizeError(error);
+        setCategorizedError(categorized);
+
         const message = error instanceof Error ? error.message : String(error);
         onLog(`❌ ${message}`);
-        updateExecution(currentExecution.id, { status: "failed" });
+
+        const completedAt = new Date();
+        const duration = Date.now() - startTime;
+
+        updateExecution(currentExecution.id, {
+          status: "failed",
+          completedAt,
+          duration,
+          output: logs.join("\n"),
+          error: categorized.originalError,
+        });
         setSuccess(false);
         setIsDone(true);
       }
@@ -559,7 +629,7 @@ export function Running() {
             ? success
               ? "✅ Success"
               : "❌ Failed"
-            : `${spinner} Running`}
+            : `${spinner} ${currentStep || "Running"}`}
         </Text>
         <Text color="gray">{formatDuration(elapsed)}</Text>
       </Box>
@@ -584,11 +654,20 @@ export function Running() {
 
       <Text color="gray">{"─".repeat(60)}</Text>
 
+      {/* Error Display */}
+      {isDone && !success && categorizedError && (
+        <Box marginTop={1}>
+          <ErrorDisplay error={categorizedError} />
+        </Box>
+      )}
+
       {/* Stats */}
       <Box flexDirection="row" justifyContent="space-between">
         <Text color="gray">{logs.length} lines</Text>
         {stats.tokens > 0 && (
-          <Text color="gray">{stats.tokens.toLocaleString()} tokens</Text>
+          <Text color={isDone ? "gray" : "yellow"}>
+            {stats.tokens.toLocaleString()} tokens{!isDone && " ..."}
+          </Text>
         )}
         {stats.files > 0 && (
           <Text color="gray">

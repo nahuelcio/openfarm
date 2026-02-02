@@ -2,6 +2,7 @@ import { Box } from "ink";
 import { ContextScreen } from "./screens/context";
 import { ContextConfigScreen } from "./screens/context-config";
 import { Dashboard } from "./screens/dashboard";
+import { DiffViewer } from "./screens/diff-viewer";
 import { Execute } from "./screens/execute";
 import { History } from "./screens/history";
 import { Running } from "./screens/running";
@@ -18,6 +19,7 @@ export function App() {
       {screen === "execute" && <Execute />}
       {screen === "running" && <Running />}
       {screen === "history" && <History />}
+      {screen === "diff-viewer" && <DiffViewer />}
       {screen === "workflows" && <WorkflowList />}
       {screen === "workflow-editor" && <WorkflowEditor />}
       {screen === "context-config" && <ContextConfigScreen />}

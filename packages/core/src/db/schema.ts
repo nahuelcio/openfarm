@@ -284,6 +284,31 @@ export async function createSchema(db: SQL): Promise<void> {
   await db`CREATE INDEX IF NOT EXISTS idx_workflow_events_timestamp ON workflow_events(timestamp)`;
   await db`CREATE INDEX IF NOT EXISTS idx_workflow_events_execution_sequence ON workflow_events(execution_id, sequence_number)`;
 
+  // Create tui_executions table for TUI execution history
+  await db`
+    CREATE TABLE IF NOT EXISTS tui_executions (
+      id TEXT PRIMARY KEY,
+      task TEXT NOT NULL,
+      provider TEXT NOT NULL,
+      model TEXT,
+      workspace TEXT NOT NULL,
+      workflow_id TEXT,
+      status TEXT NOT NULL CHECK(status IN ('pending', 'running', 'completed', 'failed')),
+      started_at TEXT NOT NULL,
+      completed_at TEXT,
+      duration INTEGER,
+      output TEXT,
+      error TEXT,
+      tokens_used INTEGER,
+      files_modified TEXT,
+      diff TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+  `;
+  await db`CREATE INDEX IF NOT EXISTS idx_tui_executions_status ON tui_executions(status)`;
+  await db`CREATE INDEX IF NOT EXISTS idx_tui_executions_started_at ON tui_executions(started_at DESC)`;
+
   // Create system_configurations table for storing system-wide configurations
   await db`
     CREATE TABLE IF NOT EXISTS system_configurations (

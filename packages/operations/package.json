@@ -7,7 +7,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./auth": "./src/auth/authenticate.ts",
-    "./git": "./src/git/index.ts"
+    "./git": "./src/git/index.ts",
+    "./git/changes": "./src/git/changes.ts"
   },
   "scripts": {
     "lint": "bunx biome check .",

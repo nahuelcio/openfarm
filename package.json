@@ -12,7 +12,8 @@
     "lint:fix": "ultracite check --fix",
     "type-check": "turbo run type-check",
     "test": "turbo run test",
-    "clean": "turbo run clean && rm -rf node_modules",
+    "tui": "bun run packages/sdk/src/cli.ts",
+    "clean": "turbo run clean && bun pm cache rm node_modules || rmdir /s /q node_modules",
     "prepare": "lefthook install"
   },
   "dependencies": {

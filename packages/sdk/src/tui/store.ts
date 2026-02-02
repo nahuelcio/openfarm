@@ -1,4 +1,11 @@
 import type { Workflow, WorkflowStep } from "@openfarm/core";
+import { getDb } from "@openfarm/core/db";
+import {
+  createTuiExecution,
+  getTuiExecutions,
+  updateTuiExecution,
+  type TuiExecution,
+} from "@openfarm/core/db/tui-executions";
 import { create } from "zustand";
 import type { OpenFarmConfig } from "../types";
 
@@ -7,6 +14,7 @@ export type Screen =
   | "execute"
   | "running"
   | "history"
+  | "diff-viewer"
   | "workflows"
   | "workflow-editor"
   | "context"
@@ -20,6 +28,14 @@ export interface Execution {
   workspace: string;
   status: "pending" | "running" | "completed" | "failed";
   startedAt: Date;
+  completedAt?: Date;
+  duration?: number; // milliseconds
+  output?: string; // full log output
+  error?: string; // error message if failed
+  tokensUsed?: number;
+  filesModified?: string[]; // paths of changed files
+  diff?: string; // git diff output
+  workflowId?: string; // workflow used
 }
 
 interface AppState {
@@ -47,6 +63,7 @@ interface AppState {
   executions: Execution[];
   addExecution: (execution: Execution) => void;
   updateExecution: (id: string, updates: Partial<Execution>) => void;
+  loadExecutionsFromDb: () => Promise<void>;
 
   currentExecution: Execution | null;
   setCurrentExecution: (execution: Execution | null) => void;
@@ -86,6 +103,12 @@ interface AppState {
   setContextResult: (result: string) => void;
   setContextError: (error: string) => void;
   resetContext: () => void;
+
+  // Diff viewer state
+  selectedExecutionForDiff: Execution | null;
+  setSelectedExecutionForDiff: (execution: Execution | null) => void;
+  selectedDiffFileIndex: number;
+  setSelectedDiffFileIndex: (index: number) => void;
 }
 
 export const useStore = create<AppState>((set) => ({
@@ -111,14 +134,33 @@ export const useStore = create<AppState>((set) => ({
   setWorkspace: (workspace) => set({ workspace }),
 
   executions: [],
-  addExecution: (execution) =>
-    set((state) => ({ executions: [execution, ...state.executions] })),
-  updateExecution: (id, updates) =>
+  addExecution: (execution) => {
+    set((state) => ({ executions: [execution, ...state.executions] }));
+    // Persist to database
+    getDb()
+      .then((db) => createTuiExecution(db, execution as TuiExecution))
+      .catch((error) => console.error("Failed to save execution to DB:", error));
+  },
+  updateExecution: (id, updates) => {
     set((state) => ({
       executions: state.executions.map((e) =>
         e.id === id ? { ...e, ...updates } : e
       ),
-    })),
+    }));
+    // Persist to database
+    getDb()
+      .then((db) => updateTuiExecution(db, id, updates as Partial<TuiExecution>))
+      .catch((error) => console.error("Failed to update execution in DB:", error));
+  },
+  loadExecutionsFromDb: async () => {
+    try {
+      const db = await getDb();
+      const executions = await getTuiExecutions(db, 100);
+      set({ executions: executions as Execution[] });
+    } catch (error) {
+      console.error("Failed to load executions from DB:", error);
+    }
+  },
 
   currentExecution: null,
   setCurrentExecution: (execution) => set({ currentExecution: execution }),
@@ -157,4 +199,11 @@ export const useStore = create<AppState>((set) => ({
       contextResult: null,
       contextError: null,
     }),
+
+  // Diff viewer state
+  selectedExecutionForDiff: null,
+  setSelectedExecutionForDiff: (execution) =>
+    set({ selectedExecutionForDiff: execution }),
+  selectedDiffFileIndex: 0,
+  setSelectedDiffFileIndex: (index) => set({ selectedDiffFileIndex: index }),
 }));

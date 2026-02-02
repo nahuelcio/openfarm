@@ -169,7 +169,7 @@ export async function createDb(config: DbConfig): Promise<Result<any>> {
     // Ensure directory exists - import path dynamically
     const { dirname } = await import("node:path");
     const dbDir = dirname(dbPath);
-    if (!fileSystem.existsSync(dbDir)) {
+    if (dbDir && dbDir !== "." && !fileSystem.existsSync(dbDir)) {
       console.log(`[DB] Creating directory: ${dbDir}`);
       fileSystem.mkdirSync(dbDir, { recursive: true });
     }
