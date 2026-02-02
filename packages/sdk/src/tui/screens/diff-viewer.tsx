@@ -93,7 +93,9 @@ function FileList({ files, selectedIndex }: FileListProps) {
       <Text bold color="cyan">
         Changed Files ({files.length})
       </Text>
-      <Text color="gray">Use ↑/↓ to navigate, Enter to view, Esc to go back</Text>
+      <Text color="gray">
+        Use ↑/↓ to navigate, Enter to view, Esc to go back
+      </Text>
       <Text color="gray">{"─".repeat(60)}</Text>
 
       {files.map((file, i) => (
@@ -105,7 +107,9 @@ function FileList({ files, selectedIndex }: FileListProps) {
             {getChangeTypeIcon(file.changeType)}
           </Text>
           <Box flexGrow={1}>
-            <Text color={i === selectedIndex ? "white" : "gray"}>{file.path}</Text>
+            <Text color={i === selectedIndex ? "white" : "gray"}>
+              {file.path}
+            </Text>
           </Box>
           <Text color="green">+{file.additions}</Text>
           <Text color="red">-{file.deletions}</Text>
@@ -194,7 +198,9 @@ function DiffLine({ line }: DiffLineProps) {
   );
 }
 
-function getChangeTypeColor(changeType: string): "green" | "yellow" | "red" | "gray" {
+function getChangeTypeColor(
+  changeType: string
+): "green" | "yellow" | "red" | "gray" {
   switch (changeType) {
     case "created":
       return "green";

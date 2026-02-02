@@ -139,7 +139,9 @@ export const useStore = create<AppState>((set) => ({
     // Persist to database
     getDb()
       .then((db) => createTuiExecution(db, execution as TuiExecution))
-      .catch((error) => console.error("Failed to save execution to DB:", error));
+      .catch((error) =>
+        console.error("Failed to save execution to DB:", error)
+      );
   },
   updateExecution: (id, updates) => {
     set((state) => ({
@@ -149,8 +151,12 @@ export const useStore = create<AppState>((set) => ({
     }));
     // Persist to database
     getDb()
-      .then((db) => updateTuiExecution(db, id, updates as Partial<TuiExecution>))
-      .catch((error) => console.error("Failed to update execution in DB:", error));
+      .then((db) =>
+        updateTuiExecution(db, id, updates as Partial<TuiExecution>)
+      )
+      .catch((error) =>
+        console.error("Failed to update execution in DB:", error)
+      );
   },
   loadExecutionsFromDb: async () => {
     try {

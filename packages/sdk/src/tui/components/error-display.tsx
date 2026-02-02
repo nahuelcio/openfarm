@@ -11,7 +11,12 @@ export function ErrorDisplay({ error }: ErrorDisplayProps) {
   const icon = getErrorIcon(error.type);
 
   return (
-    <Box flexDirection="column" borderStyle="round" borderColor={iconColor} padding={1}>
+    <Box
+      flexDirection="column"
+      borderStyle="round"
+      borderColor={iconColor}
+      padding={1}
+    >
       <Box flexDirection="row" gap={1}>
         <Text color={iconColor}>{icon}</Text>
         <Text bold color={iconColor}>

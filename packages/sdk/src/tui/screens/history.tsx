@@ -62,7 +62,9 @@ export function History() {
       <Text color="gray">{"─".repeat(60)}</Text>
 
       {/* Help */}
-      <Text color="gray">Use ↑/↓ to navigate, Enter to view diff, Esc to go back</Text>
+      <Text color="gray">
+        Use ↑/↓ to navigate, Enter to view diff, Esc to go back
+      </Text>
     </Box>
   );
 }
