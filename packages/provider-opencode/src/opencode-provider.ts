@@ -20,6 +20,7 @@ export class OpenCodeProvider implements Provider {
 
   private readonly config: Required<OpenCodeConfig>;
   private readonly communicationStrategy: CommunicationStrategy;
+  // biome-ignore lint/correctness/noUnusedPrivateClassMembers: API futuro para parseo de respuestas
   private readonly responseParser: ResponseParser<unknown>;
   private readonly configManager: ConfigurationManager;
 

@@ -36,7 +36,7 @@ export interface Execution {
   provider: string;
   model?: string;
   workspace: string;
-  status: "pending" | "running" | "completed" | "failed";
+  status: "pending" | "running" | "completed" | "failed" | "cancelled";
   startedAt: Date;
   completedAt?: Date;
   duration?: number; // milliseconds
@@ -91,8 +91,6 @@ interface AppState {
   setSelectedWorkflowId: (id: string) => void;
 
   // Verbose mode for execution
-  verbose: boolean;
-  setVerbose: (verbose: boolean) => void;
 
   // Context generation state
   contextStatus:
@@ -173,11 +171,23 @@ export const useStore = create<AppState>((set) => ({
       );
   },
   updateExecution: (id, updates) => {
-    set((state) => ({
-      executions: state.executions.map((e) =>
+    set((state) => {
+      // Update executions array
+      const updatedExecutions = state.executions.map((e) =>
         e.id === id ? { ...e, ...updates } : e
-      ),
-    }));
+      );
+
+      // Also update currentExecution if it's the same execution
+      const updatedCurrentExecution =
+        state.currentExecution?.id === id
+          ? { ...state.currentExecution, ...updates }
+          : state.currentExecution;
+
+      return {
+        executions: updatedExecutions,
+        currentExecution: updatedCurrentExecution,
+      };
+    });
     // Persist to database
     getDb()
       .then((db) =>
@@ -213,8 +223,6 @@ export const useStore = create<AppState>((set) => ({
   setSelectedWorkflowId: (id) => set({ selectedWorkflowId: id }),
 
   // Verbose mode for execution (default: false)
-  verbose: false,
-  setVerbose: (verbose) => set({ verbose }),
 
   // Context generation state
   contextStatus: "idle",

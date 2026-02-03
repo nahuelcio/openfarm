@@ -30,10 +30,21 @@ export function getAvailableModels(): string[] {
       .map((line) => line.trim())
       .filter((line) => line && !line.startsWith("#"));
 
-    return models;
-  } catch (error) {
-    // If command fails, return empty array
-    console.error("Failed to load OpenCode models:", error);
-    return [];
+    if (models.length > 0) {
+      return models;
+    }
+  } catch {
+    // If command fails, use fallback
   }
+
+  // Fallback: common models that work with OpenCode
+  return [
+    "anthropic/claude-4-sonnet",
+    "anthropic/claude-4-haiku",
+    "anthropic/claude-opus-4",
+    "google/gemini-2.5-pro",
+    "google/gemini-2.5-flash",
+    "openai/gpt-4o",
+    "openai/gpt-4o-mini",
+  ];
 }

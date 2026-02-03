@@ -1,6 +1,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import type { Workflow } from "@openfarm/core";
+import type { Workflow, WorkflowStep } from "@openfarm/core";
+import { StepType } from "@openfarm/core";
 import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
 import YAML from "js-yaml";
@@ -10,20 +11,78 @@ import { getAvailableModels } from "../utils/models";
 
 const PROVIDERS = [
   { id: "opencode", name: "OpenCode" },
-  { id: "claude-code", name: "Claude Code" },
+  { id: "claude", name: "Claude Code" },
   { id: "aider", name: "Aider" },
 ];
 
 // Default workflow ID
-const DEFAULT_WORKFLOW_ID = "task_runner";
+const DEFAULT_WORKFLOW_ID = "oneshot";
 
-type Step =
-  | "workflow"
-  | "provider"
-  | "model"
-  | "workspace"
-  | "verbose"
-  | "task";
+// Hardcoded minimal workflows for instant display
+const DEFAULT_WORKFLOWS: Workflow[] = [
+  {
+    id: "oneshot",
+    name: "One Shot",
+    description: "Direct execution without git operations",
+    steps: [
+      {
+        id: "execute",
+        type: StepType.CODE,
+        action: "agent.code",
+        config: {},
+      } as WorkflowStep,
+    ],
+    parameters: {},
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: "oneshot_with_git",
+    name: "One Shot + Git",
+    description: "Execution with branch and worktree",
+    steps: [
+      {
+        id: "branch",
+        type: StepType.GIT,
+        action: "git.branch",
+        config: {},
+      } as WorkflowStep,
+      {
+        id: "worktree",
+        type: StepType.GIT,
+        action: "git.worktree",
+        config: {},
+      } as WorkflowStep,
+      {
+        id: "execute",
+        type: StepType.CODE,
+        action: "agent.code",
+        config: {},
+      } as WorkflowStep,
+    ],
+    parameters: {},
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: "with_human_approval",
+    name: "With Human Approval",
+    description: "Execution requiring human approval",
+    steps: [
+      {
+        id: "execute",
+        type: StepType.CODE,
+        action: "agent.code",
+        config: {},
+      } as WorkflowStep,
+    ],
+    parameters: {},
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+];
+
+type Step = "workflow" | "provider" | "model" | "workspace" | "task";
 
 async function loadWorkflowsFromYaml(): Promise<Workflow[]> {
   const possiblePaths = [
@@ -34,7 +93,8 @@ async function loadWorkflowsFromYaml(): Promise<Workflow[]> {
     "/Users/nahuelcioffi/Proyectos/openfarm/packages/core/workflows",
   ];
 
-  for (const dir of possiblePaths) {
+  // Try all paths in parallel with a timeout
+  const loadPromises = possiblePaths.map(async (dir) => {
     try {
       const files = await readdir(dir);
       const yamlFiles = files.filter(
@@ -42,11 +102,11 @@ async function loadWorkflowsFromYaml(): Promise<Workflow[]> {
       );
 
       if (yamlFiles.length === 0) {
-        continue;
+        return null;
       }
 
-      const workflows: Workflow[] = [];
-      for (const file of yamlFiles) {
+      // Read all YAML files in parallel
+      const workflowPromises = yamlFiles.map(async (file) => {
         try {
           const content = await readFile(join(dir, file), "utf-8");
           const workflow = YAML.load(content) as Workflow;
@@ -56,25 +116,39 @@ async function loadWorkflowsFromYaml(): Promise<Workflow[]> {
           if (!workflow.updatedAt) {
             workflow.updatedAt = new Date().toISOString();
           }
-          workflows.push(workflow);
+          return workflow;
         } catch {
           // Skip invalid files
+          return null;
         }
-      }
-
-      // Sort: task_runner first, then alphabetically
-      return workflows.sort((a, b) => {
-        if (a.id === DEFAULT_WORKFLOW_ID) {
-          return -1;
-        }
-        if (b.id === DEFAULT_WORKFLOW_ID) {
-          return 1;
-        }
-        return (a.name || a.id).localeCompare(b.name || b.id);
       });
+
+      const workflows = (await Promise.all(workflowPromises)).filter(
+        (w): w is Workflow => w !== null
+      );
+
+      return workflows;
     } catch {
-      // Try next path
+      // Path doesn't exist or no access
+      return null;
     }
+  });
+
+  // Use Promise.race with timeout to get the first successful result quickly
+  const results = await Promise.all(loadPromises);
+  const firstValid = results.find((r) => r !== null && r.length > 0);
+
+  if (firstValid) {
+    // Sort: task_runner first, then alphabetically
+    return firstValid.sort((a, b) => {
+      if (a.id === DEFAULT_WORKFLOW_ID) {
+        return -1;
+      }
+      if (b.id === DEFAULT_WORKFLOW_ID) {
+        return 1;
+      }
+      return (a.name || a.id).localeCompare(b.name || b.id);
+    });
   }
 
   return [];
@@ -95,8 +169,6 @@ export function Execute() {
     setCurrentExecution,
     selectedWorkflowId,
     setSelectedWorkflowId,
-    verbose,
-    setVerbose,
   } = useStore();
   const [step, setStep] = useState<Step>("workflow");
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -105,22 +177,33 @@ export function Execute() {
   const [modelOptions, setModelOptions] = useState<string[]>([]);
   const [isSelectingFromList, setIsSelectingFromList] = useState(false);
 
-  // Load workflows
-  const [workflows, setWorkflows] = useState<Workflow[]>([]);
-  const [workflowsLoading, setWorkflowsLoading] = useState(true);
+  // Load workflows - start with defaults for instant display, then load real ones
+  const [workflows, setWorkflows] = useState<Workflow[]>(DEFAULT_WORKFLOWS);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: selectedIndex is used for comparison only
   useEffect(() => {
-    const load = async () => {
-      const data = await loadWorkflowsFromYaml();
-      setWorkflows(data);
-      // Find index of default workflow
-      const defaultIndex = data.findIndex((w) => w.id === selectedWorkflowId);
-      if (defaultIndex >= 0) {
-        setSelectedIndex(defaultIndex);
+    // Non-blocking background load of actual workflows from filesystem
+    const loadInBackground = async () => {
+      try {
+        const data = await loadWorkflowsFromYaml();
+        if (data.length > 0) {
+          setWorkflows(data);
+          // Update selected index if needed
+          const currentIndex = data.findIndex(
+            (w) => w.id === selectedWorkflowId
+          );
+          if (currentIndex >= 0 && currentIndex !== selectedIndex) {
+            setSelectedIndex(currentIndex);
+          }
+        }
+      } catch {
+        // Keep defaults if loading fails
       }
-      setWorkflowsLoading(false);
     };
-    load();
+
+    // Delay to let React render first
+    const timeoutId = setTimeout(loadInBackground, 100);
+    return () => clearTimeout(timeoutId);
   }, [selectedWorkflowId]);
 
   // Load available models when provider changes
@@ -170,12 +253,9 @@ export function Execute() {
       } else if (step === "workspace") {
         setStep("model");
         setSelectedIndex(0);
-      } else if (step === "verbose") {
+      } else if (step === "task") {
         setStep("workspace");
         setSelectedIndex(0);
-      } else if (step === "task") {
-        setStep("verbose");
-        setSelectedIndex(verbose ? 0 : 1);
       }
       return;
     }
@@ -247,34 +327,20 @@ export function Execute() {
       } else if (key.return) {
         if (selectedIndex === 0) {
           setWorkspace(process.cwd());
-          setSelectedIndex(verbose ? 0 : 1);
-          setStep("verbose");
+          setSelectedIndex(0);
+          setStep("task");
         } else {
           if (customPath.trim()) {
             setWorkspace(customPath.trim());
-            setSelectedIndex(verbose ? 0 : 1);
-            setStep("verbose");
+            setSelectedIndex(0);
+            setStep("task");
           }
         }
       }
       return;
     }
 
-    // Paso 4: Seleccionar Verbose Mode
-    if (step === "verbose") {
-      if (key.upArrow) {
-        setSelectedIndex((i) => Math.max(0, i - 1));
-      } else if (key.downArrow) {
-        setSelectedIndex((i) => Math.min(1, i + 1));
-      } else if (key.return) {
-        setVerbose(selectedIndex === 0);
-        setSelectedIndex(0);
-        setStep("task");
-      }
-      return;
-    }
-
-    // Paso 5: Escribir Task
+    // Paso 4: Escribir Task
     if (step === "task") {
       if (key.return && task.trim()) {
         const execution = {
@@ -333,9 +399,7 @@ export function Execute() {
 
         {step === "workflow" && (
           <Box flexDirection="column" paddingLeft={2}>
-            {workflowsLoading ? (
-              <Text color="yellow">Loading workflows...</Text>
-            ) : workflows.length === 0 ? (
+            {workflows.length === 0 ? (
               <Text color="red">No workflows found</Text>
             ) : (
               <>
@@ -554,63 +618,7 @@ export function Execute() {
 
       <Text color="gray">{"─".repeat(60)}</Text>
 
-      {/* Paso 4: Verbose */}
-      <Box flexDirection="column" gap={1}>
-        <Text
-          bold={step === "verbose"}
-          color={step === "verbose" ? "cyan" : "gray"}
-        >
-          4. Verbose Mode{" "}
-          {step !== "workflow" &&
-            step !== "provider" &&
-            step !== "model" &&
-            step !== "workspace" &&
-            step !== "verbose" &&
-            `(${verbose ? "On" : "Off"})`}
-        </Text>
-
-        {step === "verbose" && (
-          <Box flexDirection="column" paddingLeft={2}>
-            <Box flexDirection="row" gap={1}>
-              <Text color={selectedIndex === 0 ? "yellow" : "gray"}>
-                {selectedIndex === 0 ? "▶" : " "}
-              </Text>
-              <Text
-                bold={selectedIndex === 0}
-                color={selectedIndex === 0 ? "white" : "gray"}
-              >
-                On
-              </Text>
-              <Text color="gray" dimColor>
-                (show detailed tool calls and progress)
-              </Text>
-            </Box>
-
-            <Box flexDirection="row" gap={1}>
-              <Text color={selectedIndex === 1 ? "yellow" : "gray"}>
-                {selectedIndex === 1 ? "▶" : " "}
-              </Text>
-              <Text
-                bold={selectedIndex === 1}
-                color={selectedIndex === 1 ? "white" : "gray"}
-              >
-                Off
-              </Text>
-              <Text color="gray" dimColor>
-                (show only essential output)
-              </Text>
-            </Box>
-
-            <Text color="gray" dimColor>
-              Press Enter to select
-            </Text>
-          </Box>
-        )}
-      </Box>
-
-      <Text color="gray">{"─".repeat(60)}</Text>
-
-      {/* Paso 5: Task */}
+      {/* Paso 4: Task */}
       <Box flexDirection="column" gap={1}>
         <Text bold={step === "task"} color={step === "task" ? "cyan" : "gray"}>
           5. Describe Task
@@ -627,12 +635,6 @@ export function Execute() {
               </Text>
               <Text color="gray" dimColor>
                 Working in: {currentWorkspace}
-              </Text>
-              <Text color="gray" dimColor>
-                Verbose mode:{" "}
-                <Text bold color={verbose ? "green" : "gray"}>
-                  {verbose ? "On" : "Off"}
-                </Text>
               </Text>
             </Box>
             <Box borderColor="yellow" borderStyle="single" padding={1}>

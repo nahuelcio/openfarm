@@ -29,7 +29,7 @@ export function History() {
         const workflows = await getWorkflows(db);
         const names: Record<string, string> = {};
         for (const w of workflows) {
-          names[w.id] = w.name;
+          names[w.id] = w.name ?? "";
         }
         setWorkflowNames(names);
       } catch {

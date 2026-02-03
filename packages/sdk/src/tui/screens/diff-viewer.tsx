@@ -65,12 +65,14 @@ export function DiffViewer() {
         <Text bold color="yellow">
           No changes found
         </Text>
-        <Text color="gray" marginTop={1}>
-          This execution did not produce any file changes.
-        </Text>
-        <Text color="gray" marginTop={1}>
-          Press Esc to go back
-        </Text>
+        <Box marginTop={1}>
+          <Text color="gray">
+            This execution did not produce any file changes.
+          </Text>
+        </Box>
+        <Box marginTop={1}>
+          <Text color="gray">Press Esc to go back</Text>
+        </Box>
       </Box>
     );
   }
@@ -145,9 +147,11 @@ function FileDiff({ file }: FileDiffProps) {
         </Box>
       </Box>
 
-      <Text color="gray" marginTop={1}>
-        Use ←/→ to navigate files, Esc to go back to list
-      </Text>
+      <Box marginTop={1}>
+        <Text color="gray">
+          Use ←/→ to navigate files, Esc to go back to list
+        </Text>
+      </Box>
       <Text color="gray">{"─".repeat(60)}</Text>
 
       <Box flexDirection="column" marginTop={1}>
@@ -155,9 +159,11 @@ function FileDiff({ file }: FileDiffProps) {
           <DiffLine key={i} line={line} />
         ))}
         {hasMore && (
-          <Text color="gray" marginTop={1}>
-            ... {file.lines.length - 50} more lines (showing first 50)
-          </Text>
+          <Box marginTop={1}>
+            <Text color="gray">
+              ... {file.lines.length - 50} more lines (showing first 50)
+            </Text>
+          </Box>
         )}
       </Box>
     </Box>

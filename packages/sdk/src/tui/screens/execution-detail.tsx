@@ -8,6 +8,7 @@ export function ExecutionDetail() {
     setScreen,
     currentExecution,
     addExecution,
+    updateExecution,
     setTask,
     setProvider,
     setModel,
@@ -76,6 +77,10 @@ export function ExecutionDetail() {
     }
     if (input === "d" && currentExecution?.diff) {
       setScreen("diff-viewer");
+    }
+    if (input === "c" && currentExecution?.status === "running") {
+      // Cancel the running execution
+      updateExecution(currentExecution.id, { status: "cancelled" });
     }
   });
 
@@ -200,7 +205,12 @@ export function ExecutionDetail() {
       <Text color="gray">{"─".repeat(60)}</Text>
 
       {/* Help */}
-      <Text color="gray">Esc back • d view diff • r rerun</Text>
+      <Text color="gray">
+        Esc back
+        {currentExecution?.status === "running" && " • c cancel"}
+        {currentExecution?.diff && " • d view diff"}
+        {" • r rerun"}
+      </Text>
     </Box>
   );
 }
@@ -211,8 +221,10 @@ function getStatusColor(status: string): string {
       return "green";
     case "failed":
       return "red";
-    case "running":
+    case "cancelled":
       return "yellow";
+    case "running":
+      return "cyan";
     default:
       return "gray";
   }
@@ -224,6 +236,8 @@ function getStatusIcon(status: string): string {
       return "✓";
     case "failed":
       return "✗";
+    case "cancelled":
+      return "⊘";
     case "running":
       return "◐";
     default:

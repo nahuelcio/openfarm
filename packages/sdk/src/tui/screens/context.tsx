@@ -1,6 +1,7 @@
 import { AgentAnalyzer } from "@openfarm/context";
 import { Box, Text, useInput } from "ink";
-import Spinner from "ink-spinner";
+import SpinnerComponent from "ink-spinner";
+import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { OpenFarm } from "../../open-farm.js";
@@ -10,6 +11,8 @@ import { copyToClipboard } from "../utils/clipboard";
 import { type CategorizedError, categorizeError } from "../utils/error-handler";
 import { exportContextToFile } from "../utils/export-context";
 import { getCurrentGitHash } from "../utils/git-hash";
+
+const Spinner = SpinnerComponent as unknown as React.FC<{ type?: string }>;
 
 interface ExecutionResult {
   success: boolean;
@@ -23,7 +26,7 @@ export function ContextScreen() {
     contextStatus,
     contextProgress,
     contextResult,
-    contextError,
+    // contextError - disponible si se necesita mostrar en UI
     contextProvider,
     contextModel,
     setContextStatus,
@@ -39,7 +42,7 @@ export function ContextScreen() {
 
   const generateContextRef = useRef<(() => Promise<void>) | null>(null);
   const [gitHash, setGitHash] = useState<string | null>(null);
-  const [useCache, setUseCache] = useState<boolean | null>(null);
+  const [_useCache, _setUseCache] = useState<boolean | null>(null);
   const [cachedContextData, setCachedContextData] = useState<{
     content: string;
     createdAt: Date;
@@ -133,12 +136,12 @@ export function ContextScreen() {
         setContextResult(result.agentsMd);
         setContextStatus("complete");
         setContextProgress(100);
-      } catch (error) {
-        const categorized = categorizeError(error);
+      } catch (_error) {
+        const categorized = categorizeError(_error);
         setCategorizedError(categorized);
 
         const errorMsg =
-          error instanceof Error ? error.message : "Unknown error";
+          _error instanceof Error ? _error.message : "Unknown error";
         setContextError(errorMsg);
       }
     };
@@ -150,18 +153,25 @@ export function ContextScreen() {
     setContextProgress,
     setContextResult,
     setContextError,
+    gitHash,
+    saveGeneratedContext,
+    startTime,
   ]);
 
   useEffect(() => {
     let mounted = true;
 
     async function checkCacheAndGenerate() {
-      if (contextStatus !== "idle" || generateContextRef.current) return;
+      if (contextStatus !== "idle" || generateContextRef.current) {
+        return;
+      }
 
       try {
         // Get current git hash
         const hash = await getCurrentGitHash(workspace);
-        if (mounted) setGitHash(hash);
+        if (mounted) {
+          setGitHash(hash);
+        }
 
         // Check for cached context with same git hash
         if (hash) {
@@ -188,7 +198,7 @@ export function ContextScreen() {
           generateContextRef.current = createGenerateContext();
           generateContextRef.current();
         }
-      } catch (error) {
+      } catch (_error) {
         if (mounted) {
           setStartTime(Date.now());
           generateContextRef.current = createGenerateContext();
@@ -202,7 +212,13 @@ export function ContextScreen() {
     return () => {
       mounted = false;
     };
-  }, [contextStatus, createGenerateContext, workspace, getCachedContext]);
+  }, [
+    contextStatus,
+    createGenerateContext,
+    workspace,
+    getCachedContext,
+    setContextStatus,
+  ]);
 
   useInput(
     (input, key) => {
@@ -231,20 +247,14 @@ export function ContextScreen() {
       if (contextStatus === "complete" && contextResult) {
         if (input === "c") {
           // Copy to clipboard
-          copyToClipboard(contextResult)
-            .then((success) => {
-              if (success) {
-                setFeedbackMessage("✓ Copied to clipboard!");
-                setTimeout(() => setFeedbackMessage(""), 2000);
-              } else {
-                setFeedbackMessage("✗ Failed to copy to clipboard");
-                setTimeout(() => setFeedbackMessage(""), 2000);
-              }
-            })
-            .catch(() => {
-              setFeedbackMessage("✗ Failed to copy to clipboard");
-              setTimeout(() => setFeedbackMessage(""), 2000);
-            });
+          const success = copyToClipboard(contextResult);
+          if (success) {
+            setFeedbackMessage("✓ Copied to clipboard!");
+            setTimeout(() => setFeedbackMessage(""), 2000);
+          } else {
+            setFeedbackMessage("✗ Failed to copy to clipboard");
+            setTimeout(() => setFeedbackMessage(""), 2000);
+          }
         } else if (input === "e") {
           // Export to file
           exportContextToFile(workspace, contextResult)

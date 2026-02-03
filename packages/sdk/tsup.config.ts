@@ -5,7 +5,7 @@ export default defineConfig([
   {
     entry: ["src/index.ts"],
     format: ["cjs", "esm"],
-    dts: true,
+    dts: false,
     splitting: false,
     sourcemap: true,
     clean: true,
@@ -87,5 +87,6 @@ export default defineConfig([
     outDir: "dist",
     target: "node18",
     outExtension: () => ({ js: ".mjs" }),
+    rootDir: "src",
   },
 ]);

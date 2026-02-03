@@ -39,9 +39,9 @@ async function executeWorkflowWithEngine(
   provider: string,
   model: string | undefined,
   onLog: (msg: string) => void,
-  verbose: boolean,
+  signal: AbortSignal,
   onStepChange?: (step: string, stepNumber: number, totalSteps: number) => void
-): Promise<{ success: boolean; worktreePath?: string }> {
+): Promise<{ success: boolean; worktreePath?: string; cancelled?: boolean }> {
   try {
     // Initialize database and workflows
     const db = await getDb();
@@ -133,6 +133,11 @@ async function executeWorkflowWithEngine(
           try {
             switch (action) {
               case "agent.code": {
+                // Check cancellation before starting
+                if (signal.aborted) {
+                  throw new Error("CANCELLED");
+                }
+
                 onLog(`🤖 Executing agent code with ${provider}...`);
 
                 // Use OpenFarm SDK to execute the task
@@ -145,8 +150,12 @@ async function executeWorkflowWithEngine(
                   workspace: executionContext.context.worktreePath || workspace,
                   model,
                   onLog,
-                  verbose,
                 });
+
+                // Check cancellation after execution
+                if (signal.aborted) {
+                  throw new Error("CANCELLED");
+                }
 
                 if (result.success) {
                   return {
@@ -321,6 +330,10 @@ async function executeWorkflowWithEngine(
           } catch (error) {
             const message =
               error instanceof Error ? error.message : String(error);
+            // Propagate cancellation without wrapping
+            if (message === "CANCELLED") {
+              throw error;
+            }
             return {
               success: false,
               error: new Error(`Step execution failed: ${message}`),
@@ -416,13 +429,8 @@ async function executeWorkflowWithEngine(
 }
 
 export function Running() {
-  const {
-    setScreen,
-    currentExecution,
-    updateExecution,
-    selectedWorkflowId,
-    verbose,
-  } = useStore();
+  const { setScreen, currentExecution, updateExecution, selectedWorkflowId } =
+    useStore();
   const [spinnerIdx, setSpinnerIdx] = useState(0);
   const [logs, setLogs] = useState<string[]>([]);
   const [isDone, setIsDone] = useState(false);
@@ -435,6 +443,7 @@ export function Running() {
   const [currentStep, setCurrentStep] = useState<string>("");
   const [stepProgress, setStepProgress] = useState({ current: 0, total: 3 });
   const aborted = useRef(false);
+  const abortController = useRef<AbortController | null>(null);
 
   // Timer para elapsed time
   useEffect(() => {
@@ -496,12 +505,18 @@ export function Running() {
     [updateStats]
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: logs and stats are intentionally excluded to prevent re-execution
   useEffect(() => {
     if (!currentExecution || aborted.current) {
       return;
     }
 
+    // Create abort controller for this execution
+    abortController.current = new AbortController();
+
     const run = async () => {
+      // Allow React to finish rendering before starting heavy work
+      await new Promise((resolve) => setImmediate(resolve));
       try {
         // Get workflow info from database
         const db = await getDb();
@@ -546,7 +561,8 @@ export function Running() {
           currentExecution.provider,
           currentExecution.model,
           onLog,
-          verbose,
+
+          abortController.current!.signal,
           (step, current, total) => {
             setCurrentStep(step);
             setStepProgress({ current, total });
@@ -554,14 +570,17 @@ export function Running() {
         );
 
         if (aborted.current) {
+          onLog("⚠️ Execution cancelled");
+          setSuccess(false);
+          setIsDone(true);
           return;
         }
 
         setSuccess(result.success);
 
         // Add execution result output to logs if not already there
-        if (result.success && result.value && !logs.includes(result.value)) {
-          onLog(`\n📄 Result:\n${result.value}`);
+        if (result.success && result.worktreePath) {
+          onLog(`\n📄 Worktree:\n${result.worktreePath}`);
         }
 
         // Capture git diff and file changes from worktree if available
@@ -613,10 +632,26 @@ export function Running() {
           return;
         }
 
+        const message = error instanceof Error ? error.message : String(error);
+
+        // Handle cancellation
+        if (message === "CANCELLED") {
+          onLog("⚠️ Execution cancelled by user");
+          const completedAt = new Date();
+          const duration = Date.now() - startTime;
+          updateExecution(currentExecution.id, {
+            status: "cancelled",
+            completedAt,
+            duration,
+            output: logs.join("\n"),
+          });
+          setSuccess(false);
+          setIsDone(true);
+          return;
+        }
+
         const categorized = categorizeError(error);
         setCategorizedError(categorized);
-
-        const message = error instanceof Error ? error.message : String(error);
         onLog(`❌ ${message}`);
 
         const completedAt = new Date();
@@ -635,7 +670,7 @@ export function Running() {
     };
 
     run();
-  }, [currentExecution, onLog, updateExecution, selectedWorkflowId]);
+  }, [currentExecution, onLog, updateExecution, selectedWorkflowId, startTime]);
 
   useInput((_input, key) => {
     if (key.escape) {
@@ -680,6 +715,7 @@ export function Running() {
         flexDirection="column"
         height={20}
         padding={1}
+        width={70}
       >
         {visibleLogs.map((log, i) => (
           <Text key={i} wrap="wrap">
