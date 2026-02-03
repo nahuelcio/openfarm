@@ -1,5 +1,34 @@
 import type { CommunicationResponse, ResponseParser } from "@openfarm/sdk";
-import type { OpenCodeEvent, OpenCodeExecutionState } from "./types";
+
+export interface OpenCodeEvent {
+  type: string;
+  part?: {
+    text?: string;
+    tool?: string;
+    state?: {
+      status?: string;
+      input?: Record<string, unknown>;
+      output?: Record<string, unknown>;
+      error?: string;
+    };
+    usage?: {
+      total_tokens: number;
+      input_tokens: number;
+      output_tokens: number;
+    };
+  };
+  name?: string;
+  message?: string;
+  error?: string;
+  text?: string;
+}
+
+export interface OpenCodeExecutionState {
+  outputText: string;
+  totalTokens: number;
+  modifiedFiles: Set<string>;
+  createdFiles: Set<string>;
+}
 
 export interface DiffItem {
   path: string;
@@ -30,13 +59,13 @@ export interface OpenCodeParseResult {
   success: boolean;
   data?: string;
   error?: string;
+  output?: string;
   metadata?: {
     tokens: number;
     files: {
       modified: string[];
       created: string[];
     };
-    output?: string;
   };
 }
 
@@ -198,7 +227,9 @@ export class OpenCodeResponseParser
       }
 
       case "tool_use":
-        this.handleToolUse(part, state.modifiedFiles, state.createdFiles);
+        if (part) {
+          this.handleToolUse(part, state.modifiedFiles, state.createdFiles);
+        }
         break;
 
       case "step_finish":
@@ -242,24 +273,24 @@ export class OpenCodeResponseParser
 
   private formatSummary(
     totalTokens: number,
-    modifiedFiles: Set<string>,
-    createdFiles: Set<string>
+    modifiedFiles: string[],
+    createdFiles: string[]
   ): string {
     const summary = [
       "OpenCode execution completed successfully",
       `Tokens used: ${totalTokens}`,
-      `Files modified: ${modifiedFiles.size}`,
-      `Files created: ${createdFiles.size}`,
+      `Files modified: ${modifiedFiles.length}`,
+      `Files created: ${createdFiles.length}`,
     ];
 
-    if (modifiedFiles.size > 0) {
+    if (modifiedFiles.length > 0) {
       summary.push("Modified files:");
       for (const file of modifiedFiles) {
         summary.push(`  - ${file}`);
       }
     }
 
-    if (createdFiles.size > 0) {
+    if (createdFiles.length > 0) {
       summary.push("Created files:");
       for (const file of createdFiles) {
         summary.push(`  - ${file}`);

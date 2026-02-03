@@ -33,7 +33,6 @@ export {
 } from "./factory";
 // Testing utilities and mocks
 export * from "./mocks/index.js";
-// Core interfaces and types
 // Re-export types for external providers
 export type {
   DiffItem,
@@ -46,18 +45,32 @@ export type {
 // Registry implementation
 export { globalProviderRegistry, ProviderRegistry } from "./registry";
 export * from "./test-utils/index.js";
+// Core interfaces and types
 export type {
   CommunicationRequest,
+  CommunicationRequest,
+  CommunicationResponse,
   CommunicationResponse,
   CommunicationStrategy,
+  CommunicationStrategy,
+  ConfigurationManager,
   ConfigurationManager,
   Provider,
+  Provider,
+  ProviderCapabilities,
   ProviderCapabilities,
   ProviderConfig,
+  ProviderConfig,
+  ProviderError,
   ProviderError,
   ProviderErrorType,
+  ProviderErrorType,
+  ProviderFactory,
   ProviderFactory,
   ProviderMetadata,
+  ProviderMetadata,
   ProviderRegistry as IProviderRegistry,
+  ProviderRegistry as IProviderRegistry,
+  ResponseParser as InternalResponseParser,
   ResponseParser as InternalResponseParser,
 } from "./types";

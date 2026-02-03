@@ -6,7 +6,9 @@ import type {
   ExecutionResult,
   Provider,
   ProviderMetadata,
+  ResponseParser,
 } from "@openfarm/sdk";
+import type { OpenCodeConfig } from "./types";
 
 /**
  * OpenCode provider - RESTAURADO a comportamiento original
@@ -28,8 +30,8 @@ export class OpenCodeProvider implements Provider {
     config: OpenCodeConfig = {}
   ) {
     this.communicationStrategy = communicationStrategy;
+    this.responseParser = responseParserArg;
     this.configManager = configManager;
-    // Note: responseParser parameter is kept for API compatibility with Provider interface
 
     this.config = {
       mode: "local",
