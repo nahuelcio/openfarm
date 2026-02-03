@@ -5,11 +5,6 @@ import type {
   ProviderFactory,
   ProviderMetadata,
 } from "@openfarm/sdk";
-import {
-  CliCommunicationStrategy,
-  createProviderConfigManager,
-  HttpCommunicationStrategy,
-} from "@openfarm/sdk";
 import { OpenCodeProvider } from "./opencode-provider.js";
 
 const _OpenCodeConfigSchema = {

@@ -33,11 +33,19 @@ export {
 } from "./factory";
 // Testing utilities and mocks
 export * from "./mocks/index.js";
+// Core interfaces and types
+// Re-export types for external providers
+export type {
+  DiffItem,
+  OpenCodeEvent,
+  OpenCodeExecutionState,
+  OpenCodeParseResult,
+  ToolEvent,
+  ToolEventPart,
+} from "./opencode-response-parser";
 // Registry implementation
 export { globalProviderRegistry, ProviderRegistry } from "./registry";
 export * from "./test-utils/index.js";
-// Core interfaces and types
-// Re-export types for external providers
 export type {
   CommunicationRequest,
   CommunicationResponse,
@@ -51,6 +59,5 @@ export type {
   ProviderFactory,
   ProviderMetadata,
   ProviderRegistry as IProviderRegistry,
-  ResponseParser,
   ResponseParser as InternalResponseParser,
 } from "./types";

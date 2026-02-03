@@ -7,7 +7,6 @@ import type {
   Provider,
   ProviderMetadata,
 } from "@openfarm/sdk";
-import type { OpenCodeConfig } from "./types";
 
 /**
  * OpenCode provider - RESTAURADO a comportamiento original
