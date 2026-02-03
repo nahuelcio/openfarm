@@ -7,10 +7,7 @@ import { OpenFarm } from "../../open-farm.js";
 import { ErrorDisplay } from "../components/error-display";
 import { useStore } from "../store";
 import { copyToClipboard } from "../utils/clipboard";
-import {
-  categorizeError,
-  type CategorizedError,
-} from "../utils/error-handler";
+import { categorizeError, type CategorizedError } from "../utils/error-handler";
 import { exportContextToFile } from "../utils/export-context";
 import { getCurrentGitHash, hasUncommittedChanges } from "../utils/git-hash";
 
@@ -171,8 +168,7 @@ export function ContextScreen() {
           const cached = await getCachedContext(workspace, hash);
           if (cached && mounted) {
             // Check if cache is recent (< 24 hours)
-            const cacheAge =
-              Date.now() - new Date(cached.createdAt).getTime();
+            const cacheAge = Date.now() - new Date(cached.createdAt).getTime();
             const isRecent = cacheAge < 24 * 60 * 60 * 1000; // 24 hours
 
             if (isRecent) {
@@ -428,9 +424,7 @@ export function ContextScreen() {
           {/* Feedback message */}
           {feedbackMessage && (
             <Box marginBottom={1}>
-              <Text
-                color={feedbackMessage.startsWith("✓") ? "green" : "red"}
-              >
+              <Text color={feedbackMessage.startsWith("✓") ? "green" : "red"}>
                 {feedbackMessage}
               </Text>
             </Box>

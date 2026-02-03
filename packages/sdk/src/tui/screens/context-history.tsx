@@ -181,9 +181,7 @@ export function ContextHistoryScreen() {
       <Text color="gray">{"-".repeat(70)}</Text>
 
       {/* Help */}
-      <Text color="gray">
-        ↑/↓ navigate • Enter/r use context • Esc back
-      </Text>
+      <Text color="gray">↑/↓ navigate • Enter/r use context • Esc back</Text>
       {currentGitHash && (
         <Text color="gray" dimColor>
           ● = cached (matches current git hash)

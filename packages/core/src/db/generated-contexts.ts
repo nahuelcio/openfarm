@@ -142,7 +142,9 @@ export async function createGeneratedContext(
 ): Promise<Result<void, string>> {
   try {
     const now = new Date().toISOString();
-    const sizeBytes = context.content ? Buffer.byteLength(context.content, "utf8") : 0;
+    const sizeBytes = context.content
+      ? Buffer.byteLength(context.content, "utf8")
+      : 0;
 
     await db`
       INSERT INTO generated_contexts (
@@ -198,7 +200,9 @@ export async function pruneOldContexts(
   try {
     // Get IDs to keep
     const keepRows =
-      (await db`SELECT id FROM generated_contexts WHERE workspace = ${workspace} ORDER BY created_at DESC LIMIT ${keepCount}`) as { id: string }[];
+      (await db`SELECT id FROM generated_contexts WHERE workspace = ${workspace} ORDER BY created_at DESC LIMIT ${keepCount}`) as {
+        id: string;
+      }[];
     const keepIds = keepRows.map((r) => r.id);
 
     if (keepIds.length === 0) {

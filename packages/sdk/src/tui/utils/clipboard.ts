@@ -17,7 +17,9 @@ export async function copyToClipboard(text: string): Promise<boolean> {
     } else if (os === "win32") {
       // Windows - use powershell
       const escaped = text.replace(/"/g, '""');
-      await execAsync(`powershell -command "Set-Clipboard -Value '${escaped}'"`);
+      await execAsync(
+        `powershell -command "Set-Clipboard -Value '${escaped}'"`
+      );
     } else {
       // Linux - try xclip first, then xsel
       try {
