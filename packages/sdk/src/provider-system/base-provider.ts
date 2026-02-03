@@ -6,6 +6,7 @@
  */
 
 import type { ExecutionOptions, ExecutionResult } from "../types";
+import { createLogger } from "../utils/logger";
 import type {
   CommunicationRequest,
   CommunicationStrategy,
@@ -243,18 +244,16 @@ export abstract class BaseProvider implements Provider {
    * Log error messages. Can be overridden by subclasses for custom logging.
    */
   protected logError(message: string, error: unknown): void {
-    // In a real implementation, this would use a proper logging system
-    console.error(`[${this.type}] ${message}:`, error);
+    const logger = createLogger(this.type);
+    logger.error(message, error);
   }
 
   /**
    * Log debug messages. Can be overridden by subclasses for custom logging.
    */
   protected logDebug(message: string, data?: unknown): void {
-    // Only log in verbose mode or development
-    if (process.env.NODE_ENV === "development") {
-      console.debug(`[${this.type}] ${message}`, data || "");
-    }
+    const logger = createLogger(this.type);
+    logger.debug(message, data);
   }
 
   /**

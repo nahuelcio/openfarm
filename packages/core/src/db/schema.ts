@@ -309,6 +309,26 @@ export async function createSchema(db: SQL): Promise<void> {
   await db`CREATE INDEX IF NOT EXISTS idx_tui_executions_status ON tui_executions(status)`;
   await db`CREATE INDEX IF NOT EXISTS idx_tui_executions_started_at ON tui_executions(started_at DESC)`;
 
+  // Create generated_contexts table for storing AI-generated repository contexts
+  await db`
+    CREATE TABLE IF NOT EXISTS generated_contexts (
+      id TEXT PRIMARY KEY,
+      workspace TEXT NOT NULL,
+      provider TEXT NOT NULL,
+      model TEXT,
+      content TEXT NOT NULL,
+      git_hash TEXT,
+      files_analyzed INTEGER,
+      duration INTEGER,
+      size_bytes INTEGER,
+      metadata TEXT,
+      created_at TEXT NOT NULL
+    )
+  `;
+  await db`CREATE INDEX IF NOT EXISTS idx_generated_contexts_workspace ON generated_contexts(workspace)`;
+  await db`CREATE INDEX IF NOT EXISTS idx_generated_contexts_git_hash ON generated_contexts(git_hash)`;
+  await db`CREATE INDEX IF NOT EXISTS idx_generated_contexts_created_at ON generated_contexts(created_at DESC)`;
+
   // Create system_configurations table for storing system-wide configurations
   await db`
     CREATE TABLE IF NOT EXISTS system_configurations (

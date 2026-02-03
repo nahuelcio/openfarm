@@ -17,7 +17,13 @@ const PROVIDERS = [
 // Default workflow ID
 const DEFAULT_WORKFLOW_ID = "task_runner";
 
-type Step = "workflow" | "provider" | "model" | "workspace" | "task";
+type Step =
+  | "workflow"
+  | "provider"
+  | "model"
+  | "workspace"
+  | "verbose"
+  | "task";
 
 async function loadWorkflowsFromYaml(): Promise<Workflow[]> {
   const possiblePaths = [
@@ -89,6 +95,8 @@ export function Execute() {
     setCurrentExecution,
     selectedWorkflowId,
     setSelectedWorkflowId,
+    verbose,
+    setVerbose,
   } = useStore();
   const [step, setStep] = useState<Step>("workflow");
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -162,9 +170,12 @@ export function Execute() {
       } else if (step === "workspace") {
         setStep("model");
         setSelectedIndex(0);
-      } else if (step === "task") {
+      } else if (step === "verbose") {
         setStep("workspace");
         setSelectedIndex(0);
+      } else if (step === "task") {
+        setStep("verbose");
+        setSelectedIndex(verbose ? 0 : 1);
       }
       return;
     }
@@ -236,18 +247,34 @@ export function Execute() {
       } else if (key.return) {
         if (selectedIndex === 0) {
           setWorkspace(process.cwd());
-          setStep("task");
+          setSelectedIndex(verbose ? 0 : 1);
+          setStep("verbose");
         } else {
           if (customPath.trim()) {
             setWorkspace(customPath.trim());
-            setStep("task");
+            setSelectedIndex(verbose ? 0 : 1);
+            setStep("verbose");
           }
         }
       }
       return;
     }
 
-    // Paso 4: Escribir Task
+    // Paso 4: Seleccionar Verbose Mode
+    if (step === "verbose") {
+      if (key.upArrow) {
+        setSelectedIndex((i) => Math.max(0, i - 1));
+      } else if (key.downArrow) {
+        setSelectedIndex((i) => Math.min(1, i + 1));
+      } else if (key.return) {
+        setVerbose(selectedIndex === 0);
+        setSelectedIndex(0);
+        setStep("task");
+      }
+      return;
+    }
+
+    // Paso 5: Escribir Task
     if (step === "task") {
       if (key.return && task.trim()) {
         const execution = {
@@ -527,10 +554,66 @@ export function Execute() {
 
       <Text color="gray">{"─".repeat(60)}</Text>
 
-      {/* Paso 4: Task */}
+      {/* Paso 4: Verbose */}
+      <Box flexDirection="column" gap={1}>
+        <Text
+          bold={step === "verbose"}
+          color={step === "verbose" ? "cyan" : "gray"}
+        >
+          4. Verbose Mode{" "}
+          {step !== "workflow" &&
+            step !== "provider" &&
+            step !== "model" &&
+            step !== "workspace" &&
+            step !== "verbose" &&
+            `(${verbose ? "On" : "Off"})`}
+        </Text>
+
+        {step === "verbose" && (
+          <Box flexDirection="column" paddingLeft={2}>
+            <Box flexDirection="row" gap={1}>
+              <Text color={selectedIndex === 0 ? "yellow" : "gray"}>
+                {selectedIndex === 0 ? "▶" : " "}
+              </Text>
+              <Text
+                bold={selectedIndex === 0}
+                color={selectedIndex === 0 ? "white" : "gray"}
+              >
+                On
+              </Text>
+              <Text color="gray" dimColor>
+                (show detailed tool calls and progress)
+              </Text>
+            </Box>
+
+            <Box flexDirection="row" gap={1}>
+              <Text color={selectedIndex === 1 ? "yellow" : "gray"}>
+                {selectedIndex === 1 ? "▶" : " "}
+              </Text>
+              <Text
+                bold={selectedIndex === 1}
+                color={selectedIndex === 1 ? "white" : "gray"}
+              >
+                Off
+              </Text>
+              <Text color="gray" dimColor>
+                (show only essential output)
+              </Text>
+            </Box>
+
+            <Text color="gray" dimColor>
+              Press Enter to select
+            </Text>
+          </Box>
+        )}
+      </Box>
+
+      <Text color="gray">{"─".repeat(60)}</Text>
+
+      {/* Paso 5: Task */}
       <Box flexDirection="column" gap={1}>
         <Text bold={step === "task"} color={step === "task" ? "cyan" : "gray"}>
-          4. Describe Task
+          5. Describe Task
         </Text>
 
         {step === "task" && (
@@ -544,6 +627,12 @@ export function Execute() {
               </Text>
               <Text color="gray" dimColor>
                 Working in: {currentWorkspace}
+              </Text>
+              <Text color="gray" dimColor>
+                Verbose mode:{" "}
+                <Text bold color={verbose ? "green" : "gray"}>
+                  {verbose ? "On" : "Off"}
+                </Text>
               </Text>
             </Box>
             <Box borderColor="yellow" borderStyle="single" padding={1}>

@@ -3,22 +3,32 @@ import { getDb } from "@openfarm/core/db";
 import {
   createTuiExecution,
   getTuiExecutions,
-  updateTuiExecution,
   type TuiExecution,
+  updateTuiExecution,
 } from "@openfarm/core/db/tui-executions";
+import {
+  createGeneratedContext,
+  type GeneratedContext,
+  getContextsForWorkspace,
+  getLatestContextForWorkspace,
+  getContextByGitHash,
+} from "@openfarm/core/db/generated-contexts";
 import { create } from "zustand";
 import type { OpenFarmConfig } from "../types";
+import { logger } from "../utils/logger";
 
 export type Screen =
   | "dashboard"
   | "execute"
   | "running"
   | "history"
+  | "execution-detail"
   | "diff-viewer"
   | "workflows"
   | "workflow-editor"
   | "context"
-  | "context-config";
+  | "context-config"
+  | "context-history";
 
 export interface Execution {
   id: string;
@@ -80,6 +90,10 @@ interface AppState {
   selectedWorkflowId: string;
   setSelectedWorkflowId: (id: string) => void;
 
+  // Verbose mode for execution
+  verbose: boolean;
+  setVerbose: (verbose: boolean) => void;
+
   // Context generation state
   contextStatus:
     | "idle"
@@ -109,6 +123,21 @@ interface AppState {
   setSelectedExecutionForDiff: (execution: Execution | null) => void;
   selectedDiffFileIndex: number;
   setSelectedDiffFileIndex: (index: number) => void;
+
+  // Generated contexts state
+  generatedContexts: GeneratedContext[];
+  currentContext: GeneratedContext | null;
+  cachedContext: GeneratedContext | null;
+  saveGeneratedContext: (context: GeneratedContext) => Promise<void>;
+  loadContextsFromDb: () => Promise<void>;
+  loadContextsForWorkspace: (workspace: string) => Promise<void>;
+  getLatestContext: (workspace: string) => Promise<GeneratedContext | null>;
+  getCachedContext: (
+    workspace: string,
+    gitHash: string
+  ) => Promise<GeneratedContext | null>;
+  setCurrentContext: (context: GeneratedContext | null) => void;
+  setCachedContext: (context: GeneratedContext | null) => void;
 }
 
 export const useStore = create<AppState>((set) => ({
@@ -164,7 +193,7 @@ export const useStore = create<AppState>((set) => ({
       const executions = await getTuiExecutions(db, 100);
       set({ executions: executions as Execution[] });
     } catch (error) {
-      console.error("Failed to load executions from DB:", error);
+      logger.error("Failed to load executions from DB:", error);
     }
   },
 
@@ -182,6 +211,10 @@ export const useStore = create<AppState>((set) => ({
   // Selected workflow for execution (default: task_runner)
   selectedWorkflowId: "task_runner",
   setSelectedWorkflowId: (id) => set({ selectedWorkflowId: id }),
+
+  // Verbose mode for execution (default: false)
+  verbose: false,
+  setVerbose: (verbose) => set({ verbose }),
 
   // Context generation state
   contextStatus: "idle",
@@ -212,4 +245,68 @@ export const useStore = create<AppState>((set) => ({
     set({ selectedExecutionForDiff: execution }),
   selectedDiffFileIndex: 0,
   setSelectedDiffFileIndex: (index) => set({ selectedDiffFileIndex: index }),
+
+  // Generated contexts state
+  generatedContexts: [],
+  currentContext: null,
+  cachedContext: null,
+  saveGeneratedContext: async (context) => {
+    try {
+      const db = await getDb();
+      await createGeneratedContext(db, context);
+      set((state) => ({
+        generatedContexts: [context, ...state.generatedContexts],
+        currentContext: context,
+      }));
+    } catch (error) {
+      logger.error("Failed to save context to DB:", error);
+    }
+  },
+  loadContextsFromDb: async () => {
+    try {
+      const db = await getDb();
+      const contexts = await getContextsForWorkspace(
+        db,
+        useStore.getState().workspace,
+        50
+      );
+      set({ generatedContexts: contexts });
+    } catch (error) {
+      logger.error("Failed to load contexts from DB:", error);
+    }
+  },
+  loadContextsForWorkspace: async (workspace: string) => {
+    try {
+      const db = await getDb();
+      const contexts = await getContextsForWorkspace(db, workspace, 50);
+      set({ generatedContexts: contexts });
+    } catch (error) {
+      logger.error("Failed to load contexts for workspace:", error);
+    }
+  },
+  getLatestContext: async (workspace: string) => {
+    try {
+      const db = await getDb();
+      const context = await getLatestContextForWorkspace(db, workspace);
+      return context;
+    } catch (error) {
+      logger.error("Failed to get latest context:", error);
+      return null;
+    }
+  },
+  getCachedContext: async (workspace: string, gitHash: string) => {
+    try {
+      const db = await getDb();
+      const context = await getContextByGitHash(db, workspace, gitHash);
+      if (context) {
+        set({ cachedContext: context });
+      }
+      return context;
+    } catch (error) {
+      logger.error("Failed to get cached context:", error);
+      return null;
+    }
+  },
+  setCurrentContext: (context) => set({ currentContext: context }),
+  setCachedContext: (context) => set({ cachedContext: context }),
 }));

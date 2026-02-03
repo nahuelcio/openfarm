@@ -1,6 +1,9 @@
 import { match, type Result } from "@openfarm/result";
+import { createLogger } from "../utils/logger";
 import { closeDb, createDb } from "./connection";
 import type { InitState } from "./types";
+
+const logger = createLogger("DB");
 
 // Use any type to avoid importing from bun during bundling
 type SQL = any;
@@ -23,6 +26,8 @@ export * from "./types";
 export * from "./utils";
 export * from "./work-items";
 export * from "./workflows/index";
+export * from "./tui-executions";
+export * from "./generated-contexts";
 
 // Import types needed locally
 import type {
@@ -209,11 +214,11 @@ export const resetDb = async (): Promise<void> => {
     try {
       const closeResult = await closeDb(dbInstance);
       if (!closeResult.ok) {
-        console.warn("[DB] Error closing database:", closeResult.error.message);
+        logger.warn("Error closing database:", closeResult.error.message);
       }
     } catch (error) {
       // Ignore errors when closing
-      console.warn("[DB] Error closing database:", error);
+      logger.warn("Error closing database:", error);
     }
   }
   dbInstance = null;

@@ -38,8 +38,10 @@ async function executeWorkflowWithEngine(
   workspace: string,
   provider: string,
   model: string | undefined,
-  onLog: (msg: string) => void
-): Promise<{ success: boolean }> {
+  onLog: (msg: string) => void,
+  verbose: boolean,
+  onStepChange?: (step: string, stepNumber: number, totalSteps: number) => void
+): Promise<{ success: boolean; worktreePath?: string }> {
   try {
     // Initialize database and workflows
     const db = await getDb();
@@ -117,6 +119,17 @@ async function executeWorkflowWithEngine(
         execute: async (stepRequest, executionContext) => {
           const { action, params } = stepRequest;
 
+          // Track step progress
+          const stepMap: Record<string, { name: string; number: number }> = {
+            "git.branch": { name: "Creating branch", number: 1 },
+            "git.worktree": { name: "Setting up worktree", number: 2 },
+            "agent.code": { name: "Running AI agent", number: 3 },
+          };
+          const stepInfo = stepMap[action];
+          if (stepInfo && onStepChange) {
+            onStepChange(stepInfo.name, stepInfo.number, 3);
+          }
+
           try {
             switch (action) {
               case "agent.code": {
@@ -132,14 +145,20 @@ async function executeWorkflowWithEngine(
                   workspace: executionContext.context.worktreePath || workspace,
                   model,
                   onLog,
+                  verbose,
                 });
 
                 if (result.success) {
-                  return { success: true, value: result.output };
+                  return {
+                    success: true,
+                    value: result.output,
+                    worktreePath: executionContext.context.worktreePath,
+                  };
                 }
                 return {
                   success: false,
                   error: new Error(result.error || "Agent execution failed"),
+                  worktreePath: executionContext.context.worktreePath,
                 };
               }
 
@@ -397,8 +416,13 @@ async function executeWorkflowWithEngine(
 }
 
 export function Running() {
-  const { setScreen, currentExecution, updateExecution, selectedWorkflowId } =
-    useStore();
+  const {
+    setScreen,
+    currentExecution,
+    updateExecution,
+    selectedWorkflowId,
+    verbose,
+  } = useStore();
   const [spinnerIdx, setSpinnerIdx] = useState(0);
   const [logs, setLogs] = useState<string[]>([]);
   const [isDone, setIsDone] = useState(false);
@@ -409,6 +433,7 @@ export function Running() {
   const [categorizedError, setCategorizedError] =
     useState<CategorizedError | null>(null);
   const [currentStep, setCurrentStep] = useState<string>("");
+  const [stepProgress, setStepProgress] = useState({ current: 0, total: 3 });
   const aborted = useRef(false);
 
   // Timer para elapsed time
@@ -520,7 +545,12 @@ export function Running() {
           currentExecution.workspace,
           currentExecution.provider,
           currentExecution.model,
-          onLog
+          onLog,
+          verbose,
+          (step, current, total) => {
+            setCurrentStep(step);
+            setStepProgress({ current, total });
+          }
         );
 
         if (aborted.current) {
@@ -529,18 +559,25 @@ export function Running() {
 
         setSuccess(result.success);
 
-        // Capture git diff and file changes
+        // Add execution result output to logs if not already there
+        if (result.success && result.value && !logs.includes(result.value)) {
+          onLog(`\n📄 Result:\n${result.value}`);
+        }
+
+        // Capture git diff and file changes from worktree if available
         let diffText = "";
         let modifiedFiles: string[] = [];
+        const diffTargetPath =
+          result.worktreePath || currentExecution.workspace;
         try {
           const changesResult = await captureGitChanges(
-            currentExecution.workspace,
+            diffTargetPath,
             async (file: string, args: string[]) => {
               const { execFile } = await import("node:child_process");
               const { promisify } = await import("node:util");
               const execFileAsync = promisify(execFile);
               return execFileAsync(file, args, {
-                cwd: currentExecution.workspace,
+                cwd: diffTargetPath,
               });
             },
             false
@@ -629,7 +666,7 @@ export function Running() {
             ? success
               ? "✅ Success"
               : "❌ Failed"
-            : `${spinner} ${currentStep || "Running"}`}
+            : `${spinner} ${currentStep || "Running"} ${stepProgress.current > 0 ? `[${stepProgress.current}/${stepProgress.total}]` : ""}`}
         </Text>
         <Text color="gray">{formatDuration(elapsed)}</Text>
       </Box>

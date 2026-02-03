@@ -5,6 +5,7 @@
  * It supports both built-in providers and external provider packages.
  */
 
+import { createLogger } from "../utils/logger";
 import { FactoryRegistry } from "./factory";
 import type {
   ProviderRegistry as IProviderRegistry,
@@ -13,6 +14,8 @@ import type {
   ProviderFactory,
   ProviderMetadata,
 } from "./types";
+
+const logger = createLogger("ProviderRegistry");
 
 /**
  * Lazy provider factory wrapper for deferred loading
@@ -60,9 +63,7 @@ export class ProviderRegistry implements IProviderRegistry {
     this.factoryRegistry.register(factory);
     this.metadata.set(metadata.type, metadata);
 
-    console.debug(
-      `[ProviderRegistry] Registered provider: ${metadata.type} (${metadata.name})`
-    );
+    logger.debug(`Registered provider: ${metadata.type} (${metadata.name})`);
   }
 
   /**
@@ -95,8 +96,8 @@ export class ProviderRegistry implements IProviderRegistry {
     this.lazyFactories.set(metadata.type, { metadata, loader });
     this.metadata.set(metadata.type, metadata);
 
-    console.debug(
-      `[ProviderRegistry] Registered lazy provider: ${metadata.type} (${metadata.name})`
+    logger.debug(
+      `Registered lazy provider: ${metadata.type} (${metadata.name})`
     );
   }
 
@@ -129,7 +130,7 @@ export class ProviderRegistry implements IProviderRegistry {
       const cacheKey = this.getCacheKey(type, config);
       const cachedProvider = this.providerCache.get(cacheKey);
       if (cachedProvider) {
-        console.debug(`[ProviderRegistry] Using cached provider: ${type}`);
+        logger.debug(`Using cached provider: ${type}`);
         return cachedProvider;
       }
 
@@ -140,7 +141,7 @@ export class ProviderRegistry implements IProviderRegistry {
       if (!factory) {
         const lazyFactory = this.lazyFactories.get(type);
         if (lazyFactory) {
-          console.debug(`[ProviderRegistry] Lazy loading provider: ${type}`);
+          logger.debug(`Lazy loading provider: ${type}`);
 
           if (!lazyFactory.loaded) {
             lazyFactory.loaded = await lazyFactory.loader();
@@ -168,7 +169,7 @@ export class ProviderRegistry implements IProviderRegistry {
       // Cache the provider for reuse
       this.providerCache.set(cacheKey, provider);
 
-      console.debug(`[ProviderRegistry] Created provider: ${type}`);
+      logger.debug(`Created provider: ${type}`);
       return provider;
     } catch (error) {
       throw this.createRegistryError(
@@ -274,8 +275,8 @@ export class ProviderRegistry implements IProviderRegistry {
 
       this.discoveryComplete = true;
 
-      console.debug(
-        `[ProviderRegistry] Discovery complete. Found ${this.factoryRegistry.size()} providers.`
+      logger.debug(
+        `Discovery complete. Found ${this.factoryRegistry.size()} providers.`
       );
     } catch (error) {
       throw this.createRegistryError(
@@ -319,7 +320,7 @@ export class ProviderRegistry implements IProviderRegistry {
    */
   clearCache(): void {
     this.providerCache.clear();
-    console.debug("[ProviderRegistry] Provider cache cleared");
+    logger.debug("Provider cache cleared");
   }
 
   /**
@@ -328,7 +329,7 @@ export class ProviderRegistry implements IProviderRegistry {
   async preloadProvider(type: string): Promise<void> {
     const lazyFactory = this.lazyFactories.get(type);
     if (lazyFactory && !lazyFactory.loaded) {
-      console.debug(`[ProviderRegistry] Preloading provider: ${type}`);
+      logger.debug(`Preloading provider: ${type}`);
       lazyFactory.loaded = await lazyFactory.loader();
       this.factoryRegistry.register(lazyFactory.loaded);
     }
@@ -342,7 +343,7 @@ export class ProviderRegistry implements IProviderRegistry {
       this.preloadProvider(type)
     );
     await Promise.all(preloadPromises);
-    console.debug("[ProviderRegistry] All lazy providers preloaded");
+    logger.debug("All lazy providers preloaded");
   }
 
   /**
@@ -356,8 +357,8 @@ export class ProviderRegistry implements IProviderRegistry {
     this.factoryRegistry.register(factory);
     this.metadata.set(metadata.type, metadata);
 
-    console.debug(
-      `[ProviderRegistry] Registered test provider: ${metadata.type} (${metadata.name})`
+    logger.debug(
+      `Registered test provider: ${metadata.type} (${metadata.name})`
     );
   }
 
@@ -425,7 +426,7 @@ export class ProviderRegistry implements IProviderRegistry {
    * Discover built-in providers in the SDK.
    */
   private async discoverBuiltInProviders(): Promise<void> {
-    console.debug("[ProviderRegistry] Scanning for built-in providers...");
+    logger.debug("Scanning for built-in providers...");
 
     try {
       // Register Direct API Provider (built-in simple provider)
@@ -435,10 +436,7 @@ export class ProviderRegistry implements IProviderRegistry {
       const directApiFactory = new DirectApiProviderFactory();
       this.registerProvider(directApiFactory);
     } catch (error) {
-      console.warn(
-        "[ProviderRegistry] Failed to load DirectApiProvider:",
-        error
-      );
+      logger.warn("Failed to load DirectApiProvider:", error);
     }
 
     // Future built-in providers can be added here
@@ -448,9 +446,7 @@ export class ProviderRegistry implements IProviderRegistry {
    * Discover external provider packages.
    */
   private async discoverExternalProviders(): Promise<void> {
-    console.debug(
-      "[ProviderRegistry] Scanning for external provider packages..."
-    );
+    logger.debug("Scanning for external provider packages...");
 
     // Register known external providers with lazy loading
     // Use dynamic imports with ts-ignore to avoid circular dependency issues
@@ -561,9 +557,7 @@ export class ProviderRegistry implements IProviderRegistry {
           return new FactoryClass();
         });
 
-        console.debug(
-          `[ProviderRegistry] Registered lazy external provider: ${providerInfo.type}`
-        );
+        logger.debug(`Registered lazy external provider: ${providerInfo.type}`);
       } catch (error) {
         console.warn(
           `[ProviderRegistry] Failed to register lazy provider ${providerInfo.type}:`,

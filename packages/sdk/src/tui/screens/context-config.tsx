@@ -107,6 +107,9 @@ export function ContextConfigScreen() {
       if (input === "q") {
         setScreen("dashboard");
       }
+      if (input === "h") {
+        setScreen("context-history");
+      }
     }
   });
 
@@ -139,8 +142,11 @@ export function ContextConfigScreen() {
             <Text color="green">{selectedProvider.name}</Text>
           </Box>
 
-          <Box marginTop={2}>
+          <Box flexDirection="column" gap={0} marginTop={2}>
             <Text color="yellow">Press Enter to continue, q to cancel</Text>
+            <Text color="gray" dimColor>
+              h = view context history
+            </Text>
           </Box>
         </>
       )}

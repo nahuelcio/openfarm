@@ -1,12 +1,15 @@
+import { backupJsonFile, migrateFromJson } from "../db-migration";
+import { createLogger } from "../utils/logger";
+import type { FileSystem } from "./connection";
+import { getDefaultFileSystem } from "./connection";
+
+const logger = createLogger("DB");
+
 // Use any type to avoid importing from bun during bundling
 type SQL = any;
 
 // Regex patterns at top level for performance
 const DB_EXTENSION_REGEX = /\.db$/;
-
-import { backupJsonFile, migrateFromJson } from "../db-migration";
-import type { FileSystem } from "./connection";
-import { getDefaultFileSystem } from "./connection";
 
 /**
  * Runs migration from JSON to SQLite if a JSON file is found and hasn't been migrated yet.
@@ -50,17 +53,14 @@ export async function runMigrationIfNeeded(
       fileSystem.existsSync(jsonPath) &&
       !fileSystem.existsSync(`${jsonPath}.migrated`)
     ) {
-      console.log(`[DB] JSON file found at ${jsonPath}, starting migration...`);
+      logger.debug(`JSON file found at ${jsonPath}, starting migration...`);
       const backupResult = backupJsonFile(jsonPath);
       if (backupResult.ok) {
         const migrationResult = await migrateFromJson(jsonPath, db);
         if (migrationResult.ok) {
-          console.log("[DB] Migration completed successfully");
+          logger.debug("Migration completed successfully");
         } else {
-          console.error(
-            "[DB] Migration failed:",
-            migrationResult.error.message
-          );
+          logger.error("Migration failed:", migrationResult.error.message);
           // Continue anyway - empty database is fine
         }
       }

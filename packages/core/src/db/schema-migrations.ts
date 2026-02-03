@@ -1,4 +1,7 @@
+import { createLogger } from "../utils/logger";
 import { addColumnSafely } from "./utils/add-column-safely";
+
+const logger = createLogger("DB");
 
 type SQL = any;
 
@@ -30,8 +33,8 @@ async function migrateEnabledModelsRemoveProviderConstraint(
       return;
     }
 
-    console.log(
-      "[DB Migration] Removing legacy CHECK constraint from enabled_models.provider..."
+    logger.debug(
+      "Removing legacy CHECK constraint from enabled_models.provider..."
     );
 
     const existingData = await db`SELECT * FROM enabled_models`;
@@ -64,12 +67,12 @@ async function migrateEnabledModelsRemoveProviderConstraint(
     await db`CREATE INDEX IF NOT EXISTS idx_enabled_models_enabled ON enabled_models(enabled)`;
     await db`CREATE INDEX IF NOT EXISTS idx_enabled_models_use_type ON enabled_models(use_type)`;
 
-    console.log(
-      "[DB Migration] ✓ Successfully removed CHECK constraint from enabled_models.provider"
+    logger.debug(
+      "✓ Successfully removed CHECK constraint from enabled_models.provider"
     );
   } catch (error) {
-    console.error(
-      "[DB Migration] Failed to remove CHECK constraint from enabled_models:",
+    logger.error(
+      "Failed to remove CHECK constraint from enabled_models:",
       error
     );
   }
@@ -154,7 +157,7 @@ export async function migrateSchema(db: SQL): Promise<void> {
                 `;
 
       if (chatSessionsTableCheck.length === 0) {
-        console.log("[DB Migration] Creating chat_sessions table...");
+        logger.debug("Creating chat_sessions table...");
         try {
           await db`
                         CREATE TABLE IF NOT EXISTS chat_sessions (
@@ -171,19 +174,12 @@ export async function migrateSchema(db: SQL): Promise<void> {
                         )
                     `;
           await db`CREATE INDEX IF NOT EXISTS idx_chat_sessions_status ON chat_sessions(status)`;
-          console.log(
-            "[DB Migration] ✓ Successfully created chat_sessions table"
-          );
+          logger.debug("✓ Successfully created chat_sessions table");
         } catch (error) {
-          console.error(
-            "[DB Migration] Failed to create chat_sessions table:",
-            error
-          );
+          logger.error("Failed to create chat_sessions table:", error);
         }
       } else {
-        console.log(
-          "[DB Migration] chat_sessions table already exists, skipping creation"
-        );
+        logger.debug("chat_sessions table already exists, skipping creation");
       }
 
       // Check if chat_messages table exists
@@ -193,7 +189,7 @@ export async function migrateSchema(db: SQL): Promise<void> {
                       `;
 
       if (chatMessagesTableCheck.length === 0) {
-        console.log("[DB Migration] Creating chat_messages table...");
+        logger.debug("Creating chat_messages table...");
         try {
           await db`
                               CREATE TABLE IF NOT EXISTS chat_messages (
@@ -208,19 +204,12 @@ export async function migrateSchema(db: SQL): Promise<void> {
                           `;
           await db`CREATE INDEX IF NOT EXISTS idx_chat_messages_session_id ON chat_messages(session_id)`;
           await db`CREATE INDEX IF NOT EXISTS idx_chat_messages_timestamp ON chat_messages(timestamp)`;
-          console.log(
-            "[DB Migration] ✓ Successfully created chat_messages table"
-          );
+          logger.debug("✓ Successfully created chat_messages table");
         } catch (error) {
-          console.error(
-            "[DB Migration] Failed to create chat_messages table:",
-            error
-          );
+          logger.error("Failed to create chat_messages table:", error);
         }
       } else {
-        console.log(
-          "[DB Migration] chat_messages table already exists, skipping creation"
-        );
+        logger.debug("chat_messages table already exists, skipping creation");
       }
     }
 
@@ -242,7 +231,7 @@ export async function migrateSchema(db: SQL): Promise<void> {
     }
   } catch (error) {
     // Log error but don't throw - schema migration failures shouldn't prevent DB initialization
-    console.error("[DB Migration] Error during schema migration:", error);
+    logger.error("Error during schema migration:", error);
   }
 
   try {
@@ -252,7 +241,7 @@ export async function migrateSchema(db: SQL): Promise<void> {
     `;
 
     if (agentsTableCheck.length === 0) {
-      console.log("[DB Migration] Creating opencode_agents table...");
+      logger.debug("Creating opencode_agents table...");
       try {
         await db`
           CREATE TABLE IF NOT EXISTS opencode_agents (
@@ -268,25 +257,15 @@ export async function migrateSchema(db: SQL): Promise<void> {
           )
         `;
         await db`CREATE INDEX IF NOT EXISTS idx_opencode_agents_mode ON opencode_agents(mode)`;
-        console.log(
-          "[DB Migration] ✓ Successfully created opencode_agents table"
-        );
+        logger.debug("✓ Successfully created opencode_agents table");
       } catch (error) {
-        console.error(
-          "[DB Migration] Failed to create opencode_agents table:",
-          error
-        );
+        logger.error("Failed to create opencode_agents table:", error);
       }
     } else {
-      console.log(
-        "[DB Migration] opencode_agents table already exists, skipping creation"
-      );
+      logger.debug("opencode_agents table already exists, skipping creation");
     }
   } catch (error) {
-    console.error(
-      "[DB Migration] Error checking opencode_agents table:",
-      error
-    );
+    logger.error("Error checking opencode_agents table:", error);
   }
 
   try {
@@ -296,7 +275,7 @@ export async function migrateSchema(db: SQL): Promise<void> {
     `;
 
     if (skillsTableCheck.length === 0) {
-      console.log("[DB Migration] Creating opencode_skills table...");
+      logger.debug("Creating opencode_skills table...");
       try {
         await db`
           CREATE TABLE IF NOT EXISTS opencode_skills (
@@ -309,25 +288,15 @@ export async function migrateSchema(db: SQL): Promise<void> {
             updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
           )
         `;
-        console.log(
-          "[DB Migration] ✓ Successfully created opencode_skills table"
-        );
+        logger.debug("✓ Successfully created opencode_skills table");
       } catch (error) {
-        console.error(
-          "[DB Migration] Failed to create opencode_skills table:",
-          error
-        );
+        logger.error("Failed to create opencode_skills table:", error);
       }
     } else {
-      console.log(
-        "[DB Migration] opencode_skills table already exists, skipping creation"
-      );
+      logger.debug("opencode_skills table already exists, skipping creation");
     }
   } catch (error) {
-    console.error(
-      "[DB Migration] Error checking opencode_skills table:",
-      error
-    );
+    logger.error("Error checking opencode_skills table:", error);
   }
 
   // Check and create enabled_models table
@@ -338,7 +307,7 @@ export async function migrateSchema(db: SQL): Promise<void> {
     `;
 
     if (agentsTableCheck.length === 0) {
-      console.log("[DB Migration] Creating opencode_agents table...");
+      logger.debug("Creating opencode_agents table...");
       try {
         await db`
           CREATE TABLE IF NOT EXISTS opencode_agents (
@@ -354,25 +323,15 @@ export async function migrateSchema(db: SQL): Promise<void> {
           )
         `;
         await db`CREATE INDEX IF NOT EXISTS idx_opencode_agents_mode ON opencode_agents(mode)`;
-        console.log(
-          "[DB Migration] ✓ Successfully created opencode_agents table"
-        );
+        logger.debug("✓ Successfully created opencode_agents table");
       } catch (error) {
-        console.error(
-          "[DB Migration] Failed to create opencode_agents table:",
-          error
-        );
+        logger.error("Failed to create opencode_agents table:", error);
       }
     } else {
-      console.log(
-        "[DB Migration] opencode_agents table already exists, skipping creation"
-      );
+      logger.debug("opencode_agents table already exists, skipping creation");
     }
   } catch (error) {
-    console.error(
-      "[DB Migration] Error checking opencode_agents table:",
-      error
-    );
+    logger.error("Error checking opencode_agents table:", error);
   }
 
   // Check and create opencode_skills table
@@ -383,7 +342,7 @@ export async function migrateSchema(db: SQL): Promise<void> {
     `;
 
     if (skillsTableCheck.length === 0) {
-      console.log("[DB Migration] Creating opencode_skills table...");
+      logger.debug("Creating opencode_skills table...");
       try {
         await db`
           CREATE TABLE IF NOT EXISTS opencode_skills (
@@ -396,25 +355,15 @@ export async function migrateSchema(db: SQL): Promise<void> {
             updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
           )
         `;
-        console.log(
-          "[DB Migration] ✓ Successfully created opencode_skills table"
-        );
+        logger.debug("✓ Successfully created opencode_skills table");
       } catch (error) {
-        console.error(
-          "[DB Migration] Failed to create opencode_skills table:",
-          error
-        );
+        logger.error("Failed to create opencode_skills table:", error);
       }
     } else {
-      console.log(
-        "[DB Migration] opencode_skills table already exists, skipping creation"
-      );
+      logger.debug("opencode_skills table already exists, skipping creation");
     }
   } catch (error) {
-    console.error(
-      "[DB Migration] Error checking opencode_skills table:",
-      error
-    );
+    logger.error("Error checking opencode_skills table:", error);
   }
 
   // Check and create enabled_models table
@@ -425,7 +374,7 @@ export async function migrateSchema(db: SQL): Promise<void> {
     `;
 
     if (enabledModelsTableCheck.length === 0) {
-      console.log("[DB Migration] Creating enabled_models table...");
+      logger.debug("Creating enabled_models table...");
       try {
         await db`
           CREATE TABLE IF NOT EXISTS enabled_models (
@@ -442,18 +391,13 @@ export async function migrateSchema(db: SQL): Promise<void> {
         await db`CREATE INDEX IF NOT EXISTS idx_enabled_models_provider ON enabled_models(provider)`;
         await db`CREATE INDEX IF NOT EXISTS idx_enabled_models_enabled ON enabled_models(enabled)`;
         await db`CREATE INDEX IF NOT EXISTS idx_enabled_models_use_type ON enabled_models(use_type)`;
-        console.log(
-          "[DB Migration] ✓ Successfully created enabled_models table"
-        );
+        logger.debug("✓ Successfully created enabled_models table");
       } catch (error) {
-        console.error(
-          "[DB Migration] Failed to create enabled_models table:",
-          error
-        );
+        logger.error("Failed to create enabled_models table:", error);
       }
     } else {
-      console.log(
-        "[DB Migration] enabled_models table already exists, checking for missing columns"
+      logger.debug(
+        "enabled_models table already exists, checking for missing columns"
       );
 
       const enabledModelsTableInfoRaw =
@@ -466,8 +410,8 @@ export async function migrateSchema(db: SQL): Promise<void> {
       );
 
       if (!enabledModelsExistingColumns.has("use_type")) {
-        console.log(
-          "[DB Migration] Adding missing column 'use_type' to enabled_models table"
+        logger.debug(
+          "Adding missing column 'use_type' to enabled_models table"
         );
         try {
           // SQLite doesn't allow adding NOT NULL columns with CHECK constraints in ALTER TABLE
@@ -480,12 +424,12 @@ export async function migrateSchema(db: SQL): Promise<void> {
           // Create index for the new column
           await db`CREATE INDEX IF NOT EXISTS idx_enabled_models_use_type ON enabled_models(use_type)`;
 
-          console.log(
-            "[DB Migration] ✓ Successfully added column 'use_type' to enabled_models"
+          logger.debug(
+            "✓ Successfully added column 'use_type' to enabled_models"
           );
         } catch (columnError) {
-          console.error(
-            "[DB Migration] Failed to add column 'use_type' to enabled_models:",
+          logger.error(
+            "Failed to add column 'use_type' to enabled_models:",
             columnError
           );
         }
@@ -497,7 +441,7 @@ export async function migrateSchema(db: SQL): Promise<void> {
     // New schema allows any provider (copilot, anthropic, google, openrouter, etc.)
     await migrateEnabledModelsRemoveProviderConstraint(db);
   } catch (error) {
-    console.error("[DB Migration] Error checking enabled_models table:", error);
+    logger.error("Error checking enabled_models table:", error);
   }
 
   // Check and create workflow_events table for event sourcing
@@ -508,7 +452,7 @@ export async function migrateSchema(db: SQL): Promise<void> {
     `;
 
     if (workflowEventsTableCheck.length === 0) {
-      console.log("[DB Migration] Creating workflow_events table...");
+      logger.debug("Creating workflow_events table...");
       try {
         await db`
           CREATE TABLE IF NOT EXISTS workflow_events (
@@ -525,25 +469,15 @@ export async function migrateSchema(db: SQL): Promise<void> {
         await db`CREATE INDEX IF NOT EXISTS idx_workflow_events_type ON workflow_events(event_type)`;
         await db`CREATE INDEX IF NOT EXISTS idx_workflow_events_timestamp ON workflow_events(timestamp)`;
         await db`CREATE INDEX IF NOT EXISTS idx_workflow_events_execution_sequence ON workflow_events(execution_id, sequence_number)`;
-        console.log(
-          "[DB Migration] ✓ Successfully created workflow_events table"
-        );
+        logger.debug("✓ Successfully created workflow_events table");
       } catch (error) {
-        console.error(
-          "[DB Migration] Failed to create workflow_events table:",
-          error
-        );
+        logger.error("Failed to create workflow_events table:", error);
       }
     } else {
-      console.log(
-        "[DB Migration] workflow_events table already exists, skipping creation"
-      );
+      logger.debug("workflow_events table already exists, skipping creation");
     }
   } catch (error) {
-    console.error(
-      "[DB Migration] Error checking workflow_events table:",
-      error
-    );
+    logger.error("Error checking workflow_events table:", error);
   }
 
   // Check and add workflow_id column to local_work_items table
@@ -557,10 +491,7 @@ export async function migrateSchema(db: SQL): Promise<void> {
       await addColumnSafely(db, "local_work_items", "workflow_id", "TEXT");
     }
   } catch (error) {
-    console.error(
-      "[DB Migration] Error checking local_work_items table:",
-      error
-    );
+    logger.error("Error checking local_work_items table:", error);
   }
 
   // Check and create system_configurations table
@@ -571,7 +502,7 @@ export async function migrateSchema(db: SQL): Promise<void> {
     `;
 
     if (systemConfigsTableCheck.length === 0) {
-      console.log("[DB Migration] Creating system_configurations table...");
+      logger.debug("Creating system_configurations table...");
       try {
         await db`
           CREATE TABLE IF NOT EXISTS system_configurations (
@@ -587,25 +518,17 @@ export async function migrateSchema(db: SQL): Promise<void> {
         `;
         await db`CREATE INDEX IF NOT EXISTS idx_system_configurations_category ON system_configurations(category)`;
         await db`CREATE INDEX IF NOT EXISTS idx_system_configurations_key ON system_configurations(config_key)`;
-        console.log(
-          "[DB Migration] ✓ Successfully created system_configurations table"
-        );
+        logger.debug("✓ Successfully created system_configurations table");
       } catch (error) {
-        console.error(
-          "[DB Migration] Failed to create system_configurations table:",
-          error
-        );
+        logger.error("Failed to create system_configurations table:", error);
       }
     } else {
-      console.log(
-        "[DB Migration] system_configurations table already exists, skipping creation"
+      logger.debug(
+        "system_configurations table already exists, skipping creation"
       );
     }
   } catch (error) {
-    console.error(
-      "[DB Migration] Error checking system_configurations table:",
-      error
-    );
+    logger.error("Error checking system_configurations table:", error);
   }
 }
 
@@ -657,12 +580,12 @@ async function migrateOpenCodeConfig(db: SQL): Promise<void> {
         const targetKey = "server.defaultProvider";
         const targetId = `opencode:${targetKey}`;
         if (legacyMap.has(targetKey)) {
-          console.warn(
-            "[DB Migration] Legacy OpenCode key 'provider' detected but new key already exists. Skipping migration."
+          logger.warn(
+            "Legacy OpenCode key 'provider' detected but new key already exists. Skipping migration."
           );
         } else {
-          console.warn(
-            `[DB Migration] Legacy OpenCode key 'provider' detected. Migrating to ${targetKey}=${mappedProvider}`
+          logger.warn(
+            `Legacy OpenCode key 'provider' detected. Migrating to ${targetKey}=${mappedProvider}`
           );
           await db`
               INSERT INTO system_configurations (
@@ -675,8 +598,8 @@ async function migrateOpenCodeConfig(db: SQL): Promise<void> {
           legacyMap.set(targetKey, mappedProvider);
         }
       } else {
-        console.warn(
-          `[DB Migration] Legacy OpenCode key 'provider' has unsupported value '${legacyProvider}'. Skipping migration.`
+        logger.warn(
+          `Legacy OpenCode key 'provider' has unsupported value '${legacyProvider}'. Skipping migration.`
         );
       }
     }
@@ -686,12 +609,12 @@ async function migrateOpenCodeConfig(db: SQL): Promise<void> {
       const targetKey = "providers.openrouter.apiKey";
       const targetId = `opencode:${targetKey}`;
       if (legacyMap.has(targetKey)) {
-        console.warn(
-          "[DB Migration] Legacy OpenCode key 'openaiApiKey' detected but new key already exists. Skipping migration."
+        logger.warn(
+          "Legacy OpenCode key 'openaiApiKey' detected but new key already exists. Skipping migration."
         );
       } else {
-        console.warn(
-          "[DB Migration] Legacy OpenCode key 'openaiApiKey' detected. Migrating to providers.openrouter.apiKey."
+        logger.warn(
+          "Legacy OpenCode key 'openaiApiKey' detected. Migrating to providers.openrouter.apiKey."
         );
         await db`
             INSERT INTO system_configurations (
@@ -713,12 +636,12 @@ async function migrateOpenCodeConfig(db: SQL): Promise<void> {
       const targetKey = "providers.copilot.token";
       const targetId = `opencode:${targetKey}`;
       if (legacyMap.has(targetKey)) {
-        console.warn(
-          "[DB Migration] Legacy OpenCode key 'copilotToken' detected but new key already exists. Skipping migration."
+        logger.warn(
+          "Legacy OpenCode key 'copilotToken' detected but new key already exists. Skipping migration."
         );
       } else {
-        console.warn(
-          "[DB Migration] Legacy OpenCode key 'copilotToken' detected. Migrating to providers.copilot.token."
+        logger.warn(
+          "Legacy OpenCode key 'copilotToken' detected. Migrating to providers.copilot.token."
         );
         await db`
             INSERT INTO system_configurations (
@@ -761,6 +684,6 @@ async function migrateOpenCodeConfig(db: SQL): Promise<void> {
       }
     }
   } catch (error) {
-    console.error("[DB Migration] Error migrating OpenCode config:", error);
+    logger.error("Error migrating OpenCode config:", error);
   }
 }
