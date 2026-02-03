@@ -3,8 +3,8 @@ import type {
   CodingEngine,
 } from "@openfarm/core/types/adapters";
 import type { Result } from "@openfarm/result";
+import { CircuitBreaker } from "@openfarm/utils";
 import { OpenCodeConfigService } from "../../../../core/src/services/opencode-config";
-import { CircuitBreaker } from "../../utils/circuit-breaker";
 import { executeOpencodeProcess } from "./opencode-process";
 
 import type { OpencodeOptions, OpencodeProcessConfig } from "./types";

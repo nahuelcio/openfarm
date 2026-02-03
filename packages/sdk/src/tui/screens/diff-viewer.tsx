@@ -1,4 +1,4 @@
-import { DiffProcessor, type DiffFile } from "@openfarm/git-diff";
+import { type DiffFile, DiffProcessor } from "@openfarm/git-diff";
 import { Box, Text, useInput } from "ink";
 import { useEffect, useState } from "react";
 import { useStore } from "../store";
@@ -77,9 +77,8 @@ export function DiffViewer() {
 
   if (mode === "list") {
     return <FileList files={files} selectedIndex={selectedDiffFileIndex} />;
-  } else {
-    return <FileDiff file={files[selectedDiffFileIndex]} />;
   }
+  return <FileDiff file={files[selectedDiffFileIndex]} />;
 }
 
 interface FileListProps {
@@ -99,7 +98,7 @@ function FileList({ files, selectedIndex }: FileListProps) {
       <Text color="gray">{"─".repeat(60)}</Text>
 
       {files.map((file, i) => (
-        <Box key={i} flexDirection="row" gap={1}>
+        <Box flexDirection="row" gap={1} key={i}>
           <Text color={i === selectedIndex ? "yellow" : "gray"}>
             {i === selectedIndex ? "▶" : " "}
           </Text>
@@ -130,7 +129,7 @@ function FileDiff({ file }: FileDiffProps) {
 
   return (
     <Box flexDirection="column">
-      <Box borderStyle="single" borderColor="cyan" padding={1}>
+      <Box borderColor="cyan" borderStyle="single" padding={1}>
         <Box flexDirection="column">
           <Box flexDirection="row" gap={2}>
             <Text bold color="cyan">

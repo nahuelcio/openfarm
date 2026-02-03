@@ -1,4 +1,3 @@
-import type { GeneratedContext } from "@openfarm/core/db/generated-contexts";
 import { Box, Text, useInput } from "ink";
 import { useEffect, useState } from "react";
 import { useStore } from "../store";

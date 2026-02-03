@@ -12,9 +12,9 @@ export function ErrorDisplay({ error }: ErrorDisplayProps) {
 
   return (
     <Box
-      flexDirection="column"
-      borderStyle="round"
       borderColor={iconColor}
+      borderStyle="round"
+      flexDirection="column"
       padding={1}
     >
       <Box flexDirection="row" gap={1}>
@@ -35,7 +35,7 @@ export function ErrorDisplay({ error }: ErrorDisplayProps) {
             Suggestions:
           </Text>
           {error.suggestions.map((suggestion, i) => (
-            <Box key={i} flexDirection="row" gap={1}>
+            <Box flexDirection="row" gap={1} key={i}>
               <Text color="cyan">•</Text>
               <Text>{suggestion}</Text>
             </Box>

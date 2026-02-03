@@ -7,9 +7,9 @@ import { OpenFarm } from "../../open-farm.js";
 import { ErrorDisplay } from "../components/error-display";
 import { useStore } from "../store";
 import { copyToClipboard } from "../utils/clipboard";
-import { categorizeError, type CategorizedError } from "../utils/error-handler";
+import { type CategorizedError, categorizeError } from "../utils/error-handler";
 import { exportContextToFile } from "../utils/export-context";
-import { getCurrentGitHash, hasUncommittedChanges } from "../utils/git-hash";
+import { getCurrentGitHash } from "../utils/git-hash";
 
 interface ExecutionResult {
   success: boolean;
@@ -379,7 +379,7 @@ export function ContextScreen() {
         contextStatus !== "selecting" &&
         contextStatus !== "complete" &&
         contextStatus !== "error" && (
-          <Box marginTop={1} flexDirection="column" gap={0}>
+          <Box flexDirection="column" gap={0} marginTop={1}>
             <Box flexDirection="row" gap={1}>
               <Text color="gray">Progress:</Text>
               <Text color="cyan">{contextProgress}%</Text>
