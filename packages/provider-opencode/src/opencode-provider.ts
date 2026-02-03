@@ -7,7 +7,7 @@ import type {
   Provider,
   ProviderMetadata,
 } from "@openfarm/sdk";
-import type { OpenCodeConfig } from "./types.js";
+import type { OpenCodeConfig } from "./types";
 
 /**
  * OpenCode provider - RESTAURADO a comportamiento original
@@ -19,11 +19,12 @@ export class OpenCodeProvider implements Provider {
 
   private readonly config: Required<OpenCodeConfig>;
   private readonly communicationStrategy: CommunicationStrategy;
+  private readonly responseParser: ResponseParser<unknown>;
   private readonly configManager: ConfigurationManager;
 
   constructor(
     communicationStrategy: CommunicationStrategy,
-    responseParser: any,
+    responseParserArg: ResponseParser<unknown>,
     configManager: ConfigurationManager,
     config: OpenCodeConfig = {}
   ) {

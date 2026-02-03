@@ -7,6 +7,34 @@
 
 import type { ExecutionOptions, ExecutionResult } from "../types";
 import { createLogger } from "../utils/logger";
+
+/**
+ * Abstract base class that all providers should extend.
+ * Implements template method pattern for consistent execution flow.
+ */
+export interface CommunicationResponse {
+  /** Response status code (HTTP status or process exit code) */
+  status: number;
+
+  /** Response headers (for HTTP responses) */
+  headers?: Record<string, string>;
+
+  /** Response body or stdout content */
+  body: string;
+
+  /** Error output or stderr content */
+  error?: string;
+
+  /** Whether the operation was successful */
+  success: boolean;
+
+  /** Response duration in milliseconds */
+  duration?: number;
+
+  /** Additional metadata */
+  metadata?: Record<string, unknown>;
+}
+
 import type {
   CommunicationRequest,
   CommunicationStrategy,
@@ -18,10 +46,6 @@ import type {
   ResponseParser,
 } from "./types";
 
-/**
- * Abstract base class that all providers should extend.
- * Implements the template method pattern for consistent execution flow.
- */
 export abstract class BaseProvider implements Provider {
   /** Provider type identifier - must be implemented by subclasses */
   abstract readonly type: string;
@@ -134,7 +158,7 @@ export abstract class BaseProvider implements Provider {
    */
   protected abstract formatResult(
     parsedResult: unknown,
-    response: any,
+    response: CommunicationResponse,
     duration: number
   ): Promise<ExecutionResult>;
 

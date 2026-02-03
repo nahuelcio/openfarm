@@ -50,3 +50,6 @@ tmp
 *.db-*
 *.sqlite
 *.sqlite3
+
+
+/planning 

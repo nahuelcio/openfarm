@@ -38,7 +38,7 @@
         "useDefaultSwitchClause": "off"
       },
       "suspicious": {
-        "noExplicitAny": "off",
+        "noExplicitAny": "error",
         "noArrayIndexKey": "off",
         "useAwait": "off",
         "noEvolvingTypes": "off",
