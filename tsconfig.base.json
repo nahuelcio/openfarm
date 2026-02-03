@@ -32,6 +32,7 @@
     "importsNotUsedAsValues": "remove",
 
     // Interop Constraints
+    "composite": true,
     "isolatedModules": true,
     "allowJs": false,
     "forceConsistentCasingInFileNames": true,

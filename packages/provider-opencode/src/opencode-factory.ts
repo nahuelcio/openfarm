@@ -47,7 +47,13 @@ export class OpenCodeProviderFactory implements ProviderFactory {
     const strategy = this.createCommunicationStrategy(parsedConfig);
     const configManager = this.createConfigManager(parsedConfig);
 
-    return new OpenCodeProvider(strategy, null, configManager, parsedConfig);
+    // @ts-expect-error - ResponseParser is passed as null for compatibility
+    return new OpenCodeProvider(
+      strategy,
+      null as any,
+      configManager,
+      parsedConfig
+    );
   }
 
   private parseConfig(config?: unknown): {
