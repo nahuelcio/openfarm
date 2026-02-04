@@ -173,16 +173,14 @@ function parseArgs(args: string[]): {
     } else if (arg === "--retries" || arg === "-r") {
       options.retries = parseInt(requireValue(arg, i), 10);
       i++;
-    }
-    else if (arg === "--dry-run" || arg === "-n") options.dryRun = true;
+    } else if (arg === "--dry-run" || arg === "-n") options.dryRun = true;
     else if (arg === "--auto-commit") options.autoCommit = true;
     else if (arg === "--create-pr") options.createPR = true;
     else if (arg === "--stop-on-failure") options.stopOnFailure = true;
     else if (arg === "--workspace") {
       options.workspace = requireValue(arg, i);
       i++;
-    }
-    else if (arg === "--help" || arg === "-h") {
+    } else if (arg === "--help" || arg === "-h") {
       showHelp();
       process.exit(0);
     } else if (!arg.startsWith("-")) positional.push(arg);

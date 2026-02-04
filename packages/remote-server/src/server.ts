@@ -5,7 +5,10 @@
  * Allows controlling task loops from a central TUI.
  */
 
-import type { TaskLoopOrchestrator, TaskLoopSession } from "@openfarm/task-loop";
+import type {
+  TaskLoopOrchestrator,
+  TaskLoopSession,
+} from "@openfarm/task-loop";
 import { logger } from "@openfarm/logger";
 import { randomUUID } from "crypto";
 import { hostname, platform } from "os";
@@ -312,7 +315,10 @@ export class RemoteServer {
    */
   private handlePause(client: ClientConnection): void {
     if (!this.orchestrator) {
-      this.send(client.ws, { type: "error", message: "No orchestrator configured" });
+      this.send(client.ws, {
+        type: "error",
+        message: "No orchestrator configured",
+      });
       return;
     }
 
@@ -341,7 +347,10 @@ export class RemoteServer {
    */
   private handleCancel(client: ClientConnection): void {
     if (!this.orchestrator) {
-      this.send(client.ws, { type: "error", message: "No orchestrator configured" });
+      this.send(client.ws, {
+        type: "error",
+        message: "No orchestrator configured",
+      });
       return;
     }
 

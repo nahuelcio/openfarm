@@ -14,7 +14,12 @@ export interface RemoteInstance {
   name: string;
   url: string;
   token?: string;
-  status: "connected" | "disconnected" | "error" | "connecting" | "reconnecting";
+  status:
+    | "connected"
+    | "disconnected"
+    | "error"
+    | "connecting"
+    | "reconnecting";
   error?: string;
   session?: TaskLoopSession;
   systemInfo?: RemoteSystemInfo;

@@ -23,7 +23,12 @@ export interface RemoteInstance {
   token?: string;
 
   /** Connection status */
-  status: "connected" | "disconnected" | "error" | "connecting" | "reconnecting";
+  status:
+    | "connected"
+    | "disconnected"
+    | "error"
+    | "connecting"
+    | "reconnecting";
 
   /** Last error message */
   error?: string;
