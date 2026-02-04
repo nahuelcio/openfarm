@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@openfarm/core": "workspace:*",
+    "@openfarm/logger": "workspace:*",
     "@openfarm/task-loop": "workspace:*",
     "ws": "^8.18.0"
   },

@@ -114,11 +114,8 @@ export class AiderProvider implements Provider {
 
       const request: CommunicationRequest = {
         args,
-        options: {
-          workingDirectory: options.workspace || process.cwd(),
-          env: process.env as Record<string, string>,
-          timeout: this.config.timeout,
-        },
+        workingDirectory: options.workspace || process.cwd(),
+        timeout: this.config.timeout,
       };
 
       const response = await this.communicationStrategy.execute(request);
@@ -159,9 +156,7 @@ export class AiderProvider implements Provider {
     try {
       const request: CommunicationRequest = {
         args: ["--version"],
-        options: {
-          timeout: 5000,
-        },
+        timeout: 5000,
       };
 
       const response = await this.communicationStrategy.execute(request);

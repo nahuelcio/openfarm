@@ -92,7 +92,7 @@ export class OpenCodeProvider implements Provider {
       const request: CommunicationRequest = {
         args,
         workingDirectory: options.workspace || process.cwd(),
-        env: { ...process.env, COLUMNS: "200" },
+        env: { COLUMNS: "200" },
         timeout: this.config.timeout,
       };
 

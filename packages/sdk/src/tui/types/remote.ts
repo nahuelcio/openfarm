@@ -14,7 +14,7 @@ export interface RemoteInstance {
   name: string;
   url: string;
   token?: string;
-  status: "connected" | "disconnected" | "error" | "connecting";
+  status: "connected" | "disconnected" | "error" | "connecting" | "reconnecting";
   error?: string;
   session?: TaskLoopSession;
   systemInfo?: RemoteSystemInfo;
@@ -35,6 +35,8 @@ export interface RemoteClientConfig {
   reconnectDelay?: number;
   maxReconnects?: number;
   connectionTimeout?: number;
+  pingInterval?: number;
+  maxQueuedMessages?: number;
 }
 
 export interface RemoteClientHandlers {

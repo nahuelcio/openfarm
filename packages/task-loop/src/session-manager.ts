@@ -14,6 +14,17 @@ import type {
   TaskLoopSessionStatus,
 } from "./types";
 
+const MAX_LOG_ENTRIES = 1000;
+
+function safeJsonParse<T>(value: string, fallback: T, label: string): T {
+  try {
+    return JSON.parse(value) as T;
+  } catch (error) {
+    console.warn(`[TaskLoop] Failed to parse ${label}:`, error);
+    return fallback;
+  }
+}
+
 /**
  * Generate a unique session ID
  */
@@ -49,8 +60,8 @@ function deserializeSession(row: TaskLoopSessionRow): TaskLoopSession {
   return {
     id: row.id,
     status: row.status as TaskLoopSessionStatus,
-    config: JSON.parse(row.config) as TaskLoopConfig,
-    tasks: JSON.parse(row.tasks),
+    config: safeJsonParse(row.config, {} as TaskLoopConfig, "config"),
+    tasks: safeJsonParse(row.tasks, [], "tasks"),
     currentTaskIndex: row.current_task_index,
     completedTasks: row.completed_tasks,
     failedTasks: row.failed_tasks,
@@ -58,8 +69,10 @@ function deserializeSession(row: TaskLoopSessionRow): TaskLoopSession {
     startedAt: row.started_at,
     updatedAt: row.updated_at,
     completedAt: row.completed_at || undefined,
-    logs: JSON.parse(row.logs),
-    metadata: row.metadata ? JSON.parse(row.metadata) : undefined,
+    logs: safeJsonParse(row.logs, [], "logs"),
+    metadata: row.metadata
+      ? safeJsonParse(row.metadata, undefined, "metadata")
+      : undefined,
   };
 }
 
@@ -189,8 +202,12 @@ export async function addSessionLog(
 
   await db`
     UPDATE task_loop_sessions
-    SET logs = json_insert(logs, '$[#]', ${logEntry}),
-        updated_at = ${timestamp}
+    SET logs = CASE
+        WHEN json_array_length(logs) >= ${MAX_LOG_ENTRIES}
+          THEN json_remove(json_insert(logs, '$[#]', ${logEntry}), '$[0]')
+        ELSE json_insert(logs, '$[#]', ${logEntry})
+      END,
+      updated_at = ${timestamp}
     WHERE id = ${sessionId}
   `;
 }
@@ -266,9 +283,12 @@ export class SessionManager {
   /**
    * Update current session
    */
-  updateSession(updater: (session: TaskLoopSession) => TaskLoopSession): void {
+  async updateSession(
+    updater: (session: TaskLoopSession) => TaskLoopSession
+  ): Promise<void> {
     if (this.currentSession) {
       this.currentSession = updater(this.currentSession);
+      await this.save();
     }
   }
 
@@ -279,6 +299,9 @@ export class SessionManager {
     if (this.currentSession) {
       const timestamp = new Date().toISOString();
       this.currentSession.logs.push(`[${timestamp}] ${message}`);
+      if (this.currentSession.logs.length > MAX_LOG_ENTRIES) {
+        this.currentSession.logs.shift();
+      }
       await addSessionLog(this.db, this.currentSession.id, message);
     }
   }

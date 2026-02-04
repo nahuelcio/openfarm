@@ -6,6 +6,7 @@
  */
 
 import WebSocket from "ws";
+import { logger } from "@openfarm/logger";
 import type {
   ClientMessage,
   ConnectionState,
@@ -45,6 +46,8 @@ export class RemoteClient {
   private handlers: RemoteClientHandlers;
   private reconnectTimer?: ReturnType<typeof setTimeout>;
   private pingInterval?: ReturnType<typeof setInterval>;
+  private pendingMessages: ClientMessage[] = [];
+  private manualDisconnect = false;
 
   constructor(config: RemoteClientConfig, handlers: RemoteClientHandlers = {}) {
     this.config = {
@@ -53,6 +56,8 @@ export class RemoteClient {
       maxReconnects: 0, // Infinite
       connectionTimeout: 10000,
       token: "",
+      pingInterval: 30000,
+      maxQueuedMessages: 100,
       ...config,
     };
 
@@ -76,6 +81,7 @@ export class RemoteClient {
     }
 
     return new Promise((resolve, reject) => {
+      this.manualDisconnect = false;
       this.state.status = "connecting";
 
       const timeout = setTimeout(() => {
@@ -99,6 +105,9 @@ export class RemoteClient {
 
           // Start ping interval
           this.startPing();
+
+          // Flush queued messages
+          this.flushPendingMessages();
 
           this.handlers.onConnect?.();
           resolve();
@@ -130,8 +139,10 @@ export class RemoteClient {
    * Disconnect from server
    */
   disconnect(): void {
+    this.manualDisconnect = true;
     this.state.status = "idle";
     this.clearTimers();
+    this.pendingMessages = [];
 
     if (this.ws) {
       this.ws.close();
@@ -200,7 +211,7 @@ export class RemoteClient {
 
       switch (message.type) {
         case "auth.success":
-          console.log(`[RemoteClient] Authenticated: ${message.instanceId}`);
+          logger.info(`[RemoteClient] Authenticated: ${message.instanceId}`);
           break;
 
         case "auth.error":
@@ -233,13 +244,13 @@ export class RemoteClient {
           break;
 
         default:
-          console.warn(
-            "[RemoteClient] Unknown message type:",
-            (message as any).type
+          logger.warn(
+            { type: (message as any).type },
+            "[RemoteClient] Unknown message type"
           );
       }
     } catch (error) {
-      console.error("[RemoteClient] Failed to parse message:", error);
+      logger.error({ error }, "[RemoteClient] Failed to parse message");
     }
   }
 
@@ -247,26 +258,29 @@ export class RemoteClient {
    * Handle connection close
    */
   private handleClose(code: number, reason: string): void {
-    console.log(`[RemoteClient] Connection closed: ${code} ${reason}`);
+    logger.info(`[RemoteClient] Connection closed: ${code} ${reason}`);
     this.clearTimers();
+    this.ws = undefined;
 
     if (this.state.status === "connected") {
       this.handlers.onDisconnect?.(reason);
     }
 
     // Attempt reconnection
-    if (this.config.autoReconnect && this.state.status !== "idle") {
+    if (this.config.autoReconnect && !this.manualDisconnect) {
       this.scheduleReconnect();
     } else {
       this.state.status = "idle";
     }
+
+    this.manualDisconnect = false;
   }
 
   /**
    * Handle connection error
    */
   private handleError(error: Error): void {
-    console.error("[RemoteClient] Connection error:", error);
+    logger.error({ error }, "[RemoteClient] Connection error");
     this.state.error = error.message;
     this.handlers.onError?.(error);
   }
@@ -275,11 +289,14 @@ export class RemoteClient {
    * Schedule reconnection attempt
    */
   private scheduleReconnect(): void {
+    if (this.reconnectTimer || this.state.status === "reconnecting") {
+      return;
+    }
     if (
       this.config.maxReconnects > 0 &&
       this.state.reconnectAttempts >= this.config.maxReconnects
     ) {
-      console.log("[RemoteClient] Max reconnects reached");
+      logger.info("[RemoteClient] Max reconnects reached");
       this.state.status = "error";
       this.state.error = "Max reconnects reached";
       return;
@@ -288,7 +305,7 @@ export class RemoteClient {
     this.state.status = "reconnecting";
     this.state.reconnectAttempts++;
 
-    console.log(
+    logger.info(
       `[RemoteClient] Reconnecting in ${this.config.reconnectDelay}ms ` +
         `(attempt ${this.state.reconnectAttempts})`
     );
@@ -306,7 +323,7 @@ export class RemoteClient {
   private startPing(): void {
     this.pingInterval = setInterval(() => {
       this.send({ type: "ping", timestamp: Date.now() });
-    }, 30000);
+    }, this.config.pingInterval);
   }
 
   /**
@@ -328,6 +345,27 @@ export class RemoteClient {
    */
   private send(message: ClientMessage): void {
     if (this.ws?.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify(message));
+      return;
+    }
+
+    if (this.pendingMessages.length >= this.config.maxQueuedMessages) {
+      this.pendingMessages.shift();
+    }
+
+    this.pendingMessages.push(message);
+    logger.warn("[RemoteClient] Queued message (socket not open)");
+  }
+
+  private flushPendingMessages(): void {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      return;
+    }
+
+    const pending = [...this.pendingMessages];
+    this.pendingMessages = [];
+
+    for (const message of pending) {
       this.ws.send(JSON.stringify(message));
     }
   }

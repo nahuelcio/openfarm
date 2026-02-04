@@ -113,14 +113,11 @@ export class ClaudeProvider implements Provider {
 
       const request: CommunicationRequest = {
         args,
-        options: {
-          workingDirectory: options.workspace || process.cwd(),
-          env: {
-            ...process.env,
-            CLAUDE_CODE_DISABLE_PROMPTS: "1",
-          },
-          timeout: this.config.timeout,
+        workingDirectory: options.workspace || process.cwd(),
+        env: {
+          CLAUDE_CODE_DISABLE_PROMPTS: "1",
         },
+        timeout: this.config.timeout,
       };
 
       const response = await this.communicationStrategy.execute(request);
@@ -158,9 +155,7 @@ export class ClaudeProvider implements Provider {
     try {
       const request: CommunicationRequest = {
         args: ["--version"],
-        options: {
-          timeout: 5000,
-        },
+        timeout: 5000,
       };
 
       const response = await this.communicationStrategy.execute(request);

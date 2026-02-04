@@ -23,7 +23,7 @@ export interface RemoteInstance {
   token?: string;
 
   /** Connection status */
-  status: "connected" | "disconnected" | "error" | "connecting";
+  status: "connected" | "disconnected" | "error" | "connecting" | "reconnecting";
 
   /** Last error message */
   error?: string;
@@ -74,7 +74,13 @@ export type ServerMessage =
   | { type: "auth.success"; instanceId: string }
   | { type: "auth.error"; error: string }
   | { type: "status"; session?: TaskLoopSession; systemInfo: RemoteSystemInfo }
-  | { type: "log"; level: string; message: string; timestamp: string }
+  | {
+      type: "log";
+      level: string;
+      message: string;
+      timestamp: string;
+      sourceClientId?: string;
+    }
   | { type: "event"; eventType: string; data: unknown }
   | { type: "trace"; trace: unknown }
   | { type: "pong"; timestamp: number }
@@ -127,6 +133,12 @@ export interface RemoteClientConfig {
 
   /** Connection timeout in ms */
   connectionTimeout?: number;
+
+  /** Ping interval in ms */
+  pingInterval?: number;
+
+  /** Max queued messages when disconnected */
+  maxQueuedMessages?: number;
 }
 
 /**

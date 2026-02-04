@@ -38,13 +38,15 @@ const defaultLogger: TaskLoopLogger = {
  * Task Loop Orchestrator
  */
 export class TaskLoopOrchestrator {
-  private sessionManager: SessionManager;
+  private sessionManager: SessionManager | null = null;
   private selector: TaskSelector;
   private promptBuilder: PromptBuilder;
   private completionDetector: CompletionDetector;
   private logger: TaskLoopLogger;
   private abortController: AbortController | null = null;
   private isRunning = false;
+  private stopRequested = false;
+  private stopReason: string | null = null;
 
   constructor(private config: TaskLoopConfig) {
     this.logger = defaultLogger;
@@ -54,7 +56,6 @@ export class TaskLoopOrchestrator {
     });
     this.promptBuilder = new PromptBuilder();
     this.completionDetector = new CompletionDetector();
-    this.sessionManager = new SessionManager(null as any); // Will be set in run()
   }
 
   /**
@@ -67,12 +68,19 @@ export class TaskLoopOrchestrator {
 
     this.isRunning = true;
     this.abortController = new AbortController();
+    this.stopRequested = false;
+    this.stopReason = null;
 
     // Combine external signal with internal controller
+    let abortHandler: (() => void) | null = null;
     if (options.signal) {
-      options.signal.addEventListener("abort", () => {
+      abortHandler = () => {
         this.abortController?.abort();
-      });
+      };
+      options.signal.addEventListener("abort", abortHandler);
+      if (options.signal.aborted) {
+        this.abortController.abort();
+      }
     }
 
     // Setup logger
@@ -118,29 +126,46 @@ export class TaskLoopOrchestrator {
       // Main loop
       await this.processLoop(session, options);
 
-      // Complete session
-      session.status = "completed";
-      session.completedAt = new Date().toISOString();
-      await this.sessionManager.save();
+      if (this.stopRequested) {
+        session.status = "failed";
+        session.completedAt = new Date().toISOString();
+        await this.sessionManager.save();
 
-      await this.log(
-        "session",
-        `Session completed: ${session.completedTasks} completed, ${session.failedTasks} failed, ${session.skippedTasks} skipped`
-      );
+        const reason =
+          this.stopReason || "Stopped due to stopOnFailure configuration";
+        await this.log("error", `Session stopped: ${reason}`);
 
-      await this.emitEvent(options, {
-        type: "session.completed",
-        timestamp: new Date().toISOString(),
-        sessionId: session.id,
-        data: {
-          completed: session.completedTasks,
-          failed: session.failedTasks,
-          skipped: session.skippedTasks,
-        },
-      });
+        await this.emitEvent(options, {
+          type: "session.failed",
+          timestamp: new Date().toISOString(),
+          sessionId: session.id,
+          data: { error: reason },
+        });
+      } else {
+        // Complete session
+        session.status = "completed";
+        session.completedAt = new Date().toISOString();
+        await this.sessionManager.save();
+
+        await this.log(
+          "session",
+          `Session completed: ${session.completedTasks} completed, ${session.failedTasks} failed, ${session.skippedTasks} skipped`
+        );
+
+        await this.emitEvent(options, {
+          type: "session.completed",
+          timestamp: new Date().toISOString(),
+          sessionId: session.id,
+          data: {
+            completed: session.completedTasks,
+            failed: session.failedTasks,
+            skipped: session.skippedTasks,
+          },
+        });
+      }
     } catch (error) {
       // Handle cancellation
-      if (this.abortController?.signal.aborted) {
+      if (this.abortController?.signal.aborted && !this.stopRequested) {
         session.status = "paused";
         await this.sessionManager.save();
         await this.log("session", "Session paused by user");
@@ -167,6 +192,9 @@ export class TaskLoopOrchestrator {
     } finally {
       this.isRunning = false;
       this.abortController = null;
+      if (options.signal && abortHandler) {
+        options.signal.removeEventListener("abort", abortHandler);
+      }
     }
 
     return session;
@@ -193,6 +221,9 @@ export class TaskLoopOrchestrator {
    * Load tasks from database
    */
   private async loadTasks(session: TaskLoopSession): Promise<void> {
+    if (!this.sessionManager) {
+      throw new Error("Session manager not initialized");
+    }
     await this.log("info", "Loading tasks from database...");
 
     const db = await getDb();
@@ -231,6 +262,9 @@ export class TaskLoopOrchestrator {
     let iteration = 0;
 
     while (iteration < maxIterations) {
+      if (this.stopRequested) {
+        break;
+      }
       // Check cancellation
       if (this.abortController?.signal.aborted) {
         throw new Error("CANCELLED");
@@ -268,6 +302,9 @@ export class TaskLoopOrchestrator {
     session: TaskLoopSession,
     options: TaskLoopRunOptions
   ): Promise<void> {
+    if (!this.sessionManager) {
+      throw new Error("Session manager not initialized");
+    }
     const taskIndex = session.tasks.findIndex((t) => t.id === task.id);
     if (taskIndex === -1) return;
 
@@ -321,7 +358,9 @@ export class TaskLoopOrchestrator {
         // Task failed
         task.retryCount++;
 
-        const maxRetries = this.config.maxRetries || 0;
+        const maxRetries = Number.isFinite(this.config.maxRetries)
+          ? Math.max(0, this.config.maxRetries as number)
+          : 0;
         if (task.retryCount <= maxRetries && detection.shouldRetry) {
           // Retry
           task.loopStatus = "pending";
@@ -356,9 +395,10 @@ export class TaskLoopOrchestrator {
 
           // Stop on failure if configured
           if (this.config.stopOnFailure) {
-            throw new Error(
-              `Task ${task.id} failed and stopOnFailure is enabled`
-            );
+            this.stopRequested = true;
+            this.stopReason = `Task ${task.id} failed and stopOnFailure is enabled`;
+            this.abortController?.abort();
+            return;
           }
         }
       }
@@ -386,7 +426,11 @@ export class TaskLoopOrchestrator {
       });
 
       if (this.config.stopOnFailure) {
-        throw error;
+        this.stopRequested = true;
+        this.stopReason =
+          error instanceof Error ? error.message : "Task failed";
+        this.abortController?.abort();
+        return;
       }
     } finally {
       await this.sessionManager.save();
@@ -476,11 +520,11 @@ export class TaskLoopOrchestrator {
     event: TaskLoopEvent
   ): Promise<void> {
     if (options.onEvent) {
-      try {
-        await options.onEvent(event);
-      } catch (error) {
-        this.logger.error(`Event handler error: ${error}`);
-      }
+      void Promise.resolve()
+        .then(() => options.onEvent?.(event))
+        .catch((error) => {
+          this.logger.error(`Event handler error: ${error}`);
+        });
     }
   }
 
@@ -491,6 +535,9 @@ export class TaskLoopOrchestrator {
     level: "session" | "task" | "info" | "debug" | "error" | "warn",
     message: string
   ): Promise<void> {
+    if (!this.sessionManager) {
+      return;
+    }
     const formatted = `[${level.toUpperCase()}] ${message}`;
 
     switch (level) {
@@ -509,6 +556,13 @@ export class TaskLoopOrchestrator {
 
     // Also add to session logs
     await this.sessionManager.log(message);
+  }
+
+  /**
+   * Get current session (if any)
+   */
+  getSession(): TaskLoopSession | null {
+    return this.sessionManager?.getCurrentSession() ?? null;
   }
 
   /**

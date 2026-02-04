@@ -5,11 +5,12 @@
  * Allows controlling task loops from a central TUI.
  */
 
-import type {
-  TaskLoopOrchestrator,
-  TaskLoopSession,
-} from "@openfarm/task-loop";
+import type { TaskLoopOrchestrator, TaskLoopSession } from "@openfarm/task-loop";
+import { logger } from "@openfarm/logger";
+import { randomUUID } from "crypto";
+import { hostname, platform } from "os";
 import { WebSocketServer, type WebSocket } from "ws";
+import packageJson from "../package.json";
 import type {
   ClientMessage,
   RemoteServerConfig,
@@ -76,12 +77,12 @@ export class RemoteServer {
         });
 
         this.wss.on("error", (error) => {
-          console.error("[RemoteServer] WebSocket error:", error);
+          logger.error({ error }, "[RemoteServer] WebSocket error");
           reject(error);
         });
 
         this.wss.on("listening", () => {
-          console.log(
+          logger.info(
             `[RemoteServer] Listening on ${this.config.host}:${this.config.port}`
           );
           this.startHeartbeat();
@@ -105,7 +106,7 @@ export class RemoteServer {
 
       // Close all client connections
       for (const [ws, client] of this.clients) {
-        console.log(`[RemoteServer] Closing connection ${client.id}`);
+        logger.info(`[RemoteServer] Closing connection ${client.id}`);
         ws.close();
       }
       this.clients.clear();
@@ -113,7 +114,7 @@ export class RemoteServer {
       // Stop server
       if (this.wss) {
         this.wss.close(() => {
-          console.log("[RemoteServer] Stopped");
+          logger.info("[RemoteServer] Stopped");
           resolve();
         });
       } else {
@@ -138,9 +139,9 @@ export class RemoteServer {
    */
   private getSystemInfo(): RemoteSystemInfo {
     return {
-      hostname: require("os").hostname(),
-      platform: require("os").platform(),
-      version: require("../package.json").version || "0.0.1",
+      hostname: hostname(),
+      platform: platform(),
+      version: packageJson.version || "0.0.1",
     };
   }
 
@@ -155,7 +156,7 @@ export class RemoteServer {
       return;
     }
 
-    const clientId = `client-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const clientId = `client-${randomUUID()}`;
     const client: ClientConnection = {
       ws,
       id: clientId,
@@ -164,25 +165,41 @@ export class RemoteServer {
     };
 
     this.clients.set(ws, client);
-    console.log(`[RemoteServer] Client connected: ${clientId}`);
+    logger.info(`[RemoteServer] Client connected: ${clientId}`);
 
     // Send initial status
     this.sendStatus(client);
 
     ws.on("message", (data) => {
-      const buffer = Buffer.isBuffer(data)
-        ? data
-        : Buffer.from(data as ArrayBuffer);
+      let buffer: Buffer | null = null;
+      if (Buffer.isBuffer(data)) {
+        buffer = data;
+      } else if (typeof data === "string") {
+        buffer = Buffer.from(data);
+      } else if (data instanceof ArrayBuffer) {
+        buffer = Buffer.from(data);
+      } else if (Array.isArray(data)) {
+        buffer = Buffer.concat(data);
+      }
+
+      if (!buffer) {
+        this.send(client.ws, {
+          type: "error",
+          message: "Unsupported message format",
+        });
+        return;
+      }
+
       this.handleMessage(client, buffer);
     });
 
     ws.on("close", () => {
-      console.log(`[RemoteServer] Client disconnected: ${clientId}`);
+      logger.info(`[RemoteServer] Client disconnected: ${clientId}`);
       this.clients.delete(ws);
     });
 
     ws.on("error", (error) => {
-      console.error(`[RemoteServer] Client error ${clientId}:`, error);
+      logger.error({ error }, `[RemoteServer] Client error ${clientId}`);
       this.clients.delete(ws);
     });
   }
@@ -229,6 +246,7 @@ export class RemoteServer {
           break;
 
         case "ping":
+          client.lastPing = Date.now();
           this.send(client.ws, { type: "pong", timestamp: message.timestamp });
           break;
 
@@ -239,7 +257,7 @@ export class RemoteServer {
           });
       }
     } catch (error) {
-      console.error("[RemoteServer] Failed to parse message:", error);
+      logger.error({ error }, "[RemoteServer] Failed to parse message");
       this.send(client.ws, {
         type: "error",
         message: "Invalid message format",
@@ -257,20 +275,20 @@ export class RemoteServer {
     }
 
     client.authenticated = true;
-    client.instanceId = `instance-${Date.now()}`;
+    client.instanceId = `instance-${randomUUID()}`;
     this.send(client.ws, {
       type: "auth.success",
       instanceId: client.instanceId,
     });
-    console.log(`[RemoteServer] Client authenticated: ${client.id}`);
+    logger.info(`[RemoteServer] Client authenticated: ${client.id}`);
   }
 
   /**
    * Handle start command
    */
-  private handleStart(_client: ClientConnection, _config: unknown): void {
+  private handleStart(client: ClientConnection, _config: unknown): void {
     if (!this.orchestrator) {
-      this.broadcast({
+      this.send(client.ws, {
         type: "error",
         message: "No orchestrator configured",
       });
@@ -285,15 +303,16 @@ export class RemoteServer {
       level: "info",
       message: "Task loop started",
       timestamp: new Date().toISOString(),
+      sourceClientId: client.id,
     });
   }
 
   /**
    * Handle pause command
    */
-  private handlePause(_client: ClientConnection): void {
+  private handlePause(client: ClientConnection): void {
     if (!this.orchestrator) {
-      this.broadcast({ type: "error", message: "No orchestrator configured" });
+      this.send(client.ws, { type: "error", message: "No orchestrator configured" });
       return;
     }
 
@@ -303,28 +322,26 @@ export class RemoteServer {
       level: "info",
       message: "Task loop paused",
       timestamp: new Date().toISOString(),
+      sourceClientId: client.id,
     });
   }
 
   /**
    * Handle resume command
    */
-  private handleResume(_client: ClientConnection): void {
-    // Would need resume functionality in orchestrator
-    this.broadcast({
-      type: "log",
-      level: "info",
-      message: "Resume not yet implemented",
-      timestamp: new Date().toISOString(),
+  private handleResume(client: ClientConnection): void {
+    this.send(client.ws, {
+      type: "error",
+      message: "Resume is not supported by the remote server",
     });
   }
 
   /**
    * Handle cancel command
    */
-  private handleCancel(_client: ClientConnection): void {
+  private handleCancel(client: ClientConnection): void {
     if (!this.orchestrator) {
-      this.broadcast({ type: "error", message: "No orchestrator configured" });
+      this.send(client.ws, { type: "error", message: "No orchestrator configured" });
       return;
     }
 
@@ -334,6 +351,7 @@ export class RemoteServer {
       level: "info",
       message: "Task loop cancelled",
       timestamp: new Date().toISOString(),
+      sourceClientId: client.id,
     });
   }
 
@@ -342,7 +360,8 @@ export class RemoteServer {
    */
   private sendStatus(client: ClientConnection): void {
     // Get current session from orchestrator
-    const session: TaskLoopSession | undefined = undefined; // this.orchestrator?.getSession();
+    const session: TaskLoopSession | undefined =
+      this.orchestrator?.getSession() ?? undefined;
 
     this.send(client.ws, {
       type: "status",
@@ -382,7 +401,7 @@ export class RemoteServer {
 
       for (const [ws, client] of this.clients) {
         if (now - client.lastPing > timeout) {
-          console.log(`[RemoteServer] Client ${client.id} timed out`);
+          logger.info(`[RemoteServer] Client ${client.id} timed out`);
           ws.close();
           this.clients.delete(ws);
         }

@@ -134,27 +134,54 @@ function parseArgs(args: string[]): {
   const options: CLIOptions = {};
   const positional: string[] = [];
 
+  const requireValue = (flag: string, index: number): string => {
+    if (index + 1 >= args.length) {
+      throw new Error(`Missing value for ${flag}`);
+    }
+    return args[index + 1];
+  };
+
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
 
-    if (arg === "--workflow" || arg === "-w") options.workflow = args[++i];
-    else if (arg === "--provider" || arg === "-p") options.provider = args[++i];
-    else if (arg === "--model" || arg === "-m") options.model = args[++i];
-    else if (arg === "--project") options.project = args[++i];
-    else if (arg === "--priority")
-      options.priority = args[++i] as CLIOptions["priority"];
-    else if (arg === "--tags")
-      options.tags = args[++i].split(",").map((t) => t.trim());
-    else if (arg === "--iterations" || arg === "-i")
-      options.iterations = parseInt(args[++i], 10);
-    else if (arg === "--delay") options.delay = parseInt(args[++i], 10);
-    else if (arg === "--retries" || arg === "-r")
-      options.retries = parseInt(args[++i], 10);
+    if (arg === "--workflow" || arg === "-w") {
+      options.workflow = requireValue(arg, i);
+      i++;
+    } else if (arg === "--provider" || arg === "-p") {
+      options.provider = requireValue(arg, i);
+      i++;
+    } else if (arg === "--model" || arg === "-m") {
+      options.model = requireValue(arg, i);
+      i++;
+    } else if (arg === "--project") {
+      options.project = requireValue(arg, i);
+      i++;
+    } else if (arg === "--priority") {
+      options.priority = requireValue(arg, i) as CLIOptions["priority"];
+      i++;
+    } else if (arg === "--tags") {
+      options.tags = requireValue(arg, i)
+        .split(",")
+        .map((t) => t.trim());
+      i++;
+    } else if (arg === "--iterations" || arg === "-i") {
+      options.iterations = parseInt(requireValue(arg, i), 10);
+      i++;
+    } else if (arg === "--delay") {
+      options.delay = parseInt(requireValue(arg, i), 10);
+      i++;
+    } else if (arg === "--retries" || arg === "-r") {
+      options.retries = parseInt(requireValue(arg, i), 10);
+      i++;
+    }
     else if (arg === "--dry-run" || arg === "-n") options.dryRun = true;
     else if (arg === "--auto-commit") options.autoCommit = true;
     else if (arg === "--create-pr") options.createPR = true;
     else if (arg === "--stop-on-failure") options.stopOnFailure = true;
-    else if (arg === "--workspace") options.workspace = args[++i];
+    else if (arg === "--workspace") {
+      options.workspace = requireValue(arg, i);
+      i++;
+    }
     else if (arg === "--help" || arg === "-h") {
       showHelp();
       process.exit(0);
@@ -218,7 +245,7 @@ async function runCommand(options: CLIOptions): Promise<void> {
   };
 
   const abortController = new AbortController();
-  process.on("SIGINT", () => {
+  process.once("SIGINT", () => {
     console.log("\n\n⚠️  Interrupted, pausing...");
     abortController.abort();
   });
@@ -253,7 +280,7 @@ async function resumeCommand(sessionId: string): Promise<void> {
   }
 
   const abortController = new AbortController();
-  process.on("SIGINT", () => {
+  process.once("SIGINT", () => {
     console.log("\n\n⚠️  Interrupted, pausing...");
     abortController.abort();
   });
@@ -354,7 +381,17 @@ async function deleteCommand(sessionId: string): Promise<void> {
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
-  const { command, options, positional } = parseArgs(args);
+  let command: string;
+  let options: CLIOptions;
+  let positional: string[];
+
+  try {
+    ({ command, options, positional } = parseArgs(args));
+  } catch (error) {
+    console.error(`Error: ${(error as Error).message}`);
+    showHelp();
+    process.exit(1);
+  }
 
   switch (command) {
     case "run":
