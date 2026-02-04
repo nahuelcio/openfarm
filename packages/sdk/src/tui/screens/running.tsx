@@ -1,3 +1,6 @@
+import { appendFileSync, mkdirSync } from "node:fs";
+import { join } from "node:path";
+import { execSync } from "node:child_process";
 import type { WorkflowContext } from "@openfarm/agent-runner";
 import {
   getDb,
@@ -40,7 +43,9 @@ async function executeWorkflowWithEngine(
   model: string | undefined,
   onLog: (msg: string) => void,
   signal: AbortSignal,
-  onStepChange?: (step: string, stepNumber: number, totalSteps: number) => void
+  onStepChange?: (step: string, stepNumber: number, totalSteps: number) => void,
+  externalAgentConfig?: { cli: string; args: string; agentName: string },
+  onAgentSessionStart?: (sessionName: string) => void
 ): Promise<{ success: boolean; worktreePath?: string; cancelled?: boolean }> {
   try {
     // Initialize database and workflows
@@ -145,12 +150,33 @@ async function executeWorkflowWithEngine(
                   defaultProvider: provider,
                 });
 
-                const result = await openFarm.execute({
+                // Build execute options
+                const executeOptions: Parameters<typeof openFarm.execute>[0] = {
                   task,
                   workspace: executionContext.context.worktreePath || workspace,
                   model,
                   onLog,
-                });
+                };
+
+                // Add external agent config if applicable
+                if (provider === "external-agent" && externalAgentConfig) {
+                  executeOptions.cli = externalAgentConfig.cli;
+                  executeOptions.args = externalAgentConfig.args
+                    ? externalAgentConfig.args
+                        .split(" ")
+                        .filter((a) => a.trim())
+                    : [];
+                  executeOptions.agentName = externalAgentConfig.agentName;
+                  
+                  // Track session name for cancellation
+                  const sessionName = `openfarm-${externalAgentConfig.agentName || externalAgentConfig.cli}`;
+                  onAgentSessionStart?.(sessionName);
+                }
+
+                const result = await openFarm.execute(executeOptions);
+                
+                // Clear session ref after execution
+                onAgentSessionStart?.("");
 
                 // Check cancellation after execution
                 if (signal.aborted) {
@@ -429,8 +455,13 @@ async function executeWorkflowWithEngine(
 }
 
 export function Running() {
-  const { setScreen, currentExecution, updateExecution, selectedWorkflowId } =
-    useStore();
+  const {
+    setScreen,
+    currentExecution,
+    updateExecution,
+    selectedWorkflowId,
+    externalAgentConfig,
+  } = useStore();
   const [spinnerIdx, setSpinnerIdx] = useState(0);
   const [logs, setLogs] = useState<string[]>([]);
   const [isDone, setIsDone] = useState(false);
@@ -444,6 +475,7 @@ export function Running() {
   const [stepProgress, setStepProgress] = useState({ current: 0, total: 3 });
   const aborted = useRef(false);
   const abortController = useRef<AbortController | null>(null);
+  const executionStarted = useRef(false);
 
   // Timer para elapsed time
   useEffect(() => {
@@ -480,6 +512,10 @@ export function Running() {
     }
   }, []);
 
+  // Setup log file for this execution - only create once
+  const logFilePath = useRef<string | null>(null);
+  const logInitialized = useRef(false);
+
   const onLog = useCallback(
     (msg: string) => {
       if (aborted.current) {
@@ -499,6 +535,16 @@ export function Running() {
         setCurrentStep("Initializing");
       }
 
+      // Write to log file
+      if (logFilePath.current) {
+        try {
+          const timestamp = new Date().toISOString();
+          appendFileSync(logFilePath.current, `[${timestamp}] ${msg}\n`);
+        } catch {
+          // Ignore file write errors
+        }
+      }
+
       setLogs((prev) => [...prev, msg]);
       updateStats(msg);
     },
@@ -511,13 +557,56 @@ export function Running() {
       return;
     }
 
+    // Prevent re-execution when currentExecution reference changes due to status updates
+    if (executionStarted.current) {
+      return;
+    }
+    executionStarted.current = true;
+
     // Create abort controller for this execution
     abortController.current = new AbortController();
+
+    // Setup log file only once
+    if (!logInitialized.current && currentExecution) {
+      logInitialized.current = true;
+      const logsDir = join(process.cwd(), "logs");
+      try {
+        mkdirSync(logsDir, { recursive: true });
+      } catch {
+        // Directory might already exist
+      }
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      logFilePath.current = join(
+        logsDir,
+        `execution-${currentExecution.id}-${timestamp}.txt`
+      );
+
+      // Write header to log file
+      const header = [
+        "=".repeat(80),
+        "OpenFarm Execution Log",
+        `Execution ID: ${currentExecution.id}`,
+        `Timestamp: ${new Date().toISOString()}`,
+        `Provider: ${currentExecution.provider}`,
+        `Model: ${currentExecution.model || "default"}`,
+        `Workspace: ${currentExecution.workspace}`,
+        `Task: ${currentExecution.task}`,
+        "=".repeat(80),
+        "",
+      ].join("\n");
+      appendFileSync(logFilePath.current, header);
+      // Don't use onLog here to avoid re-render loop
+    }
 
     const run = async () => {
       // Allow React to finish rendering before starting heavy work
       await new Promise((resolve) => setImmediate(resolve));
       try {
+        // Log file info (only once)
+        if (logFilePath.current) {
+          onLog(`📝 Log file: ${logFilePath.current}`);
+        }
+
         // Get workflow info from database
         const db = await getDb();
         await initializePredefinedWorkflows(db);
@@ -561,11 +650,16 @@ export function Running() {
           currentExecution.provider,
           currentExecution.model,
           onLog,
-
           abortController.current!.signal,
           (step, current, total) => {
             setCurrentStep(step);
             setStepProgress({ current, total });
+          },
+          currentExecution.provider === "external-agent"
+            ? externalAgentConfig
+            : undefined,
+          (sessionName) => {
+            externalAgentSession.current = sessionName || null;
           }
         );
 
@@ -626,6 +720,24 @@ export function Running() {
           workflowId: selectedWorkflowId,
         });
 
+        // Write footer to log file
+        if (logFilePath.current) {
+          try {
+            const footer = [
+              "",
+              "=".repeat(80),
+              `Execution ${result.success ? "COMPLETED" : "FAILED"}`,
+              `Duration: ${duration}ms`,
+              `Completed at: ${completedAt.toISOString()}`,
+              `Log file: ${logFilePath.current}`,
+              "=".repeat(80),
+            ].join("\n");
+            appendFileSync(logFilePath.current, footer);
+          } catch {
+            // Ignore file write errors
+          }
+        }
+
         setIsDone(true);
       } catch (error) {
         if (aborted.current) {
@@ -639,6 +751,25 @@ export function Running() {
           onLog("⚠️ Execution cancelled by user");
           const completedAt = new Date();
           const duration = Date.now() - startTime;
+
+          // Write footer to log file on cancellation
+          if (logFilePath.current) {
+            try {
+              const footer = [
+                "",
+                "=".repeat(80),
+                "Execution CANCELLED by user",
+                `Duration: ${duration}ms`,
+                `Cancelled at: ${completedAt.toISOString()}`,
+                `Log file: ${logFilePath.current}`,
+                "=".repeat(80),
+              ].join("\n");
+              appendFileSync(logFilePath.current, footer);
+            } catch {
+              // Ignore file write errors
+            }
+          }
+
           updateExecution(currentExecution.id, {
             status: "cancelled",
             completedAt,
@@ -657,6 +788,25 @@ export function Running() {
         const completedAt = new Date();
         const duration = Date.now() - startTime;
 
+        // Write footer to log file on error
+        if (logFilePath.current) {
+          try {
+            const footer = [
+              "",
+              "=".repeat(80),
+              "Execution FAILED with error",
+              `Error: ${message}`,
+              `Duration: ${duration}ms`,
+              `Failed at: ${completedAt.toISOString()}`,
+              `Log file: ${logFilePath.current}`,
+              "=".repeat(80),
+            ].join("\n");
+            appendFileSync(logFilePath.current, footer);
+          } catch {
+            // Ignore file write errors
+          }
+        }
+
         updateExecution(currentExecution.id, {
           status: "failed",
           completedAt,
@@ -670,15 +820,52 @@ export function Running() {
     };
 
     run();
+    
+    return () => {
+      // Cleanup: abort controller only, don't reset execution/log state
+      // to prevent re-execution loop when currentExecution reference changes
+    };
   }, [currentExecution, onLog, updateExecution, selectedWorkflowId, startTime]);
 
-  useInput((_input, key) => {
+  // Track external agent session for cancellation
+  const externalAgentSession = useRef<string | null>(null);
+
+  // Function to kill tmux session
+  const killTmuxSession = useCallback((sessionName: string) => {
+    try {
+      execSync(`tmux kill-session -t ${sessionName} 2>/dev/null || true`);
+    } catch {
+      // Ignore errors
+    }
+  }, []);
+
+  useInput((input, key) => {
+    // Cancel with 'c' or Escape
+    if ((input === "c" || input === "C") && !isDone) {
+      onLog("⚠️  Cancelling execution...");
+      aborted.current = true;
+      abortController.current?.abort();
+      
+      // Kill tmux session if running
+      if (externalAgentSession.current) {
+        killTmuxSession(externalAgentSession.current);
+        onLog("🛑 Killed agent process");
+      }
+    }
+    
     if (key.escape) {
       if (!isDone) {
         aborted.current = true;
+        abortController.current?.abort();
+        
+        // Kill tmux session if running
+        if (externalAgentSession.current) {
+          killTmuxSession(externalAgentSession.current);
+        }
+        
         onLog("⚠️  Cancelled");
         if (currentExecution) {
-          updateExecution(currentExecution.id, { status: "failed" });
+          updateExecution(currentExecution.id, { status: "cancelled" });
         }
       }
       setScreen("dashboard");
@@ -747,7 +934,7 @@ export function Running() {
             {stats.files} file{stats.files !== 1 ? "s" : ""}
           </Text>
         )}
-        <Text color="gray">{isDone ? "Esc to back" : "Esc to cancel"}</Text>
+        <Text color="gray">{isDone ? "Esc to back" : "[c] Cancel  •  Esc Back"}</Text>
       </Box>
     </Box>
   );

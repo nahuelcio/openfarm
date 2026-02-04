@@ -70,6 +70,18 @@ interface AppState {
   workspace: string;
   setWorkspace: (workspace: string) => void;
 
+  // External agent configuration
+  externalAgentConfig: {
+    cli: string;
+    args: string;
+    agentName: string;
+  };
+  setExternalAgentConfig: (config: {
+    cli?: string;
+    args?: string;
+    agentName?: string;
+  }) => void;
+
   executions: Execution[];
   addExecution: (execution: Execution) => void;
   updateExecution: (id: string, updates: Partial<Execution>) => void;
@@ -159,6 +171,16 @@ export const useStore = create<AppState>((set) => ({
 
   workspace: process.cwd(),
   setWorkspace: (workspace) => set({ workspace }),
+
+  externalAgentConfig: {
+    cli: "claude",
+    args: "",
+    agentName: "agent",
+  },
+  setExternalAgentConfig: (config) =>
+    set((state) => ({
+      externalAgentConfig: { ...state.externalAgentConfig, ...config },
+    })),
 
   executions: [],
   addExecution: (execution) => {

@@ -52,6 +52,13 @@
         "typescript": "^5.6.0",
       },
     },
+    "packages/agent-wrapper": {
+      "name": "@openfarm/agent-wrapper",
+      "version": "0.0.1",
+      "dependencies": {
+        "@openfarm/output-parser": "workspace:*",
+      },
+    },
     "packages/analysis": {
       "name": "@openfarm/analysis",
       "version": "0.0.1",
@@ -74,9 +81,11 @@
       "name": "@openfarm/coding-engines",
       "version": "0.0.1",
       "dependencies": {
+        "@openfarm/agent-wrapper": "workspace:*",
         "@openfarm/config": "workspace:*",
         "@openfarm/core": "workspace:*",
         "@openfarm/logger": "workspace:*",
+        "@openfarm/output-parser": "workspace:*",
         "@openfarm/result": "workspace:*",
       },
     },
@@ -184,6 +193,10 @@
       "devDependencies": {
         "@types/node": "^25.0.0",
       },
+    },
+    "packages/output-parser": {
+      "name": "@openfarm/output-parser",
+      "version": "0.0.1",
     },
     "packages/provider-aider": {
       "name": "@openfarm/provider-aider",
@@ -606,6 +619,8 @@
 
     "@openfarm/agent-runner": ["@openfarm/agent-runner@workspace:packages/agent-runner"],
 
+    "@openfarm/agent-wrapper": ["@openfarm/agent-wrapper@workspace:packages/agent-wrapper"],
+
     "@openfarm/analysis": ["@openfarm/analysis@workspace:packages/analysis"],
 
     "@openfarm/azure-adapter": ["@openfarm/azure-adapter@workspace:packages/azure-adapter"],
@@ -631,6 +646,8 @@
     "@openfarm/logger": ["@openfarm/logger@workspace:packages/logger"],
 
     "@openfarm/operations": ["@openfarm/operations@workspace:packages/operations"],
+
+    "@openfarm/output-parser": ["@openfarm/output-parser@workspace:packages/output-parser"],
 
     "@openfarm/provider-aider": ["@openfarm/provider-aider@workspace:packages/provider-aider"],
 

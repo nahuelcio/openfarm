@@ -1,146 +1,79 @@
-import { readdir, readFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
-import type { Workflow, WorkflowStep } from "@openfarm/core";
-import { StepType } from "@openfarm/core";
+import type { Workflow } from "@openfarm/core";
+import { getDb } from "@openfarm/core/db";
 import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
-import YAML from "js-yaml";
 import { useEffect, useState } from "react";
 import { useStore } from "../store";
-import { getAvailableModels } from "../utils/models";
+import { getAvailableModels, preloadModels } from "../utils/models";
+import {
+  DEFAULT_WORKFLOWS,
+  syncWorkflowsInBackground,
+} from "../utils/workflow-loader";
 
 const PROVIDERS = [
   { id: "opencode", name: "OpenCode" },
   { id: "claude", name: "Claude Code" },
   { id: "aider", name: "Aider" },
+  { id: "external-agent", name: "🔗 Connect External Agent" },
+];
+
+const AGENT_PRESETS = [
+  {
+    id: "claude",
+    name: "🧠 Claude Code",
+    cli: "claude",
+    description: "Anthropic's official CLI",
+  },
+  {
+    id: "aider",
+    name: "🔧 Aider",
+    cli: "aider",
+    description: "AI pair programming in your terminal",
+  },
+  {
+    id: "codex",
+    name: "⚡ Codex",
+    cli: "codex",
+    description: "OpenAI's official CLI agent",
+  },
+  {
+    id: "opencode",
+    name: "💻 OpenCode",
+    cli: "opencode",
+    description: "Open-source coding assistant",
+  },
+  {
+    id: "custom",
+    name: "✏️  Custom Command",
+    cli: "",
+    description: "Type your own command",
+  },
 ];
 
 // Default workflow ID
 const DEFAULT_WORKFLOW_ID = "oneshot";
 
-// Hardcoded minimal workflows for instant display
-const DEFAULT_WORKFLOWS: Workflow[] = [
-  {
-    id: "oneshot",
-    name: "One Shot",
-    description: "Direct execution without git operations",
-    steps: [
-      {
-        id: "execute",
-        type: StepType.CODE,
-        action: "agent.code",
-        config: {},
-      } as WorkflowStep,
-    ],
-    parameters: {},
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "oneshot_with_git",
-    name: "One Shot + Git",
-    description: "Execution with branch and worktree",
-    steps: [
-      {
-        id: "branch",
-        type: StepType.GIT,
-        action: "git.branch",
-        config: {},
-      } as WorkflowStep,
-      {
-        id: "worktree",
-        type: StepType.GIT,
-        action: "git.worktree",
-        config: {},
-      } as WorkflowStep,
-      {
-        id: "execute",
-        type: StepType.CODE,
-        action: "agent.code",
-        config: {},
-      } as WorkflowStep,
-    ],
-    parameters: {},
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "with_human_approval",
-    name: "With Human Approval",
-    description: "Execution requiring human approval",
-    steps: [
-      {
-        id: "execute",
-        type: StepType.CODE,
-        action: "agent.code",
-        config: {},
-      } as WorkflowStep,
-    ],
-    parameters: {},
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-];
+type Step =
+  | "workflow"
+  | "provider"
+  | "externalAgentConfig"
+  | "model"
+  | "workspace"
+  | "task";
 
-type Step = "workflow" | "provider" | "model" | "workspace" | "task";
+async function loadWorkflowsFromDatabase(): Promise<Workflow[]> {
+  try {
+    const { getWorkflows } = await import("@openfarm/core/db");
+    const db = await getDb();
+    const workflows = await getWorkflows(db);
 
-async function loadWorkflowsFromYaml(): Promise<Workflow[]> {
-  const possiblePaths = [
-    resolve(process.cwd(), "packages/core/workflows"),
-    resolve(process.cwd(), "../core/workflows"),
-    resolve(process.cwd(), "../../core/workflows"),
-    resolve(__dirname, "../../../../../core/workflows"),
-    "/Users/nahuelcioffi/Proyectos/openfarm/packages/core/workflows",
-  ];
-
-  // Try all paths in parallel with a timeout
-  const loadPromises = possiblePaths.map(async (dir) => {
-    try {
-      const files = await readdir(dir);
-      const yamlFiles = files.filter(
-        (f) => f.endsWith(".yaml") || f.endsWith(".yml")
-      );
-
-      if (yamlFiles.length === 0) {
-        return null;
-      }
-
-      // Read all YAML files in parallel
-      const workflowPromises = yamlFiles.map(async (file) => {
-        try {
-          const content = await readFile(join(dir, file), "utf-8");
-          const workflow = YAML.load(content) as Workflow;
-          if (!workflow.createdAt) {
-            workflow.createdAt = new Date().toISOString();
-          }
-          if (!workflow.updatedAt) {
-            workflow.updatedAt = new Date().toISOString();
-          }
-          return workflow;
-        } catch {
-          // Skip invalid files
-          return null;
-        }
-      });
-
-      const workflows = (await Promise.all(workflowPromises)).filter(
-        (w): w is Workflow => w !== null
-      );
-
-      return workflows;
-    } catch {
-      // Path doesn't exist or no access
-      return null;
+    // If no workflows in DB, return empty (defaults will be used)
+    if (!workflows || workflows.length === 0) {
+      return [];
     }
-  });
 
-  // Use Promise.race with timeout to get the first successful result quickly
-  const results = await Promise.all(loadPromises);
-  const firstValid = results.find((r) => r !== null && r.length > 0);
-
-  if (firstValid) {
-    // Sort: task_runner first, then alphabetically
-    return firstValid.sort((a, b) => {
+    // Sort: default workflow first, then alphabetically
+    return workflows.sort((a: Workflow, b: Workflow) => {
       if (a.id === DEFAULT_WORKFLOW_ID) {
         return -1;
       }
@@ -149,9 +82,10 @@ async function loadWorkflowsFromYaml(): Promise<Workflow[]> {
       }
       return (a.name || a.id).localeCompare(b.name || b.id);
     });
+  } catch (error) {
+    console.error("Failed to load workflows from database:", error);
+    return [];
   }
-
-  return [];
 }
 
 export function Execute() {
@@ -169,60 +103,73 @@ export function Execute() {
     setCurrentExecution,
     selectedWorkflowId,
     setSelectedWorkflowId,
+    externalAgentConfig,
+    setExternalAgentConfig,
   } = useStore();
   const [step, setStep] = useState<Step>("workflow");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [customPath, setCustomPath] = useState("");
   const [modelSearch, setModelSearch] = useState("");
   const [modelOptions, setModelOptions] = useState<string[]>([]);
+  const [loadingModels, setLoadingModels] = useState(false);
   const [isSelectingFromList, setIsSelectingFromList] = useState(false);
+  const [externalAgentStep, setExternalAgentStep] = useState<"preset" | "args">(
+    "preset"
+  );
+  const [selectedPreset, setSelectedPreset] = useState(0);
+  const [externalAgentArgs, setExternalAgentArgs] = useState("");
 
-  // Load workflows - start with defaults for instant display, then load real ones
+  // Start with hardcoded defaults - zero async, zero lag
   const [workflows, setWorkflows] = useState<Workflow[]>(DEFAULT_WORKFLOWS);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: selectedIndex is used for comparison only
-  useEffect(() => {
-    // Non-blocking background load of actual workflows from filesystem
-    const loadInBackground = async () => {
-      try {
-        const data = await loadWorkflowsFromYaml();
-        if (data.length > 0) {
-          setWorkflows(data);
-          // Update selected index if needed
-          const currentIndex = data.findIndex(
-            (w) => w.id === selectedWorkflowId
-          );
-          if (currentIndex >= 0 && currentIndex !== selectedIndex) {
-            setSelectedIndex(currentIndex);
-          }
-        }
-      } catch {
-        // Keep defaults if loading fails
-      }
-    };
-
-    // Delay to let React render first
-    const timeoutId = setTimeout(loadInBackground, 100);
-    return () => clearTimeout(timeoutId);
-  }, [selectedWorkflowId]);
-
-  // Load available models when provider changes
+  // Defer ALL async work until after the first render cycle completes
+  // This is the key to preventing the 2-3 second lag
   useEffect(() => {
     let mounted = true;
 
-    async function loadModels() {
-      const models = await getAvailableModels(provider);
+    // Use setImmediate to yield to the event loop FIRST
+    // This ensures React has fully rendered and the UI is interactive
+    const immediate = setImmediate(() => {
+      if (!mounted) return;
+
+      // Load workflows from DB cache (fast) then sync YAML in background
+      loadWorkflowsFromDatabase().then((dbWorkflows) => {
+        if (mounted && dbWorkflows.length > 0) {
+          setWorkflows(dbWorkflows);
+        }
+        // Update YAML -> DB cache for next time (fire and forget)
+        syncWorkflowsInBackground();
+      });
+    });
+
+    return () => {
+      mounted = false;
+      clearImmediate(immediate);
+    };
+  }, []);
+
+  // Lazy model loading - only load when user reaches the model step
+  useEffect(() => {
+    if (step !== "model") return;
+    if (modelOptions.length > 0) return; // Already loaded
+
+    let mounted = true;
+    setLoadingModels(true);
+
+    // For external-agent, pass the selected CLI to get appropriate models
+    const cli =
+      provider === "external-agent" ? externalAgentConfig.cli : undefined;
+    getAvailableModels(provider, cli).then((models) => {
       if (mounted) {
         setModelOptions(models);
+        setLoadingModels(false);
       }
-    }
-
-    loadModels();
+    });
 
     return () => {
       mounted = false;
     };
-  }, [provider]);
+  }, [step, provider, modelOptions.length, externalAgentConfig.cli]);
 
   // Filter models based on search
   const filteredModels = modelOptions
@@ -241,16 +188,30 @@ export function Execute() {
           (w) => w.id === selectedWorkflowId
         );
         setSelectedIndex(currentIndex >= 0 ? currentIndex : 0);
+      } else if (step === "externalAgentConfig") {
+        if (externalAgentStep === "args") {
+          setExternalAgentStep("preset");
+        } else {
+          setStep("provider");
+          setSelectedIndex(PROVIDERS.findIndex((p) => p.id === provider) || 0);
+        }
       } else if (step === "model") {
         if (isSelectingFromList) {
           setIsSelectingFromList(false);
           setSelectedIndex(0);
         } else {
           setModelSearch("");
-          setStep("provider");
-          setSelectedIndex(PROVIDERS.findIndex((p) => p.id === provider) || 0);
+          if (provider === "external-agent") {
+            setStep("externalAgentConfig");
+          } else {
+            setStep("provider");
+            setSelectedIndex(
+              PROVIDERS.findIndex((p) => p.id === provider) || 0
+            );
+          }
         }
       } else if (step === "workspace") {
+        // Volver a modelo (funciona igual para todos los providers)
         setStep("model");
         setSelectedIndex(0);
       } else if (step === "task") {
@@ -284,14 +245,73 @@ export function Execute() {
       } else if (key.downArrow) {
         setSelectedIndex((i) => Math.min(PROVIDERS.length - 1, i + 1));
       } else if (key.return) {
-        setProvider(PROVIDERS[selectedIndex].id);
+        const selectedProvider = PROVIDERS[selectedIndex].id;
+        setProvider(selectedProvider);
         setSelectedIndex(0);
-        setStep("model");
+        setModelOptions([]); // Reset models for new provider
+        // Preload models in background so they're ready when user gets to model step
+        preloadModels(selectedProvider);
+        // Si es external-agent, ir a configuración especial
+        if (selectedProvider === "external-agent") {
+          setStep("externalAgentConfig");
+        } else {
+          setStep("model");
+        }
       }
       return;
     }
 
-    // Paso 2: Buscar/Seleccionar Model (opcional)
+    // Paso 2: Configurar External Agent (preset + args opcionales)
+    if (step === "externalAgentConfig") {
+      if (externalAgentStep === "preset") {
+        if (key.upArrow) {
+          setSelectedPreset((i) => Math.max(0, i - 1));
+        } else if (key.downArrow) {
+          setSelectedPreset((i) => Math.min(AGENT_PRESETS.length - 1, i + 1));
+        } else if (key.return) {
+          const preset = AGENT_PRESETS[selectedPreset];
+          if (preset.id === "custom") {
+            // Para custom, vamos directo a args con el input vacío
+            setExternalAgentArgs("");
+          } else {
+            // Para presets, guardamos el CLI y vamos a args
+            setExternalAgentArgs(preset.cli);
+            // Preload models in background (for opencode, fetches from API)
+            preloadModels("external-agent", preset.cli);
+          }
+          setExternalAgentStep("args");
+        }
+      } else if (externalAgentStep === "args") {
+        if (key.return) {
+          // Parse final command
+          const baseCmd = AGENT_PRESETS[selectedPreset].cli;
+          const finalCli =
+            baseCmd || externalAgentArgs.split(" ")[0] || "agent";
+          const extraArgs = baseCmd
+            ? externalAgentArgs
+            : externalAgentArgs.split(" ").slice(1).join(" ");
+          const agentName =
+            finalCli.charAt(0).toUpperCase() + finalCli.slice(1);
+
+          setExternalAgentConfig({
+            cli: finalCli,
+            args: extraArgs,
+            agentName,
+          });
+          setExternalAgentStep("preset");
+          setSelectedPreset(0);
+          setExternalAgentArgs("");
+          setModelOptions([]); // Reset so we load models for this CLI
+          // Preload models from provider package (e.g. @openfarm/provider-opencode)
+          preloadModels("external-agent", finalCli);
+          // Ir a seleccionar modelo (como los otros providers)
+          setStep("model");
+        }
+      }
+      return;
+    }
+
+    // Paso 3: Buscar/Seleccionar Model (opcional)
     if (step === "model") {
       if (key.downArrow && !isSelectingFromList && filteredModels.length > 0) {
         setIsSelectingFromList(true);
@@ -318,7 +338,7 @@ export function Execute() {
       return;
     }
 
-    // Paso 3: Seleccionar Workspace
+    // Paso 4: Seleccionar Workspace
     if (step === "workspace") {
       if (key.upArrow) {
         setSelectedIndex((i) => Math.max(0, i - 1));
@@ -340,7 +360,7 @@ export function Execute() {
       return;
     }
 
-    // Paso 4: Escribir Task
+    // Paso 5: Escribir Task
     if (step === "task") {
       if (key.return && task.trim()) {
         const execution = {
@@ -473,15 +493,104 @@ export function Execute() {
 
       <Text color="gray">{"─".repeat(60)}</Text>
 
-      {/* Paso 2: Model */}
+      {/* Paso 2: External Agent Config */}
+      {provider === "external-agent" && (
+        <Box flexDirection="column" gap={1}>
+          <Text
+            bold={step === "externalAgentConfig"}
+            color={step === "externalAgentConfig" ? "cyan" : "gray"}
+          >
+            2. Connect Your Agent{" "}
+            {step !== "workflow" &&
+              step !== "provider" &&
+              step !== "externalAgentConfig" &&
+              externalAgentConfig.cli &&
+              `(${externalAgentConfig.cli})`}
+          </Text>
+
+          {step === "externalAgentConfig" && (
+            <Box flexDirection="column" gap={1} paddingLeft={2}>
+              {externalAgentStep === "preset" ? (
+                <>
+                  <Text color="cyan">🚀 Choose an agent to connect</Text>
+                  <Text color="gray" dimColor>
+                    Select from popular CLI agents or use a custom command
+                  </Text>
+
+                  <Box flexDirection="column" gap={0}>
+                    {AGENT_PRESETS.map((preset, index) => (
+                      <Box flexDirection="row" gap={1} key={preset.id}>
+                        <Text
+                          color={index === selectedPreset ? "yellow" : "gray"}
+                        >
+                          {index === selectedPreset ? "▶" : " "}
+                        </Text>
+                        <Text
+                          bold={index === selectedPreset}
+                          color={index === selectedPreset ? "white" : "gray"}
+                        >
+                          {preset.name}
+                        </Text>
+                        <Text color="gray" dimColor>
+                          {" "}
+                          — {preset.description}
+                        </Text>
+                      </Box>
+                    ))}
+                  </Box>
+
+                  <Text color="gray" dimColor>
+                    Press <Text color="white">↑↓</Text> to navigate •{" "}
+                    <Text color="white">Enter</Text> to select •{" "}
+                    <Text color="white">Esc</Text> to go back
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <Text color="cyan">
+                    ⚙️ Extra arguments for{" "}
+                    <Text color="yellow">
+                      {AGENT_PRESETS[selectedPreset].name.split(" ")[1]}
+                    </Text>
+                  </Text>
+                  <Text color="gray" dimColor>
+                    Optional flags like <Text color="yellow">--verbose</Text>,{" "}
+                    <Text color="yellow">--model gpt-4</Text>, etc.
+                  </Text>
+
+                  <Box borderColor="yellow" borderStyle="single" padding={1}>
+                    <TextInput
+                      onChange={setExternalAgentArgs}
+                      placeholder="--verbose --project myapp"
+                      value={externalAgentArgs}
+                    />
+                  </Box>
+
+                  <Text color="gray" dimColor>
+                    Press <Text color="white">Enter</Text> to confirm •{" "}
+                    <Text color="white">Esc</Text> to change preset
+                  </Text>
+                </>
+              )}
+            </Box>
+          )}
+        </Box>
+      )}
+
+      {provider === "external-agent" && (
+        <Text color="gray">{"─".repeat(60)}</Text>
+      )}
+
+      {/* Paso 3: Model (skip for external-agent) */}
       <Box flexDirection="column" gap={1}>
         <Text
           bold={step === "model"}
           color={step === "model" ? "cyan" : "gray"}
         >
-          2. Select Model (optional){" "}
+          {provider === "external-agent" ? "3" : "2"}. Select Model (optional){" "}
           {step !== "workflow" &&
             step !== "provider" &&
+            step !== "externalAgentConfig" &&
             step !== "model" &&
             model &&
             `(${model})`}
@@ -491,9 +600,11 @@ export function Execute() {
           <Box flexDirection="column" gap={1} paddingLeft={2}>
             <Box flexDirection="column" gap={0}>
               <Text color="gray" dimColor>
-                {modelOptions.length > 0
-                  ? `Search ${modelOptions.length} models or type custom:`
-                  : "Type model name:"}
+                {loadingModels
+                  ? "Loading models..."
+                  : modelOptions.length > 0
+                    ? `Search ${modelOptions.length} models or type custom:`
+                    : "Type model name:"}
               </Text>
               <Box
                 borderColor={isSelectingFromList ? "gray" : "yellow"}
@@ -557,13 +668,14 @@ export function Execute() {
 
       <Text color="gray">{"─".repeat(60)}</Text>
 
-      {/* Paso 3: Workspace */}
+      {/* Paso 4: Workspace */}
       <Box flexDirection="column" gap={1}>
         <Text
           bold={step === "workspace"}
           color={step === "workspace" ? "cyan" : "gray"}
         >
-          3. Select Workspace {step === "task" && `(${workspace})`}
+          {provider === "external-agent" ? "4" : "3"}. Select Workspace{" "}
+          {step === "task" && `(${workspace})`}
         </Text>
 
         {step === "workspace" && (
@@ -618,10 +730,10 @@ export function Execute() {
 
       <Text color="gray">{"─".repeat(60)}</Text>
 
-      {/* Paso 4: Task */}
+      {/* Paso 5: Task */}
       <Box flexDirection="column" gap={1}>
         <Text bold={step === "task"} color={step === "task" ? "cyan" : "gray"}>
-          5. Describe Task
+          {provider === "external-agent" ? "5" : "4"}. Describe Task
         </Text>
 
         {step === "task" && (

@@ -11,7 +11,9 @@
     "@openfarm/core": "workspace:*",
     "@openfarm/config": "workspace:*",
     "@openfarm/result": "workspace:*",
-    "@openfarm/logger": "workspace:*"
+    "@openfarm/logger": "workspace:*",
+    "@openfarm/agent-wrapper": "workspace:*",
+    "@openfarm/output-parser": "workspace:*"
   },
   "scripts": {
     "lint": "bunx biome check .",

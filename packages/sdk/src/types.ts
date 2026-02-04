@@ -19,6 +19,10 @@ export interface ExecutionOptions {
   onProgress?: (chunk: string) => void;
   onLog?: (log: string) => void;
   workspace?: string;
+  // External agent options (for output parsing wrapper)
+  cli?: string;
+  args?: string[];
+  agentName?: string;
 }
 
 export interface ExecutionResult {

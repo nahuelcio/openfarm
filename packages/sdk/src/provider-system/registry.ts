@@ -439,6 +439,17 @@ export class ProviderRegistry implements IProviderRegistry {
       logger.warn("Failed to load DirectApiProvider:", error);
     }
 
+    try {
+      // Register External Agent Provider (built-in provider for CLI agents)
+      const { ExternalAgentProviderFactory } = await import(
+        "../providers/external-agent-factory"
+      );
+      const externalAgentFactory = new ExternalAgentProviderFactory();
+      this.registerProvider(externalAgentFactory);
+    } catch (error) {
+      logger.warn("Failed to load ExternalAgentProvider:", error);
+    }
+
     // Future built-in providers can be added here
   }
 

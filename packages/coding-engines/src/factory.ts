@@ -5,13 +5,17 @@ import type {
 import type { ChatMessage } from "@openfarm/core/types/chat";
 import type { AgentConfigurationRules } from "@openfarm/core/types/domain";
 import { ClaudeCodeCodingEngine, type ClaudeCodeOptions } from "./claude-code";
+import {
+  ExternalAgentCodingEngine,
+  type ExternalAgentCodingEngineOptions,
+} from "./external-agent";
 import { OpencodeCodingEngine, type OpencodeOptions } from "./opencode";
 
 /**
  * Options for creating a coding engine via the factory.
  */
 export interface CodingEngineFactoryOptions {
-  provider?: "opencode" | "claude-code" | "direct-llm";
+  provider?: "opencode" | "claude-code" | "direct-llm" | "external-agent";
   model?: string;
   previewMode?: boolean;
   chatOnly?: boolean;
@@ -31,6 +35,10 @@ export interface CodingEngineFactoryOptions {
   maxTokens?: number;
   allowedTools?: string[];
   disallowedTools?: string[];
+  // Extended options for External Agent (output parsing)
+  cli?: string;
+  args?: string[];
+  agentName?: string;
 }
 
 /**
@@ -92,15 +100,34 @@ export function createCodingEngine(
       return new ClaudeCodeCodingEngine(claudeCodeOptions);
     }
 
+    case "external-agent": {
+      if (!options.cli) {
+        throw new Error(
+          "External agent provider requires 'cli' option (e.g., 'claude', 'opencode', 'aider')"
+        );
+      }
+      const externalAgentOptions: ExternalAgentCodingEngineOptions = {
+        cli: options.cli,
+        model: options.model,
+        args: options.args,
+        agentName: options.agentName,
+        previewMode: options.previewMode ?? false,
+        chatOnly: options.chatOnly ?? false,
+        onLog: options.onLog,
+        onChanges: options.onChanges,
+      };
+      return new ExternalAgentCodingEngine(externalAgentOptions);
+    }
+
     case "direct-llm":
       throw new Error(
-        "direct-llm provider is not yet implemented. Please use 'opencode', or 'claude-code'."
+        "direct-llm provider is not yet implemented. Please use 'opencode', 'claude-code', or 'external-agent'."
       );
 
     default:
       // TypeScript should catch this, but adding runtime check for safety
       throw new Error(
-        `Unsupported provider: ${provider}. Supported providers are: opencode, claude-code`
+        `Unsupported provider: ${provider}. Supported providers are: opencode, claude-code, external-agent`
       );
   }
 }
