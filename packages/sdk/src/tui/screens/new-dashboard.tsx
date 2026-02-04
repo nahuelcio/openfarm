@@ -77,9 +77,15 @@ export function NewDashboard() {
 
   // Calculate stats
   const totalExecutions = executions.length;
-  const completedExecutions = executions.filter((e) => e.status === "completed").length;
-  const failedExecutions = executions.filter((e) => e.status === "failed").length;
-  const runningExecutions = executions.filter((e) => e.status === "running").length;
+  const completedExecutions = executions.filter(
+    (e) => e.status === "completed"
+  ).length;
+  const failedExecutions = executions.filter(
+    (e) => e.status === "failed"
+  ).length;
+  const runningExecutions = executions.filter(
+    (e) => e.status === "running"
+  ).length;
 
   // Recent tasks (last 5)
   const recentTasks = executions.slice(0, 5);
@@ -153,7 +159,11 @@ export function NewDashboard() {
                 </Box>
                 <Box flexDirection="row" justifyContent="space-between">
                   <Text color="gray">Status:</Text>
-                  <Text color={currentExecution.status === "running" ? "yellow" : "white"}>
+                  <Text
+                    color={
+                      currentExecution.status === "running" ? "yellow" : "white"
+                    }
+                  >
                     {currentExecution.status}
                   </Text>
                 </Box>
@@ -166,7 +176,9 @@ export function NewDashboard() {
       {/* Quick Actions */}
       <Box borderStyle="single" borderColor="gray" paddingX={1}>
         <Text color="gray">Quick Actions: </Text>
-        <Text>[n] New execution [r] Resume [h] History [w] Workflows [t] Themes</Text>
+        <Text>
+          [n] New execution [r] Resume [h] History [w] Workflows [t] Themes
+        </Text>
       </Box>
     </Box>
   );

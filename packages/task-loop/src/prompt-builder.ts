@@ -199,7 +199,11 @@ export class PromptBuilder {
     const ifPattern = /\{\{#if\s+(\w+)\}\}([\s\S]*?)\{\{\/if\}\}/g;
     result = result.replace(ifPattern, (match, field, content) => {
       const value = workItem[field as keyof WorkItem];
-      if (value && value !== "" && !(Array.isArray(value) && value.length === 0)) {
+      if (
+        value &&
+        value !== "" &&
+        !(Array.isArray(value) && value.length === 0)
+      ) {
         return content;
       }
       return "";
@@ -209,7 +213,11 @@ export class PromptBuilder {
     const unlessPattern = /\{\{#unless\s+(\w+)\}\}([\s\S]*?)\{\{\/unless\}\}/g;
     result = result.replace(unlessPattern, (match, field, content) => {
       const value = workItem[field as keyof WorkItem];
-      if (!value || value === "" || (Array.isArray(value) && value.length === 0)) {
+      if (
+        !value ||
+        value === "" ||
+        (Array.isArray(value) && value.length === 0)
+      ) {
         return content;
       }
       return "";

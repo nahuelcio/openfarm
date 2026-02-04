@@ -64,12 +64,8 @@ function TreeNode({
         <Text color={selected ? "cyan" : undefined} wrap="truncate-end">
           {indent}
           {branch}
-          {hasChildren && (
-            <Text color="gray">
-              {expanded ? "▼ " : "▶ "}
-            </Text>
-          )}
-          {!hasChildren && <Text>  </Text>}
+          {hasChildren && <Text color="gray">{expanded ? "▼ " : "▶ "}</Text>}
+          {!hasChildren && <Text> </Text>}
           <Text color={status.color}>{status.symbol}</Text>
           <Text> </Text>
           <Text>{node.icon}</Text>
@@ -102,8 +98,14 @@ function TreeNode({
 }
 
 export function TraceTree({ height = 15, width = "50%" }: TraceTreeProps) {
-  const { tree, viewState, toggleExpanded, selectNode, expandAll, collapseAll } =
-    useTracingStore();
+  const {
+    tree,
+    viewState,
+    toggleExpanded,
+    selectNode,
+    expandAll,
+    collapseAll,
+  } = useTracingStore();
 
   const { expanded, selected } = viewState;
 
@@ -140,10 +142,12 @@ export function TraceTree({ height = 15, width = "50%" }: TraceTreeProps) {
 
     // Navigate up/down
     if (key.upArrow) {
-      const newIndex = selectedIndex > 0 ? selectedIndex - 1 : visibleNodes.length - 1;
+      const newIndex =
+        selectedIndex > 0 ? selectedIndex - 1 : visibleNodes.length - 1;
       selectNode(visibleNodes[newIndex]?.id);
     } else if (key.downArrow) {
-      const newIndex = selectedIndex < visibleNodes.length - 1 ? selectedIndex + 1 : 0;
+      const newIndex =
+        selectedIndex < visibleNodes.length - 1 ? selectedIndex + 1 : 0;
       selectNode(visibleNodes[newIndex]?.id);
     }
 
@@ -164,7 +168,9 @@ export function TraceTree({ height = 15, width = "50%" }: TraceTreeProps) {
         width={width}
         paddingX={1}
       >
-        <Text color="gray">No traces yet. Start an execution to see subagent calls.</Text>
+        <Text color="gray">
+          No traces yet. Start an execution to see subagent calls.
+        </Text>
       </Box>
     );
   }
@@ -205,7 +211,8 @@ export function TraceTree({ height = 15, width = "50%" }: TraceTreeProps) {
       {/* Footer */}
       <Box paddingX={1} borderStyle="single" borderColor="gray">
         <Text color="gray">
-          [←→ navigate] [space/enter toggle] [Ctrl+e expand all] [Ctrl+c collapse all]
+          [←→ navigate] [space/enter toggle] [Ctrl+e expand all] [Ctrl+c
+          collapse all]
         </Text>
       </Box>
     </Box>

@@ -7,7 +7,12 @@
 /**
  * Status of a trace node
  */
-export type TraceStatus = "pending" | "running" | "completed" | "failed" | "cancelled";
+export type TraceStatus =
+  | "pending"
+  | "running"
+  | "completed"
+  | "failed"
+  | "cancelled";
 
 /**
  * A single trace node representing one subagent call

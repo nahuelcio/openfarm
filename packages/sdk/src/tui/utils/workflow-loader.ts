@@ -71,7 +71,6 @@ export const DEFAULT_WORKFLOWS: Workflow[] = [
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
-
 ];
 
 async function loadWorkflowsFromYaml(): Promise<Workflow[]> {

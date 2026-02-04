@@ -68,4 +68,9 @@ export interface Theme {
   styles: ThemeStyles;
 }
 
-export type ThemeId = "default" | "dracula" | "solarized-dark" | "solarized-light" | "high-contrast";
+export type ThemeId =
+  | "default"
+  | "dracula"
+  | "solarized-dark"
+  | "solarized-light"
+  | "high-contrast";

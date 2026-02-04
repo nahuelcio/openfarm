@@ -11,10 +11,9 @@ export async function runTUIApp(
   const useRemote = args.includes("--remote") || args.includes("--server");
 
   // Parse --theme flag
-  const themeIndex = args.findIndex(arg => arg === "--theme");
-  const themeId = themeIndex >= 0 && args[themeIndex + 1]
-    ? args[themeIndex + 1]
-    : undefined;
+  const themeIndex = args.findIndex((arg) => arg === "--theme");
+  const themeId =
+    themeIndex >= 0 && args[themeIndex + 1] ? args[themeIndex + 1] : undefined;
 
   // Si se pasa --cli o --legacy, usar modo legacy
   if (useLegacy) {

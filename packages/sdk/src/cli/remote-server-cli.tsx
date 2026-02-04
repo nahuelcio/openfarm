@@ -21,7 +21,9 @@ interface RemoteServerCliProps {
 }
 
 function RemoteServerCLI({ port, token }: RemoteServerCliProps) {
-  const [status, setStatus] = useState<"starting" | "running" | "error">("starting");
+  const [status, setStatus] = useState<"starting" | "running" | "error">(
+    "starting"
+  );
   const [clients, setClients] = useState<ClientInfo[]>([]);
   const [logs, setLogs] = useState<string[]>([]);
   const clientsRef = useRef<Map<string, ClientInfo>>(new Map());
@@ -31,7 +33,10 @@ function RemoteServerCLI({ port, token }: RemoteServerCliProps) {
   }, []);
 
   const addLog = (message: string) => {
-    setLogs((prev) => [...prev.slice(-50), `[${new Date().toLocaleTimeString()}] ${message}`]);
+    setLogs((prev) => [
+      ...prev.slice(-50),
+      `[${new Date().toLocaleTimeString()}] ${message}`,
+    ]);
   };
 
   const startServer = async () => {
@@ -60,7 +65,11 @@ function RemoteServerCLI({ port, token }: RemoteServerCliProps) {
       <Text bold color="cyan">
         🌐 OpenFarm Remote Server
       </Text>
-      <Text color={status === "running" ? "green" : status === "error" ? "red" : "yellow"}>
+      <Text
+        color={
+          status === "running" ? "green" : status === "error" ? "red" : "yellow"
+        }
+      >
         Status: {status.toUpperCase()}
       </Text>
       <Text>Port: {port}</Text>
@@ -93,12 +102,16 @@ export async function runRemoteServerCLI(
   args: string[],
   _config: OpenFarmConfig
 ): Promise<void> {
-  const port = parseInt(args.find((a) => a.startsWith("--port="))?.split("=")[1] || "8080");
+  const port = parseInt(
+    args.find((a) => a.startsWith("--port="))?.split("=")[1] || "8080"
+  );
   const token =
     args.find((a) => a.startsWith("--token="))?.split("=")[1] ||
     process.env.OPENFARM_REMOTE_TOKEN ||
     "openfarm-secret-token";
 
-  const { waitUntilExit } = render(<RemoteServerCLI port={port} token={token} />);
+  const { waitUntilExit } = render(
+    <RemoteServerCLI port={port} token={token} />
+  );
   await waitUntilExit();
 }

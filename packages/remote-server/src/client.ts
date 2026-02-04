@@ -46,10 +46,7 @@ export class RemoteClient {
   private reconnectTimer?: ReturnType<typeof setTimeout>;
   private pingInterval?: ReturnType<typeof setInterval>;
 
-  constructor(
-    config: RemoteClientConfig,
-    handlers: RemoteClientHandlers = {}
-  ) {
+  constructor(config: RemoteClientConfig, handlers: RemoteClientHandlers = {}) {
     this.config = {
       autoReconnect: true,
       reconnectDelay: 5000,
@@ -71,7 +68,10 @@ export class RemoteClient {
    * Connect to remote server
    */
   async connect(): Promise<void> {
-    if (this.state.status === "connected" || this.state.status === "connecting") {
+    if (
+      this.state.status === "connected" ||
+      this.state.status === "connecting"
+    ) {
       return;
     }
 
@@ -185,7 +185,10 @@ export class RemoteClient {
    * Check if connected
    */
   isConnected(): boolean {
-    return this.state.status === "connected" && this.ws?.readyState === WebSocket.OPEN;
+    return (
+      this.state.status === "connected" &&
+      this.ws?.readyState === WebSocket.OPEN
+    );
   }
 
   /**
@@ -230,7 +233,10 @@ export class RemoteClient {
           break;
 
         default:
-          console.warn("[RemoteClient] Unknown message type:", (message as any).type);
+          console.warn(
+            "[RemoteClient] Unknown message type:",
+            (message as any).type
+          );
       }
     } catch (error) {
       console.error("[RemoteClient] Failed to parse message:", error);
@@ -269,8 +275,10 @@ export class RemoteClient {
    * Schedule reconnection attempt
    */
   private scheduleReconnect(): void {
-    if (this.config.maxReconnects > 0 &&
-        this.state.reconnectAttempts >= this.config.maxReconnects) {
+    if (
+      this.config.maxReconnects > 0 &&
+      this.state.reconnectAttempts >= this.config.maxReconnects
+    ) {
       console.log("[RemoteClient] Max reconnects reached");
       this.state.status = "error";
       this.state.error = "Max reconnects reached";
@@ -282,7 +290,7 @@ export class RemoteClient {
 
     console.log(
       `[RemoteClient] Reconnecting in ${this.config.reconnectDelay}ms ` +
-      `(attempt ${this.state.reconnectAttempts})`
+        `(attempt ${this.state.reconnectAttempts})`
     );
 
     this.reconnectTimer = setTimeout(() => {

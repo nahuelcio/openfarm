@@ -30,15 +30,30 @@ export function RunningWithTracing() {
       initTree(currentExecution.id);
 
       // Example: Create some dummy traces for demo
-      const rootId = startTrace(undefined, "analyze-codebase", "🔍", "Find auth bugs");
+      const rootId = startTrace(
+        undefined,
+        "analyze-codebase",
+        "🔍",
+        "Find auth bugs"
+      );
 
       setTimeout(() => {
-        const child1 = startTrace(rootId, "search-files", "📁", "Search for auth patterns");
+        const child1 = startTrace(
+          rootId,
+          "search-files",
+          "📁",
+          "Search for auth patterns"
+        );
 
         setTimeout(() => {
           completeTrace(child1, "Found 3 matches");
 
-          const child2 = startTrace(rootId, "read-file", "📄", "Read src/auth.ts");
+          const child2 = startTrace(
+            rootId,
+            "read-file",
+            "📄",
+            "Read src/auth.ts"
+          );
 
           setTimeout(() => {
             completeTrace(child2);

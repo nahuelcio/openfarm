@@ -23,11 +23,18 @@ export function TaskLoopScreen() {
   const { setScreen, provider, model, workspace } = useStore();
   const { addEntry, clearEntries } = useLogStore();
 
-  const [status, setStatus] = useState<"idle" | "running" | "paused" | "completed" | "error">("idle");
+  const [status, setStatus] = useState<
+    "idle" | "running" | "paused" | "completed" | "error"
+  >("idle");
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [tasks, setTasks] = useState<TaskInfo[]>([]);
   const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
-  const [progress, setProgress] = useState({ completed: 0, failed: 0, skipped: 0, total: 0 });
+  const [progress, setProgress] = useState({
+    completed: 0,
+    failed: 0,
+    skipped: 0,
+    total: 0,
+  });
   const [showTracing, setShowTracing] = useState(false);
   const [showTaskList, setShowTaskList] = useState(true);
 
@@ -41,7 +48,12 @@ export function TaskLoopScreen() {
     startTaskLoop();
   }, []);
 
-  const log = (level: LogLevel, component: string, message: string, metadata?: Record<string, unknown>) => {
+  const log = (
+    level: LogLevel,
+    component: string,
+    message: string,
+    metadata?: Record<string, unknown>
+  ) => {
     addEntry({ level, component, message, metadata });
   };
 
@@ -50,9 +62,14 @@ export function TaskLoopScreen() {
       case "session.started":
         setSessionId(event.sessionId);
         setStatus("running");
-        log("info", "task-loop", `Session started: ${event.sessionId.slice(0, 8)}`, {
-          sessionId: event.sessionId,
-        });
+        log(
+          "info",
+          "task-loop",
+          `Session started: ${event.sessionId.slice(0, 8)}`,
+          {
+            sessionId: event.sessionId,
+          }
+        );
         break;
 
       case "session.completed":
@@ -66,7 +83,9 @@ export function TaskLoopScreen() {
 
       case "session.failed":
         setStatus("error");
-        log("error", "task-loop", `Session failed: ${event.data}`, { error: event.data });
+        log("error", "task-loop", `Session failed: ${event.data}`, {
+          error: event.data,
+        });
         break;
 
       case "session.paused":
@@ -86,32 +105,47 @@ export function TaskLoopScreen() {
             },
           ]);
           setProgress((p) => ({ ...p, total: p.total + 1 }));
-          log("debug", "task-loop", `Task selected: ${taskData.description || event.taskId}`, {
-            taskId: event.taskId,
-          });
+          log(
+            "debug",
+            "task-loop",
+            `Task selected: ${taskData.description || event.taskId}`,
+            {
+              taskId: event.taskId,
+            }
+          );
         }
         break;
 
       case "task.started":
         setCurrentTaskId(event.taskId || null);
         setTasks((prev) =>
-          prev.map((t) => (t.id === event.taskId ? { ...t, status: "running" } : t))
+          prev.map((t) =>
+            t.id === event.taskId ? { ...t, status: "running" } : t
+          )
         );
-        log("info", "agent", `▶ Starting: ${event.taskId?.slice(0, 40)}`, { taskId: event.taskId });
+        log("info", "agent", `▶ Starting: ${event.taskId?.slice(0, 40)}`, {
+          taskId: event.taskId,
+        });
         break;
 
       case "task.completed":
         setTasks((prev) =>
-          prev.map((t) => (t.id === event.taskId ? { ...t, status: "completed" } : t))
+          prev.map((t) =>
+            t.id === event.taskId ? { ...t, status: "completed" } : t
+          )
         );
         setProgress((p) => ({ ...p, completed: p.completed + 1 }));
         setCurrentTaskId(null);
-        log("info", "agent", `✓ Completed: ${event.taskId?.slice(0, 40)}`, { taskId: event.taskId });
+        log("info", "agent", `✓ Completed: ${event.taskId?.slice(0, 40)}`, {
+          taskId: event.taskId,
+        });
         break;
 
       case "task.failed":
         setTasks((prev) =>
-          prev.map((t) => (t.id === event.taskId ? { ...t, status: "failed" } : t))
+          prev.map((t) =>
+            t.id === event.taskId ? { ...t, status: "failed" } : t
+          )
         );
         setProgress((p) => ({ ...p, failed: p.failed + 1 }));
         setCurrentTaskId(null);
@@ -123,10 +157,14 @@ export function TaskLoopScreen() {
 
       case "task.skipped":
         setTasks((prev) =>
-          prev.map((t) => (t.id === event.taskId ? { ...t, status: "skipped" } : t))
+          prev.map((t) =>
+            t.id === event.taskId ? { ...t, status: "skipped" } : t
+          )
         );
         setProgress((p) => ({ ...p, skipped: p.skipped + 1 }));
-        log("warn", "agent", `⏭ Skipped: ${event.taskId?.slice(0, 40)}`, { taskId: event.taskId });
+        log("warn", "agent", `⏭ Skipped: ${event.taskId?.slice(0, 40)}`, {
+          taskId: event.taskId,
+        });
         break;
 
       case "log":
@@ -153,7 +191,9 @@ export function TaskLoopScreen() {
       });
     } catch (error) {
       setStatus("error");
-      log("error", "task-loop", `Fatal error: ${error}`, { error: String(error) });
+      log("error", "task-loop", `Fatal error: ${error}`, {
+        error: String(error),
+      });
     }
   };
 
@@ -205,7 +245,12 @@ export function TaskLoopScreen() {
   return (
     <Box flexDirection="column" height="100%">
       {/* Header */}
-      <Box flexDirection="row" justifyContent="space-between" borderStyle="single" paddingX={1}>
+      <Box
+        flexDirection="row"
+        justifyContent="space-between"
+        borderStyle="single"
+        paddingX={1}
+      >
         <Box flexDirection="row" gap={1}>
           <Text bold color="cyan">
             🔄 Task Loop
@@ -262,13 +307,23 @@ export function TaskLoopScreen() {
       <Box flexDirection="row" flexGrow={1} overflow="hidden">
         {/* Task List (collapsible) */}
         {showTaskList && (
-          <Box width={showTracing ? "30%" : "40%"} flexDirection="column" borderStyle="single" marginRight={1}>
+          <Box
+            width={showTracing ? "30%" : "40%"}
+            flexDirection="column"
+            borderStyle="single"
+            marginRight={1}
+          >
             <Box paddingX={1} borderStyle="single">
               <Text bold underline>
                 Work Items
               </Text>
             </Box>
-            <Box flexDirection="column" paddingX={1} flexGrow={1} overflow="hidden">
+            <Box
+              flexDirection="column"
+              paddingX={1}
+              flexGrow={1}
+              overflow="hidden"
+            >
               {tasks.length === 0 ? (
                 <Text color="gray" dimColor>
                   Loading work items...
@@ -313,7 +368,12 @@ export function TaskLoopScreen() {
 
         {/* Tracing Panel (optional) */}
         {showTracing && (
-          <Box width="30%" borderStyle="single" marginLeft={1} flexDirection="column">
+          <Box
+            width="30%"
+            borderStyle="single"
+            marginLeft={1}
+            flexDirection="column"
+          >
             <Box paddingX={1} borderStyle="single">
               <Text bold underline>
                 Subagent Tracing
@@ -332,7 +392,12 @@ export function TaskLoopScreen() {
       </Box>
 
       {/* Footer */}
-      <Box flexDirection="row" borderStyle="single" paddingX={1} justifyContent="space-between">
+      <Box
+        flexDirection="row"
+        borderStyle="single"
+        paddingX={1}
+        justifyContent="space-between"
+      >
         <Text color="gray" dimColor>
           [T]racing [V]iew [P]ause [D]ashboard [Q]uit
         </Text>

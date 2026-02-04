@@ -12,7 +12,10 @@ import { AppV2 } from "./app-v2";
 import { useStore } from "./store";
 import { useThemeStore } from "./theme/store";
 
-export async function runTUIV2(config?: OpenFarmConfig, themeId?: string): Promise<void> {
+export async function runTUIV2(
+  config?: OpenFarmConfig,
+  themeId?: string
+): Promise<void> {
   if (config) {
     useStore.setState({
       config,

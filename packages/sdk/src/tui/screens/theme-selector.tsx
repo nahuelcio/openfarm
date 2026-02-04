@@ -75,10 +75,7 @@ export function ThemeSelector() {
               <Text color={isSelected ? "yellow" : "gray"}>
                 {isSelected ? "▶" : " "}
               </Text>
-              <Text
-                bold={isSelected}
-                color={isSelected ? "white" : "gray"}
-              >
+              <Text bold={isSelected} color={isSelected ? "white" : "gray"}>
                 {t.name}
               </Text>
               {isCurrent && (
@@ -134,9 +131,7 @@ export function ThemeSelector() {
       <ThemedText styleType="border">{"─".repeat(60)}</ThemedText>
 
       {/* Help */}
-      <Text color="gray">
-        ↑↓ Navigate • Enter Select • Esc Cancel
-      </Text>
+      <Text color="gray">↑↓ Navigate • Enter Select • Esc Cancel</Text>
     </Box>
   );
 }

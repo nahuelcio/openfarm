@@ -42,7 +42,10 @@ export interface RemoteClientHandlers {
   onDisconnect?: (reason: string) => void;
   onError?: (error: Error) => void;
   onLog?: (level: string, message: string) => void;
-  onStatusUpdate?: (session?: TaskLoopSession, systemInfo?: RemoteSystemInfo) => void;
+  onStatusUpdate?: (
+    session?: TaskLoopSession,
+    systemInfo?: RemoteSystemInfo
+  ) => void;
   onEvent?: (eventType: string, data: unknown) => void;
 }
 

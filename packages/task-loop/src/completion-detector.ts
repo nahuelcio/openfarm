@@ -104,7 +104,10 @@ export class CompletionDetector {
 
     // Check for failure markers first
     for (const marker of this.config.failureMarkers || []) {
-      if (output.includes(marker.toLowerCase()) || error.includes(marker.toLowerCase())) {
+      if (
+        output.includes(marker.toLowerCase()) ||
+        error.includes(marker.toLowerCase())
+      ) {
         return {
           completed: false,
           confidence: 0.8,
@@ -164,7 +167,9 @@ export class CompletionDetector {
   /**
    * Detection based on git changes
    */
-  private detectGitChanges(result: TaskExecutionResult): CompletionDetectionResult {
+  private detectGitChanges(
+    result: TaskExecutionResult
+  ): CompletionDetectionResult {
     const modified = result.changes?.filesModified?.length || 0;
     const created = result.changes?.filesCreated?.length || 0;
     const deleted = result.changes?.filesDeleted?.length || 0;

@@ -197,7 +197,9 @@ export interface TaskLoopEvent {
 /**
  * Event handler for task loop events
  */
-export type TaskLoopEventHandler = (event: TaskLoopEvent) => void | Promise<void>;
+export type TaskLoopEventHandler = (
+  event: TaskLoopEvent
+) => void | Promise<void>;
 
 /**
  * Logger interface for task loop

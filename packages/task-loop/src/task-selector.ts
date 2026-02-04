@@ -159,7 +159,9 @@ export function filterTasks(
     // Filter by tags (task must have all specified tags)
     if (filters.tagsFilter && filters.tagsFilter.length > 0) {
       const taskTags = task.tags || [];
-      const hasAllTags = filters.tagsFilter.every((tag) => taskTags.includes(tag));
+      const hasAllTags = filters.tagsFilter.every((tag) =>
+        taskTags.includes(tag)
+      );
       if (!hasAllTags) {
         return false;
       }
@@ -172,9 +174,7 @@ export function filterTasks(
 /**
  * Create a default task selector with priority strategy
  */
-export function createDefaultTaskSelector(
-  limit?: number
-): TaskSelector {
+export function createDefaultTaskSelector(limit?: number): TaskSelector {
   return new TaskSelector({
     strategy: "priority",
     respectDependencies: true,

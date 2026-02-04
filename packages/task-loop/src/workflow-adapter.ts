@@ -6,7 +6,11 @@
  */
 
 import type { WorkflowContext } from "@openfarm/agent-runner";
-import { getDb, getWorkflows, initializePredefinedWorkflows } from "@openfarm/core/db";
+import {
+  getDb,
+  getWorkflows,
+  initializePredefinedWorkflows,
+} from "@openfarm/core/db";
 import type { WorkItem } from "@openfarm/core/types";
 import {
   executeWorkflow,
@@ -133,10 +137,16 @@ export async function executeGitSetup(
             };
           }
 
-          const branchName = pattern.replace("${Date.now()}", Date.now().toString());
+          const branchName = pattern.replace(
+            "${Date.now()}",
+            Date.now().toString()
+          );
 
           try {
-            execSync(`git branch ${branchName}`, { cwd: workspace, stdio: "pipe" });
+            execSync(`git branch ${branchName}`, {
+              cwd: workspace,
+              stdio: "pipe",
+            });
             executionContext.context.branchName = branchName;
             await logger?.info(`Created branch: ${branchName}`);
             return { success: true, value: branchName };
@@ -173,7 +183,10 @@ export async function executeGitSetup(
           }
 
           const timestamp = Date.now();
-          const worktreeParent = join(tmpdir(), `openfarm-worktree-${timestamp}`);
+          const worktreeParent = join(
+            tmpdir(),
+            `openfarm-worktree-${timestamp}`
+          );
           const worktreePath = join(worktreeParent, "work");
 
           if (!existsSync(worktreeParent)) {
@@ -225,7 +238,8 @@ export async function executeGitSetup(
       stepExecutor,
       errorHandler: {
         handle: async (error: unknown, ctx: any) => {
-          const message = error instanceof Error ? error.message : String(error);
+          const message =
+            error instanceof Error ? error.message : String(error);
           await logger?.error(`Step ${ctx.stepId} failed: ${message}`);
         },
       },
@@ -286,7 +300,10 @@ export async function cleanupGitSetup(
     // Delete branch
     if (branchName) {
       try {
-        execSync(`git branch -D ${branchName}`, { cwd: workspace, stdio: "pipe" });
+        execSync(`git branch -D ${branchName}`, {
+          cwd: workspace,
+          stdio: "pipe",
+        });
         await logger?.info(`Deleted branch: ${branchName}`);
       } catch (error) {
         await logger?.warn(`Failed to delete branch: ${error}`);

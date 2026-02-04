@@ -210,7 +210,8 @@ export class TaskLoopOrchestrator {
 
     // Only include pending/new tasks
     tasks = tasks.filter(
-      (t) => t.status === "new" || t.status === "assigned" || t.status === "fixing"
+      (t) =>
+        t.status === "new" || t.status === "assigned" || t.status === "fixing"
     );
 
     session.tasks = tasks;
@@ -340,7 +341,10 @@ export class TaskLoopOrchestrator {
           task.error = detection.reason;
           session.failedTasks++;
 
-          await this.log("error", `Task failed: ${task.title} (${detection.reason})`);
+          await this.log(
+            "error",
+            `Task failed: ${task.title} (${detection.reason})`
+          );
 
           await this.emitEvent(options, {
             type: "task.failed",
@@ -352,7 +356,9 @@ export class TaskLoopOrchestrator {
 
           // Stop on failure if configured
           if (this.config.stopOnFailure) {
-            throw new Error(`Task ${task.id} failed and stopOnFailure is enabled`);
+            throw new Error(
+              `Task ${task.id} failed and stopOnFailure is enabled`
+            );
           }
         }
       }
@@ -431,11 +437,18 @@ export class TaskLoopOrchestrator {
 
       // Note: Without a task executor, we can't actually run the agent.
       // The caller should provide a taskExecutor.
-      await this.logger.warn("No task executor provided, skipping agent execution");
+      await this.logger.warn(
+        "No task executor provided, skipping agent execution"
+      );
 
       // Cleanup
       if (setup.branchName || setup.worktreePath) {
-        await cleanupGitSetup(workspace, setup.branchName || "", setup.worktreePath || "", this.logger);
+        await cleanupGitSetup(
+          workspace,
+          setup.branchName || "",
+          setup.worktreePath || "",
+          this.logger
+        );
       }
 
       return {

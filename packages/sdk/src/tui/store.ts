@@ -34,7 +34,13 @@ export type Screen =
   | "remote-instance"
   | "theme-selector";
 
-export type TabId = "dashboard" | "execute" | "history" | "workflows" | "context" | "remotes";
+export type TabId =
+  | "dashboard"
+  | "execute"
+  | "history"
+  | "workflows"
+  | "context"
+  | "remotes";
 
 export interface Execution {
   id: string;

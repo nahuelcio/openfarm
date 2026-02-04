@@ -121,13 +121,17 @@ export function RemoteInstanceList() {
   useInput((input, key) => {
     if (!instances.length) return;
 
-    const currentIndex = instances.findIndex((i) => i.id === selectedInstanceId);
+    const currentIndex = instances.findIndex(
+      (i) => i.id === selectedInstanceId
+    );
 
     if (key.upArrow) {
-      const newIndex = currentIndex > 0 ? currentIndex - 1 : instances.length - 1;
+      const newIndex =
+        currentIndex > 0 ? currentIndex - 1 : instances.length - 1;
       selectInstance(instances[newIndex].id);
     } else if (key.downArrow) {
-      const newIndex = currentIndex < instances.length - 1 ? currentIndex + 1 : 0;
+      const newIndex =
+        currentIndex < instances.length - 1 ? currentIndex + 1 : 0;
       selectInstance(instances[newIndex].id);
     }
 

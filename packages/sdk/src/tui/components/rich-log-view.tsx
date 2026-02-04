@@ -12,11 +12,7 @@
 import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
 import React, { useEffect, useRef, useState } from "react";
-import {
-  useLogStore,
-  type LogLevel,
-  getLevelIcon,
-} from "../store/log-store";
+import { useLogStore, type LogLevel, getLevelIcon } from "../store/log-store";
 import { useTheme } from "../store/theme-store";
 
 interface RichLogViewProps {
@@ -176,9 +172,15 @@ export function RichLogView({
   const visibleCount = Math.max(1, height - (showToolbar ? 4 : 2));
   const startIndex = Math.max(
     0,
-    Math.min(selectedIndex - Math.floor(visibleCount / 2), filteredEntries.length - visibleCount)
+    Math.min(
+      selectedIndex - Math.floor(visibleCount / 2),
+      filteredEntries.length - visibleCount
+    )
   );
-  const visibleEntries = filteredEntries.slice(startIndex, startIndex + visibleCount);
+  const visibleEntries = filteredEntries.slice(
+    startIndex,
+    startIndex + visibleCount
+  );
 
   if (showHelp) {
     return (
@@ -186,19 +188,19 @@ export function RichLogView({
         <Text bold>Rich Log View - Help</Text>
         <Box flexDirection="column" marginY={1}>
           <Text color={colors.primary}>Navigation:</Text>
-          <Text>  ↑/↓     - Scroll line by line</Text>
-          <Text>  PgUp/PgDn - Scroll page</Text>
-          <Text>  Home/End - Jump to start/end</Text>
+          <Text> ↑/↓ - Scroll line by line</Text>
+          <Text> PgUp/PgDn - Scroll page</Text>
+          <Text> Home/End - Jump to start/end</Text>
           <Text color={colors.primary}>Actions:</Text>
-          <Text>  s - Search mode</Text>
-          <Text>  f - Filter by level</Text>
-          <Text>  t - Toggle timestamps</Text>
-          <Text>  c - Toggle component names</Text>
-          <Text>  l - Toggle follow tail</Text>
-          <Text>  e - Export logs to file</Text>
-          <Text>  x - Clear all logs</Text>
-          <Text>  ? - Toggle this help</Text>
-          <Text>  q/ESC - Close help/back</Text>
+          <Text> s - Search mode</Text>
+          <Text> f - Filter by level</Text>
+          <Text> t - Toggle timestamps</Text>
+          <Text> c - Toggle component names</Text>
+          <Text> l - Toggle follow tail</Text>
+          <Text> e - Export logs to file</Text>
+          <Text> x - Clear all logs</Text>
+          <Text> ? - Toggle this help</Text>
+          <Text> q/ESC - Close help/back</Text>
         </Box>
         <Text color={colors.muted}>Press any key to close...</Text>
       </Box>
@@ -216,17 +218,24 @@ export function RichLogView({
               <Text bold color={colors.primary}>
                 Logs
               </Text>
-              <Text color={colors.muted}>({filteredEntries.length}/{entries.length})</Text>
+              <Text color={colors.muted}>
+                ({filteredEntries.length}/{entries.length})
+              </Text>
             </Box>
             <Box flexDirection="row" gap={2}>
               {/* Level filters */}
               {LEVELS.map((level) => (
                 <Text
                   key={level}
-                  color={filter.levels.includes(level) ? getLevelColor(level) : "gray"}
+                  color={
+                    filter.levels.includes(level)
+                      ? getLevelColor(level)
+                      : "gray"
+                  }
                   dimColor={!filter.levels.includes(level)}
                 >
-                  {filter.levels.includes(level) ? "●" : "○"} {level[0].toUpperCase()}
+                  {filter.levels.includes(level) ? "●" : "○"}{" "}
+                  {level[0].toUpperCase()}
                 </Text>
               ))}
             </Box>
@@ -259,13 +268,22 @@ export function RichLogView({
             )}
 
             <Box flexDirection="row" gap={2}>
-              <Text color={config.showTimestamps ? "white" : "gray"} dimColor={!config.showTimestamps}>
+              <Text
+                color={config.showTimestamps ? "white" : "gray"}
+                dimColor={!config.showTimestamps}
+              >
                 [T]ime
               </Text>
-              <Text color={config.showComponent ? "white" : "gray"} dimColor={!config.showComponent}>
+              <Text
+                color={config.showComponent ? "white" : "gray"}
+                dimColor={!config.showComponent}
+              >
                 [C]omp
               </Text>
-              <Text color={config.followTail ? "green" : "gray"} dimColor={!config.followTail}>
+              <Text
+                color={config.followTail ? "green" : "gray"}
+                dimColor={!config.followTail}
+              >
                 [L]ive
               </Text>
             </Box>
@@ -287,7 +305,9 @@ export function RichLogView({
           visibleEntries.map((entry, idx) => {
             const absoluteIndex = startIndex + idx;
             const isSelected = absoluteIndex === selectedIndex;
-            const levelColor = config.colorize ? getLevelColor(entry.level) : "white";
+            const levelColor = config.colorize
+              ? getLevelColor(entry.level)
+              : "white";
 
             return (
               <Box key={entry.id} flexDirection="row" gap={1}>
@@ -329,7 +349,12 @@ export function RichLogView({
 
       {/* Footer */}
       {showToolbar && (
-        <Box flexDirection="row" justifyContent="space-between" paddingX={1} borderStyle="single">
+        <Box
+          flexDirection="row"
+          justifyContent="space-between"
+          paddingX={1}
+          borderStyle="single"
+        >
           <Text color={colors.muted} dimColor>
             [?]help [s]earch [f]ilter [t]ime [c]omp [l]ive [e]xport [x]clear
           </Text>

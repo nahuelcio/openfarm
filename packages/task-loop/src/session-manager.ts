@@ -225,7 +225,10 @@ export class SessionManager {
   /**
    * Create and save a new session
    */
-  async create(config: TaskLoopConfig, sessionId?: string): Promise<TaskLoopSession> {
+  async create(
+    config: TaskLoopConfig,
+    sessionId?: string
+  ): Promise<TaskLoopSession> {
     const session = createSession(config, sessionId);
     await saveSession(this.db, session);
     this.currentSession = session;

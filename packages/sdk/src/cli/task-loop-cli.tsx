@@ -16,9 +16,15 @@ interface TaskLoopCliProps {
 }
 
 function TaskLoopCLI({ config, tasks }: TaskLoopCliProps) {
-  const [status, setStatus] = useState<"idle" | "running" | "paused" | "completed" | "error">("idle");
+  const [status, setStatus] = useState<
+    "idle" | "running" | "paused" | "completed" | "error"
+  >("idle");
   const [currentTask, setCurrentTask] = useState<string | null>(null);
-  const [progress, setProgress] = useState({ completed: 0, total: 0, failed: 0 });
+  const [progress, setProgress] = useState({
+    completed: 0,
+    total: 0,
+    failed: 0,
+  });
   const [logs, setLogs] = useState<string[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
 
@@ -27,7 +33,10 @@ function TaskLoopCLI({ config, tasks }: TaskLoopCliProps) {
   }, []);
 
   const addLog = (message: string) => {
-    setLogs((prev) => [...prev.slice(-100), `[${new Date().toLocaleTimeString()}] ${message}`]);
+    setLogs((prev) => [
+      ...prev.slice(-100),
+      `[${new Date().toLocaleTimeString()}] ${message}`,
+    ]);
   };
 
   const handleEvent = (event: TaskLoopEvent) => {
@@ -88,7 +97,11 @@ function TaskLoopCLI({ config, tasks }: TaskLoopCliProps) {
       <Text bold color="cyan">
         OpenFarm Task Loop
       </Text>
-      <Text color={status === "running" ? "green" : status === "error" ? "red" : "gray"}>
+      <Text
+        color={
+          status === "running" ? "green" : status === "error" ? "red" : "gray"
+        }
+      >
         Status: {status.toUpperCase()}
       </Text>
       {currentTask && (
@@ -98,7 +111,9 @@ function TaskLoopCLI({ config, tasks }: TaskLoopCliProps) {
       )}
       <Text>
         Completed: <Text color="green">{progress.completed}</Text>
-        {progress.failed > 0 && <Text color="red"> Failed: {progress.failed}</Text>}
+        {progress.failed > 0 && (
+          <Text color="red"> Failed: {progress.failed}</Text>
+        )}
       </Text>
       <Box marginTop={1} flexDirection="column" height={15}>
         <Text bold>Logs:</Text>
@@ -121,6 +136,8 @@ export async function runTaskLoopCLI(
 ): Promise<void> {
   const tasks = args.filter((a) => !a.startsWith("--"));
 
-  const { waitUntilExit } = render(<TaskLoopCLI config={config} tasks={tasks} />);
+  const { waitUntilExit } = render(
+    <TaskLoopCLI config={config} tasks={tasks} />
+  );
   await waitUntilExit();
 }

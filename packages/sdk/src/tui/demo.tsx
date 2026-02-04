@@ -36,27 +36,53 @@ function DemoTracing() {
 
     const runDemo = async () => {
       // Root trace
-      const rootId = startTrace(undefined, "analyze-codebase", "🔍", "Find auth bugs");
+      const rootId = startTrace(
+        undefined,
+        "analyze-codebase",
+        "🔍",
+        "Find auth bugs"
+      );
 
       await new Promise((r) => setTimeout(r, 800));
-      const child1 = startTrace(rootId, "search-files", "📁", "Search for auth patterns");
+      const child1 = startTrace(
+        rootId,
+        "search-files",
+        "📁",
+        "Search for auth patterns"
+      );
 
       await new Promise((r) => setTimeout(r, 1200));
-      completeTrace(child1, "Found 3 matches in src/auth.ts, src/middleware.ts");
+      completeTrace(
+        child1,
+        "Found 3 matches in src/auth.ts, src/middleware.ts"
+      );
 
       await new Promise((r) => setTimeout(r, 500));
-      const child2 = startTrace(rootId, "read-file", "📄", "Analyze src/auth.ts");
+      const child2 = startTrace(
+        rootId,
+        "read-file",
+        "📄",
+        "Analyze src/auth.ts"
+      );
 
       await new Promise((r) => setTimeout(r, 1500));
       completeTrace(child2, "Found vulnerability in JWT validation");
 
       await new Promise((r) => setTimeout(r, 600));
-      const child3 = startTrace(rootId, "generate-fix", "🔧", "Create patch for JWT validation");
+      const child3 = startTrace(
+        rootId,
+        "generate-fix",
+        "🔧",
+        "Create patch for JWT validation"
+      );
 
       await new Promise((r) => setTimeout(r, 2000));
       completeTrace(child3, "Generated fix with tests");
 
-      completeTrace(rootId, "Analysis complete. Found 1 vulnerability, generated fix.");
+      completeTrace(
+        rootId,
+        "Analysis complete. Found 1 vulnerability, generated fix."
+      );
     };
 
     runDemo();
@@ -172,7 +198,11 @@ function DemoApp() {
       tabs={TABS}
       activeTab={activeTab}
       onTabChange={setActiveTab}
-      footerMessage={isVisible ? "Tracing visible - Press [T] to hide" : "Press [T] for tracing"}
+      footerMessage={
+        isVisible
+          ? "Tracing visible - Press [T] to hide"
+          : "Press [T] for tracing"
+      }
     >
       {renderContent()}
     </MainLayout>

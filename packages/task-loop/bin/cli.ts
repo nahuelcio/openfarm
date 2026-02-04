@@ -37,20 +37,28 @@ interface CLIOptions {
 }
 
 // Simple task executor that just logs (user should provide their own)
-const defaultTaskExecutor: TaskExecutor = async (task, prompt, config, options) => {
+const defaultTaskExecutor: TaskExecutor = async (
+  task,
+  prompt,
+  config,
+  options
+) => {
   const startTime = Date.now();
   await options.logger?.info(`Would execute task: ${task.title}`);
   await options.logger?.info(`Prompt: ${prompt.slice(0, 200)}...`);
   return {
     success: true,
     taskId: task.id,
-    output: "Task execution not implemented. Provide a taskExecutor to runTaskLoop().",
+    output:
+      "Task execution not implemented. Provide a taskExecutor to runTaskLoop().",
     durationMs: Date.now() - startTime,
   };
 };
 
 const consoleLogger: TaskLoopLogger = {
-  debug: (msg: string) => { if (process.env.DEBUG) console.log(`\x1b[90m[DEBUG] ${msg}\x1b[0m`); },
+  debug: (msg: string) => {
+    if (process.env.DEBUG) console.log(`\x1b[90m[DEBUG] ${msg}\x1b[0m`);
+  },
   info: (msg: string) => console.log(`\x1b[36m[INFO]\x1b[0m ${msg}`),
   warn: (msg: string) => console.log(`\x1b[33m[WARN]\x1b[0m ${msg}`),
   error: (msg: string) => console.error(`\x1b[31m[ERROR]\x1b[0m ${msg}`),
@@ -71,14 +79,24 @@ function createEventHandler(): (event: TaskLoopEvent) => void {
         console.log(`\n🚀 Session \x1b[36m${event.sessionId}\x1b[0m started`);
         break;
       case "session.completed":
-        const data = event.data as { completed: number; failed: number; skipped: number };
-        console.log(`\n✅ Session completed: ${data.completed} done, ${data.failed} failed, ${data.skipped} skipped`);
+        const data = event.data as {
+          completed: number;
+          failed: number;
+          skipped: number;
+        };
+        console.log(
+          `\n✅ Session completed: ${data.completed} done, ${data.failed} failed, ${data.skipped} skipped`
+        );
         break;
       case "session.failed":
-        console.log(`\n❌ Session failed: ${(event.data as { error: string }).error}`);
+        console.log(
+          `\n❌ Session failed: ${(event.data as { error: string }).error}`
+        );
         break;
       case "session.paused":
-        console.log(`\n⏸️  Session paused (use 'task-loop resume ${event.sessionId}' to continue)`);
+        console.log(
+          `\n⏸️  Session paused (use 'task-loop resume ${event.sessionId}' to continue)`
+        );
         break;
       case "task.started":
         const taskData = event.data as { title: string; priority: string };
@@ -88,7 +106,9 @@ function createEventHandler(): (event: TaskLoopEvent) => void {
           medium: "\x1b[36m",
           low: "\x1b[90m",
         };
-        console.log(`\n📋 [${priorityColor[taskData.priority] || ""}${taskData.priority.toUpperCase()}\x1b[0m] ${taskData.title}`);
+        console.log(
+          `\n📋 [${priorityColor[taskData.priority] || ""}${taskData.priority.toUpperCase()}\x1b[0m] ${taskData.title}`
+        );
         break;
       case "task.completed":
         const completedData = event.data as { durationMs: number };
@@ -106,7 +126,11 @@ function createEventHandler(): (event: TaskLoopEvent) => void {
   };
 }
 
-function parseArgs(args: string[]): { command: string; options: CLIOptions; positional: string[] } {
+function parseArgs(args: string[]): {
+  command: string;
+  options: CLIOptions;
+  positional: string[];
+} {
   const options: CLIOptions = {};
   const positional: string[] = [];
 
@@ -117,21 +141,31 @@ function parseArgs(args: string[]): { command: string; options: CLIOptions; posi
     else if (arg === "--provider" || arg === "-p") options.provider = args[++i];
     else if (arg === "--model" || arg === "-m") options.model = args[++i];
     else if (arg === "--project") options.project = args[++i];
-    else if (arg === "--priority") options.priority = args[++i] as CLIOptions["priority"];
-    else if (arg === "--tags") options.tags = args[++i].split(",").map((t) => t.trim());
-    else if (arg === "--iterations" || arg === "-i") options.iterations = parseInt(args[++i], 10);
+    else if (arg === "--priority")
+      options.priority = args[++i] as CLIOptions["priority"];
+    else if (arg === "--tags")
+      options.tags = args[++i].split(",").map((t) => t.trim());
+    else if (arg === "--iterations" || arg === "-i")
+      options.iterations = parseInt(args[++i], 10);
     else if (arg === "--delay") options.delay = parseInt(args[++i], 10);
-    else if (arg === "--retries" || arg === "-r") options.retries = parseInt(args[++i], 10);
+    else if (arg === "--retries" || arg === "-r")
+      options.retries = parseInt(args[++i], 10);
     else if (arg === "--dry-run" || arg === "-n") options.dryRun = true;
     else if (arg === "--auto-commit") options.autoCommit = true;
     else if (arg === "--create-pr") options.createPR = true;
     else if (arg === "--stop-on-failure") options.stopOnFailure = true;
     else if (arg === "--workspace") options.workspace = args[++i];
-    else if (arg === "--help" || arg === "-h") { showHelp(); process.exit(0); }
-    else if (!arg.startsWith("-")) positional.push(arg);
+    else if (arg === "--help" || arg === "-h") {
+      showHelp();
+      process.exit(0);
+    } else if (!arg.startsWith("-")) positional.push(arg);
   }
 
-  return { command: positional[0] || "run", options, positional: positional.slice(1) };
+  return {
+    command: positional[0] || "run",
+    options,
+    positional: positional.slice(1),
+  };
 }
 
 function showHelp(): void {
@@ -256,7 +290,9 @@ async function statusCommand(sessionId?: string): Promise<void> {
 
     console.log(`\nSession: ${session.id}`);
     console.log(`Status: ${session.status}`);
-    console.log(`Progress: ${session.completedTasks + session.failedTasks + session.skippedTasks}/${session.tasks.length}`);
+    console.log(
+      `Progress: ${session.completedTasks + session.failedTasks + session.skippedTasks}/${session.tasks.length}`
+    );
   } else {
     const active = await getActiveSessions(db);
     if (active.length === 0) {
@@ -279,7 +315,8 @@ async function listCommand(): Promise<void> {
   console.log(`${"=".repeat(80)}`);
 
   for (const session of sessions) {
-    const progress = session.completedTasks + session.failedTasks + session.skippedTasks;
+    const progress =
+      session.completedTasks + session.failedTasks + session.skippedTasks;
     const total = session.tasks.length;
     console.log(`${session.id} - ${session.status} (${progress}/${total})`);
   }

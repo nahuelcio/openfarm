@@ -78,7 +78,7 @@ export function RemoteInstancesScreen() {
 
       <Box marginTop={1}>
         <Text color="gray">
-          Total instances: {instances.length} | Connected: {" "}
+          Total instances: {instances.length} | Connected:{" "}
           {instances.filter((i) => i.status === "connected").length}
         </Text>
       </Box>

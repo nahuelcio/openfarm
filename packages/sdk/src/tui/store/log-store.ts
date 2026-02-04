@@ -58,7 +58,8 @@ interface LogState {
   exportToString: () => string;
 }
 
-const generateId = () => `log_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+const generateId = () =>
+  `log_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 
 export const useLogStore = create<LogState>((set, get) => ({
   // Initial state

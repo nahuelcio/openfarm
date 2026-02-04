@@ -5,7 +5,10 @@
  * Allows controlling task loops from a central TUI.
  */
 
-import type { TaskLoopOrchestrator, TaskLoopSession } from "@openfarm/task-loop";
+import type {
+  TaskLoopOrchestrator,
+  TaskLoopSession,
+} from "@openfarm/task-loop";
 import { WebSocketServer, type WebSocket } from "ws";
 import type {
   ClientMessage,
@@ -167,7 +170,9 @@ export class RemoteServer {
     this.sendStatus(client);
 
     ws.on("message", (data) => {
-      const buffer = Buffer.isBuffer(data) ? data : Buffer.from(data as ArrayBuffer);
+      const buffer = Buffer.isBuffer(data)
+        ? data
+        : Buffer.from(data as ArrayBuffer);
       this.handleMessage(client, buffer);
     });
 

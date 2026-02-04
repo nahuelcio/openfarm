@@ -49,7 +49,8 @@ const TAB_SCREEN_MAP: Record<string, string> = {
 };
 
 export function AppV2() {
-  const { screen, setScreen, activeTab, setActiveTab, currentExecution } = useStore();
+  const { screen, setScreen, activeTab, setActiveTab, currentExecution } =
+    useStore();
   const [activeRemoteTab, setActiveRemoteTab] = useState("local");
   const [showAddRemote, setShowAddRemote] = useState(false);
 
@@ -124,7 +125,9 @@ export function AppV2() {
       tabs={TABS}
       activeTab={activeTab}
       onTabChange={handleTabChange}
-      footerMessage={currentExecution ? `Task: ${currentExecution.task}` : "Ready"}
+      footerMessage={
+        currentExecution ? `Task: ${currentExecution.task}` : "Ready"
+      }
     >
       <Box flexGrow={1} flexDirection="column">
         {/* Remote Instance Tabs (shown on all screens) */}

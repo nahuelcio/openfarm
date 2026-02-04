@@ -15,7 +15,11 @@ interface HeaderProps {
   sessionId?: string;
 }
 
-export function Header({ title = "OpenFarm", status = "idle", sessionId }: HeaderProps) {
+export function Header({
+  title = "OpenFarm",
+  status = "idle",
+  sessionId,
+}: HeaderProps) {
   const { colors, getColor } = useTheme();
 
   const getStatusConfig = () => {
@@ -23,9 +27,17 @@ export function Header({ title = "OpenFarm", status = "idle", sessionId }: Heade
       case "idle":
         return { color: getColor("statusIdle"), symbol: "○", label: "Idle" };
       case "running":
-        return { color: getColor("statusRunning"), symbol: "▶", label: "Running" };
+        return {
+          color: getColor("statusRunning"),
+          symbol: "▶",
+          label: "Running",
+        };
       case "paused":
-        return { color: getColor("statusPaused"), symbol: "⏸", label: "Paused" };
+        return {
+          color: getColor("statusPaused"),
+          symbol: "⏸",
+          label: "Paused",
+        };
       case "error":
         return { color: getColor("statusError"), symbol: "✗", label: "Error" };
       default:

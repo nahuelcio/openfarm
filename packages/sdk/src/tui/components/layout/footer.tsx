@@ -22,7 +22,10 @@ const DEFAULT_SHORTCUTS = [
   { key: "?", label: "help" },
 ];
 
-export function Footer({ shortcuts = DEFAULT_SHORTCUTS, message }: FooterProps) {
+export function Footer({
+  shortcuts = DEFAULT_SHORTCUTS,
+  message,
+}: FooterProps) {
   const { colors } = useTheme();
 
   return (

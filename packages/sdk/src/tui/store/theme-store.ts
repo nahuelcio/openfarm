@@ -269,7 +269,7 @@ const getInitialTheme = (): Theme => {
 
 const getInitialThemeName = (): string => {
   const envTheme = process.env.OPENFARM_THEME;
-  return (envTheme && BUILT_IN_THEMES[envTheme]) ? envTheme : "default";
+  return envTheme && BUILT_IN_THEMES[envTheme] ? envTheme : "default";
 };
 
 export const useThemeStore = create<ThemeState>((set, get) => ({
@@ -298,7 +298,8 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
 
 // === HELPER HOOK ===
 export const useTheme = () => {
-  const { currentTheme, themeName, setTheme, cycleTheme, getColor } = useThemeStore();
+  const { currentTheme, themeName, setTheme, cycleTheme, getColor } =
+    useThemeStore();
   return {
     theme: currentTheme,
     themeName,
