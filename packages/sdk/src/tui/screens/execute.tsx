@@ -11,6 +11,7 @@ import {
 } from "../utils/workflow-loader";
 
 const PROVIDERS = [
+  { id: "opencode", name: "OpenCode" },
   { id: "claude", name: "Claude Code" },
   { id: "aider", name: "Aider" },
   { id: "external-agent", name: "🔗 Connect External Agent" },
@@ -117,7 +118,9 @@ export function Execute() {
     // Use setImmediate to yield to the event loop FIRST
     // This ensures React has fully rendered and the UI is interactive
     const immediate = setImmediate(() => {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       // Load workflows from DB cache (fast) then sync YAML in background
       loadWorkflowsFromDatabase().then((dbWorkflows) => {
@@ -137,8 +140,12 @@ export function Execute() {
 
   // Lazy model loading - only load when user reaches the model step
   useEffect(() => {
-    if (step !== "model") return;
-    if (modelOptions.length > 0) return; // Already loaded
+    if (step !== "model") {
+      return;
+    }
+    if (modelOptions.length > 0) {
+      return; // Already loaded
+    }
 
     let mounted = true;
     setLoadingModels(true);

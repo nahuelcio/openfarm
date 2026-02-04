@@ -46,7 +46,10 @@ export abstract class BaseAgentPlugin implements AgentPlugin {
 
   protected abstract parseOutput(stdout: string): ChangesSummary | undefined;
 
-  protected getStdinInput(_prompt: string): string | undefined {
+  protected getStdinInput(
+    _prompt: string,
+    _options?: AgentExecuteOptions
+  ): string | undefined {
     return undefined;
   }
 
@@ -78,7 +81,7 @@ export abstract class BaseAgentPlugin implements AgentPlugin {
     const cwd = options?.cwd
       ? this.runtime.resolveWorkDir(options.cwd)
       : undefined;
-    const stdin = this.getStdinInput(prompt);
+    const stdin = this.getStdinInput(prompt, options);
 
     const child = this.spawnProcess({
       command,
@@ -300,6 +303,8 @@ export abstract class BaseAgentPlugin implements AgentPlugin {
 
     if (options.stdin && child.stdin) {
       child.stdin.write(options.stdin);
+      child.stdin.end();
+    } else if (child.stdin) {
       child.stdin.end();
     }
 

@@ -14,8 +14,7 @@ import type {
 // Stub RemoteClient implementation for now
 // In production, this would import from @openfarm/remote-server
 class StubRemoteClient implements IRemoteClient {
-  private config: { url: string; token?: string };
-  private handlers: RemoteClientHandlers;
+  private readonly handlers: RemoteClientHandlers;
   private connected = false;
 
   constructor(

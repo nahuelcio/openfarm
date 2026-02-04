@@ -31,8 +31,10 @@ export function useThemeColor(colorName: keyof ThemeColors): string {
 /**
  * Hook to get a specific style from the current theme.
  */
-export function useThemeStyle(styleName: keyof Theme["styles"]): TextStyle {
-  return useThemeStore((state) => state.currentTheme.styles[styleName]);
+export function useThemeStyle(styleName?: keyof Theme["styles"]): TextStyle {
+  return useThemeStore((state) =>
+    styleName ? state.currentTheme.styles[styleName] : {}
+  );
 }
 
 /**

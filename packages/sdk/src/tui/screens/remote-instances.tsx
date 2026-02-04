@@ -10,7 +10,7 @@ import { RemoteInstanceList } from "../components/remote-tabs";
 import { useRemoteStore } from "../store/remote-store";
 
 export function RemoteInstancesScreen() {
-  const { instances, addInstance, connect, disconnect } = useRemoteStore();
+  const { instances, addInstance } = useRemoteStore();
   const [showAddForm, setShowAddForm] = useState(false);
   const [newInstanceName, setNewInstanceName] = useState("");
   const [newInstanceUrl, setNewInstanceUrl] = useState("");

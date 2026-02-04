@@ -11,7 +11,7 @@ export async function runTUIApp(
   const useRemote = args.includes("--remote") || args.includes("--server");
 
   // Parse --theme flag
-  const themeIndex = args.findIndex((arg) => arg === "--theme");
+  const themeIndex = args.indexOf("--theme");
   const themeId =
     themeIndex >= 0 && args[themeIndex + 1] ? args[themeIndex + 1] : undefined;
 

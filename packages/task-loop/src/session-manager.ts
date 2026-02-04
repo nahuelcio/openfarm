@@ -238,7 +238,7 @@ export async function updateSessionStatus(
 export class SessionManager {
   private currentSession: TaskLoopSession | null = null;
 
-  constructor(private db: SQL) {}
+  constructor(private readonly db: SQL) {}
 
   /**
    * Create and save a new session

@@ -30,8 +30,12 @@ const STATUS_CONFIG: Record<
 };
 
 function formatDuration(ms: number | undefined): string {
-  if (!ms) return "";
-  if (ms < 1000) return `${ms}ms`;
+  if (!ms) {
+    return "";
+  }
+  if (ms < 1000) {
+    return `${ms}ms`;
+  }
   return `${(ms / 1000).toFixed(1)}s`;
 }
 
@@ -111,7 +115,9 @@ export function TraceTree({ height = 15, width = "50%" }: TraceTreeProps) {
 
   // Get flat list of visible nodes for keyboard navigation
   const visibleNodes = useMemo(() => {
-    if (!tree) return [];
+    if (!tree) {
+      return [];
+    }
 
     const result: TraceNode[] = [];
     const traverse = (node: TraceNode) => {
@@ -130,7 +136,9 @@ export function TraceTree({ height = 15, width = "50%" }: TraceTreeProps) {
 
   // Keyboard navigation
   useInput((input, key) => {
-    if (!tree) return;
+    if (!tree) {
+      return;
+    }
 
     // Toggle selected node
     if (input === " " || key.return) {

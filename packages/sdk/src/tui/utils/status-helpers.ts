@@ -35,7 +35,6 @@ export function getStatusColor(status: ExecutionStatus): string {
       return "gray";
     case "idle":
       return "gray";
-    case "pending":
     default:
       return "gray";
   }
@@ -61,7 +60,6 @@ export function getStatusIcon(status: ExecutionStatus): string {
       return "⊘";
     case "idle":
       return "○";
-    case "pending":
     default:
       return "○";
   }

@@ -98,7 +98,7 @@ describe("AgentToCodingEngineAdapter", () => {
     expect(result.ok).toBe(false);
   });
 
-  it("prefixes prompt for opencode", async () => {
+  it("passes prompt without opencode prefix", async () => {
     const agent = new StubAgent("opencode", {
       executionId: "1",
       status: "completed",
@@ -109,9 +109,6 @@ describe("AgentToCodingEngineAdapter", () => {
     const adapter = new AgentToCodingEngineAdapter(agent);
     await adapter.applyChanges("do it", "/repo");
 
-    expect(agent.lastPrompt).toContain(
-      "IMPORTANT: Work ONLY in this repository"
-    );
-    expect(agent.lastPrompt).toContain("do it");
+    expect(agent.lastPrompt).toBe("do it");
   });
 });

@@ -7,7 +7,7 @@
 
 import { logger } from "@openfarm/logger";
 import type { TaskLoopSession } from "@openfarm/task-loop";
-import WebSocket from "ws";
+import type WebSocket from "ws";
 import type {
   ClientMessage,
   ConnectionState,
@@ -41,9 +41,9 @@ import type {
  */
 export class RemoteClient {
   private ws?: WebSocket;
-  private config: Required<RemoteClientConfig>;
-  private state: ConnectionState;
-  private handlers: RemoteClientHandlers;
+  private readonly config: Required<RemoteClientConfig>;
+  private readonly state: ConnectionState;
+  private readonly handlers: RemoteClientHandlers;
   private reconnectTimer?: ReturnType<typeof setTimeout>;
   private pingInterval?: ReturnType<typeof setInterval>;
   private pendingMessages: ClientMessage[] = [];
@@ -370,5 +370,3 @@ export class RemoteClient {
     }
   }
 }
-
-export { WebSocket };

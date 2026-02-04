@@ -31,10 +31,7 @@ export class AgentToCodingEngineAdapter implements CodingEngine {
     repoPath: string,
     contextFiles: string[] = []
   ): Promise<Result<ChangesSummary>> {
-    const prompt =
-      this.agent.meta.id === "opencode"
-        ? `IMPORTANT: Work ONLY in this repository: ${repoPath}\n\n${instruction}`
-        : instruction;
+    const prompt = instruction;
 
     const executeOptions: AgentExecuteOptions = {
       cwd: repoPath,

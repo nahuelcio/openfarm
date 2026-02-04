@@ -147,21 +147,26 @@ export const useLogStore = create<LogState>((set, get) => ({
     const { entries, filter } = get();
     return entries.filter((entry) => {
       // Filter by level
-      if (!filter.levels.includes(entry.level)) return false;
+      if (!filter.levels.includes(entry.level)) {
+        return false;
+      }
 
       // Filter by component
       if (
         filter.components.length > 0 &&
         !filter.components.includes(entry.component)
-      )
+      ) {
         return false;
+      }
 
       // Filter by search
       if (filter.searchQuery) {
         const query = filter.searchQuery.toLowerCase();
         const matchesMessage = entry.message.toLowerCase().includes(query);
         const matchesComponent = entry.component.toLowerCase().includes(query);
-        if (!(matchesMessage || matchesComponent)) return false;
+        if (!(matchesMessage || matchesComponent)) {
+          return false;
+        }
       }
 
       return true;

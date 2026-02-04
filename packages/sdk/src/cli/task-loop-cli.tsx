@@ -8,7 +8,7 @@
 
 import type { TaskLoopEvent } from "@openfarm/task-loop";
 import { Box, render, Text } from "ink";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { OpenFarmConfig } from "../types";
 
 interface TaskLoopCliProps {
@@ -27,51 +27,50 @@ function TaskLoopCLI({ config, tasks }: TaskLoopCliProps) {
     failed: 0,
   });
   const [logs, setLogs] = useState<string[]>([]);
-  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [_sessionId, setSessionId] = useState<string | null>(null);
 
-  useEffect(() => {
-    startTaskLoop();
-  }, []);
-
-  const addLog = (message: string) => {
+  const addLog = useCallback((message: string) => {
     setLogs((prev) => [
       ...prev.slice(-100),
       `[${new Date().toLocaleTimeString()}] ${message}`,
     ]);
-  };
+  }, []);
 
-  const handleEvent = (event: TaskLoopEvent) => {
-    switch (event.type) {
-      case "session.started":
-        setSessionId(event.sessionId);
-        addLog(`Session started: ${event.sessionId.slice(0, 8)}`);
-        break;
-      case "session.completed":
-        setStatus("completed");
-        addLog("Session completed!");
-        break;
-      case "session.failed":
-        setStatus("error");
-        addLog(`Session failed: ${event.data}`);
-        break;
-      case "session.paused":
-        setStatus("paused");
-        addLog("Session paused");
-        break;
-      case "task.started":
-        setCurrentTask(event.taskId || null);
-        addLog(`Task: ${event.taskId?.slice(0, 30)}...`);
-        break;
-      case "task.completed":
-        setProgress((p) => ({ ...p, completed: p.completed + 1 }));
-        break;
-      case "task.failed":
-        setProgress((p) => ({ ...p, failed: p.failed + 1 }));
-        break;
-    }
-  };
+  const handleEvent = useCallback(
+    (event: TaskLoopEvent) => {
+      switch (event.type) {
+        case "session.started":
+          setSessionId(event.sessionId);
+          addLog(`Session started: ${event.sessionId.slice(0, 8)}`);
+          break;
+        case "session.completed":
+          setStatus("completed");
+          addLog("Session completed!");
+          break;
+        case "session.failed":
+          setStatus("error");
+          addLog(`Session failed: ${event.data}`);
+          break;
+        case "session.paused":
+          setStatus("paused");
+          addLog("Session paused");
+          break;
+        case "task.started":
+          setCurrentTask(event.taskId || null);
+          addLog(`Task: ${event.taskId?.slice(0, 30)}...`);
+          break;
+        case "task.completed":
+          setProgress((p) => ({ ...p, completed: p.completed + 1 }));
+          break;
+        case "task.failed":
+          setProgress((p) => ({ ...p, failed: p.failed + 1 }));
+          break;
+      }
+    },
+    [addLog]
+  );
 
-  const startTaskLoop = async () => {
+  const startTaskLoop = useCallback(async () => {
     try {
       setStatus("running");
       addLog("Starting Task Loop...");
@@ -91,7 +90,11 @@ function TaskLoopCLI({ config, tasks }: TaskLoopCliProps) {
       setStatus("error");
       addLog(`Fatal error: ${error}`);
     }
-  };
+  }, [config, addLog, handleEvent]);
+
+  useEffect(() => {
+    startTaskLoop();
+  }, [startTaskLoop]);
 
   return (
     <Box flexDirection="column" padding={1}>

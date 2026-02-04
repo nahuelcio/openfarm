@@ -40,7 +40,7 @@ export function TabBar({ tabs, activeTab, onTabChange }: TabBarProps) {
     }
 
     const num = Number.parseInt(input, 10);
-    if (!isNaN(num) && num >= 1 && num <= tabs.length) {
+    if (!Number.isNaN(num) && num >= 1 && num <= tabs.length) {
       onTabChange(tabs[num - 1].id);
     }
   });

@@ -42,7 +42,10 @@ export class GenericCliAgent extends BaseAgentPlugin {
     return [...this.args];
   }
 
-  protected getStdinInput(prompt: string): string | undefined {
+  protected getStdinInput(
+    prompt: string,
+    _options?: AgentExecuteOptions
+  ): string | undefined {
     return prompt;
   }
 

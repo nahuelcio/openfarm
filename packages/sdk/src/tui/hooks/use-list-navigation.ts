@@ -49,7 +49,9 @@ export function useListNavigation(
 
   const setSelectedIndex = useCallback(
     (index: number) => {
-      if (itemCount === 0) return;
+      if (itemCount === 0) {
+        return;
+      }
       const clampedIndex = Math.max(0, Math.min(itemCount - 1, index));
       setSelectedIndexState(clampedIndex);
     },
@@ -57,7 +59,9 @@ export function useListNavigation(
   );
 
   const goToNext = useCallback(() => {
-    if (itemCount === 0) return;
+    if (itemCount === 0) {
+      return;
+    }
 
     setSelectedIndexState((prev) => {
       if (prev >= itemCount - 1) {
@@ -68,7 +72,9 @@ export function useListNavigation(
   }, [itemCount, wrap]);
 
   const goToPrevious = useCallback(() => {
-    if (itemCount === 0) return;
+    if (itemCount === 0) {
+      return;
+    }
 
     setSelectedIndexState((prev) => {
       if (prev <= 0) {
@@ -79,7 +85,9 @@ export function useListNavigation(
   }, [itemCount, wrap]);
 
   useInput((input, key) => {
-    if (!isActive || itemCount === 0) return;
+    if (!isActive || itemCount === 0) {
+      return;
+    }
 
     if (key.upArrow) {
       goToPrevious();

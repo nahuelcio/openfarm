@@ -57,7 +57,9 @@ const defaultTaskExecutor: TaskExecutor = async (
 
 const consoleLogger: TaskLoopLogger = {
   debug: (msg: string) => {
-    if (process.env.DEBUG) console.log(`\x1b[90m[DEBUG] ${msg}\x1b[0m`);
+    if (process.env.DEBUG) {
+      console.log(`\x1b[90m[DEBUG] ${msg}\x1b[0m`);
+    }
   },
   info: (msg: string) => console.log(`\x1b[36m[INFO]\x1b[0m ${msg}`),
   warn: (msg: string) => console.log(`\x1b[33m[WARN]\x1b[0m ${msg}`),
@@ -65,8 +67,12 @@ const consoleLogger: TaskLoopLogger = {
 };
 
 function formatDuration(ms: number): string {
-  if (ms < 1000) return `${ms}ms`;
-  if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`;
+  if (ms < 1000) {
+    return `${ms}ms`;
+  }
+  if (ms < 60_000) {
+    return `${(ms / 1000).toFixed(1)}s`;
+  }
   const mins = Math.floor(ms / 60_000);
   const secs = ((ms % 60_000) / 1000).toFixed(0);
   return `${mins}m ${secs}s`;
@@ -178,17 +184,23 @@ function parseArgs(args: string[]): {
     } else if (arg === "--retries" || arg === "-r") {
       options.retries = Number.parseInt(requireValue(arg, i), 10);
       i++;
-    } else if (arg === "--dry-run" || arg === "-n") options.dryRun = true;
-    else if (arg === "--auto-commit") options.autoCommit = true;
-    else if (arg === "--create-pr") options.createPR = true;
-    else if (arg === "--stop-on-failure") options.stopOnFailure = true;
-    else if (arg === "--workspace") {
+    } else if (arg === "--dry-run" || arg === "-n") {
+      options.dryRun = true;
+    } else if (arg === "--auto-commit") {
+      options.autoCommit = true;
+    } else if (arg === "--create-pr") {
+      options.createPR = true;
+    } else if (arg === "--stop-on-failure") {
+      options.stopOnFailure = true;
+    } else if (arg === "--workspace") {
       options.workspace = requireValue(arg, i);
       i++;
     } else if (arg === "--help" || arg === "-h") {
       showHelp();
       process.exit(0);
-    } else if (!arg.startsWith("-")) positional.push(arg);
+    } else if (!arg.startsWith("-")) {
+      positional.push(arg);
+    }
   }
 
   return {

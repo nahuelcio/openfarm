@@ -51,14 +51,22 @@ export function AppV2() {
   const { screen, setScreen, activeTab, setActiveTab, currentExecution } =
     useStore();
   const [activeRemoteTab, setActiveRemoteTab] = useState("local");
-  const [showAddRemote, setShowAddRemote] = useState(false);
+  const [_showAddRemote, setShowAddRemote] = useState(false);
 
   // Determine status based on current execution
   const getStatus = () => {
-    if (!currentExecution) return "idle";
-    if (currentExecution.status === "running") return "running";
-    if (currentExecution.status === "cancelled") return "paused";
-    if (currentExecution.status === "failed") return "error";
+    if (!currentExecution) {
+      return "idle";
+    }
+    if (currentExecution.status === "running") {
+      return "running";
+    }
+    if (currentExecution.status === "cancelled") {
+      return "paused";
+    }
+    if (currentExecution.status === "failed") {
+      return "error";
+    }
     return "idle";
   };
 

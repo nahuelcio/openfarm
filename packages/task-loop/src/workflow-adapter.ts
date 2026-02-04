@@ -134,7 +134,7 @@ export async function executeGitSetup(
           }
 
           const branchName = pattern.replace(
-            "${Date.now()}",
+            /\$\{Date\.now()\}/,
             Date.now().toString()
           );
 
@@ -274,7 +274,6 @@ export async function cleanupGitSetup(
 ): Promise<void> {
   try {
     const { execSync } = await import("node:child_process");
-    const { rmSync } = await import("node:fs");
     const { removeWorktree } = await import("@openfarm/git-worktree");
 
     // Get git root

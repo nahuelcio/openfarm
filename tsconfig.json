@@ -3,32 +3,5 @@
   "compilerOptions": {
     "noEmit": true
   },
-  "references": [
-    { "path": "./packages/agent-runner" },
-    { "path": "./packages/analysis" },
-    { "path": "./packages/azure-adapter" },
-    { "path": "./packages/agent-system" },
-    { "path": "./packages/config" },
-    { "path": "./packages/core" },
-    { "path": "./packages/context" },
-    { "path": "./packages/execution-logger" },
-    { "path": "./packages/git-adapter" },
-    { "path": "./packages/git-diff" },
-    { "path": "./packages/git-worktree" },
-    { "path": "./packages/github-adapter" },
-    { "path": "./packages/logger" },
-    { "path": "./packages/operations" },
-    { "path": "./packages/provider-aider" },
-    { "path": "./packages/provider-claude" },
-    { "path": "./packages/queues" },
-    { "path": "./packages/result" },
-    { "path": "./packages/runner-utils" },
-    { "path": "./packages/sdk" },
-    { "path": "./packages/types" },
-    { "path": "./packages/utils" },
-    { "path": "./packages/vault-adapter" },
-    { "path": "./packages/workflow-engine" },
-    { "path": "./packages/workflow-executor" }
-  ],
   "exclude": ["node_modules", "dist", "build", ".next"]
 }

@@ -70,4 +70,16 @@ describe("AgentRegistry", () => {
       "Agent plugin 'mock-agent' is already registered"
     );
   });
+
+  it("creates and initializes agents via createAndInit", async () => {
+    const registry = new AgentRegistry();
+    registry.registerBuiltin(new MockAgentFactory());
+
+    const instance = await registry.createAndInit({
+      id: "mock-agent",
+      config: { foo: "bar" },
+    });
+
+    expect(instance.meta.id).toBe("mock-agent");
+  });
 });

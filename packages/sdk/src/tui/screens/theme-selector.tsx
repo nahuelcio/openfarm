@@ -98,7 +98,9 @@ export function ThemeSelector() {
       <Box flexDirection="column" gap={0} paddingLeft={2}>
         {(() => {
           const previewTheme = themeList[selectedIndex];
-          if (!previewTheme) return null;
+          if (!previewTheme) {
+            return null;
+          }
 
           return (
             <>

@@ -41,7 +41,7 @@ export function toTaskLoopTask(
  * Selects tasks based on the configured strategy
  */
 export class TaskSelector {
-  constructor(private config: TaskSelectorConfig) {}
+  constructor(private readonly config: TaskSelectorConfig) {}
 
   /**
    * Select and order tasks from the available work items

@@ -115,12 +115,14 @@ export const useTracingStore = create<TracingState>((set, get) => ({
     set({ tree, viewState: { expanded: new Set(), followNew: true } });
   },
 
-  startTrace: (parentId, name, icon = "🔧", input) => {
+  startTrace: (parentId, name, icon, input) => {
     const id = generateId();
     const node = createNode(id, parentId, name, icon, input);
 
     set((state) => {
-      if (!state.tree) return state;
+      if (!state.tree) {
+        return state;
+      }
 
       const tree = { ...state.tree };
       tree.nodes = new Map(tree.nodes);
@@ -153,10 +155,14 @@ export const useTracingStore = create<TracingState>((set, get) => ({
 
   completeTrace: (id, output) => {
     set((state) => {
-      if (!state.tree) return state;
+      if (!state.tree) {
+        return state;
+      }
 
       const node = state.tree.nodes.get(id);
-      if (!node) return state;
+      if (!node) {
+        return state;
+      }
 
       const completedAt = new Date().toISOString();
       const durationMs =
@@ -188,10 +194,14 @@ export const useTracingStore = create<TracingState>((set, get) => ({
 
   failTrace: (id, error) => {
     set((state) => {
-      if (!state.tree) return state;
+      if (!state.tree) {
+        return state;
+      }
 
       const node = state.tree.nodes.get(id);
-      if (!node) return state;
+      if (!node) {
+        return state;
+      }
 
       const completedAt = new Date().toISOString();
       const durationMs =
@@ -223,10 +233,14 @@ export const useTracingStore = create<TracingState>((set, get) => ({
 
   updateTrace: (id, updates) => {
     set((state) => {
-      if (!state.tree) return state;
+      if (!state.tree) {
+        return state;
+      }
 
       const node = state.tree.nodes.get(id);
-      if (!node) return state;
+      if (!node) {
+        return state;
+      }
 
       const updatedNode = { ...node, ...updates };
 
@@ -270,7 +284,9 @@ export const useTracingStore = create<TracingState>((set, get) => ({
 
   expandAll: () => {
     const { tree } = get();
-    if (!tree) return;
+    if (!tree) {
+      return;
+    }
 
     const allIds = Array.from(tree.nodes.keys());
     set((state) => ({

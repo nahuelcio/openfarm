@@ -80,9 +80,9 @@ export const PROMPT_TEMPLATES: Record<string, string> = {
  * Builds prompts from WorkItem data
  */
 export class PromptBuilder {
-  private template: string;
+  private readonly template: string;
 
-  constructor(private config: PromptBuilderConfig = {}) {
+  constructor(private readonly config: PromptBuilderConfig = {}) {
     this.template = this.resolveTemplate();
   }
 
@@ -160,7 +160,9 @@ export class PromptBuilder {
     workItem: WorkItem
   ): string {
     const sanitize = (text?: string): string => {
-      if (!text) return "";
+      if (!text) {
+        return "";
+      }
       // Remove HTML tags
       return text.replace(/<[^>]*>/g, "").trim();
     };

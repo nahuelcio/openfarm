@@ -23,6 +23,86 @@ export class DockerRuntime implements ExecutionRuntime {
     }
   }
 
+  async findContainer(namePatterns: string[]): Promise<string | null> {
+    for (const name of namePatterns) {
+      try {
+        await this.exec("docker", ["inspect", name]);
+        return name;
+      } catch {
+        // continue
+      }
+    }
+
+    try {
+      const child = spawn(
+        "docker",
+        [
+          "ps",
+          "--filter",
+          `name=${namePatterns[0] || ""}`,
+          "--format",
+          "{{.Names}}",
+        ],
+        { stdio: ["ignore", "pipe", "ignore"] }
+      );
+      const output = await new Promise<string>((resolve) => {
+        let out = "";
+        child.stdout?.on("data", (data: Buffer) => {
+          out += data.toString();
+        });
+        child.on("close", () => resolve(out.trim()));
+      });
+      const first = output.split("\n")[0];
+      if (first) {
+        return first;
+      }
+    } catch {
+      // ignore
+    }
+
+    return null;
+  }
+
+  async detectNetwork(): Promise<string | null> {
+    if (this.config.network) {
+      return this.config.network;
+    }
+    if (process.env.CLAUDE_CODE_NETWORK) {
+      return process.env.CLAUDE_CODE_NETWORK;
+    }
+
+    const container = this.config.containerName;
+    if (container) {
+      try {
+        const child = spawn(
+          "docker",
+          [
+            "inspect",
+            container,
+            "--format",
+            "{{range $key, $value := .NetworkSettings.Networks}}{{$key}}{{end}}",
+          ],
+          { stdio: ["ignore", "pipe", "ignore"] }
+        );
+        const output = await new Promise<string>((resolve) => {
+          let out = "";
+          child.stdout?.on("data", (data: Buffer) => {
+            out += data.toString();
+          });
+          child.on("close", () => resolve(out.trim()));
+        });
+        const first = output.split(/\s+/)[0];
+        if (first) {
+          return first;
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    return null;
+  }
+
   resolveWorkDir(repoPath: string): string {
     return `/workspace/${basename(repoPath)}`;
   }

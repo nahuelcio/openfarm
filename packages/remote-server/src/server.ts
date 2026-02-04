@@ -5,13 +5,13 @@
  * Allows controlling task loops from a central TUI.
  */
 
+import { randomUUID } from "node:crypto";
+import { hostname, platform } from "node:os";
 import { logger } from "@openfarm/logger";
 import type {
   TaskLoopOrchestrator,
   TaskLoopSession,
 } from "@openfarm/task-loop";
-import { randomUUID } from "crypto";
-import { hostname, platform } from "os";
 import { type WebSocket, WebSocketServer } from "ws";
 import packageJson from "../package.json";
 import type {
@@ -47,8 +47,8 @@ interface ClientConnection {
  */
 export class RemoteServer {
   private wss?: WebSocketServer;
-  private clients = new Map<WebSocket, ClientConnection>();
-  private config: Required<RemoteServerConfig>;
+  private readonly clients = new Map<WebSocket, ClientConnection>();
+  private readonly config: Required<RemoteServerConfig>;
   private orchestrator?: TaskLoopOrchestrator;
   private heartbeatInterval?: ReturnType<typeof setInterval>;
 
@@ -438,5 +438,3 @@ export class RemoteServer {
     return this.wss !== undefined && this.wss.address() !== null;
   }
 }
-
-export { WebSocketServer };

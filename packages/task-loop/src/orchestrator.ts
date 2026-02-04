@@ -37,16 +37,16 @@ const defaultLogger: TaskLoopLogger = {
  */
 export class TaskLoopOrchestrator {
   private sessionManager: SessionManager | null = null;
-  private selector: TaskSelector;
-  private promptBuilder: PromptBuilder;
-  private completionDetector: CompletionDetector;
+  private readonly selector: TaskSelector;
+  private readonly promptBuilder: PromptBuilder;
+  private readonly completionDetector: CompletionDetector;
   private logger: TaskLoopLogger;
   private abortController: AbortController | null = null;
   private isRunning = false;
   private stopRequested = false;
   private stopReason: string | null = null;
 
-  constructor(private config: TaskLoopConfig) {
+  constructor(private readonly config: TaskLoopConfig) {
     this.logger = defaultLogger;
     this.selector = new TaskSelector({
       strategy: "priority",
@@ -304,7 +304,9 @@ export class TaskLoopOrchestrator {
       throw new Error("Session manager not initialized");
     }
     const taskIndex = session.tasks.findIndex((t) => t.id === task.id);
-    if (taskIndex === -1) return;
+    if (taskIndex === -1) {
+      return;
+    }
 
     // Update task status
     task.loopStatus = "running";
@@ -518,7 +520,7 @@ export class TaskLoopOrchestrator {
     event: TaskLoopEvent
   ): Promise<void> {
     if (options.onEvent) {
-      void Promise.resolve()
+      Promise.resolve()
         .then(() => options.onEvent?.(event))
         .catch((error) => {
           this.logger.error(`Event handler error: ${error}`);

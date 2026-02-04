@@ -31,6 +31,34 @@ class TestAgent extends BaseAgentPlugin {
   }
 }
 
+class StdinCloseAgent extends BaseAgentPlugin {
+  readonly meta: AgentPluginMeta = {
+    id: "stdin-close-agent",
+    name: "Stdin Close Agent",
+    description: "Agent that waits for stdin end",
+    version: "0.0.1",
+    defaultCommand: "node",
+    supportsStreaming: true,
+    supportsInterrupt: true,
+    supportsFileContext: false,
+    supportsSubagentTracing: false,
+  };
+
+  protected buildArgs(
+    _prompt: string,
+    _options?: AgentExecuteOptions
+  ): string[] {
+    return [
+      "-e",
+      "process.stdin.on('end', () => { console.log('done'); }); process.stdin.resume();",
+    ];
+  }
+
+  protected parseOutput(stdout: string): ChangesSummary | undefined {
+    return { summary: stdout.trim() };
+  }
+}
+
 describe("BaseAgentPlugin", () => {
   it("executes and captures stdout", async () => {
     const agent = new TestAgent();
@@ -49,5 +77,14 @@ describe("BaseAgentPlugin", () => {
 
     const result = await handle.promise;
     expect(result.status).toBe("interrupted");
+  });
+
+  it("closes stdin when no input is provided", async () => {
+    const agent = new StdinCloseAgent();
+    const handle = agent.execute("ignored", { timeout: 1000 });
+    const result = await handle.promise;
+
+    expect(result.status).toBe("completed");
+    expect(result.stdout.trim()).toBe("done");
   });
 });

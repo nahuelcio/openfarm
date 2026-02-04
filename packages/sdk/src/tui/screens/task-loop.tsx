@@ -9,7 +9,7 @@
 
 import type { TaskLoopEvent } from "@openfarm/task-loop";
 import { Box, Text, useInput } from "ink";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { RichLogView } from "../components/rich-log-view";
 import { useStore } from "../store";
 import { type LogLevel, useLogStore } from "../store/log-store";
@@ -39,142 +39,138 @@ export function TaskLoopScreen() {
   const [showTracing, setShowTracing] = useState(false);
   const [showTaskList, setShowTaskList] = useState(true);
 
-  useEffect(() => {
-    clearEntries();
-    addEntry({
-      level: "info",
-      component: "task-loop",
-      message: "Initializing Task Loop...",
-    });
-    startTaskLoop();
-  }, []);
+  const log = useCallback(
+    (
+      level: LogLevel,
+      component: string,
+      message: string,
+      metadata?: Record<string, unknown>
+    ) => {
+      addEntry({ level, component, message, metadata });
+    },
+    [addEntry]
+  );
 
-  const log = (
-    level: LogLevel,
-    component: string,
-    message: string,
-    metadata?: Record<string, unknown>
-  ) => {
-    addEntry({ level, component, message, metadata });
-  };
-
-  const handleEvent = (event: TaskLoopEvent) => {
-    switch (event.type) {
-      case "session.started":
-        setSessionId(event.sessionId);
-        setStatus("running");
-        log(
-          "info",
-          "task-loop",
-          `Session started: ${event.sessionId.slice(0, 8)}`,
-          {
-            sessionId: event.sessionId,
-          }
-        );
-        break;
-
-      case "session.completed":
-        setStatus("completed");
-        log("info", "task-loop", "✨ All tasks completed!", {
-          completed: progress.completed,
-          failed: progress.failed,
-          skipped: progress.skipped,
-        });
-        break;
-
-      case "session.failed":
-        setStatus("error");
-        log("error", "task-loop", `Session failed: ${event.data}`, {
-          error: event.data,
-        });
-        break;
-
-      case "session.paused":
-        setStatus("paused");
-        log("warn", "task-loop", "Session paused by user");
-        break;
-
-      case "task.selected":
-        if (event.taskId && event.data) {
-          const taskData = event.data as { description?: string };
-          setTasks((prev) => [
-            ...prev,
-            {
-              id: event.taskId!,
-              description: taskData.description || event.taskId!,
-              status: "pending",
-            },
-          ]);
-          setProgress((p) => ({ ...p, total: p.total + 1 }));
+  const handleEvent = useCallback(
+    (event: TaskLoopEvent) => {
+      switch (event.type) {
+        case "session.started":
+          setSessionId(event.sessionId);
+          setStatus("running");
           log(
-            "debug",
+            "info",
             "task-loop",
-            `Task selected: ${taskData.description || event.taskId}`,
+            `Session started: ${event.sessionId.slice(0, 8)}`,
             {
-              taskId: event.taskId,
+              sessionId: event.sessionId,
             }
           );
-        }
-        break;
+          break;
 
-      case "task.started":
-        setCurrentTaskId(event.taskId || null);
-        setTasks((prev) =>
-          prev.map((t) =>
-            t.id === event.taskId ? { ...t, status: "running" } : t
-          )
-        );
-        log("info", "agent", `▶ Starting: ${event.taskId?.slice(0, 40)}`, {
-          taskId: event.taskId,
-        });
-        break;
+        case "session.completed":
+          setStatus("completed");
+          log("info", "task-loop", "✨ All tasks completed!", {
+            completed: progress.completed,
+            failed: progress.failed,
+            skipped: progress.skipped,
+          });
+          break;
 
-      case "task.completed":
-        setTasks((prev) =>
-          prev.map((t) =>
-            t.id === event.taskId ? { ...t, status: "completed" } : t
-          )
-        );
-        setProgress((p) => ({ ...p, completed: p.completed + 1 }));
-        setCurrentTaskId(null);
-        log("info", "agent", `✓ Completed: ${event.taskId?.slice(0, 40)}`, {
-          taskId: event.taskId,
-        });
-        break;
+        case "session.failed":
+          setStatus("error");
+          log("error", "task-loop", `Session failed: ${event.data}`, {
+            error: event.data,
+          });
+          break;
 
-      case "task.failed":
-        setTasks((prev) =>
-          prev.map((t) =>
-            t.id === event.taskId ? { ...t, status: "failed" } : t
-          )
-        );
-        setProgress((p) => ({ ...p, failed: p.failed + 1 }));
-        setCurrentTaskId(null);
-        log("error", "agent", `✗ Failed: ${event.taskId?.slice(0, 40)}`, {
-          taskId: event.taskId,
-          error: event.data,
-        });
-        break;
+        case "session.paused":
+          setStatus("paused");
+          log("warn", "task-loop", "Session paused by user");
+          break;
 
-      case "task.skipped":
-        setTasks((prev) =>
-          prev.map((t) =>
-            t.id === event.taskId ? { ...t, status: "skipped" } : t
-          )
-        );
-        setProgress((p) => ({ ...p, skipped: p.skipped + 1 }));
-        log("warn", "agent", `⏭ Skipped: ${event.taskId?.slice(0, 40)}`, {
-          taskId: event.taskId,
-        });
-        break;
+        case "task.selected":
+          if (event.taskId && event.data) {
+            const taskData = event.data as { description?: string };
+            setTasks((prev) => [
+              ...prev,
+              {
+                id: event.taskId!,
+                description: taskData.description || event.taskId!,
+                status: "pending",
+              },
+            ]);
+            setProgress((p) => ({ ...p, total: p.total + 1 }));
+            log(
+              "debug",
+              "task-loop",
+              `Task selected: ${taskData.description || event.taskId}`,
+              {
+                taskId: event.taskId,
+              }
+            );
+          }
+          break;
 
-      case "log":
-        log("info", "system", String(event.data));
-        break;
-    }
-  };
+        case "task.started":
+          setCurrentTaskId(event.taskId || null);
+          setTasks((prev) =>
+            prev.map((t) =>
+              t.id === event.taskId ? { ...t, status: "running" } : t
+            )
+          );
+          log("info", "agent", `▶ Starting: ${event.taskId?.slice(0, 40)}`, {
+            taskId: event.taskId,
+          });
+          break;
 
-  const startTaskLoop = async () => {
+        case "task.completed":
+          setTasks((prev) =>
+            prev.map((t) =>
+              t.id === event.taskId ? { ...t, status: "completed" } : t
+            )
+          );
+          setProgress((p) => ({ ...p, completed: p.completed + 1 }));
+          setCurrentTaskId(null);
+          log("info", "agent", `✓ Completed: ${event.taskId?.slice(0, 40)}`, {
+            taskId: event.taskId,
+          });
+          break;
+
+        case "task.failed":
+          setTasks((prev) =>
+            prev.map((t) =>
+              t.id === event.taskId ? { ...t, status: "failed" } : t
+            )
+          );
+          setProgress((p) => ({ ...p, failed: p.failed + 1 }));
+          setCurrentTaskId(null);
+          log("error", "agent", `✗ Failed: ${event.taskId?.slice(0, 40)}`, {
+            taskId: event.taskId,
+            error: event.data,
+          });
+          break;
+
+        case "task.skipped":
+          setTasks((prev) =>
+            prev.map((t) =>
+              t.id === event.taskId ? { ...t, status: "skipped" } : t
+            )
+          );
+          setProgress((p) => ({ ...p, skipped: p.skipped + 1 }));
+          log("warn", "agent", `⏭ Skipped: ${event.taskId?.slice(0, 40)}`, {
+            taskId: event.taskId,
+          });
+          break;
+
+        case "log":
+          log("info", "system", String(event.data));
+          break;
+      }
+    },
+    [log, progress]
+  );
+
+  const startTaskLoop = useCallback(async () => {
     try {
       setStatus("idle");
       log("info", "task-loop", `Provider: ${provider || "external-agent"}`);
@@ -196,7 +192,17 @@ export function TaskLoopScreen() {
         error: String(error),
       });
     }
-  };
+  }, [provider, model, workspace, handleEvent, log]);
+
+  useEffect(() => {
+    clearEntries();
+    addEntry({
+      level: "info",
+      component: "task-loop",
+      message: "Initializing Task Loop...",
+    });
+    startTaskLoop();
+  }, [addEntry, clearEntries, startTaskLoop]);
 
   useInput((input, key) => {
     if (key.escape || input === "q") {

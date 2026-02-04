@@ -28,7 +28,7 @@ export class AgentRegistry {
     return AgentRegistry.instance;
   }
 
-  async getInstance(config: AgentPluginConfig): Promise<AgentPlugin> {
+  async createAndInit(config: AgentPluginConfig): Promise<AgentPlugin> {
     const entry = this.plugins.get(config.id);
     if (!entry) {
       throw new Error(`Agent plugin '${config.id}' not found`);

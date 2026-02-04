@@ -252,7 +252,7 @@ export class ExternalAgentProvider {
       const agentName = options.agentName || cli;
 
       // Create the external agent coding engine with output parsing
-      const engine = createCodingEngine({
+      const engine = await createCodingEngine({
         provider: "external-agent",
         cli,
         model: options.model,

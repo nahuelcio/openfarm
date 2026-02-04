@@ -6,7 +6,7 @@
  */
 
 import { Box, render, Text } from "ink";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { OpenFarmConfig } from "../types";
 
 interface ClientInfo {
@@ -24,22 +24,18 @@ function RemoteServerCLI({ port, token }: RemoteServerCliProps) {
   const [status, setStatus] = useState<"starting" | "running" | "error">(
     "starting"
   );
-  const [clients, setClients] = useState<ClientInfo[]>([]);
+  const [clients, _setClients] = useState<ClientInfo[]>([]);
   const [logs, setLogs] = useState<string[]>([]);
-  const clientsRef = useRef<Map<string, ClientInfo>>(new Map());
+  const _clientsRef = useRef<Map<string, ClientInfo>>(new Map());
 
-  useEffect(() => {
-    startServer();
-  }, []);
-
-  const addLog = (message: string) => {
+  const addLog = useCallback((message: string) => {
     setLogs((prev) => [
       ...prev.slice(-50),
       `[${new Date().toLocaleTimeString()}] ${message}`,
     ]);
-  };
+  }, []);
 
-  const startServer = async () => {
+  const startServer = useCallback(async () => {
     try {
       addLog(`🚀 Starting Remote Server on port ${port}...`);
 
@@ -58,7 +54,11 @@ function RemoteServerCLI({ port, token }: RemoteServerCliProps) {
       setStatus("error");
       addLog(`💥 Failed to start: ${error}`);
     }
-  };
+  }, [port, token, addLog]);
+
+  useEffect(() => {
+    startServer();
+  }, [startServer]);
 
   return (
     <Box flexDirection="column" padding={1}>
@@ -103,7 +103,8 @@ export async function runRemoteServerCLI(
   _config: OpenFarmConfig
 ): Promise<void> {
   const port = Number.parseInt(
-    args.find((a) => a.startsWith("--port="))?.split("=")[1] || "8080"
+    args.find((a) => a.startsWith("--port="))?.split("=")[1] || "8080",
+    10
   );
   const token =
     args.find((a) => a.startsWith("--token="))?.split("=")[1] ||

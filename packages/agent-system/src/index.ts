@@ -1,4 +1,6 @@
 export {
+  AiderAgent,
+  AiderAgentFactory,
   ClaudeCodeAgent,
   ClaudeCodeAgentFactory,
   GenericCliAgent,
@@ -29,6 +31,12 @@ export {
   createAgent,
   createCodingEngine,
 } from "./factory";
+export {
+  AgentFallbackManager,
+  type FallbackConfig,
+  RateLimitDetector,
+  type RateLimitResult,
+} from "./resilience";
 export type {
   ExecutionRuntime,
   ExecutionRuntimeConfig,

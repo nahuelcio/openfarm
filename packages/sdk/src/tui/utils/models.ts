@@ -28,6 +28,13 @@ const CLI_MODELS: Record<string, string[]> = {
     "deepseek/deepseek-coder",
   ],
   codex: ["gpt-4o", "gpt-4o-mini", "o1-preview", "o1-mini"],
+  opencode: [
+    "opencode/gpt-5-nano",
+    "opencode/grok-code-fast-1",
+    "gpt-5-mini",
+    "gpt-4o",
+    "gpt-4o-mini",
+  ],
 };
 
 const PROVIDER_FALLBACK_MODELS: Record<string, string[]> = {
@@ -54,6 +61,15 @@ const PROVIDER_FALLBACK_MODELS: Record<string, string[]> = {
     "gpt-3.5-turbo",
     "o1-preview",
     "o1-mini",
+  ],
+  opencode: [
+    "opencode/gpt-5-nano",
+    "opencode/grok-code-fast-1",
+    "gpt-5-mini",
+    "gpt-4o",
+    "gpt-4o-mini",
+    "zai/glm-4.7",
+    "zai/glm-4-flash",
   ],
 };
 
@@ -186,7 +202,9 @@ function parseCliOutput(output: string): string[] {
 
   for (const line of output.split("\n")) {
     const trimmed = line.trim();
-    if (!trimmed) continue;
+    if (!trimmed) {
+      continue;
+    }
 
     // Skip headers and common non-model lines
     if (
@@ -259,8 +277,8 @@ export function preloadModels(provider: string, cli?: string): void {
  * Call this on app startup to warm the cache.
  */
 export function preloadAllCommonModels(): void {
-  const commonProviders = ["direct-api", "anthropic", "openai"];
-  const commonClis = ["claude", "aider"];
+  const commonProviders = ["direct-api", "anthropic", "openai", "opencode"];
+  const commonClis = ["claude", "aider", "opencode"];
 
   // Preload provider models
   for (const provider of commonProviders) {

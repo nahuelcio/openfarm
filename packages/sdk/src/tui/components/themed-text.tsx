@@ -36,8 +36,8 @@ interface ThemedTextProps {
  * ```
  */
 export function ThemedText({ styleType, style, children }: ThemedTextProps) {
-  // Get theme style if styleType is provided
-  const themeStyle = styleType ? useThemeStyle(styleType) : {};
+  // Get theme style
+  const themeStyle = useThemeStyle(styleType as any) || {};
 
   // Merge theme style with custom overrides
   const finalStyle = { ...themeStyle, ...style };

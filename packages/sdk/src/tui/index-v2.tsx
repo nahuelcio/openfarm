@@ -35,7 +35,7 @@ export async function runTUIV2(
 
   // Load execution history from database (non-blocking for faster startup)
   const { loadExecutionsFromDb } = useStore.getState();
-  void loadExecutionsFromDb();
+  loadExecutionsFromDb();
 
   await waitUntilExit();
 }

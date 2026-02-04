@@ -4,6 +4,7 @@ import type {
 } from "@openfarm/core/types/adapters";
 import type { ChatMessage } from "@openfarm/core/types/chat";
 import type { AgentConfigurationRules } from "@openfarm/core/types/domain";
+import { AiderAgent } from "./agents/aider";
 import { ClaudeCodeAgent } from "./agents/claude-code";
 import { GenericCliAgent } from "./agents/generic-cli";
 import { OpenCodeAgent } from "./agents/opencode";
@@ -14,7 +15,12 @@ import type { ExecutionRuntime, ExecutionRuntimeConfig } from "./runtime";
 import { createRuntime } from "./runtime";
 
 export interface CodingEngineFactoryOptions {
-  provider?: "opencode" | "claude-code" | "direct-llm" | "external-agent";
+  provider?:
+    | "opencode"
+    | "claude-code"
+    | "aider"
+    | "direct-llm"
+    | "external-agent";
   model?: string;
   previewMode?: boolean;
   chatOnly?: boolean;
@@ -41,11 +47,11 @@ export interface CodingEngineFactoryOptions {
   imageName?: string;
 }
 
-export function createAgent(config: {
+export async function createAgent(config: {
   agent: string;
   runtime: ExecutionRuntime;
   options: CodingEngineFactoryOptions;
-}): AgentPlugin {
+}): Promise<AgentPlugin> {
   const registry = AgentRegistry.getInstance();
 
   if (registry.hasPlugin(config.agent)) {
@@ -53,25 +59,24 @@ export function createAgent(config: {
     if (!instance) {
       throw new Error(`Failed to create agent '${config.agent}'`);
     }
-    instance
-      .initialize({ runtime: config.runtime, ...config.options })
-      .catch(() => {});
+    await instance.initialize({ runtime: config.runtime, ...config.options });
     return instance;
   }
 
   switch (config.agent) {
     case "opencode": {
       const agent = new OpenCodeAgent();
-      agent
-        .initialize({ runtime: config.runtime, ...config.options })
-        .catch(() => {});
+      await agent.initialize({ runtime: config.runtime, ...config.options });
       return agent;
     }
     case "claude-code": {
       const agent = new ClaudeCodeAgent();
-      agent
-        .initialize({ runtime: config.runtime, ...config.options })
-        .catch(() => {});
+      await agent.initialize({ runtime: config.runtime, ...config.options });
+      return agent;
+    }
+    case "aider": {
+      const agent = new AiderAgent();
+      await agent.initialize({ runtime: config.runtime, ...config.options });
       return agent;
     }
     case "external-agent": {
@@ -85,27 +90,25 @@ export function createAgent(config: {
         args: config.options.args,
         name: config.options.agentName,
       });
-      agent
-        .initialize({ runtime: config.runtime, ...config.options })
-        .catch(() => {});
+      await agent.initialize({ runtime: config.runtime, ...config.options });
       return agent;
     }
     case "direct-llm":
       throw new Error(
-        "direct-llm provider is not yet implemented. Please use 'opencode', 'claude-code', or 'external-agent'."
+        "direct-llm provider is not yet implemented. Please use 'opencode', 'claude-code', 'aider', or 'external-agent'."
       );
     default:
       throw new Error(`Unsupported provider: ${config.agent}`);
   }
 }
 
-export function createCodingEngine(
+export async function createCodingEngine(
   options: CodingEngineFactoryOptions
-): CodingEngine {
+): Promise<CodingEngine> {
   const provider = options.provider || "opencode";
   const runtimeConfig = resolveRuntimeConfig(provider, options);
   const runtime = createRuntime(runtimeConfig);
-  const agent = createAgent({ agent: provider, runtime, options });
+  const agent = await createAgent({ agent: provider, runtime, options });
 
   return new AgentToCodingEngineAdapter(agent, {
     model: options.model,

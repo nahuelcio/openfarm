@@ -25,14 +25,16 @@ const TABS = [
 ];
 
 function DemoTracing() {
-  const { initTree, startTrace, completeTrace, tree } = useTracing({
+  const { startTrace, completeTrace, tree } = useTracing({
     sessionId: "demo-session",
     autoInit: true,
   });
 
   // Simulate traces
   useEffect(() => {
-    if (!tree || tree.roots.length > 0) return;
+    if (!tree || tree.roots.length > 0) {
+      return;
+    }
 
     const runDemo = async () => {
       // Root trace
@@ -86,7 +88,7 @@ function DemoTracing() {
     };
 
     runDemo();
-  }, [tree, initTree, startTrace, completeTrace]);
+  }, [tree, startTrace, completeTrace]);
 
   return (
     <Box flexDirection="row" flexGrow={1} gap={1}>
@@ -154,7 +156,7 @@ function DemoRemotes() {
 
 function DemoApp() {
   const [activeTab, setActiveTab] = useState("dashboard");
-  const [showTracing, setShowTracing] = useState(false);
+  const [_showTracing, _setShowTracing] = useState(false);
   const { isVisible, toggleVisibility } = useTracingStore();
 
   useInput((input, key) => {

@@ -48,10 +48,10 @@ export function RichLogView({
   const [searchInput, setSearchInput] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [showHelp, setShowHelp] = useState(false);
-  const scrollRef = useRef(0);
+  const _scrollRef = useRef(0);
 
   const filteredEntries = getFilteredEntries();
-  const components = getComponents();
+  const _components = getComponents();
 
   const getLevelColor = (level: LogLevel): string => {
     switch (level) {
@@ -73,7 +73,7 @@ export function RichLogView({
     if (config.followTail && filteredEntries.length > 0) {
       setSelectedIndex(filteredEntries.length - 1);
     }
-  }, [entries.length, config.followTail]);
+  }, [config.followTail, filteredEntries.length]);
 
   useInput((input, key) => {
     if (mode === "search") {
