@@ -5,6 +5,7 @@
  */
 
 export interface ThemeColors {
+  // Base colors
   background: string;
   foreground: string;
   primary: string;
@@ -15,6 +16,27 @@ export interface ThemeColors {
   info: string;
   muted: string;
   border: string;
+
+  // Status colors
+  statusIdle: string;
+  statusRunning: string;
+  statusPaused: string;
+  statusError: string;
+  statusCompleted: string;
+
+  // Log level colors
+  logDebug: string;
+  logInfo: string;
+  logWarn: string;
+  logError: string;
+
+  // UI component colors
+  headerBg: string;
+  headerFg: string;
+  footerBg: string;
+  footerFg: string;
+  selectedBg: string;
+  selectedFg: string;
 }
 
 export interface TextStyle {

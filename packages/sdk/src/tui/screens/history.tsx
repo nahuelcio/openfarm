@@ -1,7 +1,11 @@
 import { getDb, getWorkflows } from "@openfarm/core/db";
 import { Box, Text, useInput } from "ink";
 import { useEffect, useState } from "react";
+import { KeyHelpBar } from "../components";
+import { useListNavigation } from "../hooks";
 import { type Execution, useStore } from "../store";
+import { useThemeColors } from "../theme/hooks";
+import { getStatusColor, getStatusIcon } from "../utils/status-helpers";
 
 export function History() {
   const {
@@ -16,10 +20,24 @@ export function History() {
     setWorkspace,
     setSelectedWorkflowId,
   } = useStore();
-  const [selectedIndex, setSelectedIndex] = useState(0);
+  const colors = useThemeColors();
   const [workflowNames, setWorkflowNames] = useState<Record<string, string>>(
     {}
   );
+
+  // Use shared list navigation hook
+  const { selectedIndex } = useListNavigation({
+    itemCount: executions.length,
+    isActive: true,
+    wrap: true,
+    onSelect: (index) => {
+      const selected = executions[index];
+      if (selected) {
+        setCurrentExecution(selected);
+        setScreen("execution-detail");
+      }
+    },
+  });
 
   // Load workflow names
   useEffect(() => {
@@ -66,22 +84,10 @@ export function History() {
     setScreen("running");
   };
 
+  // Handle special keys not covered by useListNavigation
   useInput((input, key) => {
     if (key.escape) {
       setScreen("dashboard");
-    }
-    if (key.upArrow) {
-      setSelectedIndex(Math.max(0, selectedIndex - 1));
-    }
-    if (key.downArrow) {
-      setSelectedIndex(Math.min(executions.length - 1, selectedIndex + 1));
-    }
-    if (key.return && executions.length > 0) {
-      const selected = executions[selectedIndex];
-      if (selected) {
-        setCurrentExecution(selected);
-        setScreen("execution-detail");
-      }
     }
     // Press 'd' to view diff directly
     if (input === "d" && executions.length > 0) {
@@ -103,29 +109,33 @@ export function History() {
   return (
     <Box flexDirection="column" gap={1}>
       {/* Header */}
-      <Text bold color="cyan">
+      <Text bold color={colors.primary}>
         📜 History
       </Text>
-      <Text color="gray">{"─".repeat(60)}</Text>
+      <Text color={colors.border}>{"─".repeat(60)}</Text>
 
       {/* List */}
       {executions.length === 0 ? (
-        <Text color="gray">No executions yet.</Text>
+        <Text color={colors.muted}>No executions yet.</Text>
       ) : (
         executions.map((e, i) => (
           <Box flexDirection="row" gap={1} key={e.id}>
-            <Text color={i === selectedIndex ? "yellow" : "gray"}>
+            <Text
+              color={i === selectedIndex ? colors.selectedBg : colors.muted}
+            >
               {i === selectedIndex ? "▶" : " "}
             </Text>
             <Text color={getStatusColor(e.status)}>
               {getStatusIcon(e.status)}
             </Text>
             <Box flexDirection="column" flexGrow={1}>
-              <Text color={i === selectedIndex ? "white" : "gray"}>
+              <Text
+                color={i === selectedIndex ? colors.foreground : colors.muted}
+              >
                 {e.task.slice(0, 45)}
                 {e.task.length > 45 ? "..." : ""}
               </Text>
-              <Text color="gray" dimColor>
+              <Text color={colors.muted} dimColor>
                 {e.provider}
                 {e.workflowId &&
                   ` • ${workflowNames[e.workflowId] || e.workflowId}`}
@@ -138,38 +148,18 @@ export function History() {
         ))
       )}
 
-      <Text color="gray">{"─".repeat(60)}</Text>
+      <Text color={colors.border}>{"─".repeat(60)}</Text>
 
       {/* Help */}
-      <Text color="gray">
-        ↑/↓ navigate • Enter view details • d view diff • r rerun • Esc back
-      </Text>
+      <KeyHelpBar
+        hints={[
+          { key: "↑/↓", label: "Navigate" },
+          { key: "Enter", label: "View details" },
+          { key: "d", label: "View diff" },
+          { key: "r", label: "Rerun" },
+          { key: "Esc", label: "Back" },
+        ]}
+      />
     </Box>
   );
-}
-
-function getStatusColor(status: string): string {
-  switch (status) {
-    case "completed":
-      return "green";
-    case "failed":
-      return "red";
-    case "running":
-      return "yellow";
-    default:
-      return "gray";
-  }
-}
-
-function getStatusIcon(status: string): string {
-  switch (status) {
-    case "completed":
-      return "✓";
-    case "failed":
-      return "✗";
-    case "running":
-      return "◐";
-    default:
-      return "○";
-  }
 }

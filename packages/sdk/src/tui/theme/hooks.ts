@@ -5,7 +5,7 @@
  */
 
 import { useThemeStore } from "./store";
-import type { Theme, TextStyle } from "./types";
+import type { TextStyle, Theme, ThemeColors } from "./types";
 
 /**
  * Hook to access the current theme.
@@ -17,8 +17,15 @@ export function useTheme(): Theme {
 /**
  * Hook to access theme colors only.
  */
-export function useThemeColors() {
+export function useThemeColors(): ThemeColors {
   return useThemeStore((state) => state.currentTheme.colors);
+}
+
+/**
+ * Hook to get a specific color from the current theme.
+ */
+export function useThemeColor(colorName: keyof ThemeColors): string {
+  return useThemeStore((state) => state.currentTheme.colors[colorName]);
 }
 
 /**
@@ -48,6 +55,7 @@ export function useAvailableThemes() {
 export function useThemeActions() {
   return {
     setTheme: useThemeStore((state) => state.setTheme),
+    cycleTheme: useThemeStore((state) => state.cycleTheme),
     loadCustomTheme: useThemeStore((state) => state.loadCustomTheme),
     resetTheme: useThemeStore((state) => state.resetTheme),
   };

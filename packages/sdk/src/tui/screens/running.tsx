@@ -1,6 +1,6 @@
+import { execSync } from "node:child_process";
 import { appendFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { execSync } from "node:child_process";
 import type { WorkflowContext } from "@openfarm/agent-runner";
 import {
   getDb,
@@ -477,25 +477,25 @@ export function Running() {
   const abortController = useRef<AbortController | null>(null);
   const executionStarted = useRef(false);
 
-  // Timer para elapsed time
+  // Timer for elapsed time (1 second granularity is sufficient)
   useEffect(() => {
     if (isDone) {
       return;
     }
     const interval = setInterval(() => {
       setElapsed(Date.now() - startTime);
-    }, 100);
+    }, 1000);
     return () => clearInterval(interval);
   }, [isDone, startTime]);
 
-  // Spinner animation
+  // Spinner animation (120ms for smooth animation with fewer renders)
   useEffect(() => {
     if (isDone) {
       return;
     }
     const interval = setInterval(() => {
       setSpinnerIdx((prev) => (prev + 1) % SPINNER_FRAMES.length);
-    }, 80);
+    }, 120);
     return () => clearInterval(interval);
   }, [isDone]);
 
@@ -545,7 +545,11 @@ export function Running() {
         }
       }
 
-      setLogs((prev) => [...prev, msg]);
+      // Add log with 500 entry limit (ring buffer approach)
+      setLogs((prev) => {
+        const next = [...prev, msg];
+        return next.length > 500 ? next.slice(-500) : next;
+      });
       updateStats(msg);
     },
     [updateStats]

@@ -5,8 +5,8 @@
  */
 
 import { create } from "zustand";
-import type { Theme, ThemeId } from "./types";
 import { BUILT_IN_THEMES, DEFAULT_THEME_ID } from "./themes";
+import type { Theme, ThemeColors, ThemeId } from "./types";
 
 interface ThemeStore {
   // State
@@ -16,11 +16,13 @@ interface ThemeStore {
 
   // Actions
   setTheme: (themeId: ThemeId | string) => void;
+  cycleTheme: () => void;
+  getColor: (key: keyof ThemeColors) => string;
   loadCustomTheme: (theme: Theme) => void;
   resetTheme: () => void;
 }
 
-export const useThemeStore = create<ThemeStore>((set) => ({
+export const useThemeStore = create<ThemeStore>((set, get) => ({
   // Initial state
   currentThemeId: DEFAULT_THEME_ID,
   currentTheme: BUILT_IN_THEMES[DEFAULT_THEME_ID],
@@ -42,6 +44,21 @@ export const useThemeStore = create<ThemeStore>((set) => ({
         currentTheme: theme,
       };
     });
+  },
+
+  cycleTheme: () => {
+    const state = get();
+    const themeIds = Object.keys(state.availableThemes);
+    const currentIndex = themeIds.indexOf(state.currentThemeId);
+    const nextIndex = (currentIndex + 1) % themeIds.length;
+    const nextId = themeIds[nextIndex];
+    if (nextId) {
+      state.setTheme(nextId);
+    }
+  },
+
+  getColor: (key: keyof ThemeColors) => {
+    return get().currentTheme.colors[key];
   },
 
   loadCustomTheme: (theme: Theme) => {

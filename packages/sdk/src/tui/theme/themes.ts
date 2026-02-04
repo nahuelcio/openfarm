@@ -13,16 +13,37 @@ export const defaultTheme: Theme = {
   id: "default",
   name: "Default",
   colors: {
-    background: "#000000",
-    foreground: "#ffffff",
-    primary: "#61afef",
-    secondary: "#abb2bf",
-    success: "#98c379",
-    error: "#e06c75",
-    warning: "#e5c07b",
-    info: "#56b6c2",
-    muted: "#5c6370",
-    border: "#3e4451",
+    background: "black",
+    foreground: "white",
+    primary: "cyan",
+    secondary: "magenta",
+    success: "green",
+    error: "red",
+    warning: "yellow",
+    info: "blue",
+    muted: "gray",
+    border: "gray",
+
+    // Status colors
+    statusIdle: "gray",
+    statusRunning: "green",
+    statusPaused: "yellow",
+    statusError: "red",
+    statusCompleted: "cyan",
+
+    // Log level colors
+    logDebug: "gray",
+    logInfo: "blue",
+    logWarn: "yellow",
+    logError: "red",
+
+    // UI component colors
+    headerBg: "black",
+    headerFg: "cyan",
+    footerBg: "black",
+    footerFg: "gray",
+    selectedBg: "yellow",
+    selectedFg: "black",
   },
   styles: {
     header: { color: "cyan", bold: true },
@@ -63,14 +84,35 @@ export const draculaTheme: Theme = {
   colors: {
     background: "#282a36",
     foreground: "#f8f8f2",
-    primary: "#bd93f9",
-    secondary: "#6272a4",
+    primary: "#8be9fd",
+    secondary: "#bd93f9",
     success: "#50fa7b",
     error: "#ff5555",
     warning: "#f1fa8c",
     info: "#8be9fd",
     muted: "#6272a4",
     border: "#44475a",
+
+    // Status colors
+    statusIdle: "#6272a4",
+    statusRunning: "#50fa7b",
+    statusPaused: "#ffb86c",
+    statusError: "#ff5555",
+    statusCompleted: "#8be9fd",
+
+    // Log level colors
+    logDebug: "#6272a4",
+    logInfo: "#8be9fd",
+    logWarn: "#f1fa8c",
+    logError: "#ff5555",
+
+    // UI component colors
+    headerBg: "#44475a",
+    headerFg: "#f8f8f2",
+    footerBg: "#44475a",
+    footerFg: "#6272a4",
+    selectedBg: "#bd93f9",
+    selectedFg: "#282a36",
   },
   styles: {
     header: { color: "magenta", bold: true },
@@ -111,14 +153,35 @@ export const solarizedDarkTheme: Theme = {
   colors: {
     background: "#002b36",
     foreground: "#839496",
-    primary: "#268bd2",
-    secondary: "#586e75",
+    primary: "#2aa198",
+    secondary: "#b58900",
     success: "#859900",
     error: "#dc322f",
-    warning: "#b58900",
-    info: "#2aa198",
+    warning: "#cb4b16",
+    info: "#268bd2",
     muted: "#586e75",
     border: "#073642",
+
+    // Status colors
+    statusIdle: "#586e75",
+    statusRunning: "#859900",
+    statusPaused: "#b58900",
+    statusError: "#dc322f",
+    statusCompleted: "#2aa198",
+
+    // Log level colors
+    logDebug: "#586e75",
+    logInfo: "#268bd2",
+    logWarn: "#b58900",
+    logError: "#dc322f",
+
+    // UI component colors
+    headerBg: "#073642",
+    headerFg: "#93a1a1",
+    footerBg: "#073642",
+    footerFg: "#586e75",
+    selectedBg: "#b58900",
+    selectedFg: "#002b36",
   },
   styles: {
     header: { color: "blue", bold: true },
@@ -159,14 +222,35 @@ export const solarizedLightTheme: Theme = {
   colors: {
     background: "#fdf6e3",
     foreground: "#657b83",
-    primary: "#268bd2",
-    secondary: "#93a1a1",
+    primary: "#2aa198",
+    secondary: "#b58900",
     success: "#859900",
     error: "#dc322f",
-    warning: "#b58900",
-    info: "#2aa198",
+    warning: "#cb4b16",
+    info: "#268bd2",
     muted: "#93a1a1",
     border: "#eee8d5",
+
+    // Status colors
+    statusIdle: "#93a1a1",
+    statusRunning: "#859900",
+    statusPaused: "#b58900",
+    statusError: "#dc322f",
+    statusCompleted: "#2aa198",
+
+    // Log level colors
+    logDebug: "#93a1a1",
+    logInfo: "#268bd2",
+    logWarn: "#b58900",
+    logError: "#dc322f",
+
+    // UI component colors
+    headerBg: "#eee8d5",
+    headerFg: "#586e75",
+    footerBg: "#eee8d5",
+    footerFg: "#93a1a1",
+    selectedBg: "#b58900",
+    selectedFg: "#fdf6e3",
   },
   styles: {
     header: { color: "blue", bold: true },
@@ -205,16 +289,37 @@ export const highContrastTheme: Theme = {
   id: "high-contrast",
   name: "High Contrast",
   colors: {
-    background: "#000000",
-    foreground: "#ffffff",
-    primary: "#00ffff",
-    secondary: "#aaaaaa",
-    success: "#00ff00",
-    error: "#ff0000",
-    warning: "#ffff00",
-    info: "#00ffff",
-    muted: "#888888",
-    border: "#ffffff",
+    background: "black",
+    foreground: "white",
+    primary: "cyan",
+    secondary: "magenta",
+    success: "green",
+    error: "red",
+    warning: "yellow",
+    info: "cyan",
+    muted: "white",
+    border: "white",
+
+    // Status colors
+    statusIdle: "white",
+    statusRunning: "green",
+    statusPaused: "yellow",
+    statusError: "red",
+    statusCompleted: "cyan",
+
+    // Log level colors
+    logDebug: "white",
+    logInfo: "cyan",
+    logWarn: "yellow",
+    logError: "red",
+
+    // UI component colors
+    headerBg: "black",
+    headerFg: "white",
+    footerBg: "black",
+    footerFg: "white",
+    selectedBg: "white",
+    selectedFg: "black",
   },
   styles: {
     header: { color: "cyan", bold: true, inverse: true },
