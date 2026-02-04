@@ -186,9 +186,11 @@ export class OpenCodeProvider implements Provider {
     const task = options.task.trim();
     const context = options.context?.trim();
 
-    let prompt = context ? `${context}
+    let prompt = context
+      ? `${context}
 
-${task}` : task;
+${task}`
+      : task;
 
     if (workspace) {
       prompt = `IMPORTANT: Work ONLY in this repository: ${workspace}

@@ -103,9 +103,10 @@ export class OpenCodeProviderFactory implements ProviderFactory {
     };
   }
 
-  private createCommunicationStrategy(config: {
-    timeout: number;
-  }): { communicationStrategy: CommunicationStrategy; commandLabel: string } {
+  private createCommunicationStrategy(config: { timeout: number }): {
+    communicationStrategy: CommunicationStrategy;
+    commandLabel: string;
+  } {
     const command = process.env.OPENCODE_COMMAND || "bunx";
     const useBunx = command === "bunx";
     const defaultArgs = useBunx ? ["opencode-ai"] : [];
