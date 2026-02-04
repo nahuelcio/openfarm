@@ -11,6 +11,7 @@ import type { OpenFarmConfig } from "../types";
 import { AppV2 } from "./app-v2";
 import { useStore } from "./store";
 import { useThemeStore } from "./theme/store";
+import { preloadAllCommonModels } from "./utils/models";
 
 export async function runTUIV2(
   config?: OpenFarmConfig,
@@ -27,6 +28,9 @@ export async function runTUIV2(
   if (themeId) {
     useThemeStore.getState().setTheme(themeId);
   }
+
+  // Preload models in background for faster UX
+  preloadAllCommonModels();
 
   // Load execution history from database
   const { loadExecutionsFromDb } = useStore.getState();
