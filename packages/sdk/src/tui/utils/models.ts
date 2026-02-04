@@ -95,7 +95,11 @@ function getCachedModels(provider: string, cli?: string): string[] | null {
 /**
  * Cache models for provider/cli
  */
-function cacheModels(provider: string, cli: string | undefined, models: string[]): void {
+function cacheModels(
+  provider: string,
+  cli: string | undefined,
+  models: string[]
+): void {
   const key = getCacheKey(provider, cli);
   modelCache.set(key, {
     models,
