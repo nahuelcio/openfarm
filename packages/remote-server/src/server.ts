@@ -5,14 +5,14 @@
  * Allows controlling task loops from a central TUI.
  */
 
+import { logger } from "@openfarm/logger";
 import type {
   TaskLoopOrchestrator,
   TaskLoopSession,
 } from "@openfarm/task-loop";
-import { logger } from "@openfarm/logger";
 import { randomUUID } from "crypto";
 import { hostname, platform } from "os";
-import { WebSocketServer, type WebSocket } from "ws";
+import { type WebSocket, WebSocketServer } from "ws";
 import packageJson from "../package.json";
 import type {
   ClientMessage,
@@ -58,8 +58,8 @@ export class RemoteServer {
       authToken: "",
       cors: true,
       maxConnections: 10,
-      heartbeatInterval: 30000,
-      heartbeatTimeout: 60000,
+      heartbeatInterval: 30_000,
+      heartbeatTimeout: 60_000,
       ...config,
     };
   }
@@ -407,13 +407,19 @@ export class RemoteServer {
     this.heartbeatInterval = setInterval(() => {
       const now = Date.now();
       const timeout = this.config.heartbeatTimeout;
+      const clientsToRemove: WebSocket[] = [];
 
       for (const [ws, client] of this.clients) {
         if (now - client.lastPing > timeout) {
           logger.info(`[RemoteServer] Client ${client.id} timed out`);
           ws.close();
-          this.clients.delete(ws);
+          clientsToRemove.push(ws);
         }
+      }
+
+      // Delete after iteration completes to avoid race condition
+      for (const ws of clientsToRemove) {
+        this.clients.delete(ws);
       }
     }, this.config.heartbeatInterval);
   }

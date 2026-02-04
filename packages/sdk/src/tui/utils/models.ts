@@ -1,7 +1,10 @@
 /**
  * Model loading for providers and external agents with caching and preloading.
  */
-import { execSync } from "node:child_process";
+import { exec } from "node:child_process";
+import { promisify } from "node:util";
+
+const execAsync = promisify(exec);
 
 // Cache for loaded models
 const modelCache = new Map<string, { models: string[]; timestamp: number }>();
@@ -167,13 +170,13 @@ async function fetchModelsFromCli(cli: string): Promise<string[]> {
 
     for (const flag of flags) {
       try {
-        const output = execSync(`${cli} ${flag}`, {
-          encoding: "utf-8",
+        const { stdout } = await execAsync(`${cli} ${flag}`, {
           timeout: 5000,
-          stdio: ["pipe", "pipe", "ignore"], // Ignore stderr
+          windowsHide: true,
+          maxBuffer: 1024 * 1024,
         });
 
-        const models = parseCliOutput(output);
+        const models = parseCliOutput(stdout || "");
         if (models.length > 0) {
           return models;
         }

@@ -29,13 +29,14 @@ export async function runTUIV2(
     useThemeStore.getState().setTheme(themeId);
   }
 
+  const { waitUntilExit } = render(<AppV2 />);
+
   // Preload models in background for faster UX
   preloadAllCommonModels();
 
-  // Load execution history from database
+  // Load execution history from database (non-blocking for faster startup)
   const { loadExecutionsFromDb } = useStore.getState();
-  await loadExecutionsFromDb();
+  void loadExecutionsFromDb();
 
-  const { waitUntilExit } = render(<AppV2 />);
   await waitUntilExit();
 }

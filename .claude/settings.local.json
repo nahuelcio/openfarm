@@ -10,7 +10,10 @@
       "Bash(bun run typecheck:*)",
       "Bash(bun run type-check:*)",
       "Bash(timeout 5 bun run:*)",
-      "Bash(npx turbo build:*)"
+      "Bash(npx turbo build:*)",
+      "mcp__zread__read_file",
+      "Bash(find:*)",
+      "Bash(grep:*)"
     ]
   }
 }

@@ -11,6 +11,7 @@ import {
   HttpCommunicationStrategy,
 } from "@openfarm/sdk";
 import { OpenCodeProvider } from "./opencode-provider.js";
+import { OpenCodeResponseParser } from "./opencode-response-parser.js";
 
 const _OpenCodeConfigSchema = {
   type: "object",
@@ -54,7 +55,7 @@ export class OpenCodeProviderFactory implements ProviderFactory {
 
     return new OpenCodeProvider(
       strategy,
-      null as any,
+      new OpenCodeResponseParser(),
       configManager,
       parsedConfig
     );

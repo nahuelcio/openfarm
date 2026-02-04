@@ -12,10 +12,11 @@ export async function runTUI(config?: OpenFarmConfig): Promise<void> {
     });
   }
 
-  // Load execution history from database
-  const { loadExecutionsFromDb } = useStore.getState();
-  await loadExecutionsFromDb();
-
   const { waitUntilExit } = render(<App />);
+
+  // Load execution history from database (non-blocking for faster startup)
+  const { loadExecutionsFromDb } = useStore.getState();
+  void loadExecutionsFromDb();
+
   await waitUntilExit();
 }
