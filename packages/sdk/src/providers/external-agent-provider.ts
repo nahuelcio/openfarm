@@ -6,7 +6,7 @@
  * en cambio, monitorea su output y detecta comandos de comunicación.
  */
 
-import { createCodingEngine } from "@openfarm/coding-engines";
+import { createCodingEngine } from "@openfarm/agent-system";
 import type {
   ProviderCapabilities,
   ProviderConfig,

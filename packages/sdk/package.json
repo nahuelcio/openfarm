@@ -35,6 +35,7 @@
     "server": "bun run src/cli.ts remote-server"
   },
   "dependencies": {
+    "@openfarm/agent-system": "workspace:*",
     "@openfarm/agent-runner": "workspace:*",
     "@openfarm/context": "workspace:*",
     "@openfarm/core": "workspace:*",

@@ -7,7 +7,7 @@
     { "path": "./packages/agent-runner" },
     { "path": "./packages/analysis" },
     { "path": "./packages/azure-adapter" },
-    { "path": "./packages/coding-engines" },
+    { "path": "./packages/agent-system" },
     { "path": "./packages/config" },
     { "path": "./packages/core" },
     { "path": "./packages/context" },
