@@ -6,7 +6,6 @@
  */
 
 import { Box, Text } from "ink";
-import React from "react";
 import { useTheme } from "../../store/theme-store";
 
 interface FooterProps {
@@ -30,17 +29,17 @@ export function Footer({
 
   return (
     <Box
-      borderStyle="single"
       borderColor={colors.border}
-      paddingX={1}
-      height={3}
+      borderStyle="single"
       flexDirection="row"
+      height={3}
       justifyContent="space-between"
+      paddingX={1}
     >
       <Box flexDirection="row" gap={1}>
         {shortcuts.map(({ key, label }) => (
           <Text key={key}>
-            <Text color={colors.warning} bold>
+            <Text bold color={colors.warning}>
               [{key}]
             </Text>
             <Text color={colors.muted}>{label}</Text>

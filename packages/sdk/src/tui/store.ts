@@ -176,7 +176,7 @@ export const useStore = create<AppState>((set) => ({
   task: "",
   setTask: (task) => set({ task }),
 
-  provider: "opencode",
+  provider: "external-agent",
   setProvider: (provider) => set({ provider }),
 
   model: "",

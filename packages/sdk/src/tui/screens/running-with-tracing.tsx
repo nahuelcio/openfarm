@@ -5,7 +5,7 @@
  */
 
 import { Box, Text, useInput } from "ink";
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { TraceTree } from "../components/trace-tree";
 import { useTracing } from "../hooks/use-tracing";
 import { useStore } from "../store";

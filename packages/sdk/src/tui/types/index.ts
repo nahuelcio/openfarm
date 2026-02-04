@@ -5,6 +5,13 @@
  */
 
 export type {
+  IRemoteClient,
+  RemoteClientHandlers,
+  RemoteInstance,
+  RemoteSystemInfo,
+} from "./remote";
+export type {
+  StartTraceOptions,
   TraceEvent,
   TraceMetadata,
   TraceNode,
@@ -12,12 +19,4 @@ export type {
   TraceTree,
   TracingConfig,
   TreeViewState,
-  StartTraceOptions,
 } from "./tracing";
-
-export type {
-  IRemoteClient,
-  RemoteClientHandlers,
-  RemoteInstance,
-  RemoteSystemInfo,
-} from "./remote";

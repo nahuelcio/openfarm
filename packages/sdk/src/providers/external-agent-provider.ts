@@ -238,7 +238,7 @@ export class ExternalAgentProvider {
   }
 
   /**
-   * Ejecuta el provider usando el ExternalAgentCodingEngine.
+   * Ejecuta el provider usando el agente CLI generico.
    *
    * Crea un coding engine con output parsing y ejecuta la tarea.
    */

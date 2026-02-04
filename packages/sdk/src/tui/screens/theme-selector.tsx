@@ -5,15 +5,15 @@
  */
 
 import { Box, Text, useInput } from "ink";
-import React, { useState } from "react";
+import { useState } from "react";
+import { ThemedText } from "../components/themed-text";
 import { useStore } from "../store";
 import {
-  useTheme,
-  useThemeActions,
   useAvailableThemes,
   useCurrentThemeId,
+  useTheme,
+  useThemeActions,
 } from "../theme";
-import { ThemedText } from "../components/themed-text";
 
 export function ThemeSelector() {
   const { setScreen } = useStore();
@@ -79,7 +79,7 @@ export function ThemeSelector() {
                 {t.name}
               </Text>
               {isCurrent && (
-                <Text color="green" bold>
+                <Text bold color="green">
                   (current)
                 </Text>
               )}
@@ -102,10 +102,10 @@ export function ThemeSelector() {
 
           return (
             <>
-              <Text color={previewTheme.styles.header.color} bold>
+              <Text bold color={previewTheme.styles.header.color}>
                 Header Text
               </Text>
-              <Text color={previewTheme.styles.taskRunning.color} bold>
+              <Text bold color={previewTheme.styles.taskRunning.color}>
                 Running Task
               </Text>
               <Text color={previewTheme.styles.taskCompleted.color}>
@@ -120,7 +120,7 @@ export function ThemeSelector() {
               <Text color={previewTheme.styles.logWarn.color}>
                 Warning Log Message
               </Text>
-              <Text color={previewTheme.styles.logError.color} bold>
+              <Text bold color={previewTheme.styles.logError.color}>
                 Error Log Message
               </Text>
             </>

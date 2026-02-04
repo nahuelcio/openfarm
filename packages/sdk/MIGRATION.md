@@ -19,7 +19,7 @@ The new provider system offers:
 import { createExecutor } from '@openfarm/sdk';
 
 // Create executor
-const executor = createExecutor('opencode', {
+const executor = createExecutor('aider', {
   mode: 'local',
   timeout: 120000
 });
@@ -38,7 +38,7 @@ import { OpenFarm } from '@openfarm/sdk';
 
 // Create OpenFarm instance
 const openFarm = new OpenFarm({
-  defaultProvider: 'opencode',
+  defaultProvider: 'aider',
   timeout: 120000
 });
 
@@ -57,7 +57,6 @@ const result = await openFarm.execute({
 // Old
 import { 
   createExecutor,
-  OpenCodeExecutor,
   AiderExecutor,
   ClaudeCodeExecutor 
 } from '@openfarm/sdk';
@@ -72,7 +71,6 @@ External providers are now separate packages:
 
 ```bash
 # Install specific providers you need
-npm install @openfarm/provider-opencode
 npm install @openfarm/provider-aider
 npm install @openfarm/provider-claude
 ```
@@ -81,18 +79,13 @@ npm install @openfarm/provider-claude
 
 ```typescript
 // Old - Direct executor creation
-const openCodeExecutor = new OpenCodeExecutor({
-  mode: 'local',
-  timeout: 120000
-});
-
 const aiderExecutor = new AiderExecutor({
   workingDirectory: './project'
 });
 
 // New - Single OpenFarm instance
 const openFarm = new OpenFarm({
-  defaultProvider: 'opencode',
+  defaultProvider: 'aider',
   timeout: 120000
 });
 
@@ -106,23 +99,12 @@ The execution API remains the same, but now supports provider switching:
 
 ```typescript
 // Old - Fixed executor
-const result1 = await openCodeExecutor.execute({
-  task: 'Fix the bug',
-  model: 'gpt-4o'
-});
-
-const result2 = await aiderExecutor.execute({
+const result1 = await aiderExecutor.execute({
   task: 'Add tests'
 });
 
 // New - Dynamic provider switching
 const result1 = await openFarm.execute({
-  task: 'Fix the bug',
-  provider: 'opencode',  // Override default
-  model: 'gpt-4o'
-});
-
-const result2 = await openFarm.execute({
   task: 'Add tests',
   provider: 'aider'      // Switch provider per task
 });
@@ -132,7 +114,7 @@ const result2 = await openFarm.execute({
 
 ```typescript
 // Old - Per-executor configuration
-const executor = createExecutor('opencode', {
+const executor = createExecutor('aider', {
   mode: 'local',
   baseUrl: 'https://api.example.com',
   apiKey: process.env.API_KEY,
@@ -141,7 +123,7 @@ const executor = createExecutor('opencode', {
 
 // New - Centralized configuration
 const openFarm = new OpenFarm({
-  defaultProvider: 'opencode',
+  defaultProvider: 'aider',
   defaultModel: 'gpt-4o',
   timeout: 60000,
   // Provider-specific config is handled automatically
@@ -149,30 +131,6 @@ const openFarm = new OpenFarm({
 ```
 
 ## Provider-Specific Migrations
-
-### OpenCode Provider
-
-```typescript
-// Old
-import { OpenCodeExecutor } from '@openfarm/sdk';
-
-const executor = new OpenCodeExecutor({
-  mode: 'local',        // or 'cloud'
-  baseUrl: 'https://...',
-  timeout: 120000
-});
-
-// New
-import { OpenFarm } from '@openfarm/sdk';
-// npm install @openfarm/provider-opencode
-
-const openFarm = new OpenFarm({
-  defaultProvider: 'opencode'
-});
-
-// Mode and baseUrl are configured automatically
-// or via provider-specific configuration
-```
 
 ### Aider Provider
 
@@ -233,7 +191,7 @@ const providers = openFarm.getAvailableProviders();
 console.log('Available:', providers);
 
 // Get provider metadata
-const metadata = openFarm.getProviderMetadata('opencode');
+const metadata = openFarm.getProviderMetadata('aider');
 console.log('Features:', metadata.supportedFeatures);
 ```
 
@@ -241,7 +199,7 @@ console.log('Features:', metadata.supportedFeatures);
 
 ```typescript
 // Preload providers for better performance
-await openFarm.preloadProvider('opencode');
+await openFarm.preloadProvider('aider');
 await openFarm.preloadAllProviders();
 
 // Check registry statistics
@@ -299,12 +257,12 @@ import { OpenFarm } from '@openfarm/sdk';
 ### Provider Not Found
 
 ```
-Error: Provider 'opencode' is not available
+Error: Provider 'aider' is not available
 ```
 
 **Solution**: Install the provider package:
 ```bash
-npm install @openfarm/provider-opencode
+npm install @openfarm/provider-aider
 ```
 
 ### Configuration Issues
@@ -319,28 +277,7 @@ Error: Invalid configuration for provider 'aider'
 
 **Solution**: Use preloading for frequently used providers:
 ```typescript
-await openFarm.preloadProvider('opencode');
-```
-
-## Rollback Plan
-
-If you need to rollback temporarily:
-
-1. **Keep old imports**: The old executor classes still exist (deprecated)
-2. **Gradual migration**: Migrate one provider at a time
-3. **Feature flags**: Use environment variables to switch between old/new systems
-
-```typescript
-// Temporary rollback approach
-const useNewSystem = process.env.USE_NEW_PROVIDERS === 'true';
-
-if (useNewSystem) {
-  const openFarm = new OpenFarm({ defaultProvider: 'opencode' });
-  return openFarm.execute(options);
-} else {
-  const executor = new OpenCodeExecutor(config);
-  return executor.execute(options);
-}
+await openFarm.preloadProvider('aider');
 ```
 
 ## Support

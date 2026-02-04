@@ -13,10 +13,10 @@ import {
   getSession,
   resumeTaskLoop,
   runTaskLoop,
+  type TaskExecutor,
   type TaskLoopConfig,
   type TaskLoopEvent,
   type TaskLoopLogger,
-  type TaskExecutor,
 } from "../src";
 
 interface CLIOptions {
@@ -66,9 +66,9 @@ const consoleLogger: TaskLoopLogger = {
 
 function formatDuration(ms: number): string {
   if (ms < 1000) return `${ms}ms`;
-  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
-  const mins = Math.floor(ms / 60000);
-  const secs = ((ms % 60000) / 1000).toFixed(0);
+  if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`;
+  const mins = Math.floor(ms / 60_000);
+  const secs = ((ms % 60_000) / 1000).toFixed(0);
   return `${mins}m ${secs}s`;
 }
 
@@ -78,7 +78,7 @@ function createEventHandler(): (event: TaskLoopEvent) => void {
       case "session.started":
         console.log(`\n🚀 Session \x1b[36m${event.sessionId}\x1b[0m started`);
         break;
-      case "session.completed":
+      case "session.completed": {
         const data = event.data as {
           completed: number;
           failed: number;
@@ -88,6 +88,7 @@ function createEventHandler(): (event: TaskLoopEvent) => void {
           `\n✅ Session completed: ${data.completed} done, ${data.failed} failed, ${data.skipped} skipped`
         );
         break;
+      }
       case "session.failed":
         console.log(
           `\n❌ Session failed: ${(event.data as { error: string }).error}`
@@ -98,7 +99,7 @@ function createEventHandler(): (event: TaskLoopEvent) => void {
           `\n⏸️  Session paused (use 'task-loop resume ${event.sessionId}' to continue)`
         );
         break;
-      case "task.started":
+      case "task.started": {
         const taskData = event.data as { title: string; priority: string };
         const priorityColor: Record<string, string> = {
           critical: "\x1b[31m",
@@ -110,18 +111,22 @@ function createEventHandler(): (event: TaskLoopEvent) => void {
           `\n📋 [${priorityColor[taskData.priority] || ""}${taskData.priority.toUpperCase()}\x1b[0m] ${taskData.title}`
         );
         break;
-      case "task.completed":
+      }
+      case "task.completed": {
         const completedData = event.data as { durationMs: number };
         console.log(`   ✅ Done (${formatDuration(completedData.durationMs)})`);
         break;
-      case "task.failed":
+      }
+      case "task.failed": {
         const failedData = event.data as { reason: string };
         console.log(`   ❌ Failed: ${failedData.reason}`);
         break;
-      case "task.retry":
+      }
+      case "task.retry": {
         const retryData = event.data as { attempt: number };
         console.log(`   🔄 Retry attempt ${retryData.attempt}`);
         break;
+      }
     }
   };
 }
@@ -165,13 +170,13 @@ function parseArgs(args: string[]): {
         .map((t) => t.trim());
       i++;
     } else if (arg === "--iterations" || arg === "-i") {
-      options.iterations = parseInt(requireValue(arg, i), 10);
+      options.iterations = Number.parseInt(requireValue(arg, i), 10);
       i++;
     } else if (arg === "--delay") {
-      options.delay = parseInt(requireValue(arg, i), 10);
+      options.delay = Number.parseInt(requireValue(arg, i), 10);
       i++;
     } else if (arg === "--retries" || arg === "-r") {
-      options.retries = parseInt(requireValue(arg, i), 10);
+      options.retries = Number.parseInt(requireValue(arg, i), 10);
       i++;
     } else if (arg === "--dry-run" || arg === "-n") options.dryRun = true;
     else if (arg === "--auto-commit") options.autoCommit = true;

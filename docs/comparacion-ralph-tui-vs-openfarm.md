@@ -42,7 +42,7 @@ packages/
 ├── agent-runner       # Ejecución de agentes
 ├── execution-logger  # Logs a SQLite
 ├── provider-claude    # Provider Anthropic
-├── provider-opencode  # Provider OpenCode
+├── agent-system  # Provider OpenCode
 ├── provider-aider     # Provider Aider
 ├── git-diff          # Diff viewer
 ├── context           # Generador de contexto
@@ -167,7 +167,7 @@ REPEAT until done
 ### OpenFarm - Provider System
 ```typescript
 packages/
-├── provider-opencode/  # OpenCode integration
+├── agent-system/  # OpenCode integration
 ├── provider-claude/    # Anthropic/Claude
 ├── provider-aider/     # Aider CLI
 └── agent-wrapper/      # Wrapper genérico

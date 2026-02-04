@@ -161,7 +161,7 @@ export const useLogStore = create<LogState>((set, get) => ({
         const query = filter.searchQuery.toLowerCase();
         const matchesMessage = entry.message.toLowerCase().includes(query);
         const matchesComponent = entry.component.toLowerCase().includes(query);
-        if (!matchesMessage && !matchesComponent) return false;
+        if (!(matchesMessage || matchesComponent)) return false;
       }
 
       return true;

@@ -33,15 +33,6 @@ export {
 } from "./factory";
 // Testing utilities and mocks
 export * from "./mocks/index.js";
-// Re-export types for external providers
-export type {
-  DiffItem,
-  OpenCodeEvent,
-  OpenCodeExecutionState,
-  OpenCodeParseResult,
-  ToolEvent,
-  ToolEventPart,
-} from "./opencode-response-parser";
 // Registry implementation
 export { globalProviderRegistry, ProviderRegistry } from "./registry";
 export * from "./test-utils/index.js";

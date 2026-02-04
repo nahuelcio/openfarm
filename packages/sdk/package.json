@@ -78,7 +78,6 @@
     "sdk",
     "anthropic",
     "openai",
-    "opencode",
     "aider",
     "claude-code"
   ],

@@ -5,7 +5,7 @@
  */
 
 import { Box, Text, useInput } from "ink";
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 
 export interface Tab {
   id: string;
@@ -39,7 +39,7 @@ export function TabBar({ tabs, activeTab, onTabChange }: TabBarProps) {
       handleNextTab();
     }
 
-    const num = parseInt(input, 10);
+    const num = Number.parseInt(input, 10);
     if (!isNaN(num) && num >= 1 && num <= tabs.length) {
       onTabChange(tabs[num - 1].id);
     }
@@ -52,11 +52,11 @@ export function TabBar({ tabs, activeTab, onTabChange }: TabBarProps) {
         const shortcut = tab.shortcut || String(index + 1);
 
         return (
-          <Box key={tab.id} flexDirection="row">
+          <Box flexDirection="row" key={tab.id}>
             <Text
               backgroundColor={isActive ? "cyan" : undefined}
-              color={isActive ? "black" : "gray"}
               bold={isActive}
+              color={isActive ? "black" : "gray"}
             >
               {isActive ? "▶" : " "} [{shortcut}] {tab.label}{" "}
             </Text>

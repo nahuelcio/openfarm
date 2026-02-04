@@ -6,7 +6,6 @@
  */
 
 import { Box, Text } from "ink";
-import React from "react";
 import { useTheme } from "../../store/theme-store";
 
 interface HeaderProps {
@@ -49,12 +48,12 @@ export function Header({
 
   return (
     <Box
-      borderStyle="single"
       borderColor={colors.border}
-      paddingX={1}
-      height={3}
+      borderStyle="single"
       flexDirection="row"
+      height={3}
       justifyContent="space-between"
+      paddingX={1}
     >
       <Box>
         <Text bold color={colors.headerFg}>

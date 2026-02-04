@@ -7,22 +7,20 @@
  */
 
 import { getDb, getLocalWorkItems } from "@openfarm/core/db";
-import type { WorkItem } from "@openfarm/core/types";
+import { CompletionDetector } from "./completion-detector";
+import { PromptBuilder } from "./prompt-builder";
+import { SessionManager } from "./session-manager";
+import { filterTasks, TaskSelector, toTaskLoopTask } from "./task-selector";
 import type {
+  TaskExecutionResult,
   TaskLoopConfig,
+  TaskLoopEvent,
+  TaskLoopLogger,
+  TaskLoopRunOptions,
   TaskLoopSession,
   TaskLoopTask,
-  TaskLoopTaskStatus,
-  TaskLoopRunOptions,
-  TaskLoopEvent,
-  TaskExecutionResult,
-  TaskLoopLogger,
 } from "./types";
-import { TaskSelector, toTaskLoopTask, filterTasks } from "./task-selector";
-import { PromptBuilder } from "./prompt-builder";
-import { CompletionDetector } from "./completion-detector";
-import { SessionManager } from "./session-manager";
-import { executeGitSetup, cleanupGitSetup } from "./workflow-adapter";
+import { cleanupGitSetup, executeGitSetup } from "./workflow-adapter";
 
 /**
  * Default logger that outputs to console
@@ -258,7 +256,7 @@ export class TaskLoopOrchestrator {
     session: TaskLoopSession,
     options: TaskLoopRunOptions
   ): Promise<void> {
-    const maxIterations = this.config.maxIterations || Infinity;
+    const maxIterations = this.config.maxIterations || Number.POSITIVE_INFINITY;
     let iteration = 0;
 
     while (iteration < maxIterations) {

@@ -470,32 +470,6 @@ export class ProviderRegistry implements IProviderRegistry {
       loader: () => Promise<new () => ProviderFactory>;
     }> = [
       {
-        type: "opencode",
-        packageName: "@openfarm/provider-opencode",
-        name: "OpenCode",
-        description:
-          "OpenCode AI coding assistant - supports both local CLI and cloud HTTP modes",
-        features: [
-          "code-generation",
-          "code-editing",
-          "debugging",
-          "refactoring",
-          "streaming",
-          "local-execution",
-          "cloud-execution",
-        ],
-        loader: async () => {
-          try {
-            const mod = await import("@openfarm/provider-opencode");
-            return mod.OpenCodeProviderFactory;
-          } catch (e) {
-            throw new Error(
-              `@openfarm/provider-opencode not installed or not built: ${e instanceof Error ? e.message : "Unknown error"}`
-            );
-          }
-        },
-      },
-      {
         type: "aider",
         packageName: "@openfarm/provider-aider",
         name: "Aider",

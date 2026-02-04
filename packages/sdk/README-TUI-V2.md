@@ -87,7 +87,7 @@ src/tui/
 
 ```bash
 # Provider default
-OPENFARM_PROVIDER=opencode  # o claude, aider
+OPENFARM_PROVIDER=external-agent  # o claude, aider
 
 # API Keys
 OPENFARM_API_KEY=sk-...

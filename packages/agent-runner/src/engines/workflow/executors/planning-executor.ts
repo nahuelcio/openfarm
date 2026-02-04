@@ -389,6 +389,32 @@ export async function executePlanningPlan(
   const engineFactory = services.codingEngineFactory;
   const defaultEngineOptions = services.defaultEngineOptions;
 
+  const resolvedWorktreePath =
+    context.worktreePath ?? defaultEngineOptions.worktreePath;
+  const resolvedPodName = context.podName ?? defaultEngineOptions.podName;
+  const resolvedRuntimeType =
+    defaultEngineOptions.runtimeType ??
+    (resolvedPodName
+      ? "kubernetes"
+      : resolvedWorktreePath
+        ? "worktree"
+        : defaultEngineOptions.containerName ||
+            defaultEngineOptions.ephemeral ||
+            defaultEngineOptions.imageName
+          ? "docker"
+          : "local");
+
+  const runtimeOptions = {
+    runtimeType: resolvedRuntimeType,
+    worktreePath: resolvedWorktreePath,
+    baseBranch: defaultEngineOptions.baseBranch ?? context.defaultBranch,
+    containerName: defaultEngineOptions.containerName,
+    podName: resolvedPodName,
+    namespace: defaultEngineOptions.namespace,
+    imageName: defaultEngineOptions.imageName,
+    ephemeral: defaultEngineOptions.ephemeral,
+  };
+
   if (engineFactory && validatedConfig.model) {
     await logger(`Using step-specific model: ${validatedConfig.model}`);
     engineToUse = engineFactory({
@@ -398,6 +424,7 @@ export async function executePlanningPlan(
       onLog: defaultEngineOptions.onLog,
       onChanges: defaultEngineOptions.onChanges,
       onChatMessage: defaultEngineOptions.onChatMessage,
+      ...runtimeOptions,
     });
   } else {
     // Use default engine in preview mode for planning
@@ -413,6 +440,7 @@ export async function executePlanningPlan(
         onLog: defaultEngineOptions.onLog,
         onChanges: defaultEngineOptions.onChanges,
         onChatMessage: defaultEngineOptions.onChatMessage,
+        ...runtimeOptions,
       });
     } else if (defaultEngine) {
       engineToUse = defaultEngine;

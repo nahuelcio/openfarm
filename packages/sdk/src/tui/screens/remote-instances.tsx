@@ -5,7 +5,7 @@
  */
 
 import { Box, Text, useInput } from "ink";
-import React, { useState } from "react";
+import { useState } from "react";
 import { RemoteInstanceList } from "../components/remote-tabs";
 import { useRemoteStore } from "../store/remote-store";
 
@@ -38,7 +38,7 @@ export function RemoteInstancesScreen() {
   });
 
   return (
-    <Box flexDirection="column" padding={1} flexGrow={1}>
+    <Box flexDirection="column" flexGrow={1} padding={1}>
       <Text bold color="cyan">
         Remote Instance Management
       </Text>
@@ -55,11 +55,11 @@ export function RemoteInstancesScreen() {
 
       {showAddForm && (
         <Box
-          borderStyle="single"
           borderColor="yellow"
-          padding={1}
-          marginTop={1}
+          borderStyle="single"
           flexDirection="column"
+          marginTop={1}
+          padding={1}
         >
           <Text bold>Add Remote Instance</Text>
           <Box flexDirection="row" gap={1}>

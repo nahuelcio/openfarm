@@ -7,10 +7,11 @@
 
 // Use any type to avoid importing from bun during bundling
 type SQL = any;
+
 import type {
+  TaskLoopConfig,
   TaskLoopSession,
   TaskLoopSessionRow,
-  TaskLoopConfig,
   TaskLoopSessionStatus,
 } from "./types";
 
@@ -226,7 +227,7 @@ export async function updateSessionStatus(
     UPDATE task_loop_sessions
     SET status = ${status},
         updated_at = ${now}
-        ${status === "completed" || status === "failed" ? `, completed_at = ${now}` : ``}
+        ${status === "completed" || status === "failed" ? `, completed_at = ${now}` : ""}
     WHERE id = ${sessionId}
   `;
 }

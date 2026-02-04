@@ -8,7 +8,7 @@ export async function runTUI(config?: OpenFarmConfig): Promise<void> {
   if (config) {
     useStore.setState({
       config,
-      provider: config.defaultProvider || "opencode",
+      provider: config.defaultProvider || "external-agent",
     });
   }
 

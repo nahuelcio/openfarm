@@ -35,7 +35,7 @@ export abstract class BaseAgentPlugin implements AgentPlugin {
   private readonly executions: Map<string, RunningExecution> = new Map();
   private currentExecutionId?: string;
 
-  protected constructor(runtime?: ExecutionRuntime) {
+  constructor(runtime?: ExecutionRuntime) {
     this.runtime = runtime ?? new LocalRuntime();
   }
 

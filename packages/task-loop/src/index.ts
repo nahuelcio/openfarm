@@ -10,48 +10,6 @@
  * 5. REPEATs until done
  */
 
-// Types
-export type {
-  TaskLoopConfig,
-  TaskLoopSession,
-  TaskLoopTask,
-  TaskLoopTaskStatus,
-  TaskLoopSessionStatus,
-  TaskExecutionResult,
-  TaskLoopRunOptions,
-  TaskLoopEvent,
-  TaskLoopLogger,
-  PromptBuilderConfig,
-  CompletionDetectorConfig,
-  CompletionDetectionStrategy,
-  TaskSelectionStrategy,
-  TaskSelectorConfig,
-  TaskExecutor,
-} from "./types";
-
-// Orchestrator
-export {
-  TaskLoopOrchestrator,
-  runTaskLoop,
-  resumeTaskLoop,
-} from "./orchestrator";
-
-// Task Selector
-export {
-  TaskSelector,
-  toTaskLoopTask,
-  filterTasks,
-  createDefaultTaskSelector,
-} from "./task-selector";
-
-// Prompt Builder
-export {
-  PromptBuilder,
-  PROMPT_TEMPLATES,
-  createDefaultPromptBuilder,
-  createPromptBuilder,
-} from "./prompt-builder";
-
 // Completion Detector
 export {
   CompletionDetector,
@@ -59,23 +17,61 @@ export {
   createGitChangesDetector,
 } from "./completion-detector";
 
+// Orchestrator
+export {
+  resumeTaskLoop,
+  runTaskLoop,
+  TaskLoopOrchestrator,
+} from "./orchestrator";
+// Prompt Builder
+export {
+  createDefaultPromptBuilder,
+  createPromptBuilder,
+  PROMPT_TEMPLATES,
+  PromptBuilder,
+} from "./prompt-builder";
 // Session Manager
 export {
-  SessionManager,
+  addSessionLog,
   createSession,
-  saveSession,
-  getSession,
+  deleteSession,
+  generateSessionId,
   getActiveSessions,
   getRecentSessions,
-  deleteSession,
-  addSessionLog,
+  getSession,
+  SessionManager,
+  saveSession,
   updateSessionStatus,
-  generateSessionId,
 } from "./session-manager";
+// Task Selector
+export {
+  createDefaultTaskSelector,
+  filterTasks,
+  TaskSelector,
+  toTaskLoopTask,
+} from "./task-selector";
+// Types
+export type {
+  CompletionDetectionStrategy,
+  CompletionDetectorConfig,
+  PromptBuilderConfig,
+  TaskExecutionResult,
+  TaskExecutor,
+  TaskLoopConfig,
+  TaskLoopEvent,
+  TaskLoopLogger,
+  TaskLoopRunOptions,
+  TaskLoopSession,
+  TaskLoopSessionStatus,
+  TaskLoopTask,
+  TaskLoopTaskStatus,
+  TaskSelectionStrategy,
+  TaskSelectorConfig,
+} from "./types";
 
 // Workflow Adapter
 export {
-  executeGitSetup,
   cleanupGitSetup,
+  executeGitSetup,
   getAvailableWorkflows,
 } from "./workflow-adapter";

@@ -35,7 +35,7 @@ export function Dashboard() {
           🌾 OpenFarm
         </Text>
         <Text color={colors.muted}>
-          Provider: {config?.defaultProvider || "opencode"}
+          Provider: {config?.defaultProvider || "external-agent"}
         </Text>
       </Box>
 

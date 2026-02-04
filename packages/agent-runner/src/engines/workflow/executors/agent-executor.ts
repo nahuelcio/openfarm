@@ -574,6 +574,40 @@ export async function executeAgentCode(
     await logger(`Step overrides previewMode: ${stepPreviewMode}`);
   }
 
+  const resolvedWorktreePath =
+    validatedConfig.worktreePath ??
+    context.worktreePath ??
+    defaultEngineOptions.worktreePath;
+  const resolvedPodName =
+    validatedConfig.podName ?? context.podName ?? defaultEngineOptions.podName;
+  const resolvedRuntimeType =
+    validatedConfig.runtimeType ??
+    defaultEngineOptions.runtimeType ??
+    (resolvedPodName
+      ? "kubernetes"
+      : resolvedWorktreePath
+        ? "worktree"
+        : defaultEngineOptions.containerName ||
+            defaultEngineOptions.ephemeral ||
+            defaultEngineOptions.imageName
+          ? "docker"
+          : "local");
+
+  const runtimeOptions = {
+    runtimeType: resolvedRuntimeType,
+    worktreePath: resolvedWorktreePath,
+    baseBranch:
+      validatedConfig.baseBranch ??
+      defaultEngineOptions.baseBranch ??
+      context.defaultBranch,
+    containerName:
+      validatedConfig.containerName ?? defaultEngineOptions.containerName,
+    podName: resolvedPodName,
+    namespace: validatedConfig.namespace ?? defaultEngineOptions.namespace,
+    imageName: validatedConfig.imageName ?? defaultEngineOptions.imageName,
+    ephemeral: validatedConfig.ephemeral ?? defaultEngineOptions.ephemeral,
+  };
+
   if (engineFactory && resolvedModel) {
     await logger(`Creating engine with step-specific model: ${resolvedModel}`);
     engineToUse = engineFactory({
@@ -587,6 +621,7 @@ export async function executeAgentCode(
       onChanges: defaultEngineOptions.onChanges,
       onChatMessage: defaultEngineOptions.onChatMessage,
       maxIterations: tuiConfig?.maxIterations,
+      ...runtimeOptions,
     });
     await logger(`Using step-specific model: ${resolvedModel}`);
   } else {
@@ -617,6 +652,7 @@ export async function executeAgentCode(
         onChanges: defaultEngineOptions.onChanges,
         onChatMessage: defaultEngineOptions.onChatMessage,
         maxIterations: tuiConfig?.maxIterations,
+        ...runtimeOptions,
       });
     } else {
       if (defaultEngine) {
@@ -641,6 +677,7 @@ export async function executeAgentCode(
             onChanges: defaultEngineOptions.onChanges,
             onChatMessage: defaultEngineOptions.onChatMessage,
             maxIterations: tuiConfig?.maxIterations,
+            ...runtimeOptions,
           });
         } else {
           return err(new Error("No coding engine available"));

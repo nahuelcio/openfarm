@@ -5,9 +5,9 @@
  */
 
 import { Text } from "ink";
-import React from "react";
-import type { TextStyle } from "../theme/types";
+import type React from "react";
 import { useThemeStyle } from "../theme/hooks";
+import type { TextStyle } from "../theme/types";
 
 interface ThemedTextProps {
   /**

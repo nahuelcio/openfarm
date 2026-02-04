@@ -20,7 +20,6 @@
     { "path": "./packages/operations" },
     { "path": "./packages/provider-aider" },
     { "path": "./packages/provider-claude" },
-    { "path": "./packages/provider-opencode" },
     { "path": "./packages/queues" },
     { "path": "./packages/result" },
     { "path": "./packages/runner-utils" },

@@ -11,7 +11,6 @@ import {
 } from "../utils/workflow-loader";
 
 const PROVIDERS = [
-  { id: "opencode", name: "OpenCode" },
   { id: "claude", name: "Claude Code" },
   { id: "aider", name: "Aider" },
   { id: "external-agent", name: "🔗 Connect External Agent" },
@@ -19,28 +18,16 @@ const PROVIDERS = [
 
 const AGENT_PRESETS = [
   {
-    id: "claude",
-    name: "🧠 Claude Code",
-    cli: "claude",
-    description: "Anthropic's official CLI",
-  },
-  {
-    id: "aider",
-    name: "🔧 Aider",
-    cli: "aider",
-    description: "AI pair programming in your terminal",
-  },
-  {
     id: "codex",
     name: "⚡ Codex",
     cli: "codex",
     description: "OpenAI's official CLI agent",
   },
   {
-    id: "opencode",
-    name: "💻 OpenCode",
-    cli: "opencode",
-    description: "Open-source coding assistant",
+    id: "droid",
+    name: "🤖 Droid",
+    cli: "droid",
+    description: "External CLI agent",
   },
   {
     id: "custom",
@@ -276,7 +263,7 @@ export function Execute() {
           } else {
             // Para presets, guardamos el CLI y vamos a args
             setExternalAgentArgs(preset.cli);
-            // Preload models in background (for opencode, fetches from API)
+            // Preload models in background (for CLI agents, fetches from API)
             preloadModels("external-agent", preset.cli);
           }
           setExternalAgentStep("args");
@@ -302,7 +289,7 @@ export function Execute() {
           setSelectedPreset(0);
           setExternalAgentArgs("");
           setModelOptions([]); // Reset so we load models for this CLI
-          // Preload models from provider package (e.g. @openfarm/provider-opencode)
+          // Preload models from provider package (e.g. @openfarm/provider-aider)
           preloadModels("external-agent", finalCli);
           // Ir a seleccionar modelo (como los otros providers)
           setStep("model");

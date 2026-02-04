@@ -9,7 +9,6 @@ import type {
   IRemoteClient,
   RemoteClientHandlers,
   RemoteInstance,
-  RemoteSystemInfo,
 } from "../types/remote";
 
 // Stub RemoteClient implementation for now

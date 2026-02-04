@@ -6,8 +6,8 @@
  */
 
 import type {
-  CompletionDetectorConfig,
   CompletionDetectionStrategy,
+  CompletionDetectorConfig,
   TaskExecutionResult,
   TaskLoopTask,
 } from "./types";
@@ -65,7 +65,7 @@ export class CompletionDetector {
       strategy: "heuristic",
       completionMarkers: DEFAULT_COMPLETION_MARKERS,
       failureMarkers: DEFAULT_FAILURE_MARKERS,
-      timeoutMs: 300000, // 5 minutes default
+      timeoutMs: 300_000, // 5 minutes default
       minChanges: 1,
       ...config,
     };

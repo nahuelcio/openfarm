@@ -9,14 +9,13 @@
  */
 
 import { Box } from "ink";
-import React, { useState } from "react";
+import { useState } from "react";
 import { MainLayout } from "./components/layout";
 import { RemoteTabs } from "./components/remote-tabs";
 import type { Tab } from "./components/tabs";
 import { ContextScreen } from "./screens/context";
 import { ContextConfigScreen } from "./screens/context-config";
 import { ContextHistoryScreen } from "./screens/context-history";
-import { Dashboard } from "./screens/dashboard";
 import { DiffViewer } from "./screens/diff-viewer";
 import { Execute } from "./screens/execute";
 import { ExecutionDetail } from "./screens/execution-detail";
@@ -28,7 +27,7 @@ import { TaskLoopScreen } from "./screens/task-loop";
 import { ThemeSelector } from "./screens/theme-selector";
 import { WorkflowEditor } from "./screens/workflow-editor";
 import { WorkflowList } from "./screens/workflow-list";
-import { useStore, type TabId } from "./store";
+import { type TabId, useStore } from "./store";
 
 const TABS: Tab[] = [
   { id: "dashboard", label: "Dashboard", shortcut: "1" },
@@ -119,27 +118,27 @@ export function AppV2() {
 
   return (
     <MainLayout
-      title="OpenFarm"
-      status={getStatus()}
-      sessionId={currentExecution?.id}
-      tabs={TABS}
       activeTab={activeTab}
-      onTabChange={handleTabChange}
       footerMessage={
         currentExecution ? `Task: ${currentExecution.task}` : "Ready"
       }
+      onTabChange={handleTabChange}
+      sessionId={currentExecution?.id}
+      status={getStatus()}
+      tabs={TABS}
+      title="OpenFarm"
     >
-      <Box flexGrow={1} flexDirection="column">
+      <Box flexDirection="column" flexGrow={1}>
         {/* Remote Instance Tabs (shown on all screens) */}
         <RemoteTabs
           activeTab={activeRemoteTab}
+          onAddRemote={() => setShowAddRemote(true)}
           onTabChange={handleRemoteTabChange}
           showAddButton={true}
-          onAddRemote={() => setShowAddRemote(true)}
         />
 
         {/* Main Content */}
-        <Box flexGrow={1} flexDirection="column">
+        <Box flexDirection="column" flexGrow={1}>
           {renderContent()}
         </Box>
       </Box>

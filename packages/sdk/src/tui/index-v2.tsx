@@ -6,7 +6,6 @@
  */
 
 import { render } from "ink";
-import React from "react";
 import type { OpenFarmConfig } from "../types";
 import { AppV2 } from "./app-v2";
 import { useStore } from "./store";
@@ -20,7 +19,7 @@ export async function runTUIV2(
   if (config) {
     useStore.setState({
       config,
-      provider: config.defaultProvider || "opencode",
+      provider: config.defaultProvider || "external-agent",
     });
   }
 

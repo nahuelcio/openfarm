@@ -6,7 +6,7 @@ This implementation plan breaks down the refactor into incremental steps that bu
 
 ## Tasks
 
-- [ ] 1. Create YAML configuration files and schema definitions
+- [x] 1. Create YAML configuration files and schema definitions
   - Create packages/task-loop/config/ directory structure
   - Create selection.yaml with priority scores and strategies
   - Create prompts.yaml with template definitions
@@ -15,7 +15,7 @@ This implementation plan breaks down the refactor into incremental steps that bu
   - Define TypeScript interfaces for each config schema
   - _Requirements: 6.1, 6.2, 2.3, 2.4, 3.3, 4.3, 4.4_
 
-- [ ] 1.1 Write unit tests for YAML configuration structure
+- [x] 1.1 Write unit tests for YAML configuration structure
   - Test that all required configuration files exist
   - Test that each file has required fields
   - Test YAML parsing for each configuration file

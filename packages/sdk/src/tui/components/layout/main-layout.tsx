@@ -9,10 +9,10 @@
  */
 
 import { Box } from "ink";
-import React from "react";
+import type React from "react";
+import { type Tab, TabBar } from "../tabs/tab-bar";
 import { Footer } from "./footer";
 import { Header } from "./header";
-import { TabBar, type Tab } from "../tabs/tab-bar";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -38,15 +38,15 @@ export function MainLayout({
   return (
     <Box flexDirection="column" height="100%">
       {/* Header */}
-      <Header title={title} status={status} sessionId={sessionId} />
+      <Header sessionId={sessionId} status={status} title={title} />
 
       {/* Tab Bar */}
       <Box paddingX={1}>
-        <TabBar tabs={tabs} activeTab={activeTab} onTabChange={onTabChange} />
+        <TabBar activeTab={activeTab} onTabChange={onTabChange} tabs={tabs} />
       </Box>
 
       {/* Main Content */}
-      <Box flexGrow={1} flexDirection="row">
+      <Box flexDirection="row" flexGrow={1}>
         {children}
       </Box>
 

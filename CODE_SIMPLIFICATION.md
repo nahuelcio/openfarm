@@ -1,1047 +1,1179 @@
-# Code Simplification Opportunities - OpenFarm
+# Code Simplification Guide
 
-## Executive Summary
+This document identifies areas where OpenFarm codebase can be simplified to improve readability and maintainability without breaking functionality.
 
-This document identifies concrete simplification opportunities in the OpenFarm codebase. All suggestions prioritize **readability** while maintaining **functionality**. No breaking changes to public APIs.
+## Table of Contents
+
+1. [Agent Executor](#agent-executor)
+2. [Planning Executor](#planning-executor)
+3. [Git Worktree](#git-worktree)
+4. [Git Adapter](#git-adapter)
+5. [Platform Adapter Factory](#platform-adapter-factory)
+6. [Provider Factory](#provider-factory)
+7. [Utils](#utils)
+8. [General Recommendations](#general-recommendations)
 
 ---
 
-## 1. agent-executor.ts (1,251 lines)
+## Agent Executor
 
-### Issue: Massive file with multiple responsibilities
+**File**: `packages/agent-runner/src/engines/workflow/executors/agent-executor.ts` (1288 lines)
 
-**Location:** `/packages/agent-runner/src/engines/workflow/executors/agent-executor.ts`
+### Issue 1: Overly Complex Expression Replacement Logic (Lines 26-216)
 
-**Current Problems:**
-- 1,251 lines in a single file
-- Multiple unrelated functions mixed together
-- Complex pattern replacement logic repeated across functions
-- DRY violations in expression handling
+**Problem**:
+The `replaceWorkItemExpressions` and `replaceStepResultsExpressions` functions contain repetitive string replacement logic with multiple regex patterns. This makes code hard to understand and maintain.
 
-### 1.1 Extract Pattern Replacer to Utility Module
-
-**Current Code (lines 26-161):**
+**Current Code** (Lines 46-87):
 ```typescript
-function replaceWorkItemExpressions(
-  text: string,
-  workItem: { /* 14+ properties */ }
-): string {
+function replaceWorkItemExpressions(text: string, workItem: {...}): string {
   let result = text;
-
-  // 14+ individual replace() calls
   result = result.replace(/\$\{workItem\.title\}/g, workItem.title || "");
   result = result.replace(/\$\{workItem\.description\}/g, workItem.description || "");
-  // ... 12 more lines
-
-  // Complex ternary patterns
-  const complexModeTernaryPattern = /\$\{workItem\.mode\s*===\s*['"](investigate|explain)['"]\s*\|\|\s*workItem\.mode\s*===\s*['"](investigate|explain)['"]\s*\?\s*['"]([^'"]+)['"]\s*:\s*['"]([^'"]+)['"]\}/g;
-  // ... more complex regex patterns
+  result = result.replace(/\$\{workItem\.acceptanceCriteria\}/g, workItem.acceptanceCriteria || "");
+  result = result.replace(/\$\{workItem\.id\}/g, workItem.id || "");
+  result = result.replace(/\$\{workItem\.workItemType\}/g, workItem.workItemType || "");
+  result = result.replace(/\$\{workItem\.type\}/g, workItem.workItemType || "");
+  result = result.replace(/\$\{workItem\.project\}/g, workItem.project || "");
+  result = result.replace(/\$\{workItem\.mode\}/g, workItem.mode || "");
+  result = result.replace(/\$\{workItem\.preInstructions\}/g, workItem.preInstructions || "");
+  // ... more repetitive replacements
 }
 ```
 
-**Simplification Strategy:**
-
-Create `packages/agent-runner/src/utils/template-engine.ts`:
-
+**Simplified Solution**:
 ```typescript
-/**
- * Simple template engine for variable substitution
- * Replaces ${var} and ${var.property} patterns efficiently
- */
-export class TemplateEngine {
-  private static readonly SIMPLE_PATTERN = /\$\{(\w+)\}/g;
-  private static readonly NESTED_PATTERN = /\$\{(\w+)\.(\w+)\}/g;
+// Define property mappings once
+const WORKITEM_PROPERTIES = [
+  'title', 'description', 'acceptanceCriteria', 'id', 'workItemType',
+  'project', 'mode', 'preInstructions', 'repositoryUrl', 'branchName',
+  'defaultBranch', 'chatMessages', 'sessionId'
+] as const;
 
-  static replace(text: string, data: Record<string, unknown>): string {
-    // Handle nested properties: ${workItem.title}
-    text = text.replace(this.NESTED_PATTERN, (_, obj, prop) => {
-      const value = (data[obj] as Record<string, unknown>)?.[prop];
-      return this.coerceToString(value);
-    });
-
-    // Handle simple variables: ${title}
-    text = text.replace(this.SIMPLE_PATTERN, (_, key) => {
-      return this.coerceToString(data[key]);
-    });
-
-    return text;
-  }
-
-  private static coerceToString(value: unknown): string {
-    if (value == null) return "";
-    if (typeof value === "string") return value;
-    if (typeof value === "number") return value.toString();
-    if (typeof value === "boolean") return value ? "true" : "false";
-    return String(value);
-  }
-}
-
-// Helper for workItem-specific patterns
-export function replaceWorkItemTemplates(
-  text: string,
-  workItem: Record<string, unknown>
-): string {
-  return TemplateEngine.replace(text, { workItem });
-}
-```
-
-**Impact:**
-- **Reduces:** 135 lines → 40 lines
-- **Improves:** Readability, testability
-- **Removes:** 14+ individual regex patterns
-
-### 1.2 Extract Step Results Replacement Logic
-
-**Current Code (lines 166-216):**
-```typescript
-function replaceStepResultsExpressions(
-  text: string,
-  stepResults: Array<{ stepId: string; result?: string }>
-): string {
+function replaceWorkItemExpressions(text: string, workItem: Record<string, string | undefined>): string {
   let result = text;
 
-  // Build map
-  const stepResultsMap = new Map<string, string>();
-  for (const sr of stepResults) {
-    if (sr.result) {
-      stepResultsMap.set(sr.stepId, sr.result);
-    }
+  // Simple property replacements: ${workItem.title} -> workItem.title
+  for (const prop of WORKITEM_PROPERTIES) {
+    const pattern = new RegExp(`\\$\\{workItem\\.${prop}\\}`, 'g');
+    result = result.replace(pattern, workItem[prop] || '');
   }
 
-  // Multiple pattern replacements...
-  const stepResultWithFallbackPattern = /\$\{stepResults\.(\w+)(\?\.)?\.result\s*\|\|\s*['"]([^'"]+)['"]\}/g;
-  result = result.replace(stepResultWithFallbackPattern, ...);
-  // ... more patterns
+  // Handle complex patterns (ternary expressions with defaults)
+  const patterns = [
+    // ${workItem.mode || 'investigate'}
+    [/\$\{workItem\.mode\s*\|\|\s*['"]([^'"]+)['"]\}/g, (m, def) => workItem.mode || def || 'investigate'],
+    // ${workItem.mode === 'investigate' ? 'value1' : 'value2'}
+    [/\$\{workItem\.mode\s*===\s*['"]([^'"]+)['"]\s*\?\s*['"]([^'"]+)['"]\s*:\s*['"]([^'"]+)['"]\}/g, (m, mode, trueVal, falseVal) => (workItem.mode === mode ? trueVal : falseVal)],
+  ];
+
+  for (const [pattern, replacer] of patterns) {
+    result = result.replace(pattern, replacer as (...args: unknown[]) => string);
+  }
+
+  return result;
 }
 ```
 
-**Simplification Strategy:**
+**Benefits**:
+- Reduces 40+ lines of repetitive code to ~20 lines
+- Single source of truth for property names
+- Easier to add new properties
+- More maintainable
 
-Extend `template-engine.ts`:
+---
+
+### Issue 2: Overly Complex `executeAgentCode` Function (Lines 444-898)
+
+**Problem**:
+The `executeAgentCode` function is 450+ lines with deeply nested conditionals and complex engine creation logic. It's hard to follow and test.
+
+**Simplified Approach**:
+Extract engine creation logic into a separate module:
 
 ```typescript
-export function replaceStepResultsTemplates(
-  text: string,
-  stepResults: Array<{ stepId: string; result?: string }>
-): string {
-  // Build lookup map once
-  const resultMap = new Map(
-    stepResults.filter((sr) => sr.result != null)
-              .map((sr) => [sr.stepId, sr.result])
+// Create: packages/agent-runner/src/engines/workflow/engine-resolver.ts
+export async function resolveEngine(
+  config: AgentCodeConfig,
+  context: ExecutionContext,
+  services: ServiceContainer
+): Promise<CodingEngine> {
+  const { codingEngine, codingEngineFactory, defaultEngineOptions } = services;
+
+  // If engine already exists and config matches, reuse it
+  if (codingEngine && shouldUseDefaultEngine(config, context, defaultEngineOptions)) {
+    return codingEngine;
+  }
+
+  // Otherwise, create new engine
+  if (!codingEngineFactory) {
+    throw new Error("No coding engine factory available");
+  }
+
+  const engineConfig = buildEngineConfig(config, context, defaultEngineOptions);
+  return codingEngineFactory(engineConfig);
+}
+
+function shouldUseDefaultEngine(config: AgentCodeConfig, context: ExecutionContext, defaults: EngineOptions): boolean {
+  return (
+    config.provider === undefined &&
+    config.model === undefined &&
+    config.previewMode === undefined &&
+    context.agentConfiguration?.provider === defaults.provider
   );
-
-  // Replace ${stepResults.research.result} or ${stepResults.research?.result}
-  const pattern = /\$\{stepResults\.(\w+)(\?\.)?\.result\}/g;
-  return text.replace(pattern, (_, stepId) => resultMap.get(stepId) || "");
 }
-```
 
-**Impact:**
-- **Reduces:** 50 lines → 15 lines
-- **Eliminates:** Redundant fallback patterns (default to empty string)
+function buildEngineConfig(config: AgentCodeConfig, context: ExecutionContext, defaults: EngineOptions) {
+  const resolvedModel = config.model || context.agentConfiguration?.model || defaults.model;
 
-### 1.3 Simplify BuildAgentInstruction
-
-**Current Code (lines 360-432):**
-```typescript
-export function buildAgentInstruction(
-  step: ActionableWorkflowStep,
-  config: Record<string, unknown>,
-  workItem: { /* 13+ properties */ },
-  stepResults: Array<{ stepId: string; result?: string }> = []
-): string {
-  const sanitize = (text?: string): string => {
-    return (text || "").replace(/<[^>]*>/g, "");
+  return {
+    provider: config.provider || defaults.provider,
+    model: resolvedModel,
+    previewMode: config.previewMode ?? defaults.previewMode,
+    chatOnly: config.chatOnly ?? false,
+    runtimeType: resolveRuntimeType(config, context, defaults),
+    worktreePath: config.worktreePath ?? context.worktreePath ?? defaults.worktreePath,
+    // ... other options
   };
+}
 
-  const replaceVariables = (template: string): string => {
-    const sanitizedDescription = sanitize(workItem.description);
-    // ... 11 more sanitizations
-
-    let result = template
-      .replace(/{title}/g, workItem.title || "")
-      .replace(/{description}/g, sanitizedDescription)
-      // ... 11 more replace() calls
-
-    // Inject step results
-    for (const stepResult of stepResults) {
-      if (stepResult.result) {
-        // Multiple regex patterns...
-      }
-    }
-    return result;
-  };
-
-  if (typeof config.prompt === "string") {
-    return replaceVariables(config.prompt);
-  }
-
-  return `${workItem.title}\n\n${sanitizedDescription}...`;
+function resolveRuntimeType(config: AgentCodeConfig, context: ExecutionContext, defaults: EngineOptions): RuntimeType {
+  return config.runtimeType ??
+    context.podName ? "kubernetes" :
+    context.worktreePath ? "worktree" :
+    defaults.containerName || defaults.ephemeral || defaults.imageName ? "docker" :
+    "local";
 }
 ```
 
-**Simplification Strategy:**
-
-```typescript
-export function buildAgentInstruction(
-  step: ActionableWorkflowStep,
-  config: Record<string, unknown>,
-  workItem: Record<string, unknown>,
-  stepResults: Array<{ stepId: string; result?: string }> = []
-): string {
-  // Use prompt if provided
-  if (typeof config.prompt === "string") {
-    return replaceWorkItemTemplates(config.prompt, workItem);
-  }
-
-  // Build default instruction
-  const title = String(workItem.title || "");
-  const description = sanitizeHtml(workItem.description);
-  const acceptanceCriteria = sanitizeHtml(workItem.acceptanceCriteria);
-
-  return [
-    title,
-    "",
-    description,
-    "",
-    "Acceptance Criteria:",
-    acceptanceCriteria,
-    "",
-    "IMPORTANT: You are running in a headless automation environment.",
-    "Do NOT ask clarifying questions. Do NOT ask for user input.",
-    "You must attempt to implement the changes based on the information provided.",
-  ].join("\n");
-}
-
-function sanitizeHtml(text: unknown): string {
-  return String(text || "").replace(/<[^>]*>/g, "");
-}
-```
-
-**Impact:**
-- **Reduces:** 72 lines → 35 lines
-- **Improves:** Clear separation of concerns
-- **Removes:** Redundant {title}, {description} patterns (use ${workItem.title} instead)
-
-### 1.4 Merge Duplicate Error Handling Logic
-
-**Current Code (lines 710-743):**
-```typescript
-if (!result.ok) {
-  const errorResult = result as { ok: false; error: unknown };
-
-  await logger(`[Agent Executor] Engine returned error...`);
-
-  let error: Error;
-  if (errorResult.error instanceof Error) {
-    error = errorResult.error;
-  } else if (errorResult.error && typeof errorResult.error === "object") {
-    // Extract error information from the object
-    const errorObj = errorResult.error as Record<string, unknown>;
-    // ... 20+ lines of error parsing logic
-  } else {
-    // ... 5 more lines
-  }
-  return err(error);
-}
-```
-
-**Simplification Strategy:**
-
-Create `packages/agent-runner/src/utils/error-normalizer.ts`:
-
-```typescript
-/**
- * Normalizes errors from various sources to Error objects
- */
-export function normalizeError(error: unknown): Error {
-  if (error instanceof Error) return error;
-
-  if (error && typeof error === "object") {
-    const obj = error as Record<string, unknown>;
-
-    if (typeof obj.message === "string") {
-      const normalized = new Error(obj.message);
-      if (typeof obj.stack === "string") {
-        normalized.stack = obj.stack;
-      }
-      return normalized;
-    }
-  }
-
-  if (typeof error === "string") {
-    return new Error(error);
-  }
-
-  return new Error(String(error));
-}
-```
-
-Then in `agent-executor.ts`:
-
-```typescript
-if (!result.ok) {
-  const errorResult = result as { ok: false; error: unknown };
-  await logger(`[Agent Executor] Engine returned error: ${JSON.stringify(errorResult.error)}`);
-  return err(normalizeError(errorResult.error));
-}
-```
-
-**Impact:**
-- **Reduces:** 33 lines → 3 lines
-- **Reuses:** Error normalization across codebase
-- **Improves:** Consistent error handling
-
-### 1.5 Extract Dry Report Generator
-
-**Current Code (lines 251-344):**
-```typescript
-function generateAgentDryRunReport(
-  step: WorkflowStep,
-  instruction: string,
-  config: AgentCodeConfig,
-  repoPath: string
-): string {
-  const lines: string[] = [];
-
-  lines.push("# Dry Run Report: Agent Code Step");
-  lines.push("");
-  lines.push("## Overview");
-  lines.push("- **Mode**: Preview (no changes will be made)");
-  lines.push(`- **Step ID**: ${step.id}`);
-  // ... 60+ lines of string building
-}
-```
-
-**Simplification Strategy:**
-
-Use template literals:
-
-```typescript
-function generateAgentDryRunReport(
-  step: WorkflowStep,
-  instruction: string,
-  config: AgentCodeConfig,
-  repoPath: string
-): string {
-  const mode = config.chatOnly ? "Chat Only" : "Code Changes";
-  const preview = config.previewMode ? "Yes" : "No";
-  const risk = config.chatOnly || config.previewMode ? "Very Low" : "Medium";
-
-  const instructionPreview = instruction.length > 1500
-    ? `${instruction.substring(0, 1500)}\n\n... [truncated]`
-    : instruction;
-
-  return `# Dry Run Report: Agent Code Step
-
-## Overview
-- **Mode**: Preview (no changes will be made)
-- **Step ID**: ${step.id}
-- **Provider**: ${config.provider || "opencode (default)"}
-- **Model**: ${config.model || "default"}
-- **Repository**: ${repoPath}
-
-## Step Configuration
-- **Chat Only**: ${config.chatOnly ? "Yes" : "No"}
-- **Preview Mode**: ${preview}
-- **Max Iterations**: ${config.maxIterations || "1 (default)"}
-
-## What Would Happen
-${config.chatOnly ? "..." : "..."}
-
-## Instruction Preview
-\`\`\`
-${instructionPreview}
-\`\`\`
-
----
-*This is a dry run preview. No files were created or modified.*`;
-}
-```
-
-**Impact:**
-- **Reduces:** 94 lines → 40 lines
-- **Improves:** Readability with template literals
-- **Removes:** Unnecessary array building
+**Benefits**:
+- Separates concerns: configuration resolution vs execution
+- Each function does one thing well
+- Easier to test individual components
+- Reduces `executeAgentCode` complexity by ~200 lines
 
 ---
 
-## 2. create.ts (372 lines)
+### Issue 3: Duplicate Dry Run Report Generation (Lines 251-344)
 
-### Issue: Complex retry logic with repetitive validation
+**Problem**:
+`generateAgentDryRunReport` and `generateDryRunReport` (in planning-executor.ts) have similar structure but are duplicated.
 
-**Location:** `/packages/agent-runner/src/operations/git/worktree/create.ts`
+**Simplified Solution**:
+Create a shared report generator:
 
-### 2.1 Extract Validation to Helper
-
-**Current Code (lines 127-203):**
 ```typescript
-// CRITICAL: Verify that main repository exists before any operations
+// Create: packages/agent-runner/src/utils/dry-run.ts
+interface DryRunConfig {
+  showEstimatedTime?: boolean;
+  showAffectedFiles?: boolean;
+  showRiskAssessment?: boolean;
+}
+
+interface DryRunContext {
+  stepType: string;
+  stepId: string;
+  target: string; // repo or work item
+  config: Record<string, unknown>;
+  instruction: string;
+}
+
+function generateDryRunReport(context: DryRunContext, config: DryRunConfig = {}): string {
+  const sections = [
+    generateHeader(context),
+    generateOverview(context),
+    generateWhatWouldHappen(context),
+    ...(config.showEstimatedTime ? [generateEstimatedTime(context)] : []),
+    ...(config.showAffectedFiles ? [generateAffectedFiles(context)] : []),
+    ...(config.showRiskAssessment ? [generateRiskAssessment(context)] : []),
+    generateInstructionPreview(context),
+    generateFooter(),
+  ];
+
+  return sections.join('\n\n');
+}
+```
+
+---
+
+## Planning Executor
+
+**File**: `packages/agent-runner/src/engines/workflow/executors/planning-executor.ts` (766 lines)
+
+### Issue 1: Overly Complex `cleanPlanContent` Function (Lines 130-229)
+
+**Problem**:
+The function has many regex patterns and nested conditional logic that's hard to follow.
+
+**Current Code** (Lines 162-209):
+```typescript
+const noisePatterns = [
+  /^You can skip this check with/,
+  /^Added .* to .gitignore/,
+  /^\.\.\/tmp\/.*worktrees/,
+  /^Note: in-chat filenames/,
+  /^Cur working dir:/,
+  /^Git working dir:/,
+  /^docs$/,
+  /^\/.*\.md$/,
+  /^.*: file not found error$/i,
+  /^(?:❌\s*)?[^\s:]+:\s*file\s+not\s+found\s+error$/i,
+  // ... more patterns
+];
+```
+
+**Simplified Solution**:
+```typescript
+// Define pattern categories for clarity
+const NOISE_PATTERNS = {
+  engineOutput: [
+    /^You can skip this check with/,
+    /^Added .* to .gitignore/,
+    /^\.\.\/tmp\/.*worktrees/,
+  ],
+  filePaths: [
+    /^Cur working dir:/,
+    /^Git working dir:/,
+    /^docs$/,
+    /^\/.*\.md$/,
+  ],
+  errors: [
+    /file not found/i,
+    /Unable to read/i,
+    /'NoneType' object/,
+  ],
+  gitConflict: [
+    /^<<<<<<< SEARCH/,
+    /^>>>>>>> REPLACE/,
+    /^=======/,
+  ],
+} as const;
+
+function isNoise(line: string): boolean {
+  return Object.values(NOISE_PATTERNS).some(patterns =>
+    patterns.some(pattern => pattern.test(line))
+  );
+}
+```
+
+**Benefits**:
+- Pattern categories make intent clear
+- Easier to add new noise patterns
+- Reduces mental load when reading
+
+---
+
+### Issue 2: Duplicate Kubectl Execution Patterns (Lines 558-730)
+
+**Problem**:
+`writeFileInPod` and `executeGitCommandInPod` have nearly identical promise-based timeout wrappers.
+
+**Simplified Solution**:
+```typescript
+function executeInPod<T>(
+  podName: string,
+  command: string,
+  timeout: number = 30_000
+): Promise<Result<T>> {
+  const { spawn } = await import("node:child_process");
+  const sanitizedPodName = sanitizePodName(podName);
+
+  return new Promise((resolve) => {
+    const process = spawn("kubectl", buildKubectlArgs(sanitizedPodName, command));
+    let stdout = "";
+    let stderr = "";
+
+    const timeoutId = setTimeout(() => {
+      process.kill();
+      resolve(err(new Error("kubectl exec timed out")));
+    }, timeout);
+
+    process.stdout.on("data", (data) => { stdout += data.toString(); });
+    process.stderr.on("data", (data) => { stderr += data.toString(); });
+
+    process.on("close", (code) => {
+      clearTimeout(timeoutId);
+      code === 0 ? resolve(ok(stdout as T)) : resolve(err(new Error(stderr || "Command failed")));
+    });
+
+    process.on("error", (error) => {
+      clearTimeout(timeoutId);
+      resolve(err(new Error(`kubectl exec error: ${error.message}`)));
+    });
+  });
+}
+
+// Specialized helpers
+const writeFileInPod = (podName: string, path: string, content: string) =>
+  executeInPod<void>(podName, `echo "${Buffer.from(content).toString('base64')}" | base64 -d > "${path}"`);
+
+const executeGitCommandInPod = (podName: string, repoPath: string, command: string) =>
+  executeInPod<void>(podName, `cd "${repoPath}" && ${command}`);
+```
+
+**Benefits**:
+- Eliminates ~100 lines of duplicate code
+- Single timeout/error handling implementation
+- Easier to maintain
+
+---
+
+## Git Worktree
+
+**File**: `packages/agent-runner/src/operations/git/worktree/create.ts` (372 lines)
+
+### Issue 1: Excessive Validation Calls (Lines 127-176)
+
+**Problem**:
+The same validation logic is called 5 times with different error messages.
+
+**Current Code**:
+```typescript
+// Line 127-130
 const validation = validateMainRepository(sanitizedMainRepoPath, fs);
 if (!validation.valid) {
   return err(validation.error!);
 }
 
-// ... later
-
+// Line 149-156
 const validation2 = validateMainRepository(sanitizedMainRepoPath, fs);
 if (!validation2.valid) {
-  return err(
-    new Error(
-      `Main repository does not exist before listing worktrees: ${sanitizedMainRepoPath}. Cannot continue.`
-    )
-  );
+  return err(new Error(`Main repository does not exist before listing worktrees...`));
 }
 
-// ... later
-
+// Line 164-171
 const validation3 = validateMainRepository(sanitizedMainRepoPath, fs);
 if (!validation3.valid) {
-  return err(
-    new Error(
-      `Main repository does not exist before updating default branch: ${sanitizedMainRepoPath}. Cannot continue.`
-    )
-  );
+  return err(new Error(`Main repository does not exist before updating default branch...`));
 }
 
-// ... later
-
+// Line 196-203
 const validation4 = validateMainRepository(sanitizedMainRepoPath, fs);
 if (!validation4.valid) {
-  return err(
-    new Error(
-      `Main repository does not exist before worktree creation: ${sanitizedMainRepoPath}. Cannot continue.`
-    )
-  );
+  return err(new Error(`Main repository does not exist before worktree creation...`));
+}
+
+// Line 308-317
+const validation5 = validateMainRepository(sanitizedMainRepoPath, fs);
+if (!validation5.valid) {
+  return err(new Error(`Main repository was deleted during worktree repair...`));
 }
 ```
 
-**Simplification Strategy:**
-
+**Simplified Solution**:
 ```typescript
-/**
- * Validates main repository exists
- * Throws detailed error if validation fails
- */
-function ensureMainRepository(
+function validateRepositoryWithMessage(
   mainRepoPath: string,
   fs: FileSystem,
-  context: string
+  operation: string
 ): Result<void> {
   const validation = validateMainRepository(mainRepoPath, fs);
   if (!validation.valid) {
-    return err(
-      new Error(
-        `Main repository does not exist before ${context}: ${mainRepoPath}. Cannot continue.`
-      )
-    );
+    return err(new Error(`Main repository does not exist before ${operation}: ${mainRepoPath}`));
   }
   return ok(undefined);
 }
+
+// Usage:
+const validationResult = validateRepositoryWithMessage(sanitizedMainRepoPath, fs, "listing worktrees");
+if (!validationResult.ok) return validationResult;
 ```
 
-Then in `createWorktree`:
+**Benefits**:
+- Reduces 30+ lines to ~10 lines
+- Single source of truth for validation messages
+- Easier to modify error messages consistently
 
+---
+
+### Issue 2: Overly Complex Retry Loop (Lines 186-343)
+
+**Problem**:
+The retry loop has deep nesting and multiple strategy branches.
+
+**Simplified Solution**:
 ```typescript
-// Single validation call
-await ensureMainRepository(sanitizedMainRepoPath, fs, "worktree operations");
-
-await pruneWorktrees(sanitizedMainRepoPath, execFn);
-await cleanupExistingWorktree(...);
-
-// No need to revalidate - repository was verified above
-await removeStaleWorktreeReferences(...);
-
-await ensureDefaultBranchUpdated(sanitizedMainRepoPath, sanitizedDefaultBranch, execFn);
-
-const branchStatus = await checkBranchExists(...);
-
-// Validate before creation
-await ensureMainRepository(sanitizedMainRepoPath, fs, "worktree creation");
-```
-
-**Impact:**
-- **Reduces:** 40+ lines of repetitive validation → 8 lines of helper + 4 call sites
-- **Improves:** Consistent error messages
-
-### 2.2 Simplify Retry Loop
-
-**Current Code (lines 186-343):**
-```typescript
-while (!worktreeCreated && createAttempt < maxAttempts) {
-  createAttempt++;
-
-  try {
-    // ... 60+ lines of try block with multiple nested conditions
-    const validation4 = validateMainRepository(sanitizedMainRepoPath, fs);
-    if (!validation4.valid) { /* ... */ }
-    await log(`Creating worktree (attempt ${createAttempt}/${maxAttempts})...`);
-
-    if (branchStatus.local) {
-      await execFn("git", [...]);
-    } else {
-      await execFn("git", [...]);
-    }
-
-    worktreeCreated = true;
-    await log(`Successfully created worktree at ${sanitizedWorktreePath}`);
-
-    // Post-creation verification
-    if (!fs.existsSync(sanitizedWorktreePath)) {
-      await log("WARNING: Worktree creation reported success but directory does not exist...");
-      worktreeCreated = false;
-      continue; // Retry
-    }
-
-    try {
-      await execFn("git", ["-C", sanitizedWorktreePath, "rev-parse", "--git-dir"]);
-      await log(`Worktree directory verified and accessible: ${sanitizedWorktreePath}`);
-    } catch (verifyError) {
-      // ... logging
-    }
-  } catch (createError) {
-    // ... 80+ lines of error handling with nested conditions
-    if (errorMessage.includes("already exists") || errorMessage.includes("used by worktree")) {
-      try {
-        await aggressiveCleanupForBranchExists(...);
-        continue;
-      } catch (cleanupError) { /* ... */ }
-    }
-    // ... more nested conditions
-  }
+interface RetryStrategy {
+  canHandle: (error: string) => boolean;
+  attempt: () => Promise<void>;
 }
-```
 
-**Simplification Strategy:**
+const RETRY_STRATEGIES: RetryStrategy[] = [
+  {
+    canHandle: (err) => err.includes("already exists") || err.includes("used by worktree"),
+    attempt: () => aggressiveCleanupForBranchExists(...),
+  },
+  {
+    canHandle: (err) => err.includes("already a registered worktree") || err.includes("is a missing worktree"),
+    attempt: () => repairStaleWorktreeReference(...),
+  },
+];
 
-Extract retry strategies to separate functions:
-
-```typescript
-type WorktreeRetryStrategy = (context: WorktreeContext) => Promise<Result<void>>;
-
-async function createWorktreeWithRetry(
-  context: WorktreeContext,
-  strategies: WorktreeRetryStrategy[],
+async function executeWithRetry<T>(
+  operation: () => Promise<T>,
   maxAttempts: number = 3
-): Promise<Result<void>> {
+): Promise<Result<T>> {
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    await context.log(`Creating worktree (attempt ${attempt}/${maxAttempts})...`);
+    try {
+      return ok(await operation());
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
 
-    const result = await attemptWorktreeCreation(context);
-
-    if (result.ok) {
-      // Verify creation
-      if (await verifyWorktreeCreated(context)) {
-        await context.log(`Successfully created worktree at ${context.worktreePath}`);
-        return ok(undefined);
+      // Try recovery strategies
+      const strategy = RETRY_STRATEGIES.find(s => s.canHandle(errorMessage));
+      if (strategy && attempt < maxAttempts) {
+        await strategy.attempt();
+        continue;
       }
-      // Verification failed - try next strategy
-      continue;
-    }
 
-    // Try strategies in order
-    for (const strategy of strategies) {
-      const strategyResult = await strategy(context, result.error);
-      if (strategyResult.ok) {
-        // Strategy succeeded, retry creation
-        break;
+      // Last attempt or no recovery strategy
+      if (attempt >= maxAttempts) {
+        return await requestUserIntervention(...);
       }
     }
   }
-
-  return err(new Error("Failed to create worktree after all attempts"));
+  return err(new Error("Failed after all attempts"));
 }
+```
 
-async function attemptWorktreeCreation(context: WorktreeContext): Promise<Result<void>> {
-  const args = context.branchExistsLocal
-    ? ["-C", context.mainRepoPath, "worktree", "add", "--detach",
-       context.worktreePath, context.branchName]
-    : ["-C", context.mainRepoPath, "worktree", "add", "-b",
-       context.branchName, context.worktreePath];
+**Benefits**:
+- Strategy pattern makes recovery logic clear
+- Easier to add new recovery strategies
+- Reduces nesting depth from 4-5 levels to 2-3 levels
 
-  await context.execFn("git", args);
-  return ok(undefined);
-}
+---
 
-async function verifyWorktreeCreated(context: WorktreeContext): Promise<boolean> {
-  if (!context.fs.existsSync(context.worktreePath)) {
-    await context.log(`WARNING: Worktree directory does not exist: ${context.worktreePath}`);
-    return false;
+## Git Adapter
+
+**File**: `packages/git-adapter/src/index.ts` (595 lines)
+
+### Issue 1: Massive `checkoutBranch` Function (Lines 111-400)
+
+**Problem**:
+This 290-line function has excessive nesting and duplicate error handling.
+
+**Simplified Solution**:
+Break down into smaller, focused functions:
+
+```typescript
+// 1. Verify repository exists
+function verifyRepository(config: GitConfig, fs: FileSystem): Result<void> {
+  if (!fs.existsSync(config.repoPath)) {
+    return diagnoseMissingRepository(config, fs);
   }
+  return verifyGitRepository(config, execFn);
+}
 
+// 2. Verify it's a git repository
+function verifyGitRepository(config: GitConfig, execFn: ExecFunction): Result<void> {
   try {
-    await context.execFn("git", ["-C", context.worktreePath, "rev-parse", "--git-dir"]);
-    await context.log(`Worktree directory verified: ${context.worktreePath}`);
-    return true;
-  } catch {
-    await context.log("WARNING: Worktree verification failed");
-    return false;
-  }
-}
-```
-
-**Impact:**
-- **Reduces:** 157 lines → 80 lines
-- **Improves:** Testability of individual strategies
-- **Clarifies:** Intent of each retry step
-
----
-
-## 3. command-executor.ts (379 lines)
-
-### Issue: Duplicate K8S validation functions
-
-**Location:** `/packages/agent-runner/src/engines/workflow/executors/command-executor.ts`
-
-### 3.1 Merge validatePodName and validateNamespace
-
-**Current Code (lines 164-213):**
-```typescript
-function validatePodName(podName: string): string {
-  if (!podName || typeof podName !== "string") {
-    throw new Error("Pod name must be a non-empty string");
-  }
-
-  const k8sNameRegex = /^[a-z0-9]([-a-z0-9]*[a-z0-9])?$/;
-  if (!k8sNameRegex.test(podName)) {
-    throw new Error(
-      `Invalid pod name: ${podName}. Pod names must be lowercase, start and end with alphanumeric characters, and can only contain lowercase letters, numbers, and hyphens.`
-    );
-  }
-
-  if (podName.length > K8S_POD_NAME_MAX_LENGTH) {
-    throw new Error(
-      `Pod name exceeds maximum length of ${K8S_POD_NAME_MAX_LENGTH} characters`
-    );
-  }
-
-  return podName;
-}
-
-function validateNamespace(namespace: string): string {
-  if (!namespace || typeof namespace !== "string") {
-    throw new Error("Namespace must be a non-empty string");
-  }
-
-  const k8sNameRegex = /^[a-z0-9]([-a-z0-9]*[a-z0-9])?$/;
-  if (!k8sNameRegex.test(namespace)) {
-    throw new Error(
-      `Invalid namespace: ${namespace}. Namespace names must be lowercase, start and end with alphanumeric characters, and can only contain lowercase letters, numbers, and hyphens.`
-    );
-  }
-
-  if (namespace.length > K8S_NAMESPACE_MAX_LENGTH) {
-    throw new Error(
-      `Namespace exceeds maximum length of ${K8S_NAMESPACE_MAX_LENGTH} characters`
-    );
-  }
-
-  return namespace;
-}
-```
-
-**Simplification Strategy:**
-
-```typescript
-/**
- * Validates Kubernetes resource names against RFC 1123 subdomain rules
- */
-function validateK8sResourceName(
-  name: string,
-  resourceType: "pod" | "namespace"
-): string {
-  if (!name || typeof name !== "string") {
-    throw new Error(`${resourceType} name must be a non-empty string`);
-  }
-
-  // RFC 1123 subdomain: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
-  const k8sNameRegex = /^[a-z0-9]([-a-z0-9]*[a-z0-9])?$/;
-  if (!k8sNameRegex.test(name)) {
-    throw new Error(
-      `Invalid ${resourceType} name: ${name}. ` +
-      `${resourceType} names must be lowercase, start and end with alphanumeric characters, ` +
-      `and can only contain lowercase letters, numbers, and hyphens.`
-    );
-  }
-
-  const maxLength = resourceType === "pod"
-    ? K8S_POD_NAME_MAX_LENGTH
-    : K8S_NAMESPACE_MAX_LENGTH;
-
-  if (name.length > maxLength) {
-    throw new Error(
-      `${resourceType} name exceeds maximum length of ${maxLength} characters`
-    );
-  }
-
-  return name;
-}
-
-// Usage
-const podName = validateK8sResourceName(context.podName, "pod");
-const namespace = validateK8sResourceName("minions-farm", "namespace");
-```
-
-**Impact:**
-- **Reduces:** 50 lines → 25 lines
-- **Eliminates:** Code duplication
-- **Improves:** Consistency of K8S validation
-
-### 3.2 Simplify Dry Run Report Generation
-
-**Current Code (lines 19-86):**
-```typescript
-function generateCommandDryRunReport(
-  stepId: string,
-  command: string,
-  context: WorkflowContext
-): string {
-  const lines: string[] = [];
-
-  lines.push("# Dry Run Report: Command Execution");
-  lines.push("");
-  lines.push("## Overview");
-  // ... 67 lines of array building
-}
-```
-
-**Simplification Strategy:**
-
-```typescript
-function generateCommandDryRunReport(
-  stepId: string,
-  command: string,
-  context: WorkflowContext
-): string {
-  const analysis = analyzeCommand(command);
-  const executionEnv = context.podName
-    ? `Kubernetes Pod (${context.podName})`
-    : "Local";
-
-  const affectedPaths = analysis.affectedPaths.length > 0
-    ? analysis.affectedPaths.map(p => `- ${p}`).join("\n")
-    : "None";
-
-  const warnings = analysis.warnings.length > 0
-    ? analysis.warnings.map(w => `  - WARNING: ${w}`).join("\n")
-    : "None";
-
-  return `# Dry Run Report: Command Execution
-
-## Overview
-- **Mode**: Preview (command not executed)
-- **Step ID**: ${stepId}
-- **Repository**: ${context.repoPath}
-- **Execution Environment**: ${executionEnv}
-
-## Command Details
-\`\`\`bash
-${command}
-\`\`\`
-
-## Risk Assessment
-- **Risk Level**: ${analysis.riskLevel}
-- **Type**: ${analysis.commandType}
-- **Warnings**:
-${warnings}
-
-## Potentially Affected Paths
-${affectedPaths}
-
-## What Would Happen
-1. Command would be executed in: \`${context.repoPath}\`
-${context.podName ? `2. Execution would occur inside Kubernetes pod: \`${context.podName}\`` : ""}
-3. Output would be captured and logged
-4. Exit code would determine success/failure
-
----
-*This is a dry run preview. The command was not executed.*`;
-}
-```
-
-**Impact:**
-- **Reduces:** 67 lines → 30 lines
-- **Improves:** Template literal readability
-
----
-
-## 4. opencode-auth.ts (515 lines)
-
-### Issue: Duplicate JSON parsing logic
-
-**Location:** `/packages/agent-runner/src/services/opencode-auth.ts`
-
-### 4.1 Centralize JSON Parsing
-
-**Current Code (lines 80-94, 174, 302, 402):**
-```typescript
-private async parseJsonSafe(
-  response: Response
-): Promise<Record<string, unknown> | null> {
-  const contentType = response.headers.get("content-type") || "";
-  if (!contentType.includes("application/json")) {
-    return null;
-  }
-  try {
-    return (await response.json()) as Record<string, unknown>;
+    execFn(`git -C ${config.repoPath} rev-parse --git-dir`);
+    return ok(undefined);
   } catch (error) {
-    console.warn(
-      `[OpenCodeAuth] Failed to parse JSON: ${error instanceof Error ? error.message : String(error)}`
-    );
-    return null;
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    if (errorMsg.includes("not a git") || errorMsg.includes("No such file or directory")) {
+      return err(new Error(`Path exists but is not a valid git repository: ${config.repoPath}`));
+    }
+    return ok(undefined); // Continue anyway for worktree issues
   }
+}
+
+// 3. Handle worktree conflicts
+function handleWorktreeConflict(branchName: string, error: Error): Result<void> {
+  const errorMsg = String(error);
+  if (errorMsg.includes("already used by worktree") || errorMsg.includes("is checked out at")) {
+    console.warn(`[git-adapter] Branch '${branchName}' is used by another worktree`);
+    return ok(undefined);
+  }
+  return err(error);
+}
+
+// 4. Main checkout function with early returns
+export const checkoutBranch = async (config: GitConfig, branchName: string, ...): Promise<Result<void>> => {
+  // Step 1: Verify repository
+  const verifyResult = verifyRepository(config, fs);
+  if (!verifyResult.ok) return verifyResult;
+
+  // Step 2: Configure git
+  await configureGitUser(config, execFn);
+
+  // Step 3: Check if already on target branch
+  const currentBranch = await getCurrentBranch(config, execFn);
+  if (currentBranch === branchName) {
+    return pullBranch(config, branchName, execFn).catch(() => ok(undefined));
+  }
+
+  // Step 4: Try default branch first
+  if (isDefaultBranch(branchName, defaultBranch)) {
+    const result = await checkoutDefaultBranch(config, branchName, execFn);
+    if (result.ok) return result;
+    const conflictResult = handleWorktreeConflict(branchName, result.error as Error);
+    if (conflictResult.ok) return conflictResult;
+  }
+
+  // Step 5: Checkout from default branch
+  const switchResult = await switchToDefaultBranch(config, defaultBranch, execFn);
+  if (!switchResult.ok) {
+    const conflictResult = handleWorktreeConflict(defaultBranch, switchResult.error as Error);
+    if (conflictResult.ok) return conflictResult;
+  }
+
+  // Step 6: Fetch and pull
+  await fetchAndPull(config, defaultBranch, execFn);
+
+  // Step 7: Create or checkout branch
+  const branchExists = await checkBranchExists(config, branchName, execFn);
+  if (branchExists) {
+    return checkoutExistingBranch(config, branchName, execFn);
+  }
+  return createNewBranch(config, branchName, execFn);
+};
+```
+
+**Benefits**:
+- Each function has a single responsibility
+- Easy to test individual components
+- Main function is ~50 lines instead of 290 lines
+- Clear step-by-step flow
+
+---
+
+### Issue 2: Duplicate Error Handling Patterns (Lines 477-498, 499-515)
+
+**Problem**:
+The "no changes to commit" error check is duplicated in multiple places.
+
+**Simplified Solution**:
+```typescript
+const NO_COMMIT_ERRORS = [
+  "nothing to commit",
+  "nothing added to commit",
+] as const;
+
+function isNoCommitError(errorMsg: string): boolean {
+  return NO_COMMIT_ERRORS.some(msg => errorMsg.includes(msg));
+}
+
+// Usage in commitChanges:
+if (isNoCommitError(errorMsg)) {
+  return err(new Error("No changes to commit"));
 }
 ```
 
-**Simplification Strategy:**
+---
 
-The current implementation is already good. However, it's called multiple times with the same pattern. Suggest:
+## Platform Adapter Factory
 
+**File**: `packages/agent-runner/src/engines/workflow/platform-adapter-factory.ts` (444 lines)
+
+### Issue 1: Inline GitHub Fallback Adapter (Lines 226-370)
+
+**Problem**:
+The `createGitHubFallbackAdapter` function is 145 lines of inline object with duplicate API call patterns.
+
+**Simplified Solution**:
 ```typescript
-private async fetchJson<T = Record<string, unknown>>(
-  url: string,
-  options?: RequestInit
-): Promise<T | null> {
-  try {
-    const response = await fetch(url, {
-      ...options,
-      signal: AbortSignal.timeout(5000),
+// Create a separate module for GitHub API calls
+// packages/agent-runner/src/engines/workflow/github-fallback-client.ts
+class GitHubFallbackClient {
+  constructor(
+    private token: string,
+    private owner: string,
+    private repo: string
+  ) {}
+
+  private async request<T>(path: string, options?: RequestInit): Promise<Result<T>> {
+    try {
+      const res = await fetch(`https://api.github.com${path}`, {
+        headers: {
+          Authorization: `token ${this.token}`,
+          Accept: "application/vnd.github.v3+json",
+          "User-Agent": "OpenFarm",
+          ...options?.headers,
+        },
+        ...options,
+      });
+
+      if (!res.ok) {
+        return err(new Error(`GitHub API Error: ${res.statusText}`));
+      }
+
+      return ok(await res.json() as T);
+    } catch (error) {
+      return err(error instanceof Error ? error : new Error(String(error)));
+    }
+  }
+
+  getWorkItem(id: string) {
+    return this.request<Record<string, unknown>>(`/repos/${this.owner}/${this.repo}/issues/${id}`)
+      .then(data => ok(toWorkItem(data, this.repo, this.owner)));
+  }
+
+  createPullRequest(params: CreatePRParams) {
+    return this.request<{ html_url: string }>('/repos/${this.owner}/${this.repo}/pulls', {
+      method: 'POST',
+      body: JSON.stringify({
+        title: params.title,
+        body: params.description,
+        head: params.source,
+        base: params.target,
+      }),
+    }).then(data => ok(data.html_url));
+  }
+
+  postComment(id: string, text: string) {
+    return this.request(`/repos/${this.owner}/${this.repo}/issues/${id}/comments`, {
+      method: 'POST',
+      body: JSON.stringify({ body: text }),
     });
+  }
+}
 
-    if (!response.ok) return null;
+// Simplified factory function
+export function createGitHubFallbackAdapter(token: string, workItem: WorkItem): Result<PlatformAdapter> {
+  const parseResult = parseGitHubUrl(workItem.repositoryUrl);
+  if (!parseResult.ok) return parseResult;
 
-    const contentType = response.headers.get("content-type") || "";
-    if (!contentType.includes("application/json")) {
-      console.warn(`[OpenCodeAuth] Expected JSON, got: ${contentType}`);
-      return null;
+  const { owner, repo } = parseResult.value;
+  const client = new GitHubFallbackClient(token, owner, repo);
+
+  return ok({
+    getName: () => `GitHub (${owner}/${repo}) [Fallback]`,
+    testConnection: () => client.request('/user').then(() => ok(true)),
+    getWorkItem: (id: string) => client.getWorkItem(id),
+    createPullRequest: (params) => client.createPullRequest(params),
+    postComment: (id, text) => client.postComment(id, text),
+  });
+}
+```
+
+**Benefits**:
+- Separates API logic from adapter interface
+- Reduces factory file from 444 lines to ~150 lines
+- Easier to test API client independently
+- Reusable API client for other purposes
+
+---
+
+### Issue 2: Complex URL Parsing (Lines 85-109)
+
+**Problem**:
+`parseGitHubUrl` uses multiple regex patterns in a loop.
+
+**Simplified Solution**:
+```typescript
+// Use URL API for structured parsing
+export function parseGitHubUrl(url: string): Result<{ owner: string; repo: string }> {
+  try {
+    // Normalize URL
+    const normalized = url.replace(/^git@/, 'https://').replace(/\.git$/, '');
+
+    const urlObj = new URL(normalized);
+
+    if (!urlObj.hostname.includes('github.com')) {
+      return err(new Error(`Not a GitHub URL: ${url}`));
     }
 
-    return (await response.json()) as T;
+    const pathParts = urlObj.pathname.split('/').filter(Boolean);
+    if (pathParts.length < 2) {
+      return err(new Error(`Invalid GitHub URL format: ${url}`));
+    }
+
+    const [owner, repo] = pathParts;
+    return ok({ owner, repo });
   } catch (error) {
-    console.warn(
-      `[OpenCodeAuth] Fetch failed: ${error instanceof Error ? error.message : String(error)}`
-    );
-    return null;
+    return err(new Error(`Cannot parse GitHub URL: ${url}`));
   }
 }
 ```
 
-Then replace all fetch+parseJsonSafe calls:
-
-```typescript
-// Before
-const response = await fetch(this.getProviderEndpoint(), { ... });
-if (!response.ok) return false;
-const data = await this.parseJsonSafe(response);
-
-// After
-const data = await this.fetchJson(this.getProviderEndpoint());
-if (!data) return false;
-```
-
-**Impact:**
-- **Reduces:** Multiple 4-5 line sequences → Single 1-liner
-- **Consolidates:** Fetch + parse + error handling
+**Benefits**:
+- Uses native URL parsing instead of regex
+- Handles multiple formats automatically
+- Easier to understand and maintain
 
 ---
 
-## 5. app.tsx (34 lines)
+## Provider Factory
 
-### Issue: Manual switch statement for rendering
+**File**: `packages/provider-claude/src/claude-factory.ts` (141 lines)
 
-**Location:** `/packages/sdk/src/tui/app.tsx`
+### Issue 1: Duplicate Metadata Definition
 
-### 5.1 Use Component Map
+**Problem**:
+Metadata is defined in both the factory (lines 36-55) and the provider (lines 40-73).
 
-**Current Code:**
+**Simplified Solution**:
 ```typescript
-export function App() {
-  const { screen } = useStore();
-
-  return (
-    <Box flexDirection="column" padding={1}>
-      {screen === "dashboard" && <Dashboard />}
-      {screen === "execute" && <Execute />}
-      {screen === "running" && <Running />}
-      {screen === "history" && <History />}
-      {screen === "diff-viewer" && <DiffViewer />}
-      {screen === "execution-detail" && <ExecutionDetail />}
-      {screen === "workflows" && <WorkflowList />}
-      {screen === "workflow-editor" && <WorkflowEditor />}
-      {screen === "context-config" && <ContextConfigScreen />}
-      {screen === "context" && <ContextScreen />}
-      {screen === "context-history" && <ContextHistoryScreen />}
-    </Box>
-  );
-}
-```
-
-**Simplification Strategy:**
-
-```typescript
-const SCREEN_COMPONENTS = {
-  dashboard: Dashboard,
-  execute: Execute,
-  running: Running,
-  history: History,
-  "diff-viewer": DiffViewer,
-  "execution-detail": ExecutionDetail,
-  workflows: WorkflowList,
-  "workflow-editor": WorkflowEditor,
-  "context-config": ContextConfigScreen,
-  context: ContextScreen,
-  "context-history": ContextHistoryScreen,
+// Define metadata once
+const CLAUDE_METADATA: ProviderMetadata = {
+  type: "claude",
+  name: "Claude Code",
+  version: "1.0.0",
+  description: "Claude Code AI assistant with advanced code understanding and editing capabilities",
+  packageName: "@openfarm/provider-claude",
+  supportedFeatures: [
+    "code-generation",
+    "code-editing",
+    "refactoring",
+    "debugging",
+    "code-analysis",
+    "file-operations",
+    "bash-execution",
+    "web-search",
+  ],
+  configSchema: ClaudeConfigSchema,
+  requiresExternal: true,
 } as const;
 
-type ScreenName = keyof typeof SCREEN_COMPONENTS;
+// In factory
+getMetadata(): ProviderMetadata {
+  return CLAUDE_METADATA;
+}
 
-export function App() {
-  const { screen } = useStore();
-  const ScreenComponent = SCREEN_COMPONENTS[screen as ScreenName];
-
-  return (
-    <Box flexDirection="column" padding={1}>
-      {ScreenComponent && <ScreenComponent />}
-    </Box>
-  );
+// In provider
+getMetadata(): ProviderMetadata {
+  return CLAUDE_METADATA;
 }
 ```
 
-**Impact:**
-- **Reduces:** 34 lines → 25 lines
-- **Improves:** Extensibility (add new screen by adding to map)
-- **Eliminates:** Repeated conditional rendering
+**Benefits**:
+- Single source of truth for metadata
+- Prevents drift between factory and provider
+- Reduces code duplication
 
 ---
 
-## 6. utils/index.ts (153 lines)
+### Issue 2: Over-Engineered Config Parsing (Lines 87-118)
 
-### Issue: Mixed re-exports and local implementations
+**Problem**:
+Separate `validateConfig`, `parseConfig`, `createConfigurationManager` functions for simple defaults.
 
-**Location:** `/packages/utils/src/index.ts`
-
-### 6.1 Document Re-export Sources Clearly
-
-**Current Code:**
+**Simplified Solution**:
 ```typescript
-// chunk from core/utils/array
-export function chunk<T>(array: T[], size: number): T[][] { /* ... */ }
+function resolveConfig(config?: unknown): { timeout: number } {
+  const DEFAULT_TIMEOUT = 600_000;
 
-// retry from core/composition
-export async function retry<T>(fn: () => Promise<T>, config: RetryConfig = {}): Promise<T> { /* ... */ }
+  if (!config || typeof config !== 'object') {
+    return { timeout: DEFAULT_TIMEOUT };
+  }
 
-// Re-export utilities
-export { CircuitBreaker } from "./circuit-breaker";
-export { metrics } from "./metrics";
-export { validateInstruction } from "./validation";
+  const configObj = config as Record<string, unknown>;
+  const timeout = typeof configObj.timeout === 'number' ? configObj.timeout : DEFAULT_TIMEOUT;
+
+  if (timeout < 1000) {
+    throw new Error('Timeout must be a number >= 1000');
+  }
+
+  return { timeout };
+}
+
+// In create():
+const parsedConfig = resolveConfig(config);
 ```
 
-**Simplification Strategy:**
-
-Organize by origin and deprecate local implementations where core has them:
-
-```typescript
-/**
- * Utility exports for OpenFarm packages
- *
- * Some utilities are locally implemented for backward compatibility.
- * Others are re-exported from @openfarm/core.
- */
-
-// === LOCAL IMPLEMENTATIONS ===
-// These are maintained here for backward compatibility
-
-export function chunk<T>(array: T[], size: number): T[][] { /* ... */ }
-export const matchesPattern = (str: string, pattern: string): boolean => { /* ... */ }
-export { mapAsync, filterAsync, sequence, parallel } from "./async-helpers";
-
-// === RE-EXPORTED FROM @openfarm/core ===
-// These should be imported from @openfarm/core in new code
-
-export { CircuitBreaker } from "./circuit-breaker";
-export { metrics } from "./metrics";
-export { validateInstruction } from "./validation";
-```
-
-**Impact:**
-- **Clarifies:** What is local vs re-exported
-- **Improves:** Code organization
+**Benefits**:
+- Combines validation and parsing
+- Single function call
+- Clear default handling
 
 ---
 
-## Implementation Priority
+## Utils
 
-### High Priority (Immediate Impact)
-1. **Section 1.1**: Extract template engine → Reduces 135 lines immediately
-2. **Section 3.1**: Merge K8S validation functions → Simple, high ROI
-3. **Section 5.1**: Use component map → Simple refactor
+**File**: `packages/utils/src/validation.ts`
 
-### Medium Priority (Maintainability)
-1. **Section 1.2**: Extract step results replacement → Consistent with 1.1
-2. **Section 1.3**: Simplify buildAgentInstruction → After 1.1 done
-3. **Section 1.4**: Extract error normalizer → Reusable across codebase
+### Issue 1: Spanish Comments
 
-### Low Priority (Nice to Have)
-1. **Section 2**: Simplify worktree creation retry → Complex refactor
-2. **Section 4**: Centralize JSON parsing in opencode-auth → Minor improvement
-3. **Section 6**: Document utils organization → Documentation only
+**Problem**:
+Comments are in Spanish while the codebase is in English.
+
+**Current Code** (Lines 3-32):
+```typescript
+const dangerousPatterns = [
+  {
+    pattern: /rm\s+-rf\s+\/(?!tmp|var\/tmp|\.local\/Trash)/i,
+    description: "rm -rf / (excepto /tmp)",  // Spanish
+  },
+  {
+    pattern: />\s*\/dev\/sd/i,
+    description: "escribir a discos directamente",  // Spanish
+  },
+  // ...
+];
+```
+
+**Simplified Solution**:
+```typescript
+const dangerousPatterns = [
+  {
+    pattern: /rm\s+-rf\s+\/(?!tmp|var\/tmp|\.local\/Trash)/i,
+    description: "rm -rf / (except /tmp)",
+  },
+  {
+    pattern: />\s*\/dev\/sd/i,
+    description: "direct write to disks",
+  },
+  // ...
+];
+```
+
+**Benefits**:
+- Consistent language across codebase
+- Better internationalization support
+- Easier for non-Spanish contributors
+
+---
+
+**File**: `packages/utils/src/circuit-breaker.ts`
+
+### Issue 1: Complex State Transitions (Lines 43-90)
+
+**Problem**:
+State transition logic is scattered across multiple methods.
+
+**Simplified Solution**:
+```typescript
+type StateTransition = {
+  from: CircuitBreakerState;
+  to: CircuitBreakerState;
+  condition: () => boolean;
+  action: () => void;
+};
+
+const STATE_TRANSITIONS: StateTransition[] = [
+  {
+    from: 'open',
+    to: 'half-open',
+    condition: (cb) => Date.now() - cb.lastFailureTime >= cb.options.cooldownMs,
+    action: (cb) => { cb.state = 'half-open'; cb.halfOpenAttempts = 0; },
+  },
+  {
+    from: 'half-open',
+    to: 'closed',
+    condition: (cb) => cb.halfOpenAttempts >= cb.options.halfOpenAttempts,
+    action: (cb) => { cb.state = 'closed'; cb.failures = 0; cb.halfOpenAttempts = 0; },
+  },
+];
+
+private transitionState(): void {
+  for (const { from, to, condition, action } of STATE_TRANSITIONS) {
+    if (this.state === from && condition(this)) {
+      action(this);
+      logger.info(`Circuit breaker: ${from} -> ${to}`);
+      return;
+    }
+  }
+}
+```
+
+**Benefits**:
+- Declarative state transitions
+- Easier to add new states
+- Clear visual representation of state machine
+
+---
+
+## General Recommendations
+
+### 1. Prefer Early Returns
+
+Instead of deeply nested conditionals, use early returns:
+
+**Bad**:
+```typescript
+if (condition1) {
+  if (condition2) {
+    if (condition3) {
+      // do work
+    } else {
+      return error;
+    }
+  }
+}
+```
+
+**Good**:
+```typescript
+if (!condition1) return error;
+if (!condition2) return error;
+if (!condition3) return error;
+// do work
+```
+
+---
+
+### 2. Use Strategy Pattern for Variations
+
+When you have multiple ways to accomplish the same task:
+
+**Bad**:
+```typescript
+if (platform === 'github') {
+  // 50 lines of GitHub logic
+} else if (platform === 'azure') {
+  // 50 lines of Azure logic
+} else if (platform === 'gitlab') {
+  // 50 lines of GitLab logic
+}
+```
+
+**Good**:
+```typescript
+interface PlatformAdapter {
+  createPR(params: PRParams): Promise<Result<string>>;
+  postComment(id: string, text: string): Promise<Result<void>>;
+}
+
+const adapters: Record<string, PlatformAdapter> = {
+  github: new GitHubAdapter(),
+  azure: new AzureAdapter(),
+  gitlab: new GitLabAdapter(),
+};
+
+const adapter = adapters[platform];
+return adapter.createPR(params);
+```
+
+---
+
+### 3. Extract Magic Strings and Numbers
+
+**Bad**:
+```typescript
+if (error.includes('already used by worktree')) {
+  // ...
+}
+setTimeout(() => { ... }, 30000);
+```
+
+**Good**:
+```typescript
+const WORKTREE_CONFLICT_ERROR = 'already used by worktree';
+const KUBECTL_TIMEOUT_MS = 30_000;
+
+if (error.includes(WORKTREE_CONFLICT_ERROR)) {
+  // ...
+}
+setTimeout(() => { ... }, KUBECTL_TIMEOUT_MS);
+```
+
+---
+
+### 4. Prefer Native APIs Over Regex
+
+**Bad**:
+```typescript
+const patterns = [
+  /github\.com[/:]([^/]+)\/([^/.]+)(?:\.git)?$/i,
+  /git@github\.com:([^/]+)\/([^/.]+)(?:\.git)?$/i,
+];
+```
+
+**Good**:
+```typescript
+const url = new URL(githubUrl);
+const [owner, repo] = url.pathname.split('/').filter(Boolean);
+```
+
+---
+
+### 5. Use Maps for Conditional Lookups
+
+**Bad**:
+```typescript
+switch (action) {
+  case StepAction.GIT_CHECKOUT: return GitCheckoutSchema;
+  case StepAction.GIT_BRANCH: return GitBranchSchema;
+  case StepAction.GIT_COMMIT: return GitCommitSchema;
+  case StepAction.GIT_PUSH: return GitPushSchema;
+  // ... 10 more cases
+}
+```
+
+**Good**:
+```typescript
+const actionSchemas = {
+  [StepAction.GIT_CHECKOUT]: GitCheckoutSchema,
+  [StepAction.GIT_BRANCH]: GitBranchSchema,
+  [StepAction.GIT_COMMIT]: GitCommitSchema,
+  [StepAction.GIT_PUSH]: GitPushSchema,
+  // ...
+} as const satisfies Record<StepAction, z.ZodTypeAny>;
+
+return actionSchemas[action];
+```
+
+---
+
+### 6. Limit Function Length
+
+Functions should be under 50 lines. If longer, extract:
+
+- Input validation logic
+- Configuration building
+- Helper functions
+- Error handling
+
+**Example**: `checkoutBranch` (290 lines) should be split into:
+- `verifyRepositoryExists()`
+- `configureGitUser()`
+- `fetchLatestChanges()`
+- `createOrCheckoutBranch()`
+
+---
+
+### 7. Avoid Flag Parameters
+
+**Bad**:
+```typescript
+function execute(options: { verbose?: boolean; force?: boolean; dryRun?: boolean }) {
+  if (options.verbose) { /* ... */ }
+  if (options.force) { /* ... */ }
+  if (options.dryRun) { /* ... */ }
+}
+```
+
+**Good**:
+```typescript
+interface ExecutionOptions {
+  mode: 'normal' | 'verbose' | 'dry-run';
+  force: boolean;
+}
+
+function execute(options: ExecutionOptions) {
+  if (options.mode === 'verbose') { /* ... */ }
+}
+```
+
+---
+
+### 8. Use Composition for Complex Objects
+
+**Bad**:
+```typescript
+const engine = {
+  provider: validatedConfig.provider || (useOpenCode ? 'opencode' : 'claude-code'),
+  model: resolvedModel,
+  previewMode: stepPreviewMode,
+  chatOnly: validatedConfig.chatOnly,
+  mcpServers: defaultEngineOptions.mcpServers,
+  onLog: defaultEngineOptions.onLog,
+  onChanges: defaultEngineOptions.onChanges,
+  onChatMessage: defaultEngineOptions.onChatMessage,
+  maxIterations: tuiConfig?.maxIterations,
+  ...runtimeOptions,
+};
+```
+
+**Good**:
+```typescript
+const baseOptions = {
+  mcpServers: defaultEngineOptions.mcpServers,
+  onLog: defaultEngineOptions.onLog,
+  onChanges: defaultEngineOptions.onChanges,
+  onChatMessage: defaultEngineOptions.onChatMessage,
+};
+
+const engineOptions: EngineOptions = {
+  ...baseOptions,
+  provider: validatedConfig.provider || (useOpenCode ? 'opencode' : 'claude-code'),
+  model: resolvedModel,
+  previewMode: stepPreviewMode,
+  chatOnly: validatedConfig.chatOnly,
+  maxIterations: tuiConfig?.maxIterations,
+  ...runtimeOptions,
+};
+```
+
+---
+
+## Priority Recommendations
+
+### High Priority (Biggest Impact)
+
+1. **Refactor `agent-executor.ts`** - Extract engine creation logic
+   - Impact: ~200 lines reduction
+   - Risk: Low (pure refactoring)
+
+2. **Split `checkoutBranch` in git-adapter** - 290 lines to ~50 lines
+   - Impact: ~240 lines reduction
+   - Risk: Medium (changes complex logic)
+
+3. **Simplify expression replacement** - Use property mapping
+   - Impact: ~40 lines reduction
+   - Risk: Low (well-defined behavior)
+
+### Medium Priority
+
+4. **Unify kubectl execution** - Single timeout wrapper
+   - Impact: ~100 lines reduction
+   - Risk: Low
+
+5. **Extract GitHub API client** - Separate module
+   - Impact: ~100 lines reduction
+   - Risk: Low
+
+6. **Clean up provider factories** - Remove duplication
+   - Impact: ~30 lines reduction
+   - Risk: Low
+
+### Low Priority
+
+7. **Translate Spanish comments** - Language consistency
+   - Impact: Cosmetic
+   - Risk: None
+
+8. **Simplify circuit-breaker** - Use strategy pattern
+   - Impact: Better maintainability
+   - Risk: Low
+
+---
+
+## Implementation Strategy
+
+### Phase 1: Safe Refactors (Low Risk)
+- Translate Spanish comments to English
+- Extract constant strings
+- Use maps for conditional lookups
+- Simplify URL parsing
+
+### Phase 2: Structural Changes (Medium Risk)
+- Extract engine creation logic
+- Split long functions
+- Create shared utilities
+
+### Phase 3: Major Refactors (Higher Risk)
+- Refactor git-adapter checkoutBranch
+- Unify kubectl execution patterns
+- Create GitHub API client module
 
 ---
 
 ## Testing Strategy
 
-For each simplification:
+After each refactoring:
 
-1. **Before Refactor**: Write integration tests capturing current behavior
-2. **Refactor**: Apply simplification in small, atomic commits
-3. **After Refactor**: Run all tests to ensure functionality preserved
-4. **Lint**: Run `bun run lint` to catch any issues
-
-**Example Test:**
-```typescript
-describe("TemplateEngine", () => {
-  it("should replace nested properties", () => {
-    const result = TemplateEngine.replace("Hello ${workItem.title}", {
-      workItem: { title: "World" }
-    });
-    expect(result).toBe("Hello World");
-  });
-
-  it("should handle missing properties", () => {
-    const result = TemplateEngine.replace("${workItem.missing}", {
-      workItem: { title: "Test" }
-    });
-    expect(result).toBe("");
-  });
-});
-```
+1. Run existing tests: `bun test`
+2. Run typecheck: `bun run typecheck`
+3. Run linting: `bun run lint`
+4. Manual testing of affected workflows
 
 ---
 
 ## Summary
 
-| File | Current Lines | Potential Reduction | Priority |
-|------|--------------|-------------------|----------|
-| agent-executor.ts | 1,251 | ~300 lines | High |
-| create.ts | 372 | ~100 lines | Medium |
-| command-executor.ts | 379 | ~60 lines | High |
-| app.tsx | 34 | ~10 lines | High |
-| opencode-auth.ts | 515 | ~30 lines | Low |
+| File | Current Lines | Estimated After | Reduction | Priority |
+|-------|--------------|----------------|-----------|----------|
+| agent-executor.ts | 1288 | ~1088 | 200 | High |
+| planning-executor.ts | 766 | ~666 | 100 | Medium |
+| git-adapter/index.ts | 595 | ~355 | 240 | High |
+| worktree/create.ts | 372 | ~302 | 70 | Medium |
+| platform-adapter-factory.ts | 444 | ~344 | 100 | Medium |
+| claude-factory.ts | 141 | ~121 | 20 | Low |
 
-**Total Potential Reduction: ~500 lines of code**
-
-All simplifications prioritize:
-- ✅ Readability through clearer intent
-- ✅ Testability through smaller, focused functions
-- ✅ Maintainability through reduced duplication
-- ✅ No breaking changes to public APIs
+**Total Potential Reduction**: ~730 lines of simplified, more maintainable code
 
 ---
 
-## Notes
-
-- All suggestions maintain backward compatibility
-- No changes to public interfaces
-- Internal implementation details only
-- Each simplification can be applied independently
-- Recommended to apply in order of priority listed above
+**Remember**: Simplification is an ongoing process. Start with high-priority items and iterate. Always write tests before refactoring complex logic.

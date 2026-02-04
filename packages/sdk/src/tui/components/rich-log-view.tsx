@@ -11,8 +11,8 @@
 
 import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
-import React, { useEffect, useRef, useState } from "react";
-import { useLogStore, type LogLevel, getLevelIcon } from "../store/log-store";
+import { useEffect, useRef, useState } from "react";
+import { getLevelIcon, type LogLevel, useLogStore } from "../store/log-store";
 import { useTheme } from "../store/theme-store";
 
 interface RichLogViewProps {
@@ -184,7 +184,7 @@ export function RichLogView({
 
   if (showHelp) {
     return (
-      <Box flexDirection="column" borderStyle="single" padding={1}>
+      <Box borderStyle="single" flexDirection="column" padding={1}>
         <Text bold>Rich Log View - Help</Text>
         <Box flexDirection="column" marginY={1}>
           <Text color={colors.primary}>Navigation:</Text>
@@ -226,13 +226,13 @@ export function RichLogView({
               {/* Level filters */}
               {LEVELS.map((level) => (
                 <Text
-                  key={level}
                   color={
                     filter.levels.includes(level)
                       ? getLevelColor(level)
                       : "gray"
                   }
                   dimColor={!filter.levels.includes(level)}
+                  key={level}
                 >
                   {filter.levels.includes(level) ? "●" : "○"}{" "}
                   {level[0].toUpperCase()}
@@ -247,12 +247,12 @@ export function RichLogView({
               <Box flexDirection="row" gap={1}>
                 <Text color={colors.warning}>🔍</Text>
                 <TextInput
-                  value={searchInput}
                   onChange={(value) => {
                     setSearchInput(value);
                     setSearchQuery(value);
                   }}
                   placeholder="Search..."
+                  value={searchInput}
                 />
               </Box>
             ) : (
@@ -310,7 +310,7 @@ export function RichLogView({
               : "white";
 
             return (
-              <Box key={entry.id} flexDirection="row" gap={1}>
+              <Box flexDirection="row" gap={1} key={entry.id}>
                 {/* Selection indicator */}
                 <Text color={isSelected ? "yellow" : "gray"}>
                   {isSelected ? "▶" : " "}
@@ -335,8 +335,8 @@ export function RichLogView({
 
                 {/* Message */}
                 <Text
-                  color={isSelected ? "white" : levelColor}
                   bold={isSelected}
+                  color={isSelected ? "white" : levelColor}
                   wrap="truncate-end"
                 >
                   {entry.message}
@@ -350,16 +350,16 @@ export function RichLogView({
       {/* Footer */}
       {showToolbar && (
         <Box
+          borderStyle="single"
           flexDirection="row"
           justifyContent="space-between"
           paddingX={1}
-          borderStyle="single"
         >
           <Text color={colors.muted} dimColor>
             [?]help [s]earch [f]ilter [t]ime [c]omp [l]ive [e]xport [x]clear
           </Text>
           {mode !== "normal" && (
-            <Text color={colors.warning} bold>
+            <Text bold color={colors.warning}>
               {mode.toUpperCase()} MODE - ESC to exit
             </Text>
           )}

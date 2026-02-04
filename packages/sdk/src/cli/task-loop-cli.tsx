@@ -1,14 +1,15 @@
 #!/usr/bin/env bun
+
 /**
  * Task Loop CLI
  *
  * Runs the Ralph TUI-style autonomous task loop directly from CLI.
  */
 
-import { Box, render, Text } from "ink";
-import React, { useEffect, useState } from "react";
-import type { OpenFarmConfig } from "../types";
 import type { TaskLoopEvent } from "@openfarm/task-loop";
+import { Box, render, Text } from "ink";
+import { useEffect, useState } from "react";
+import type { OpenFarmConfig } from "../types";
 
 interface TaskLoopCliProps {
   config: OpenFarmConfig;
@@ -47,7 +48,7 @@ function TaskLoopCLI({ config, tasks }: TaskLoopCliProps) {
         break;
       case "session.completed":
         setStatus("completed");
-        addLog(`Session completed!`);
+        addLog("Session completed!");
         break;
       case "session.failed":
         setStatus("error");
@@ -55,7 +56,7 @@ function TaskLoopCLI({ config, tasks }: TaskLoopCliProps) {
         break;
       case "session.paused":
         setStatus("paused");
-        addLog(`Session paused`);
+        addLog("Session paused");
         break;
       case "task.started":
         setCurrentTask(event.taskId || null);
@@ -74,12 +75,12 @@ function TaskLoopCLI({ config, tasks }: TaskLoopCliProps) {
     try {
       setStatus("running");
       addLog("Starting Task Loop...");
-      addLog(`Provider: ${config.defaultProvider || "opencode"}`);
+      addLog(`Provider: ${config.defaultProvider || "external-agent"}`);
 
       const { TaskLoopOrchestrator } = await import("@openfarm/task-loop");
 
       const orchestrator = new TaskLoopOrchestrator({
-        provider: config.defaultProvider || "opencode",
+        provider: config.defaultProvider || "external-agent",
         model: config.defaultModel,
       });
 
@@ -115,10 +116,10 @@ function TaskLoopCLI({ config, tasks }: TaskLoopCliProps) {
           <Text color="red"> Failed: {progress.failed}</Text>
         )}
       </Text>
-      <Box marginTop={1} flexDirection="column" height={15}>
+      <Box flexDirection="column" height={15} marginTop={1}>
         <Text bold>Logs:</Text>
         {logs.slice(-15).map((log, i) => (
-          <Text key={i} color="gray" wrap="truncate-end">
+          <Text color="gray" key={i} wrap="truncate-end">
             {log}
           </Text>
         ))}

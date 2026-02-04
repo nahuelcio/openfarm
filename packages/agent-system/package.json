@@ -3,23 +3,13 @@
   "version": "0.0.1",
   "description": "Unified agent system for OpenFarm - plugins, runtimes, and execution primitives",
   "license": "MIT",
-  "main": "./dist/index.js",
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.ts",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
-    },
-    "./package.json": "./package.json"
+    ".": "./src/index.ts"
   },
-  "files": [
-    "dist"
-  ],
   "scripts": {
     "build": "tsup",
-    "prepublishOnly": "bun run build",
     "lint": "bunx biome check .",
     "type-check": "bunx tsc -p tsconfig.json --noEmit",
     "test": "bunx vitest run --passWithNoTests",

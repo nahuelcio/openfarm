@@ -6,7 +6,6 @@
  */
 
 import { Box, Text, useInput } from "ink";
-import React from "react";
 import { useRemoteStore } from "../store/remote-store";
 
 interface RemoteTabsProps {
@@ -68,7 +67,7 @@ export function RemoteTabs({
     }
 
     // Number keys 1-9
-    const num = parseInt(input, 10);
+    const num = Number.parseInt(input, 10);
     if (!isNaN(num) && num >= 1 && num <= tabs.length) {
       onTabChange(tabs[num - 1].id);
     }
@@ -80,18 +79,18 @@ export function RemoteTabs({
   });
 
   return (
-    <Box flexDirection="row" height={1} gap={1}>
+    <Box flexDirection="row" gap={1} height={1}>
       {tabs.map((tab, index) => {
         const isActive = tab.id === activeTab;
         const color = STATUS_COLORS[tab.status] || "gray";
         const symbol = STATUS_SYMBOLS[tab.status] || "○";
 
         return (
-          <Box key={tab.id} flexDirection="row">
+          <Box flexDirection="row" key={tab.id}>
             <Text
               backgroundColor={isActive ? "cyan" : undefined}
-              color={isActive ? "black" : color}
               bold={isActive}
+              color={isActive ? "black" : color}
             >
               {isActive ? "▶" : symbol} {index + 1}:{tab.label}{" "}
             </Text>
@@ -168,7 +167,7 @@ export function RemoteInstanceList() {
           const symbol = STATUS_SYMBOLS[instance.status] || "○";
 
           return (
-            <Box key={instance.id} flexDirection="row" gap={1}>
+            <Box flexDirection="row" gap={1} key={instance.id}>
               <Text color={isSelected ? "cyan" : "gray"}>
                 {isSelected ? ">" : " "}
               </Text>

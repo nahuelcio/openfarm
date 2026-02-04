@@ -6,7 +6,6 @@
  */
 
 import type { WorkItem } from "@openfarm/core";
-import type { Workflow } from "@openfarm/core/types";
 
 /**
  * Status of a task in the loop

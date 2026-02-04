@@ -4,8 +4,8 @@
  * WebSocket server and client for remote instance management.
  */
 
-export { RemoteServer } from "./server";
 export { RemoteClient } from "./client";
+export { RemoteServer } from "./server";
 export type {
   ClientMessage,
   ConnectionState,

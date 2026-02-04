@@ -6,7 +6,7 @@
  */
 
 import { Box, Text, useInput } from "ink";
-import React, { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { useTracingStore } from "../store/tracing-store";
 import type { TraceNode, TraceStatus } from "../types/tracing";
 
@@ -84,13 +84,13 @@ function TreeNode({
       {expanded &&
         node.children.map((child, index) => (
           <TreeNode
+            depth={depth + 1}
+            expanded={false}
+            isLast={index === node.children.length - 1}
             key={child.id}
             node={child}
-            depth={depth + 1}
-            isLast={index === node.children.length - 1}
-            selected={false}
-            expanded={false}
             onToggle={() => {}}
+            selected={false}
           />
         ))}
     </Box>
@@ -162,11 +162,11 @@ export function TraceTree({ height = 15, width = "50%" }: TraceTreeProps) {
   if (!tree || tree.roots.length === 0) {
     return (
       <Box
-        borderStyle="single"
         borderColor="gray"
+        borderStyle="single"
         height={height}
-        width={width}
         paddingX={1}
+        width={width}
       >
         <Text color="gray">
           No traces yet. Start an execution to see subagent calls.
@@ -177,14 +177,14 @@ export function TraceTree({ height = 15, width = "50%" }: TraceTreeProps) {
 
   return (
     <Box
-      borderStyle="single"
       borderColor="cyan"
+      borderStyle="single"
       flexDirection="column"
       height={height}
       width={width}
     >
       {/* Header */}
-      <Box paddingX={1} borderStyle="single" borderColor="gray">
+      <Box borderColor="gray" borderStyle="single" paddingX={1}>
         <Text bold color="cyan">
           Subagent Traces
         </Text>
@@ -195,21 +195,21 @@ export function TraceTree({ height = 15, width = "50%" }: TraceTreeProps) {
       </Box>
 
       {/* Tree content */}
-      <Box flexDirection="column" paddingX={1} flexGrow={1} overflow="hidden">
+      <Box flexDirection="column" flexGrow={1} overflow="hidden" paddingX={1}>
         {tree.roots.map((root, index) => (
           <TreeNode
+            expanded={expanded.has(root.id)}
+            isLast={index === tree.roots.length - 1}
             key={root.id}
             node={root}
-            isLast={index === tree.roots.length - 1}
-            selected={root.id === selected}
-            expanded={expanded.has(root.id)}
             onToggle={() => toggleExpanded(root.id)}
+            selected={root.id === selected}
           />
         ))}
       </Box>
 
       {/* Footer */}
-      <Box paddingX={1} borderStyle="single" borderColor="gray">
+      <Box borderColor="gray" borderStyle="single" paddingX={1}>
         <Text color="gray">
           [←→ navigate] [space/enter toggle] [Ctrl+e expand all] [Ctrl+c
           collapse all]

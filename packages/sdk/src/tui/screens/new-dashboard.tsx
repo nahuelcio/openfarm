@@ -9,7 +9,6 @@
  */
 
 import { Box, Text, useInput } from "ink";
-import React from "react";
 import { useStore } from "../store";
 
 interface StatCardProps {
@@ -21,13 +20,13 @@ interface StatCardProps {
 function StatCard({ label, value, color = "white" }: StatCardProps) {
   return (
     <Box
-      borderStyle="single"
+      alignItems="center"
       borderColor="gray"
+      borderStyle="single"
+      flexDirection="column"
       paddingX={2}
       paddingY={1}
       width={20}
-      flexDirection="column"
-      alignItems="center"
     >
       <Text color="gray" dimColor>
         {label}
@@ -91,24 +90,24 @@ export function NewDashboard() {
   const recentTasks = executions.slice(0, 5);
 
   return (
-    <Box flexDirection="column" padding={1} gap={1} flexGrow={1}>
+    <Box flexDirection="column" flexGrow={1} gap={1} padding={1}>
       {/* Stats Row */}
       <Box flexDirection="row" gap={2}>
         <StatCard label="Total" value={totalExecutions} />
-        <StatCard label="Completed" value={completedExecutions} color="green" />
-        <StatCard label="Failed" value={failedExecutions} color="red" />
-        <StatCard label="Running" value={runningExecutions} color="yellow" />
+        <StatCard color="green" label="Completed" value={completedExecutions} />
+        <StatCard color="red" label="Failed" value={failedExecutions} />
+        <StatCard color="yellow" label="Running" value={runningExecutions} />
       </Box>
 
       {/* Main Content */}
-      <Box flexDirection="row" gap={2} flexGrow={1}>
+      <Box flexDirection="row" flexGrow={1} gap={2}>
         {/* Active Tasks */}
         <Box
-          borderStyle="single"
           borderColor="cyan"
+          borderStyle="single"
           flexDirection="column"
-          width="50%"
           paddingX={1}
+          width="50%"
         >
           <Text bold color="cyan">
             Recent Executions
@@ -119,10 +118,10 @@ export function NewDashboard() {
             ) : (
               recentTasks.map((task) => (
                 <TaskItem
+                  id={task.id.slice(0, 8)}
                   key={task.id}
                   status={task.status}
                   title={task.task}
-                  id={task.id.slice(0, 8)}
                 />
               ))
             )}
@@ -131,17 +130,17 @@ export function NewDashboard() {
 
         {/* System Status */}
         <Box
-          borderStyle="single"
           borderColor="gray"
+          borderStyle="single"
           flexDirection="column"
-          width="50%"
           paddingX={1}
+          width="50%"
         >
           <Text bold>System Status</Text>
           <Box flexDirection="column" gap={1} marginTop={1}>
             <Box flexDirection="row" justifyContent="space-between">
               <Text color="gray">Provider:</Text>
-              <Text>OpenCode</Text>
+              <Text>External Agent</Text>
             </Box>
             <Box flexDirection="row" justifyContent="space-between">
               <Text color="gray">Workflow:</Text>
@@ -174,7 +173,7 @@ export function NewDashboard() {
       </Box>
 
       {/* Quick Actions */}
-      <Box borderStyle="single" borderColor="gray" paddingX={1}>
+      <Box borderColor="gray" borderStyle="single" paddingX={1}>
         <Text color="gray">Quick Actions: </Text>
         <Text>
           [n] New execution [r] Resume [h] History [w] Workflows [t] Themes

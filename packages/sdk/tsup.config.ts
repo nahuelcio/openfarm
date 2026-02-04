@@ -39,7 +39,6 @@ export default defineConfig([
       "js-yaml",
       "ai",
       // External providers are optional and loaded dynamically
-      "@openfarm/provider-opencode",
       "@openfarm/provider-aider",
       "@openfarm/provider-claude",
     ],
@@ -80,7 +79,6 @@ export default defineConfig([
       "js-yaml",
       "ai",
       // External providers are optional and loaded dynamically
-      "@openfarm/provider-opencode",
       "@openfarm/provider-aider",
       "@openfarm/provider-claude",
     ],

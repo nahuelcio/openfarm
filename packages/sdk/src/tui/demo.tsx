@@ -9,8 +9,8 @@
  */
 
 import { Box, render, Text, useInput } from "ink";
-import React, { useEffect, useState } from "react";
-import { Footer, Header, MainLayout } from "./components/layout";
+import { useEffect, useState } from "react";
+import { MainLayout } from "./components/layout";
 import { RemoteTabs } from "./components/remote-tabs";
 import { TraceTree } from "./components/trace-tree";
 import { useTracing } from "./hooks/use-tracing";
@@ -93,7 +93,7 @@ function DemoTracing() {
       <Box width="50%">
         <TraceTree height={20} width="100%" />
       </Box>
-      <Box width="50%" borderStyle="single" borderColor="gray" padding={1}>
+      <Box borderColor="gray" borderStyle="single" padding={1} width="50%">
         <Text bold>Trace Details</Text>
         <Text color="gray" dimColor>
           Select a trace to see details
@@ -137,9 +137,9 @@ function DemoRemotes() {
     <Box flexDirection="column" flexGrow={1}>
       <RemoteTabs
         activeTab={activeTab}
+        onAddRemote={() => console.log("Add remote")}
         onTabChange={setActiveTab}
         showAddButton={true}
-        onAddRemote={() => console.log("Add remote")}
       />
       <Box flexGrow={1} padding={1}>
         {activeTab === "local" ? (
@@ -192,17 +192,17 @@ function DemoApp() {
 
   return (
     <MainLayout
-      title="OpenFarm v2"
-      status="running"
-      sessionId="demo-session-123"
-      tabs={TABS}
       activeTab={activeTab}
-      onTabChange={setActiveTab}
       footerMessage={
         isVisible
           ? "Tracing visible - Press [T] to hide"
           : "Press [T] for tracing"
       }
+      onTabChange={setActiveTab}
+      sessionId="demo-session-123"
+      status="running"
+      tabs={TABS}
+      title="OpenFarm v2"
     >
       {renderContent()}
     </MainLayout>

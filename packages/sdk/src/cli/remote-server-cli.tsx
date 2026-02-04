@@ -6,7 +6,7 @@
  */
 
 import { Box, render, Text } from "ink";
-import React, { useEffect, useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { OpenFarmConfig } from "../types";
 
 interface ClientInfo {
@@ -77,16 +77,16 @@ function RemoteServerCLI({ port, token }: RemoteServerCliProps) {
       {clients.length > 0 && (
         <Box flexDirection="column" marginLeft={2}>
           {clients.map((c) => (
-            <Text key={c.id} color="green">
+            <Text color="green" key={c.id}>
               ● {c.id} {c.authenticated ? "(auth)" : "(pending)"}
             </Text>
           ))}
         </Box>
       )}
-      <Box marginTop={1} flexDirection="column">
+      <Box flexDirection="column" marginTop={1}>
         <Text bold>Logs:</Text>
         {logs.map((log, i) => (
-          <Text key={i} color="gray">
+          <Text color="gray" key={i}>
             {log}
           </Text>
         ))}
@@ -102,7 +102,7 @@ export async function runRemoteServerCLI(
   args: string[],
   _config: OpenFarmConfig
 ): Promise<void> {
-  const port = parseInt(
+  const port = Number.parseInt(
     args.find((a) => a.startsWith("--port="))?.split("=")[1] || "8080"
   );
   const token =

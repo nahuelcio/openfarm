@@ -15,15 +15,11 @@ import type { WorkItem } from "@openfarm/core/types";
 import {
   executeWorkflow,
   InMemoryEventBus,
+  type StepExecutor,
   type WorkflowEngineConfig,
   type WorkflowExecutionRequest,
-  type StepExecutor,
 } from "@openfarm/workflow-engine";
-import type {
-  TaskLoopConfig,
-  TaskExecutionResult,
-  TaskLoopLogger,
-} from "./types";
+import type { TaskLoopConfig, TaskLoopLogger } from "./types";
 
 /**
  * Options for executing git/setup steps via workflow

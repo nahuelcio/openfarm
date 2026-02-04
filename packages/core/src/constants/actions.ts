@@ -13,6 +13,10 @@ export enum StepType {
   CONDITIONAL = "conditional",
   LOOP = "loop",
   PARALLEL = "parallel",
+  TASK = "task",
+  PROMPT = "prompt",
+  DETECTION = "detection",
+  SESSION = "session",
 }
 
 /**
@@ -50,4 +54,23 @@ export enum StepAction {
 
   // Review Actions
   REVIEW_CODE = "review.code",
+
+  // Task Actions (for task-loop)
+  TASK_SELECT = "task.select",
+  TASK_LOAD = "task.load",
+  TASK_FILTER = "task.filter",
+  TASK_UPDATE_STATUS = "task.update_status",
+
+  // Prompt Actions (for task-loop)
+  PROMPT_BUILD = "prompt.build",
+  PROMPT_TEMPLATE = "prompt.template",
+
+  // Detection Actions (for task-loop)
+  DETECTION_CHECK_COMPLETION = "detection.check_completion",
+  DETECTION_ANALYZE_OUTPUT = "detection.analyze_output",
+
+  // Session Actions (for task-loop)
+  SESSION_CREATE = "session.create",
+  SESSION_UPDATE = "session.update",
+  SESSION_LOG = "session.log",
 }

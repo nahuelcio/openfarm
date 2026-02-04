@@ -28,20 +28,9 @@ const CLI_MODELS: Record<string, string[]> = {
     "deepseek/deepseek-coder",
   ],
   codex: ["gpt-4o", "gpt-4o-mini", "o1-preview", "o1-mini"],
-  opencode: [
-    "gpt-4o",
-    "gpt-4o-mini",
-    "claude-3-5-sonnet-20241022",
-    "claude-3-5-haiku-20241022",
-    "gemini-2.0-flash-exp",
-    "gemini-1.5-pro",
-    "deepseek-chat",
-    "deepseek-coder",
-  ],
 };
 
 const PROVIDER_FALLBACK_MODELS: Record<string, string[]> = {
-  opencode: CLI_MODELS.opencode,
   "direct-api": [
     "gpt-4o",
     "gpt-4o-mini",
@@ -180,10 +169,7 @@ async function fetchModelsFromCli(cli: string): Promise<string[]> {
         if (models.length > 0) {
           return models;
         }
-      } catch {
-        // Try next flag
-        continue;
-      }
+      } catch {}
     }
   } catch {
     // All flags failed
@@ -218,7 +204,7 @@ function parseCliOutput(output: string): string[] {
     // * anthropic/claude-3-opus
     //   google/gemini-pro
     // gpt-4o-mini (default)
-    const match = trimmed.match(/^[-*\s]*([a-zA-Z0-9._\/-]+)/);
+    const match = trimmed.match(/^[-*\s]*([a-zA-Z0-9._/-]+)/);
     if (match) {
       const model = match[1].trim();
 
@@ -273,8 +259,8 @@ export function preloadModels(provider: string, cli?: string): void {
  * Call this on app startup to warm the cache.
  */
 export function preloadAllCommonModels(): void {
-  const commonProviders = ["opencode", "direct-api", "anthropic", "openai"];
-  const commonClis = ["claude", "aider", "opencode"];
+  const commonProviders = ["direct-api", "anthropic", "openai"];
+  const commonClis = ["claude", "aider"];
 
   // Preload provider models
   for (const provider of commonProviders) {

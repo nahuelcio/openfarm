@@ -16,7 +16,7 @@ export function ContextConfigScreen() {
   const [providers] = useState<ProviderOption[]>([
     { id: "direct-api", name: "OpenAI" },
     { id: "claude", name: "Claude" },
-    { id: "opencode", name: "OpenCode" },
+    { id: "external-agent", name: "External Agent" },
     { id: "aider", name: "Aider" },
   ]);
   const [providerIndex, setProviderIndex] = useState(0);

@@ -59,6 +59,10 @@ export type CodingEngineFactory = (options: {
   podName?: string;
   namespace?: string;
   ephemeral?: boolean;
+  runtimeType?: "local" | "docker" | "kubernetes" | "worktree";
+  worktreePath?: string;
+  baseBranch?: string;
+  imageName?: string;
   maxTokens?: number;
   allowedTools?: string[];
   disallowedTools?: string[];
@@ -82,6 +86,14 @@ export interface ExecutionServices {
     onLog?: (message: string) => void | Promise<void>;
     onChanges?: (changes: ChangesSummary) => void | Promise<void>;
     onChatMessage?: (message: ChatMessage) => void | Promise<void>;
+    runtimeType?: "local" | "docker" | "kubernetes" | "worktree";
+    worktreePath?: string;
+    baseBranch?: string;
+    containerName?: string;
+    podName?: string;
+    namespace?: string;
+    imageName?: string;
+    ephemeral?: boolean;
   };
   db?: LowdbInstance;
   executionId?: string;

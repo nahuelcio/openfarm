@@ -12,7 +12,7 @@ import type { ExecutionOptions, ExecutionResult } from "../types";
  * Defines the essential contract for code execution providers.
  */
 export interface Provider {
-  /** Unique identifier for the provider type (e.g., 'opencode', 'aider') */
+  /** Unique identifier for the provider type (e.g., 'external-agent', 'aider') */
   readonly type: string;
 
   /** Human-readable name for the provider */

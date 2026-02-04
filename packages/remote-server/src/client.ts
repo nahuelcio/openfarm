@@ -5,8 +5,9 @@
  * Used by the TUI to control multiple machines.
  */
 
-import WebSocket from "ws";
 import { logger } from "@openfarm/logger";
+import type { TaskLoopSession } from "@openfarm/task-loop";
+import WebSocket from "ws";
 import type {
   ClientMessage,
   ConnectionState,
@@ -15,7 +16,6 @@ import type {
   RemoteSystemInfo,
   ServerMessage,
 } from "./types";
-import type { TaskLoopSession } from "@openfarm/task-loop";
 
 /**
  * OpenFarm Remote Client
@@ -54,9 +54,9 @@ export class RemoteClient {
       autoReconnect: true,
       reconnectDelay: 5000,
       maxReconnects: 0, // Infinite
-      connectionTimeout: 10000,
+      connectionTimeout: 10_000,
       token: "",
-      pingInterval: 30000,
+      pingInterval: 30_000,
       maxQueuedMessages: 100,
       ...config,
     };

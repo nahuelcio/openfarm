@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+
 /**
  * Task Loop Screen
  *
@@ -6,12 +7,12 @@
  * Phase 4: Rich Logs integration
  */
 
-import { Box, Text, useInput } from "ink";
-import React, { useEffect, useState } from "react";
-import { useStore } from "../store";
-import { useLogStore, type LogLevel } from "../store/log-store";
-import { RichLogView } from "../components/rich-log-view";
 import type { TaskLoopEvent } from "@openfarm/task-loop";
+import { Box, Text, useInput } from "ink";
+import { useEffect, useState } from "react";
+import { RichLogView } from "../components/rich-log-view";
+import { useStore } from "../store";
+import { type LogLevel, useLogStore } from "../store/log-store";
 
 interface TaskInfo {
   id: string;
@@ -176,13 +177,13 @@ export function TaskLoopScreen() {
   const startTaskLoop = async () => {
     try {
       setStatus("idle");
-      log("info", "task-loop", `Provider: ${provider || "opencode"}`);
+      log("info", "task-loop", `Provider: ${provider || "external-agent"}`);
       log("info", "task-loop", `Workspace: ${workspace}`);
 
       const { TaskLoopOrchestrator } = await import("@openfarm/task-loop");
 
       const orchestrator = new TaskLoopOrchestrator({
-        provider: provider || "opencode",
+        provider: provider || "external-agent",
         model: model || undefined,
       });
 
@@ -246,9 +247,9 @@ export function TaskLoopScreen() {
     <Box flexDirection="column" height="100%">
       {/* Header */}
       <Box
+        borderStyle="single"
         flexDirection="row"
         justifyContent="space-between"
-        borderStyle="single"
         paddingX={1}
       >
         <Box flexDirection="row" gap={1}>
@@ -261,22 +262,22 @@ export function TaskLoopScreen() {
             </Text>
           )}
         </Box>
-        <Text color={getStatusColor()} bold>
+        <Text bold color={getStatusColor()}>
           {getStatusIcon()} {status.toUpperCase()}
         </Text>
       </Box>
 
       {/* Stats Bar */}
-      <Box flexDirection="row" gap={3} paddingX={1} marginY={1}>
+      <Box flexDirection="row" gap={3} marginY={1} paddingX={1}>
         <Box flexDirection="row" gap={1}>
-          <Text color="green" bold>
+          <Text bold color="green">
             {progress.completed}✓
           </Text>
           <Text color="gray">Completed</Text>
         </Box>
         {progress.failed > 0 && (
           <Box flexDirection="row" gap={1}>
-            <Text color="red" bold>
+            <Text bold color="red">
               {progress.failed}✗
             </Text>
             <Text color="gray">Failed</Text>
@@ -284,7 +285,7 @@ export function TaskLoopScreen() {
         )}
         {progress.skipped > 0 && (
           <Box flexDirection="row" gap={1}>
-            <Text color="yellow" bold>
+            <Text bold color="yellow">
               {progress.skipped}⏭
             </Text>
             <Text color="gray">Skipped</Text>
@@ -299,7 +300,7 @@ export function TaskLoopScreen() {
         )}
         <Box flexGrow={1} />
         <Text color="gray" dimColor>
-          Provider: {provider || "opencode"}
+          Provider: {provider || "external-agent"}
         </Text>
       </Box>
 
@@ -308,21 +309,21 @@ export function TaskLoopScreen() {
         {/* Task List (collapsible) */}
         {showTaskList && (
           <Box
-            width={showTracing ? "30%" : "40%"}
-            flexDirection="column"
             borderStyle="single"
+            flexDirection="column"
             marginRight={1}
+            width={showTracing ? "30%" : "40%"}
           >
-            <Box paddingX={1} borderStyle="single">
+            <Box borderStyle="single" paddingX={1}>
               <Text bold underline>
                 Work Items
               </Text>
             </Box>
             <Box
               flexDirection="column"
-              paddingX={1}
               flexGrow={1}
               overflow="hidden"
+              paddingX={1}
             >
               {tasks.length === 0 ? (
                 <Text color="gray" dimColor>
@@ -330,7 +331,7 @@ export function TaskLoopScreen() {
                 </Text>
               ) : (
                 tasks.slice(-20).map((task) => (
-                  <Box key={task.id} flexDirection="row" gap={1}>
+                  <Box flexDirection="row" gap={1} key={task.id}>
                     <Text color={task.id === currentTaskId ? "yellow" : "gray"}>
                       {task.id === currentTaskId ? "▶" : " "}
                     </Text>
@@ -362,19 +363,19 @@ export function TaskLoopScreen() {
         )}
 
         {/* Rich Logs Panel - Phase 4 */}
-        <Box flexGrow={1} flexDirection="column">
+        <Box flexDirection="column" flexGrow={1}>
           <RichLogView height={25} showToolbar={true} />
         </Box>
 
         {/* Tracing Panel (optional) */}
         {showTracing && (
           <Box
-            width="30%"
             borderStyle="single"
-            marginLeft={1}
             flexDirection="column"
+            marginLeft={1}
+            width="30%"
           >
-            <Box paddingX={1} borderStyle="single">
+            <Box borderStyle="single" paddingX={1}>
               <Text bold underline>
                 Subagent Tracing
               </Text>
@@ -393,10 +394,10 @@ export function TaskLoopScreen() {
 
       {/* Footer */}
       <Box
-        flexDirection="row"
         borderStyle="single"
-        paddingX={1}
+        flexDirection="row"
         justifyContent="space-between"
+        paddingX={1}
       >
         <Text color="gray" dimColor>
           [T]racing [V]iew [P]ause [D]ashboard [Q]uit
