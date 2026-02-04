@@ -3,7 +3,13 @@
     "allow": [
       "Bash(done)",
       "mcp__zread__get_repo_structure",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(npx tsc:*)",
+      "Bash(node_modules/.bin/tsc:*)",
+      "Bash(node_modules/.bin/tsc.exe:*)",
+      "Bash(bun run typecheck:*)",
+      "Bash(bun run type-check:*)",
+      "Bash(timeout 5 bun run:*)"
     ]
   }
 }

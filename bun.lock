@@ -260,6 +260,20 @@
         "better-sqlite3": "^12.6.2",
       },
     },
+    "packages/remote-server": {
+      "name": "@openfarm/remote-server",
+      "version": "0.0.1",
+      "dependencies": {
+        "@openfarm/core": "workspace:*",
+        "@openfarm/task-loop": "workspace:*",
+        "ws": "^8.18.0",
+      },
+      "devDependencies": {
+        "@types/node": "^25.0.0",
+        "@types/ws": "^8.5.13",
+        "typescript": "^5.6.0",
+      },
+    },
     "packages/result": {
       "name": "@openfarm/result",
       "version": "0.0.1",
@@ -289,6 +303,8 @@
         "@openfarm/context": "workspace:*",
         "@openfarm/core": "workspace:*",
         "@openfarm/git-worktree": "workspace:*",
+        "@openfarm/remote-server": "workspace:*",
+        "@openfarm/task-loop": "workspace:*",
         "@openfarm/workflow-engine": "workspace:*",
         "ai": "^4.0.0",
         "better-sqlite3": "^12.6.2",
@@ -317,6 +333,27 @@
         "@types/uuid": "^10.0.0",
         "fast-check": "^4.5.3",
         "tsup": "^8.5.1",
+        "typescript": "^5.6.0",
+      },
+    },
+    "packages/task-loop": {
+      "name": "@openfarm/task-loop",
+      "version": "0.0.1",
+      "bin": {
+        "task-loop": "./bin/cli.ts",
+      },
+      "dependencies": {
+        "@openfarm/agent-runner": "workspace:*",
+        "@openfarm/core": "workspace:*",
+        "@openfarm/logger": "workspace:*",
+        "@openfarm/result": "workspace:*",
+        "@openfarm/types": "workspace:*",
+        "@openfarm/utils": "workspace:*",
+        "@openfarm/workflow-engine": "workspace:*",
+        "@openfarm/workflow-executor": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/node": "^25.0.0",
         "typescript": "^5.6.0",
       },
     },
@@ -657,11 +694,15 @@
 
     "@openfarm/queues": ["@openfarm/queues@workspace:packages/queues"],
 
+    "@openfarm/remote-server": ["@openfarm/remote-server@workspace:packages/remote-server"],
+
     "@openfarm/result": ["@openfarm/result@workspace:packages/result"],
 
     "@openfarm/runner-utils": ["@openfarm/runner-utils@workspace:packages/runner-utils"],
 
     "@openfarm/sdk": ["@openfarm/sdk@workspace:packages/sdk"],
+
+    "@openfarm/task-loop": ["@openfarm/task-loop@workspace:packages/task-loop"],
 
     "@openfarm/types": ["@openfarm/types@workspace:packages/types"],
 
@@ -984,6 +1025,8 @@
     "@types/tedious": ["@types/tedious@4.0.14", "", { "dependencies": { "@types/node": "*" } }, "sha512-KHPsfX/FoVbUGbyYvk1q9MMQHLPeRZhRJZdO45Q4YjvFkv4hMNghCWTvy7rdKessBsmtz4euWCWAB6/tVpI1Iw=="],
 
     "@types/uuid": ["@types/uuid@10.0.0", "", {}, "sha512-7gqG38EyHgyP1S+7+xomFtL+ZNHcKv6DwNaCZmJmo1vgMugyF3TCnXVg4t1uk89mLNwnLtnY3TpOpCOyp1/xHQ=="],
+
+    "@types/ws": ["@types/ws@8.18.1", "", { "dependencies": { "@types/node": "*" } }, "sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg=="],
 
     "@types/yargs": ["@types/yargs@17.0.35", "", { "dependencies": { "@types/yargs-parser": "*" } }, "sha512-qUHkeCyQFxMXg79wQfTtfndEC+N9ZZg76HJftDJp+qH2tV7Gj4OJi7l+PiWwJ+pWtW8GwSmqsDj/oymhrTWXjg=="],
 

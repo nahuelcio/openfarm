@@ -21,6 +21,7 @@ export type Screen =
   | "dashboard"
   | "execute"
   | "running"
+  | "task-loop"
   | "history"
   | "execution-detail"
   | "diff-viewer"
@@ -28,7 +29,12 @@ export type Screen =
   | "workflow-editor"
   | "context"
   | "context-config"
-  | "context-history";
+  | "context-history"
+  | "remotes"
+  | "remote-instance"
+  | "theme-selector";
+
+export type TabId = "dashboard" | "execute" | "history" | "workflows" | "context" | "remotes";
 
 export interface Execution {
   id: string;
@@ -51,6 +57,8 @@ export interface Execution {
 interface AppState {
   screen: Screen;
   setScreen: (screen: Screen) => void;
+  activeTab: TabId;
+  setActiveTab: (tab: TabId) => void;
 
   config: OpenFarmConfig | null;
   setConfig: (config: OpenFarmConfig) => void;
@@ -153,6 +161,8 @@ interface AppState {
 export const useStore = create<AppState>((set) => ({
   screen: "dashboard",
   setScreen: (screen) => set({ screen }),
+  activeTab: "dashboard",
+  setActiveTab: (activeTab) => set({ activeTab }),
 
   config: null,
   setConfig: (config) => set({ config }),

@@ -363,27 +363,41 @@ export function Execute() {
     // Paso 5: Escribir Task
     if (step === "task") {
       if (key.return && task.trim()) {
-        const execution = {
-          id: `exec_${Date.now()}`,
-          task: task.trim(),
-          provider,
-          model: model || undefined,
-          workspace,
-          status: "pending" as const,
-          startedAt: new Date(),
-        };
-        addExecution(execution);
-        setCurrentExecution(execution);
-        setTask("");
-        setModel("");
-        setModelSearch("");
-        setCustomPath("");
-        setIsSelectingFromList(false);
-        setStep("workflow");
-        setSelectedIndex(
-          workflows.findIndex((w) => w.id === selectedWorkflowId) || 0
-        );
-        setScreen("running");
+        // Check if Task Loop workflow is selected
+        if (selectedWorkflowId === "task_loop") {
+          // Go to task loop screen
+          setTask("");
+          setModel("");
+          setModelSearch("");
+          setCustomPath("");
+          setIsSelectingFromList(false);
+          setStep("workflow");
+          setSelectedIndex(0);
+          setScreen("task-loop");
+        } else {
+          // Normal execution
+          const execution = {
+            id: `exec_${Date.now()}`,
+            task: task.trim(),
+            provider,
+            model: model || undefined,
+            workspace,
+            status: "pending" as const,
+            startedAt: new Date(),
+          };
+          addExecution(execution);
+          setCurrentExecution(execution);
+          setTask("");
+          setModel("");
+          setModelSearch("");
+          setCustomPath("");
+          setIsSelectingFromList(false);
+          setStep("workflow");
+          setSelectedIndex(
+            workflows.findIndex((w) => w.id === selectedWorkflowId) || 0
+          );
+          setScreen("running");
+        }
       }
       return;
     }

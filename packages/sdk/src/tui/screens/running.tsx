@@ -167,14 +167,14 @@ async function executeWorkflowWithEngine(
                         .filter((a) => a.trim())
                     : [];
                   executeOptions.agentName = externalAgentConfig.agentName;
-                  
+
                   // Track session name for cancellation
                   const sessionName = `openfarm-${externalAgentConfig.agentName || externalAgentConfig.cli}`;
                   onAgentSessionStart?.(sessionName);
                 }
 
                 const result = await openFarm.execute(executeOptions);
-                
+
                 // Clear session ref after execution
                 onAgentSessionStart?.("");
 
@@ -820,7 +820,7 @@ export function Running() {
     };
 
     run();
-    
+
     return () => {
       // Cleanup: abort controller only, don't reset execution/log state
       // to prevent re-execution loop when currentExecution reference changes
@@ -845,24 +845,24 @@ export function Running() {
       onLog("⚠️  Cancelling execution...");
       aborted.current = true;
       abortController.current?.abort();
-      
+
       // Kill tmux session if running
       if (externalAgentSession.current) {
         killTmuxSession(externalAgentSession.current);
         onLog("🛑 Killed agent process");
       }
     }
-    
+
     if (key.escape) {
       if (!isDone) {
         aborted.current = true;
         abortController.current?.abort();
-        
+
         // Kill tmux session if running
         if (externalAgentSession.current) {
           killTmuxSession(externalAgentSession.current);
         }
-        
+
         onLog("⚠️  Cancelled");
         if (currentExecution) {
           updateExecution(currentExecution.id, { status: "cancelled" });
@@ -934,7 +934,9 @@ export function Running() {
             {stats.files} file{stats.files !== 1 ? "s" : ""}
           </Text>
         )}
-        <Text color="gray">{isDone ? "Esc to back" : "[c] Cancel  •  Esc Back"}</Text>
+        <Text color="gray">
+          {isDone ? "Esc to back" : "[c] Cancel  •  Esc Back"}
+        </Text>
       </Box>
     </Box>
   );

@@ -30,13 +30,17 @@
     "dev": "bun run src/cli.ts",
     "dev:cli": "bun run src/cli.ts --cli",
     "tui": "bun run src/cli.ts",
-    "tui:cli": "bun run src/cli.ts --cli"
+    "tui:cli": "bun run src/cli.ts --cli",
+    "loop": "bun run src/cli.ts task-loop",
+    "server": "bun run src/cli.ts remote-server"
   },
   "dependencies": {
     "@openfarm/agent-runner": "workspace:*",
     "@openfarm/context": "workspace:*",
     "@openfarm/core": "workspace:*",
     "@openfarm/git-worktree": "workspace:*",
+    "@openfarm/remote-server": "workspace:*",
+    "@openfarm/task-loop": "workspace:*",
     "@openfarm/workflow-engine": "workspace:*",
     "ai": "^4.0.0",
     "better-sqlite3": "^12.6.2",

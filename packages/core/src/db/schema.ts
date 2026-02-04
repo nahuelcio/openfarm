@@ -468,4 +468,25 @@ export async function createSchema(db: SQL): Promise<void> {
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
   `;
+
+  // Create task_loop_sessions table for task loop persistence
+  await db`
+    CREATE TABLE IF NOT EXISTS task_loop_sessions (
+      id TEXT PRIMARY KEY,
+      status TEXT NOT NULL CHECK(status IN ('idle', 'running', 'paused', 'completed', 'failed', 'resuming')),
+      config TEXT NOT NULL,
+      tasks TEXT NOT NULL,
+      current_task_index INTEGER NOT NULL DEFAULT 0,
+      completed_tasks INTEGER NOT NULL DEFAULT 0,
+      failed_tasks INTEGER NOT NULL DEFAULT 0,
+      skipped_tasks INTEGER NOT NULL DEFAULT 0,
+      started_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      completed_at TEXT,
+      logs TEXT NOT NULL DEFAULT '[]',
+      metadata TEXT
+    )
+  `;
+  await db`CREATE INDEX IF NOT EXISTS idx_task_loop_sessions_status ON task_loop_sessions(status)`;
+  await db`CREATE INDEX IF NOT EXISTS idx_task_loop_sessions_updated_at ON task_loop_sessions(updated_at DESC)`;
 }
