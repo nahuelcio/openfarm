@@ -1,17 +1,6 @@
-/**
- * App v2 - Ralph TUI-style Dashboard Layout with Remote Instances
- *
- * Features:
- * - Header with status
- * - Tab bar for local + remote navigation
- * - Main content area
- * - Footer with shortcuts
- */
-
-import { Box } from "@openfarm/tui-opentui";
-import { useState } from "react";
-import { MainLayout } from "./components/layout";
-import { RemoteTabs } from "./components/remote-tabs";
+import { useEffect, useMemo } from "react";
+import type { SectionId } from "./components/layout";
+import { MainLayout, SectionPanel } from "./components/layout";
 import type { Tab } from "./components/tabs";
 import { ContextScreen } from "./screens/context";
 import { ContextConfigScreen } from "./screens/context-config";
@@ -27,7 +16,7 @@ import { TaskLoopScreen } from "./screens/task-loop";
 import { ThemeSelector } from "./screens/theme-selector";
 import { WorkflowEditor } from "./screens/workflow-editor";
 import { WorkflowList } from "./screens/workflow-list";
-import { type TabId, useStore } from "./store";
+import { type Screen, type TabId, useStore } from "./store";
 
 const TABS: Tab[] = [
   { id: "dashboard", label: "Dashboard", shortcut: "1" },
@@ -36,63 +25,129 @@ const TABS: Tab[] = [
   { id: "workflows", label: "Workflows", shortcut: "4" },
   { id: "context", label: "Context", shortcut: "5" },
   { id: "remotes", label: "Remotes", shortcut: "6" },
+  { id: "task-loop", label: "Loop", shortcut: "7" },
 ];
 
-const TAB_SCREEN_MAP: Record<string, string> = {
+const SECTION_SCREEN_MAP: Record<SectionId, Screen> = {
   dashboard: "dashboard",
   execute: "execute",
   history: "history",
   workflows: "workflows",
-  context: "context-config", // Start with config to select provider/model
+  context: "context-config",
   remotes: "remotes",
+  "task-loop": "task-loop",
 };
+
+function resolveSection(screen: Screen): SectionId {
+  if (screen === "running" || screen === "execute") {
+    return "execute";
+  }
+  if (
+    screen === "history" ||
+    screen === "execution-detail" ||
+    screen === "diff-viewer"
+  ) {
+    return "history";
+  }
+  if (screen === "workflows" || screen === "workflow-editor") {
+    return "workflows";
+  }
+  if (
+    screen === "context" ||
+    screen === "context-config" ||
+    screen === "context-history"
+  ) {
+    return "context";
+  }
+  if (screen === "remotes" || screen === "remote-instance") {
+    return "remotes";
+  }
+  if (screen === "task-loop") {
+    return "task-loop";
+  }
+  return "dashboard";
+}
+
+function getShortcuts(section: SectionId, screen: Screen) {
+  const base = [
+    { key: "↑↓", label: "navigate" },
+    { key: "Enter", label: "open" },
+    { key: "[ ]", label: "section" },
+    { key: "Tab", label: "compact view" },
+    { key: "Esc", label: "back" },
+  ];
+
+  if (section === "execute") {
+    return [
+      ...base,
+      { key: "s", label: "start" },
+      { key: "p", label: "pause" },
+      { key: "d", label: "dashboard" },
+    ];
+  }
+
+  if (section === "history") {
+    return [...base, { key: "d", label: "diff" }, { key: "r", label: "rerun" }];
+  }
+
+  if (section === "workflows") {
+    return [
+      ...base,
+      { key: "a", label: "add step" },
+      { key: "s", label: "save" },
+    ];
+  }
+
+  if (section === "task-loop" || screen === "task-loop") {
+    return [
+      ...base,
+      { key: "o", label: "panel" },
+      { key: "v", label: "mode" },
+      { key: "q", label: "quit loop" },
+    ];
+  }
+
+  return base;
+}
 
 export function AppV2() {
   const { screen, setScreen, activeTab, setActiveTab, currentExecution } =
     useStore();
-  const [activeRemoteTab, setActiveRemoteTab] = useState("local");
-  const [_showAddRemote, setShowAddRemote] = useState(false);
 
-  // Determine status based on current execution
-  const getStatus = () => {
+  const currentSection = useMemo(() => resolveSection(screen), [screen]);
+
+  useEffect(() => {
+    if (activeTab !== currentSection) {
+      setActiveTab(currentSection as TabId);
+    }
+  }, [activeTab, currentSection, setActiveTab]);
+
+  const status = useMemo(() => {
     if (!currentExecution) {
-      return "idle";
+      return "idle" as const;
     }
     if (currentExecution.status === "running") {
-      return "running";
+      return "running" as const;
     }
     if (currentExecution.status === "cancelled") {
-      return "paused";
+      return "paused" as const;
     }
     if (currentExecution.status === "failed") {
-      return "error";
+      return "error" as const;
     }
-    return "idle";
-  };
+    return "idle" as const;
+  }, [currentExecution]);
 
-  // Handle tab change (local tabs)
   const handleTabChange = (tabId: string) => {
-    setActiveTab(tabId as TabId);
-    setScreen(TAB_SCREEN_MAP[tabId] as any);
-    setActiveRemoteTab("local");
-  };
-
-  // Handle remote tab change
-  const handleRemoteTabChange = (tabId: string) => {
-    setActiveRemoteTab(tabId);
-    if (tabId === "local") {
-      setActiveTab("dashboard");
-      setScreen("dashboard");
-    } else {
-      setScreen("remote-instance");
+    const section = tabId as SectionId;
+    const targetScreen = SECTION_SCREEN_MAP[section];
+    if (!targetScreen) {
+      return;
     }
+    setActiveTab(section as TabId);
+    setScreen(targetScreen);
   };
 
-  if (screen === "task-loop") {
-    return <TaskLoopScreen />;
-  }
-
-  // Render content based on screen
   const renderContent = () => {
     switch (screen) {
       case "dashboard":
@@ -118,9 +173,12 @@ export function AppV2() {
       case "context-history":
         return <ContextHistoryScreen />;
       case "remotes":
+      case "remote-instance":
         return <RemoteInstancesScreen />;
       case "theme-selector":
         return <ThemeSelector />;
+      case "task-loop":
+        return <TaskLoopScreen embedded={true} />;
       default:
         return <NewDashboard />;
     }
@@ -128,31 +186,26 @@ export function AppV2() {
 
   return (
     <MainLayout
-      activeTab={activeTab}
+      activeTab={currentSection}
       footerMessage={
         currentExecution ? `Task: ${currentExecution.task}` : "Ready"
       }
+      footerShortcuts={getShortcuts(currentSection, screen)}
+      leftPanel={
+        <SectionPanel
+          onNavigate={setScreen}
+          screen={screen}
+          sectionId={currentSection}
+        />
+      }
       onTabChange={handleTabChange}
       sessionId={currentExecution?.id}
-      status={getStatus()}
+      status={status}
       tabHotkeysEnabled={screen !== "execute"}
       tabs={TABS}
       title="OpenFarm"
     >
-      <Box flexDirection="column" flexGrow={1}>
-        {/* Remote Instance Tabs (shown on all screens) */}
-        <RemoteTabs
-          activeTab={activeRemoteTab}
-          onAddRemote={() => setShowAddRemote(true)}
-          onTabChange={handleRemoteTabChange}
-          showAddButton={true}
-        />
-
-        {/* Main Content */}
-        <Box flexDirection="column" flexGrow={1}>
-          {renderContent()}
-        </Box>
-      </Box>
+      {renderContent()}
     </MainLayout>
   );
 }

@@ -1,8 +1,7 @@
 /**
  * Footer Component
  *
- * Bottom status bar with keyboard shortcuts and system info.
- * Phase 5: Theme support
+ * Bottom status bar with keyboard shortcuts and context message.
  */
 
 import { Box, Text } from "@openfarm/tui-opentui";
@@ -14,9 +13,9 @@ interface FooterProps {
 }
 
 const DEFAULT_SHORTCUTS = [
-  { key: "s", label: "start" },
-  { key: "p", label: "pause" },
-  { key: "d", label: "dashboard" },
+  { key: "↑↓", label: "move" },
+  { key: "Enter", label: "open" },
+  { key: "[ ]", label: "section" },
   { key: "q", label: "quit" },
   { key: "?", label: "help" },
 ];
@@ -29,27 +28,28 @@ export function Footer({
 
   return (
     <Box
-      borderColor={colors.border}
       borderStyle="single"
       flexDirection="row"
       height={3}
       justifyContent="space-between"
       paddingX={1}
     >
-      <Box flexDirection="row" gap={1}>
-        {shortcuts.map(({ key, label }) => (
-          <Text key={key}>
-            <Text bold color={colors.warning}>
-              [{key}]
+      <Box flexDirection="row">
+        {shortcuts.map(({ key, label }, index) => (
+          <Text key={`${key}-${label}`}>
+            <Text bold color={colors.primary}>
+              {key}
             </Text>
-            <Text color={colors.muted}>{label}</Text>
-            <Text> </Text>
+            <Text color={colors.footerFg}> {label}</Text>
+            {index < shortcuts.length - 1 ? (
+              <Text color={colors.border}> | </Text>
+            ) : null}
           </Text>
         ))}
       </Box>
 
       {message && (
-        <Text color={colors.primary} wrap="truncate-end">
+        <Text color={colors.footerFg} wrap="truncate-end">
           {message}
         </Text>
       )}

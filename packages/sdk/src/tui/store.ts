@@ -40,7 +40,8 @@ export type TabId =
   | "history"
   | "workflows"
   | "context"
-  | "remotes";
+  | "remotes"
+  | "task-loop";
 
 export interface Execution {
   id: string;

@@ -40,6 +40,7 @@ const AGENT_PRESETS = [
 
 // Default workflow ID
 const DEFAULT_WORKFLOW_ID = "oneshot";
+const MODELS_PER_PAGE = 10;
 
 type Step =
   | "workflow"
@@ -99,6 +100,7 @@ export function Execute() {
   const [customPath, setCustomPath] = useState("");
   const [modelSearch, setModelSearch] = useState("");
   const [modelOptions, setModelOptions] = useState<string[]>([]);
+  const [modelPage, setModelPage] = useState(0);
   const [loadingModels, setLoadingModels] = useState(false);
   const [isSelectingFromList, setIsSelectingFromList] = useState(false);
   const [externalAgentStep, setExternalAgentStep] = useState<"preset" | "args">(
@@ -169,7 +171,28 @@ export function Execute() {
   const allFilteredModels = modelOptions.filter((m) =>
     m.toLowerCase().includes(modelSearch.toLowerCase())
   );
-  const filteredModels = allFilteredModels.slice(0, 10);
+  const modelPageCount = Math.max(
+    1,
+    Math.ceil(allFilteredModels.length / MODELS_PER_PAGE)
+  );
+  const modelPageStart = modelPage * MODELS_PER_PAGE;
+  const filteredModels = allFilteredModels.slice(
+    modelPageStart,
+    modelPageStart + MODELS_PER_PAGE
+  );
+
+  const handleModelSearchChange = (value: string) => {
+    setModelSearch(value);
+    setModelPage(0);
+    setSelectedIndex(0);
+  };
+
+  useEffect(() => {
+    if (modelPage <= modelPageCount - 1) {
+      return;
+    }
+    setModelPage(Math.max(0, modelPageCount - 1));
+  }, [modelPage, modelPageCount]);
 
   useEffect(() => {
     if (!isSelectingFromList) {
@@ -205,6 +228,7 @@ export function Execute() {
           setSelectedIndex(0);
         } else {
           setModelSearch("");
+          setModelPage(0);
           if (provider === "external-agent") {
             setStep("externalAgentConfig");
           } else {
@@ -253,6 +277,7 @@ export function Execute() {
         setProvider(selectedProvider);
         setSelectedIndex(0);
         setModelOptions([]); // Reset models for new provider
+        setModelPage(0);
         // Preload models in background so they're ready when user gets to model step
         preloadModels(selectedProvider);
         // Si es external-agent, ir a configuración especial
@@ -306,6 +331,7 @@ export function Execute() {
           setSelectedPreset(0);
           setExternalAgentArgs("");
           setModelOptions([]); // Reset so we load models for this CLI
+          setModelPage(0);
           // Preload models from provider package (e.g. @openfarm/provider-aider)
           preloadModels("external-agent", finalCli);
           // Ir a seleccionar modelo (como los otros providers)
@@ -317,6 +343,25 @@ export function Execute() {
 
     // Paso 3: Buscar/Seleccionar Model (opcional)
     if (step === "model") {
+      if (key.pageDown && modelPage < modelPageCount - 1) {
+        setModelPage((page) => page + 1);
+        setIsSelectingFromList(true);
+        setSelectedIndex(0);
+        return;
+      }
+      if (key.pageUp && modelPage > 0) {
+        const previousPage = modelPage - 1;
+        const previousPageStart = previousPage * MODELS_PER_PAGE;
+        const previousPageSize = Math.min(
+          MODELS_PER_PAGE,
+          Math.max(0, allFilteredModels.length - previousPageStart)
+        );
+        setModelPage(previousPage);
+        setIsSelectingFromList(true);
+        setSelectedIndex(Math.max(0, previousPageSize - 1));
+        return;
+      }
+
       if (key.tab && filteredModels.length > 0) {
         setIsSelectingFromList((current) => !current);
         if (!isSelectingFromList) {
@@ -331,12 +376,30 @@ export function Execute() {
         setSelectedIndex(0);
       } else if (key.upArrow && isSelectingFromList) {
         if (selectedIndex === 0) {
-          setIsSelectingFromList(false);
+          if (modelPage > 0) {
+            const previousPage = modelPage - 1;
+            const previousPageStart = previousPage * MODELS_PER_PAGE;
+            const previousPageSize = Math.min(
+              MODELS_PER_PAGE,
+              Math.max(0, allFilteredModels.length - previousPageStart)
+            );
+            setModelPage(previousPage);
+            setSelectedIndex(Math.max(0, previousPageSize - 1));
+          } else {
+            setIsSelectingFromList(false);
+          }
         } else {
           setSelectedIndex((i) => i - 1);
         }
       } else if (key.downArrow && isSelectingFromList) {
-        setSelectedIndex((i) => Math.min(filteredModels.length - 1, i + 1));
+        if (selectedIndex >= filteredModels.length - 1) {
+          if (modelPage < modelPageCount - 1) {
+            setModelPage((page) => page + 1);
+            setSelectedIndex(0);
+          }
+        } else {
+          setSelectedIndex((i) => Math.min(filteredModels.length - 1, i + 1));
+        }
       } else if (key.return) {
         if (isSelectingFromList && filteredModels.length > 0) {
           setModel(filteredModels[selectedIndex]);
@@ -641,7 +704,7 @@ export function Execute() {
               >
                 <TextInput
                   focus={step === "model" && !isSelectingFromList}
-                  onChange={setModelSearch}
+                  onChange={handleModelSearchChange}
                   placeholder="e.g. claude, gemini, gpt..."
                   value={modelSearch}
                 />
@@ -653,8 +716,8 @@ export function Execute() {
                 <Text color="gray" dimColor>
                   {allFilteredModels.length} match
                   {allFilteredModels.length !== 1 ? "es" : ""}
-                  {allFilteredModels.length > filteredModels.length
-                    ? ` (showing ${filteredModels.length})`
+                  {allFilteredModels.length > MODELS_PER_PAGE
+                    ? ` • page ${modelPage + 1}/${modelPageCount}`
                     : ""}
                   :
                 </Text>
@@ -689,9 +752,9 @@ export function Execute() {
             <Box marginTop={1}>
               <Text color="gray" dimColor>
                 {isSelectingFromList
-                  ? "↑↓ Navigate • Enter Select • Tab Search • Esc Back"
+                  ? "↑↓ Navigate • PgUp/PgDn Page • Enter Select • Tab Search • Esc Back"
                   : modelSearch.trim()
-                    ? "↓ Select from list • Enter Use custom • Tab Results"
+                    ? "↓ Select from list • PgUp/PgDn Page • Enter Use custom • Tab Results"
                     : "Type to search • Enter Skip (use default)"}
               </Text>
             </Box>

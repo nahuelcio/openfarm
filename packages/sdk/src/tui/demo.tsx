@@ -200,6 +200,17 @@ function DemoApp() {
           ? "Tracing visible - Press [T] to hide"
           : "Press [T] for tracing"
       }
+      leftPanel={
+        <Box flexDirection="column" gap={1}>
+          <Text bold>Demo Navigation</Text>
+          {TABS.map((tab, index) => (
+            <Text key={tab.id}>
+              {activeTab === tab.id ? "▶" : " "} {index + 1} {tab.label}
+            </Text>
+          ))}
+          <Text color="gray">Press [T] for tracing toggle</Text>
+        </Box>
+      }
       onTabChange={setActiveTab}
       sessionId="demo-session-123"
       status="running"

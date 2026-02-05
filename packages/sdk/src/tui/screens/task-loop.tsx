@@ -52,7 +52,11 @@ function mapDbStatusToScreenStatus(status: string): TaskLoopScreenTaskStatus {
   return "pending";
 }
 
-export function TaskLoopScreen() {
+interface TaskLoopScreenProps {
+  embedded?: boolean;
+}
+
+export function TaskLoopScreen({ embedded = false }: TaskLoopScreenProps) {
   const {
     setScreen,
     setActiveTab,
@@ -489,18 +493,24 @@ export function TaskLoopScreen() {
     : `${store.lifecycle} | session ${store.sessionId?.slice(0, 8) || "n/a"} | ${workspace}`;
 
   return (
-    <Box flexDirection="column" height="100%">
-      <OrchestrationHeader
-        completed={store.progress.completed}
-        currentIteration={store.currentIteration}
-        elapsedMs={store.elapsedMs}
-        icon={headerIcon}
-        maxIterations={store.maxIterations}
-        model={store.settings.model}
-        provider={store.settings.provider}
-        taskLabel={selectedTask?.title || "Task Loop"}
-        total={store.progress.total}
-      />
+    <Box
+      flexDirection="column"
+      flexGrow={1}
+      height={embedded ? undefined : "100%"}
+    >
+      {embedded ? null : (
+        <OrchestrationHeader
+          completed={store.progress.completed}
+          currentIteration={store.currentIteration}
+          elapsedMs={store.elapsedMs}
+          icon={headerIcon}
+          maxIterations={store.maxIterations}
+          model={store.settings.model}
+          provider={store.settings.provider}
+          taskLabel={selectedTask?.title || "Task Loop"}
+          total={store.progress.total}
+        />
+      )}
 
       <Box flexDirection="row" flexGrow={1} overflow="hidden">
         {store.overlay !== "none" ? (
@@ -545,10 +555,12 @@ export function TaskLoopScreen() {
         )}
       </Box>
 
-      <OrchestrationFooter
-        lifecycle={store.lifecycle}
-        message={footerMessage}
-      />
+      {embedded ? null : (
+        <OrchestrationFooter
+          lifecycle={store.lifecycle}
+          message={footerMessage}
+        />
+      )}
     </Box>
   );
 }

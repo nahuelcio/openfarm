@@ -12,6 +12,15 @@ import {
 
 type BorderStyle = "single" | "double" | "round" | "bold";
 
+interface TuiMouseEvent {
+  x: number;
+  y: number;
+  button: number;
+  type: string;
+  stopPropagation?: () => void;
+  preventDefault?: () => void;
+}
+
 const mapBorderStyle = (
   style?: BorderStyle
 ): "single" | "double" | "rounded" | "bold" => {
@@ -56,8 +65,14 @@ type BoxLikeProps = PropsWithChildren<{
   flexGrow?: number;
   overflow?: "hidden" | "visible";
   title?: string;
+  onMouse?: (event: TuiMouseEvent) => void;
+  onMouseDown?: (event: TuiMouseEvent) => void;
+  onMouseUp?: (event: TuiMouseEvent) => void;
+  onMouseMove?: (event: TuiMouseEvent) => void;
   [key: string]: unknown;
 }>;
+
+export type BoxProps = BoxLikeProps;
 
 export function Box({
   children,
@@ -237,7 +252,9 @@ export function render(node: React.ReactNode) {
   });
 
   (async () => {
-    const renderer = await createCliRenderer();
+    const renderer = await createCliRenderer({
+      useMouse: true,
+    });
     rendererRef = renderer;
     currentRenderer = renderer;
     rootRef = createRoot(renderer);

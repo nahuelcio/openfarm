@@ -1,3 +1,4 @@
+export type { BoxProps } from "./runtime";
 export {
   Box,
   render,
