@@ -490,8 +490,8 @@ export class ProviderRegistry implements IProviderRegistry {
           ) as (modulePath: string) => Promise<Record<string, unknown>>;
 
           try {
-            const mod = await import("@openfarm/provider-opencode");
-            return mod.OpenCodeProviderFactory;
+            const mod = await importAtRuntime("@openfarm/provider-opencode");
+            return mod.OpenCodeProviderFactory as new () => ProviderFactory;
           } catch (e) {
             try {
               // Dev fallback: allow running from monorepo sources without building provider package first.

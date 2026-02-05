@@ -18,10 +18,9 @@ class StubRemoteClient implements IRemoteClient {
   private connected = false;
 
   constructor(
-    config: { url: string; token?: string },
+    _config: { url: string; token?: string },
     handlers: RemoteClientHandlers
   ) {
-    this.config = config;
     this.handlers = handlers;
   }
 

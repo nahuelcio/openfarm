@@ -113,7 +113,7 @@ async function executePromptBuild(
   request: StepExecutionRequest
 ): Promise<Result<string>> {
   const { step, context, logger } = request;
-  const { config } = step;
+  const config = step.config || {};
 
   const templateName = (config.template as string) || "default";
   const task = context.workflowVariables?.currentTask as WorkItem | undefined;
@@ -144,7 +144,7 @@ async function executePromptTemplate(
   request: StepExecutionRequest
 ): Promise<Result<string>> {
   const { step, context, logger } = request;
-  const { config } = step;
+  const config = step.config || {};
 
   const template = config.template as string;
   const variables = (config.variables as Record<string, string>) || {};

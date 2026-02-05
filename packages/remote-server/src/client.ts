@@ -7,7 +7,7 @@
 
 import { logger } from "@openfarm/logger";
 import type { TaskLoopSession } from "@openfarm/task-loop";
-import type WebSocket from "ws";
+import WebSocket from "ws";
 import type {
   ClientMessage,
   ConnectionState,

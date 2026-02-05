@@ -80,7 +80,7 @@ async function executeDetectionCheckCompletion(
   request: StepExecutionRequest
 ): Promise<Result<CompletionResult>> {
   const { step, context, logger } = request;
-  const { config } = step;
+  const config = step.config || {};
 
   const output = (config.output as string) || "";
   const error = (config.error as string) || "";
@@ -184,7 +184,7 @@ async function executeDetectionAnalyzeOutput(
   request: StepExecutionRequest
 ): Promise<Result<{ summary: string; hasErrors: boolean }>> {
   const { step, logger } = request;
-  const { config } = step;
+  const config = step.config || {};
 
   const output = (config.output as string) || "";
 

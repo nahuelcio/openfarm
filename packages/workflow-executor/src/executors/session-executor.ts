@@ -32,7 +32,7 @@ async function executeSessionCreate(
   request: StepExecutionRequest
 ): Promise<Result<SessionState>> {
   const { step, logger } = request;
-  const { config } = step;
+  const config = step.config || {};
 
   const sessionId = config.sessionId as string | undefined;
   const id =
@@ -63,7 +63,7 @@ async function executeSessionUpdate(
   request: StepExecutionRequest
 ): Promise<Result<SessionState>> {
   const { step, context, logger } = request;
-  const { config } = step;
+  const config = step.config || {};
 
   const session = context.workflowVariables?.session as
     | SessionState
@@ -100,7 +100,7 @@ async function executeSessionLog(
   request: StepExecutionRequest
 ): Promise<Result<string>> {
   const { step, context, logger } = request;
-  const { config } = step;
+  const config = step.config || {};
 
   const session = context.workflowVariables?.session as
     | SessionState

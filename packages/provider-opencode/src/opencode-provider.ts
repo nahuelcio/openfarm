@@ -99,9 +99,25 @@ export class OpenCodeProvider implements Provider {
 
       let output = response.body;
       try {
-        const parsed = await this.responseParser.parse(response);
-        if (typeof parsed === "string" && parsed.trim()) {
-          output = parsed;
+        const parsed = (await this.responseParser.parse(response)) as unknown;
+        const parsedOutput =
+          typeof parsed === "string"
+            ? parsed
+            : parsed &&
+                typeof parsed === "object" &&
+                "textLines" in parsed &&
+                Array.isArray(parsed.textLines)
+              ? parsed.textLines
+                  .map((line) =>
+                    line && typeof line === "object" && "raw" in line
+                      ? String(line.raw)
+                      : ""
+                  )
+                  .join("\n")
+              : "";
+
+        if (parsedOutput.trim()) {
+          output = parsedOutput;
         } else if (response.body.trim()) {
           output = response.body;
         } else {

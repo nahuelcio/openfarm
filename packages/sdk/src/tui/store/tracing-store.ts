@@ -117,7 +117,7 @@ export const useTracingStore = create<TracingState>((set, get) => ({
 
   startTrace: (parentId, name, icon, input) => {
     const id = generateId();
-    const node = createNode(id, parentId, name, icon, input);
+    const node = createNode(id, parentId, name, icon ?? "node", input);
 
     set((state) => {
       if (!state.tree) {

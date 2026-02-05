@@ -8,26 +8,47 @@
 import { StepType } from "@openfarm/core/constants";
 import { err, type Result } from "@openfarm/result";
 import type {
-  StepExecutionRequest,
+  StepExecutionRequest as EngineStepExecutionRequest,
   StepExecutor,
 } from "@openfarm/workflow-engine";
 import { executeAgentAction } from "./executors/agent-executor";
 import { executeCommandAction } from "./executors/command-executor";
 import { executeDetectionAction } from "./executors/detection-executor";
 import { executeGitAction } from "./executors/git-executor";
-import { executePlanningAction } from "./executors/planning-executor";
+import { executePlanningActionRouter } from "./executors/planning-executor";
 import { executePlatformAction } from "./executors/platform-executor";
 import { executePromptAction } from "./executors/prompt-executor";
 import { executeReviewAction } from "./executors/review-executor";
 import { executeSessionAction } from "./executors/session-executor";
 import { executeTaskAction } from "./executors/task-executor";
+import type { StepExecutionRequest } from "./types";
+
+function normalizeStepResults(
+  stepResults: unknown[]
+): Array<{ stepId: string; result?: string }> {
+  return stepResults.flatMap((stepResult) => {
+    if (!(stepResult && typeof stepResult === "object")) {
+      return [];
+    }
+
+    const record = stepResult as Record<string, unknown>;
+    const stepId = record.stepId;
+    if (typeof stepId !== "string") {
+      return [];
+    }
+
+    const result =
+      typeof record.result === "string" ? record.result : undefined;
+    return [{ stepId, result }];
+  });
+}
 
 /**
  * Creates a complete StepExecutor that dispatches to all action executors
  */
 export function createStepExecutor(): StepExecutor {
   return {
-    execute: async (request, context) => {
+    execute: async (request: EngineStepExecutionRequest, context) => {
       const { stepType, action } = request;
 
       // Build full request with context
@@ -38,13 +59,13 @@ export function createStepExecutor(): StepExecutor {
           action,
           config: request.params || {},
         },
-        context,
+        context: context.context,
         logger: context.log.info.bind(context.log),
         flags: {
           previewMode: context.previewMode,
         },
         services: {},
-        stepResults: context.stepResults,
+        stepResults: normalizeStepResults(context.stepResults),
       };
 
       // Dispatch based on step type
@@ -69,7 +90,7 @@ export function createStepExecutor(): StepExecutor {
           break;
 
         case StepType.PLANNING:
-          result = await executePlanningAction(fullRequest);
+          result = await executePlanningActionRouter(fullRequest);
           break;
 
         case StepType.REVIEW:

@@ -65,7 +65,7 @@ async function executeTaskFilter(
   request: StepExecutionRequest
 ): Promise<Result<TaskLoopTask[]>> {
   const { step, context, logger } = request;
-  const { config } = step;
+  const config = step.config || {};
 
   const tasks = (context.workflowVariables?.tasks || []) as TaskLoopTask[];
   const project = config.project as string | undefined;
@@ -120,7 +120,7 @@ async function executeTaskSelect(
   request: StepExecutionRequest
 ): Promise<Result<TaskLoopTask | null>> {
   const { step, context, logger } = request;
-  const { config } = step;
+  const config = step.config || {};
 
   const tasks = (context.workflowVariables?.tasks || []) as TaskLoopTask[];
   const strategy = (config.strategy as string) || "priority";
@@ -184,7 +184,7 @@ async function executeTaskUpdateStatus(
   request: StepExecutionRequest
 ): Promise<Result<string>> {
   const { step, context, logger } = request;
-  const { config } = step;
+  const config = step.config || {};
 
   const taskId = config.taskId as string;
   const status = config.status as TaskLoopTask["loopStatus"];
