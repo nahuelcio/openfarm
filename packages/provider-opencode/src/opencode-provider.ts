@@ -80,26 +80,50 @@ export class OpenCodeProvider implements Provider {
       log("");
 
       const streamedLines: string[] = [];
+      let lastStreamedLine: string | null = null;
       const sanitizeLine = (line: string): string =>
         line
           // biome-ignore lint/suspicious/noControlCharactersInRegex: ANSI escape stripping
           .replace(/\x1B\[[0-9;]*[A-Za-z]/g, "")
+          .replace(/\s+/g, " ")
           .trim();
+      const trimForDisplay = (line: string): string =>
+        line.length > 180 ? `${line.slice(0, 177)}...` : line;
 
       const handleStdoutLine = (line: string) => {
-        const cleaned = sanitizeLine(line);
+        const normalizedLine = sanitizeLine(line);
+        const looksLikeJson =
+          normalizedLine.startsWith("{") && normalizedLine.endsWith("}");
+        const jsonParsed = this.parseJsonStreamLine(normalizedLine);
+
+        // If it's JSON but not a user-facing event, skip raw output noise.
+        if (looksLikeJson && !jsonParsed) {
+          return;
+        }
+
+        const cleaned = trimForDisplay(
+          sanitizeLine(jsonParsed ?? normalizedLine)
+        );
         if (!cleaned) {
           return;
         }
+        if (cleaned === lastStreamedLine) {
+          return;
+        }
+        lastStreamedLine = cleaned;
         streamedLines.push(cleaned);
         log(`│ ${cleaned}`);
       };
 
       const handleStderrLine = (line: string) => {
-        const cleaned = sanitizeLine(line);
+        const cleaned = trimForDisplay(sanitizeLine(line));
         if (!cleaned) {
           return;
         }
+        if (cleaned === lastStreamedLine) {
+          return;
+        }
+        lastStreamedLine = cleaned;
         streamedLines.push(cleaned);
         log(`⚠ ${cleaned}`);
       };
@@ -216,9 +240,7 @@ export class OpenCodeProvider implements Provider {
     }
 
     const format = this.readEnv("OPENCODE_FORMAT");
-    if (format === "json" || format === "default") {
-      args.push("--format", format);
-    }
+    args.push("--format", format === "default" ? "default" : "json");
 
     const agent = this.readEnv("OPENCODE_AGENT");
     if (agent && agent !== "general") {
@@ -238,6 +260,13 @@ export class OpenCodeProvider implements Provider {
 
 ${task}`
       : task;
+
+    prompt = `${prompt}
+
+IMPORTANT: You are running in a headless automation environment.
+Do NOT ask clarifying questions.
+Do NOT wait for user confirmation.
+If information is missing, make a reasonable assumption and continue.`;
 
     if (workspace) {
       prompt = `IMPORTANT: Work ONLY in this repository: ${workspace}
@@ -264,5 +293,83 @@ ${prompt}`;
     }
 
     return normalized;
+  }
+
+  private parseJsonStreamLine(line: string): string | null {
+    const trimmed = line.trim();
+    if (!(trimmed.startsWith("{") && trimmed.endsWith("}"))) {
+      return null;
+    }
+
+    try {
+      const event = JSON.parse(trimmed) as Record<string, unknown>;
+      const type = event.type;
+      if (
+        type !== "text" &&
+        type !== "tool_use" &&
+        type !== "step_start" &&
+        type !== "step_finish" &&
+        type !== "error"
+      ) {
+        return null;
+      }
+
+      if (type === "text") {
+        const part = event.part as Record<string, unknown> | undefined;
+        const text = part?.text;
+        return typeof text === "string" ? text : null;
+      }
+
+      if (type === "tool_use") {
+        const part = event.part as Record<string, unknown> | undefined;
+        const tool = part?.tool;
+        const state = part?.state as Record<string, unknown> | undefined;
+        const status = state?.status;
+        const input = state?.input as Record<string, unknown> | undefined;
+        const toolName = typeof tool === "string" ? tool : "tool";
+        const toolStatus = typeof status === "string" ? status : "completed";
+        const filePath =
+          typeof input?.filePath === "string" ? input.filePath : "";
+        const command = typeof input?.command === "string" ? input.command : "";
+
+        if (filePath) {
+          const target = filePath.split("/").at(-1) || filePath;
+          return `tool ${toolName}: ${toolStatus} (${target})`;
+        }
+        if (command) {
+          return `tool ${toolName}: ${toolStatus} (${command})`;
+        }
+
+        return `tool ${toolName}: ${toolStatus}`;
+      }
+
+      if (type === "step_start") {
+        return null;
+      }
+
+      if (type === "error") {
+        const errorMessage = event.error;
+        return typeof errorMessage === "string"
+          ? `error: ${errorMessage}`
+          : "error";
+      }
+
+      const part = event.part as Record<string, unknown> | undefined;
+      const reason = part?.reason;
+      if (reason === "stop") {
+        return "done";
+      }
+      if (
+        typeof reason === "string" &&
+        reason.length > 0 &&
+        reason !== "tool-calls"
+      ) {
+        return `step finished (${reason})`;
+      }
+
+      return null;
+    } catch {
+      return null;
+    }
   }
 }

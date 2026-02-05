@@ -94,7 +94,13 @@ describe("OpenCodeProvider", () => {
 
     expect(result.success).toBe(true);
     expect(result.output).toBe("parsed output");
-    expect(executionRequest?.args).toEqual(["run", "--model", "zai/glm-4.7"]);
+    expect(executionRequest?.args).toEqual([
+      "run",
+      "--model",
+      "zai/glm-4.7",
+      "--format",
+      "json",
+    ]);
     expect(executionRequest?.workingDirectory).toBe("/tmp/openfarm");
   });
 
