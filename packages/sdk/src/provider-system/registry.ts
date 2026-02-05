@@ -488,9 +488,17 @@ export class ProviderRegistry implements IProviderRegistry {
             const mod = await import("@openfarm/provider-opencode");
             return mod.OpenCodeProviderFactory;
           } catch (e) {
-            throw new Error(
-              `@openfarm/provider-opencode not installed: ${e instanceof Error ? e.message : "Unknown error"}`
-            );
+            try {
+              // Dev fallback: allow running from monorepo sources without building provider package first.
+              const mod = await import(
+                "../../../provider-opencode/src/index.ts"
+              );
+              return mod.OpenCodeProviderFactory;
+            } catch {
+              throw new Error(
+                `@openfarm/provider-opencode not installed: ${e instanceof Error ? e.message : "Unknown error"}`
+              );
+            }
           }
         },
       },

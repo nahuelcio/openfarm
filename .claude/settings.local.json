@@ -13,7 +13,8 @@
       "Bash(npx turbo build:*)",
       "mcp__zread__read_file",
       "Bash(find:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "mcp__zread__search_doc"
     ]
   }
 }

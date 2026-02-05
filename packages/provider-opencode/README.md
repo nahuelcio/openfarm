@@ -14,7 +14,7 @@ npm install @openfarm/provider-opencode
 bunx opencode-ai --version
 ```
 
-You also need the OpenCode server running (default: 127.0.0.1:4096).
+If you want to attach to an existing OpenCode server, set `OPENCODE_SERVER_URL`.
 
 ## Usage
 
@@ -40,9 +40,7 @@ const result = await client.execute({
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `OPENCODE_HOST` | `127.0.0.1` | OpenCode server host |
-| `OPENCODE_PORT` | `4096` | OpenCode server port |
-| `OPENCODE_SERVER_URL` | - | Full OpenCode server URL (overrides host/port) |
+| `OPENCODE_SERVER_URL` | - | Attach to a running OpenCode server URL (optional) |
 | `OPENCODE_COMMAND` | `bunx` | CLI command to execute |
 
 ## License

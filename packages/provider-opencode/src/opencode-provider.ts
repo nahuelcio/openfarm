@@ -87,8 +87,7 @@ export class OpenCodeProvider implements Provider {
       log("Checking OpenCode CLI...");
       const isAvailable = await this.testConnection();
       if (!isAvailable) {
-        const error =
-          "OpenCode CLI not found. Install with: bunx opencode-ai --version";
+        const error = `OpenCode CLI not found. Install/check with: ${this.commandLabel} --version`;
         log(`Error: ${error}`);
         return {
           success: false,
@@ -122,8 +121,24 @@ export class OpenCodeProvider implements Provider {
         };
       }
 
-      const parsed = await this.responseParser.parse(response);
-      const output = typeof parsed === "string" ? parsed : response.body;
+      let output = response.body;
+      try {
+        const parsed = await this.responseParser.parse(response);
+        if (typeof parsed === "string" && parsed.trim()) {
+          output = parsed;
+        } else if (response.body.trim()) {
+          output = response.body;
+        } else {
+          output = "OpenCode command completed successfully";
+        }
+      } catch (error) {
+        if (!output.trim()) {
+          output = "OpenCode command completed successfully";
+        }
+        log(
+          `Warning: response parser failed, using fallback output: ${error instanceof Error ? error.message : "Unknown error"}`
+        );
+      }
 
       return {
         success: true,
@@ -161,19 +176,23 @@ export class OpenCodeProvider implements Provider {
   }
 
   private buildCliArgs(options: ExecutionOptions): string[] {
-    const serverUrl = this.getServerUrl();
-    const args = ["run", "--attach", serverUrl];
+    const args = ["run"];
+
+    const serverUrl = this.readEnv("OPENCODE_SERVER_URL");
+    if (serverUrl) {
+      args.push("--attach", serverUrl);
+    }
 
     if (options.model) {
       args.push("--model", options.model);
     }
 
-    const format = process.env.OPENCODE_FORMAT;
+    const format = this.readEnv("OPENCODE_FORMAT");
     if (format === "json" || format === "default") {
       args.push("--format", format);
     }
 
-    const agent = process.env.OPENCODE_AGENT;
+    const agent = this.readEnv("OPENCODE_AGENT");
     if (agent && agent !== "general") {
       args.push("--agent", agent);
     }
@@ -201,12 +220,21 @@ ${prompt}`;
     return prompt;
   }
 
-  private getServerUrl(): string {
-    if (process.env.OPENCODE_SERVER_URL) {
-      return process.env.OPENCODE_SERVER_URL;
+  private readEnv(name: string): string | undefined {
+    const value = process.env[name];
+    if (!value) {
+      return undefined;
     }
-    const host = process.env.OPENCODE_HOST || "127.0.0.1";
-    const port = process.env.OPENCODE_PORT || "4096";
-    return `http://${host}:${port}`;
+
+    const normalized = value.trim();
+    if (
+      normalized.length === 0 ||
+      normalized === "undefined" ||
+      normalized === "null"
+    ) {
+      return undefined;
+    }
+
+    return normalized;
   }
 }
