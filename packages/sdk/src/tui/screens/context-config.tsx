@@ -1,5 +1,5 @@
-import { Box, Text, useInput } from "ink";
-import TextInput from "ink-text-input";
+import { Box, Text, useInput } from "@openfarm/tui-opentui";
+import TextInput from "@openfarm/tui-opentui/text-input";
 import { useEffect, useState } from "react";
 import { useStore } from "../store";
 import { getAvailableModels } from "../utils/models";

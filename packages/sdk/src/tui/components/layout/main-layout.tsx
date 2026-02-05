@@ -8,7 +8,7 @@
  * - Footer with shortcuts
  */
 
-import { Box } from "ink";
+import { Box } from "@openfarm/tui-opentui";
 import type React from "react";
 import { type Tab, TabBar } from "../tabs/tab-bar";
 import { Footer } from "./footer";

@@ -4,7 +4,7 @@
  * A wrapper around Ink's Text component that applies theme styles.
  */
 
-import { Text } from "ink";
+import { Text } from "@openfarm/tui-opentui";
 import type React from "react";
 import { useThemeStyle } from "../theme/hooks";
 import type { TextStyle } from "../theme/types";

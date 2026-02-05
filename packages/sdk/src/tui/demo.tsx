@@ -8,7 +8,7 @@
  * - Remote instance tabs
  */
 
-import { Box, render, Text, useInput } from "ink";
+import { Box, render, Text, useInput } from "@openfarm/tui-opentui";
 import { useEffect, useState } from "react";
 import { MainLayout } from "./components/layout";
 import { RemoteTabs } from "./components/remote-tabs";

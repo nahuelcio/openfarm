@@ -4,7 +4,7 @@
  * Navigation tabs with keyboard support.
  */
 
-import { Box, Text, useInput } from "ink";
+import { Box, Text, useInput } from "@openfarm/tui-opentui";
 import { useCallback } from "react";
 
 export interface Tab {

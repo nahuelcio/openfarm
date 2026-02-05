@@ -1,43 +1,78 @@
-#!/usr/bin/env bun
-
-/**
- * Task Loop Screen
- *
- * Runs the Ralph TUI-style autonomous task loop with real-time UI.
- * Phase 4: Rich Logs integration
- */
-
+import { getDb, getLocalWorkItems } from "@openfarm/core/db";
 import type { TaskLoopEvent } from "@openfarm/task-loop";
-import { Box, Text, useInput } from "ink";
-import { useCallback, useEffect, useState } from "react";
-import { RichLogView } from "../components/rich-log-view";
+import { Box, useInput } from "@openfarm/tui-opentui";
+import { useCallback, useEffect, useMemo, useRef } from "react";
+import {
+  ConfirmDialog,
+  HelpOverlay,
+  IterationHistoryPanel,
+  OrchestrationFooter,
+  OrchestrationHeader,
+  RightPanel,
+  SettingsOverlay,
+  TaskListPanel,
+} from "../components/task-loop";
+import { useTaskLoopKeys } from "../hooks/use-task-loop-keys";
 import { useStore } from "../store";
 import { type LogLevel, useLogStore } from "../store/log-store";
+import type { TaskLoopScreenTaskStatus } from "../store/task-loop-store";
+import { useTaskLoopStore } from "../store/task-loop-store";
 
-interface TaskInfo {
+const PROVIDER_PRESETS = ["opencode", "claude", "aider", "external-agent"];
+const MODEL_PRESETS = [
+  "",
+  "gpt-5-mini",
+  "gpt-5",
+  "claude-3-5-sonnet",
+  "gemini-2.5-pro",
+];
+
+interface DbWorkItem {
   id: string;
+  title: string;
   description: string;
-  status: "pending" | "running" | "completed" | "failed" | "skipped";
+  acceptanceCriteria: string;
+  priority?: string;
+  status: string;
+}
+
+function mapDbStatusToScreenStatus(status: string): TaskLoopScreenTaskStatus {
+  if (status === "completed") {
+    return "completed";
+  }
+  if (status === "failed") {
+    return "failed";
+  }
+  if (status === "pr-created") {
+    return "blocked";
+  }
+  if (status === "fixing") {
+    return "running";
+  }
+  return "pending";
 }
 
 export function TaskLoopScreen() {
-  const { setScreen, provider, model, workspace } = useStore();
+  const {
+    setScreen,
+    setActiveTab,
+    provider,
+    model,
+    setProvider,
+    setModel,
+    workspace,
+    executions,
+    selectedWorkflowId,
+  } = useStore();
   const { addEntry, clearEntries } = useLogStore();
-
-  const [status, setStatus] = useState<
-    "idle" | "running" | "paused" | "completed" | "error"
-  >("idle");
-  const [sessionId, setSessionId] = useState<string | null>(null);
-  const [tasks, setTasks] = useState<TaskInfo[]>([]);
-  const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
-  const [progress, setProgress] = useState({
-    completed: 0,
-    failed: 0,
-    skipped: 0,
-    total: 0,
-  });
-  const [showTracing, setShowTracing] = useState(false);
-  const [showTaskList, setShowTaskList] = useState(true);
+  const store = useTaskLoopStore();
+  const orchestratorRef = useRef<{
+    run: (options: {
+      onEvent?: (event: TaskLoopEvent) => void;
+    }) => Promise<unknown>;
+    pause: () => void;
+  } | null>(null);
+  const runningRef = useRef(false);
 
   const log = useCallback(
     (
@@ -51,12 +86,42 @@ export function TaskLoopScreen() {
     [addEntry]
   );
 
+  const refreshTasks = useCallback(async () => {
+    try {
+      const db = await getDb();
+      const workItems = (await getLocalWorkItems(db)) as DbWorkItem[];
+      const tasks = workItems.map((item) => ({
+        id: item.id,
+        title: item.title || item.id,
+        description: item.description || "",
+        acceptanceCriteria: item.acceptanceCriteria || "",
+        priority: item.priority,
+        status: mapDbStatusToScreenStatus(item.status),
+        retryCount: 0,
+      }));
+      const currentStore = useTaskLoopStore.getState();
+      currentStore.setTasks(tasks);
+      currentStore.setLifecycle("ready");
+      log("info", "task-loop", `Loaded ${tasks.length} tasks from workspace`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const currentStore = useTaskLoopStore.getState();
+      currentStore.setLifecycle("error");
+      currentStore.setLastError(message);
+      log("error", "task-loop", `Failed to refresh tasks: ${message}`);
+    }
+  }, [log]);
+
   const handleEvent = useCallback(
     (event: TaskLoopEvent) => {
+      const currentStore = useTaskLoopStore.getState();
       switch (event.type) {
         case "session.started":
-          setSessionId(event.sessionId);
-          setStatus("running");
+          currentStore.setSessionId(event.sessionId);
+          currentStore.setLifecycle("selecting");
+          if (!currentStore.startTime) {
+            currentStore.setStartTime(Date.now());
+          }
           log(
             "info",
             "task-loop",
@@ -68,42 +133,42 @@ export function TaskLoopScreen() {
           break;
 
         case "session.completed":
-          setStatus("completed");
-          log("info", "task-loop", "✨ All tasks completed!", {
-            completed: progress.completed,
-            failed: progress.failed,
-            skipped: progress.skipped,
-          });
+          currentStore.setLifecycle("completed");
+          currentStore.setCurrentTaskId(null);
+          log("info", "task-loop", "Session completed");
           break;
 
         case "session.failed":
-          setStatus("error");
-          log("error", "task-loop", `Session failed: ${event.data}`, {
+          currentStore.setLifecycle("error");
+          currentStore.setCurrentTaskId(null);
+          currentStore.setLastError(JSON.stringify(event.data));
+          log("error", "task-loop", "Session failed", {
             error: event.data,
           });
           break;
 
         case "session.paused":
-          setStatus("paused");
+          currentStore.setLifecycle("paused");
           log("warn", "task-loop", "Session paused by user");
           break;
 
         case "task.selected":
           if (event.taskId && event.data) {
-            const taskData = event.data as { description?: string };
-            setTasks((prev) => [
-              ...prev,
-              {
-                id: event.taskId!,
-                description: taskData.description || event.taskId!,
-                status: "pending",
-              },
-            ]);
-            setProgress((p) => ({ ...p, total: p.total + 1 }));
+            const taskData = event.data as {
+              description?: string;
+              title?: string;
+            };
+            currentStore.upsertTask({
+              id: event.taskId,
+              title: taskData.title || event.taskId,
+              description: taskData.description || "",
+              status: "pending",
+              retryCount: 0,
+            });
             log(
               "debug",
               "task-loop",
-              `Task selected: ${taskData.description || event.taskId}`,
+              `Task selected: ${taskData.title || event.taskId}`,
               {
                 taskId: event.taskId,
               }
@@ -112,38 +177,72 @@ export function TaskLoopScreen() {
           break;
 
         case "task.started":
-          setCurrentTaskId(event.taskId || null);
-          setTasks((prev) =>
-            prev.map((t) =>
-              t.id === event.taskId ? { ...t, status: "running" } : t
-            )
-          );
+          if (!event.taskId) {
+            break;
+          }
+          currentStore.setLifecycle("executing");
+          currentStore.setCurrentTaskId(event.taskId);
+          currentStore.upsertTask({
+            id: event.taskId,
+            title:
+              (event.data as { title?: string } | undefined)?.title ||
+              event.taskId,
+            priority: (event.data as { priority?: string } | undefined)
+              ?.priority,
+            status: "running",
+            startedAt: event.timestamp,
+          });
+          currentStore.addIteration({
+            id: `iter-${Date.now()}-${event.taskId}`,
+            number: currentStore.iterations.length + 1,
+            taskId: event.taskId,
+            taskTitle:
+              (event.data as { title?: string } | undefined)?.title ||
+              event.taskId,
+            status: "running",
+            startedAt: event.timestamp,
+          });
           log("info", "agent", `▶ Starting: ${event.taskId?.slice(0, 40)}`, {
             taskId: event.taskId,
           });
           break;
 
         case "task.completed":
-          setTasks((prev) =>
-            prev.map((t) =>
-              t.id === event.taskId ? { ...t, status: "completed" } : t
-            )
-          );
-          setProgress((p) => ({ ...p, completed: p.completed + 1 }));
-          setCurrentTaskId(null);
+          if (!event.taskId) {
+            break;
+          }
+          currentStore.setTaskStatus(event.taskId, "completed", {
+            completedAt: event.timestamp,
+            durationMs: (event.data as { durationMs?: number } | undefined)
+              ?.durationMs,
+          });
+          currentStore.updateCurrentIteration({
+            status: "completed",
+            completedAt: event.timestamp,
+            durationMs: (event.data as { durationMs?: number } | undefined)
+              ?.durationMs,
+            output: JSON.stringify(event.data ?? {}),
+          });
+          currentStore.setCurrentTaskId(null);
           log("info", "agent", `✓ Completed: ${event.taskId?.slice(0, 40)}`, {
             taskId: event.taskId,
           });
           break;
 
         case "task.failed":
-          setTasks((prev) =>
-            prev.map((t) =>
-              t.id === event.taskId ? { ...t, status: "failed" } : t
-            )
-          );
-          setProgress((p) => ({ ...p, failed: p.failed + 1 }));
-          setCurrentTaskId(null);
+          if (!event.taskId) {
+            break;
+          }
+          currentStore.setTaskStatus(event.taskId, "failed", {
+            completedAt: event.timestamp,
+            error: JSON.stringify(event.data ?? {}),
+          });
+          currentStore.updateCurrentIteration({
+            status: "failed",
+            completedAt: event.timestamp,
+            output: JSON.stringify(event.data ?? {}),
+          });
+          currentStore.setCurrentTaskId(null);
           log("error", "agent", `✗ Failed: ${event.taskId?.slice(0, 40)}`, {
             taskId: event.taskId,
             error: event.data,
@@ -151,267 +250,305 @@ export function TaskLoopScreen() {
           break;
 
         case "task.skipped":
-          setTasks((prev) =>
-            prev.map((t) =>
-              t.id === event.taskId ? { ...t, status: "skipped" } : t
-            )
-          );
-          setProgress((p) => ({ ...p, skipped: p.skipped + 1 }));
+          if (!event.taskId) {
+            break;
+          }
+          currentStore.setTaskStatus(event.taskId, "skipped", {
+            completedAt: event.timestamp,
+          });
+          currentStore.updateCurrentIteration({
+            status: "skipped",
+            completedAt: event.timestamp,
+            output: JSON.stringify(event.data ?? {}),
+          });
           log("warn", "agent", `⏭ Skipped: ${event.taskId?.slice(0, 40)}`, {
             taskId: event.taskId,
           });
           break;
 
+        case "task.retry": {
+          if (!event.taskId) {
+            break;
+          }
+          const task = currentStore.tasks.find(
+            (item) => item.id === event.taskId
+          );
+          currentStore.setTaskStatus(event.taskId, "pending", {
+            retryCount: (task?.retryCount || 0) + 1,
+          });
+          currentStore.addOutputLine(
+            `[retry] ${event.taskId} -> ${JSON.stringify(event.data ?? {})}`
+          );
+          break;
+        }
+
         case "log":
-          log("info", "system", String(event.data));
+          currentStore.addOutputLine(String(event.data ?? ""));
+          log("info", "system", String(event.data ?? ""));
           break;
       }
     },
-    [log, progress]
+    [log]
   );
 
   const startTaskLoop = useCallback(async () => {
+    if (runningRef.current) {
+      return;
+    }
+
+    const currentStore = useTaskLoopStore.getState();
+
     try {
-      setStatus("idle");
-      log("info", "task-loop", `Provider: ${provider || "external-agent"}`);
+      currentStore.beginRun();
+      currentStore.setLifecycle("starting");
+      clearEntries();
+      log(
+        "info",
+        "task-loop",
+        `Provider: ${currentStore.settings.provider || "external-agent"}`
+      );
       log("info", "task-loop", `Workspace: ${workspace}`);
 
       const { TaskLoopOrchestrator } = await import("@openfarm/task-loop");
 
       const orchestrator = new TaskLoopOrchestrator({
-        provider: provider || "external-agent",
-        model: model || undefined,
+        provider: currentStore.settings.provider || "external-agent",
+        model: currentStore.settings.model || undefined,
+        maxIterations: currentStore.maxIterations,
+        stopOnFailure: currentStore.settings.stopOnFailure,
       });
+      orchestratorRef.current = orchestrator;
+      runningRef.current = true;
 
       await orchestrator.run({
         onEvent: handleEvent,
       });
+
+      if (useTaskLoopStore.getState().lifecycle !== "error") {
+        useTaskLoopStore.getState().setLifecycle("completed");
+      }
     } catch (error) {
-      setStatus("error");
+      currentStore.setLifecycle("error");
+      currentStore.setLastError(String(error));
       log("error", "task-loop", `Fatal error: ${error}`, {
         error: String(error),
       });
+    } finally {
+      runningRef.current = false;
+      orchestratorRef.current = null;
     }
-  }, [provider, model, workspace, handleEvent, log]);
+  }, [clearEntries, handleEvent, log, workspace]);
+
+  const pauseTaskLoop = useCallback(() => {
+    orchestratorRef.current?.pause();
+    useTaskLoopStore.getState().setLifecycle("paused");
+    log("warn", "task-loop", "Pause requested");
+  }, [log]);
+
+  const goDashboard = useCallback(() => {
+    if (runningRef.current) {
+      orchestratorRef.current?.pause();
+    }
+    setActiveTab("dashboard");
+    setScreen("dashboard");
+  }, [setActiveTab, setScreen]);
+
+  const confirmInterrupt = useCallback(() => {
+    orchestratorRef.current?.pause();
+    useTaskLoopStore.getState().setLifecycle("paused");
+    goDashboard();
+  }, [goDashboard]);
 
   useEffect(() => {
-    clearEntries();
-    addEntry({
-      level: "info",
-      component: "task-loop",
-      message: "Initializing Task Loop...",
+    const currentStore = useTaskLoopStore.getState();
+    currentStore.reset();
+    currentStore.setSettings({
+      provider: provider || "external-agent",
+      model: model || "",
     });
-    startTaskLoop();
-  }, [addEntry, clearEntries, startTaskLoop]);
+    clearEntries();
+    log("info", "task-loop", "Task Loop ready");
+    refreshTasks();
+  }, [clearEntries, log, model, provider, refreshTasks]);
+
+  useEffect(() => {
+    const active =
+      store.lifecycle === "starting" ||
+      store.lifecycle === "selecting" ||
+      store.lifecycle === "executing";
+    if (!(active && store.startTime)) {
+      return;
+    }
+    const interval = setInterval(() => {
+      useTaskLoopStore.getState().setElapsedMs(Date.now() - store.startTime!);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [store.lifecycle, store.startTime]);
+
+  useTaskLoopKeys({
+    onStartOrResume: startTaskLoop,
+    onPause: pauseTaskLoop,
+    onRefresh: refreshTasks,
+    onDashboard: goDashboard,
+    onConfirmQuit: goDashboard,
+    onConfirmInterrupt: confirmInterrupt,
+    onEnter: () => useTaskLoopStore.getState().toggleRightPanelMode(),
+  });
 
   useInput((input, key) => {
-    if (key.escape || input === "q") {
-      setScreen("dashboard");
-    } else if (input === "t" || input === "T") {
-      setShowTracing((s) => !s);
-    } else if (input === "v" || input === "V") {
-      setShowTaskList((s) => !s);
-    } else if (input === "d" || input === "D") {
-      setScreen("dashboard");
-    } else if (input === "p" || input === "P") {
-      // Pause/Resume would go here
-      log("info", "task-loop", "Pause/Resume not yet implemented");
+    if (store.overlay !== "settings") {
+      return;
+    }
+    if (key.escape) {
+      store.setOverlay("none");
+      return;
+    }
+    if (input === "p") {
+      const currentIndex = PROVIDER_PRESETS.indexOf(store.settings.provider);
+      const nextIndex = (currentIndex + 1) % PROVIDER_PRESETS.length;
+      const nextProvider = PROVIDER_PRESETS[nextIndex];
+      store.setSettings({ provider: nextProvider });
+      setProvider(nextProvider);
+      return;
+    }
+    if (input === "m") {
+      const currentIndex = MODEL_PRESETS.indexOf(store.settings.model);
+      const nextIndex = (currentIndex + 1) % MODEL_PRESETS.length;
+      const nextModel = MODEL_PRESETS[nextIndex];
+      store.setSettings({ model: nextModel });
+      setModel(nextModel);
+      return;
+    }
+    if (input === "+") {
+      store.incrementMaxIterations();
+      return;
+    }
+    if (input === "-") {
+      store.decrementMaxIterations();
+      return;
+    }
+    if (input === "f") {
+      store.setSettings({ stopOnFailure: !store.settings.stopOnFailure });
     }
   });
 
-  const getStatusColor = () => {
-    switch (status) {
-      case "running":
-        return "green";
-      case "error":
-        return "red";
-      case "completed":
-        return "cyan";
-      case "paused":
-        return "yellow";
-      default:
-        return "gray";
+  const selectedTask = store.tasks[store.selectedTaskIndex];
+  const selectedIteration = store.iterations[store.selectedIterationIndex];
+
+  const headerIcon = useMemo(() => {
+    if (store.lifecycle === "executing" || store.lifecycle === "selecting") {
+      return "▶";
     }
+    if (store.lifecycle === "paused") {
+      return "⏸";
+    }
+    if (store.lifecycle === "completed") {
+      return "✓";
+    }
+    if (store.lifecycle === "error") {
+      return "✗";
+    }
+    return "○";
+  }, [store.lifecycle]);
+
+  const renderOverlay = () => {
+    if (store.overlay === "help") {
+      return <HelpOverlay />;
+    }
+    if (store.overlay === "settings") {
+      return (
+        <SettingsOverlay
+          maxIterations={store.maxIterations}
+          model={store.settings.model}
+          provider={store.settings.provider}
+          stopOnFailure={store.settings.stopOnFailure}
+        />
+      );
+    }
+    if (store.overlay === "quit-confirm") {
+      return (
+        <ConfirmDialog
+          message="Task loop is running. Quit and discard this session?"
+          title="Confirm Quit"
+        />
+      );
+    }
+    if (store.overlay === "interrupt-confirm") {
+      return (
+        <ConfirmDialog
+          message="Interrupt current execution and return to dashboard?"
+          title="Confirm Interrupt"
+        />
+      );
+    }
+    return null;
   };
 
-  const getStatusIcon = () => {
-    switch (status) {
-      case "running":
-        return "▶";
-      case "error":
-        return "✖";
-      case "completed":
-        return "✓";
-      case "paused":
-        return "⏸";
-      default:
-        return "○";
-    }
-  };
+  const footerMessage = store.lastError
+    ? `error: ${store.lastError}`
+    : `${store.lifecycle} | session ${store.sessionId?.slice(0, 8) || "n/a"} | ${workspace}`;
 
   return (
     <Box flexDirection="column" height="100%">
-      {/* Header */}
-      <Box
-        borderStyle="single"
-        flexDirection="row"
-        justifyContent="space-between"
-        paddingX={1}
-      >
-        <Box flexDirection="row" gap={1}>
-          <Text bold color="cyan">
-            🔄 Task Loop
-          </Text>
-          {sessionId && (
-            <Text color="gray" dimColor>
-              | Session: {sessionId.slice(0, 8)}...
-            </Text>
-          )}
-        </Box>
-        <Text bold color={getStatusColor()}>
-          {getStatusIcon()} {status.toUpperCase()}
-        </Text>
-      </Box>
+      <OrchestrationHeader
+        completed={store.progress.completed}
+        currentIteration={store.currentIteration}
+        elapsedMs={store.elapsedMs}
+        icon={headerIcon}
+        maxIterations={store.maxIterations}
+        model={store.settings.model}
+        provider={store.settings.provider}
+        taskLabel={selectedTask?.title || "Task Loop"}
+        total={store.progress.total}
+      />
 
-      {/* Stats Bar */}
-      <Box flexDirection="row" gap={3} marginY={1} paddingX={1}>
-        <Box flexDirection="row" gap={1}>
-          <Text bold color="green">
-            {progress.completed}✓
-          </Text>
-          <Text color="gray">Completed</Text>
-        </Box>
-        {progress.failed > 0 && (
-          <Box flexDirection="row" gap={1}>
-            <Text bold color="red">
-              {progress.failed}✗
-            </Text>
-            <Text color="gray">Failed</Text>
-          </Box>
-        )}
-        {progress.skipped > 0 && (
-          <Box flexDirection="row" gap={1}>
-            <Text bold color="yellow">
-              {progress.skipped}⏭
-            </Text>
-            <Text color="gray">Skipped</Text>
-          </Box>
-        )}
-        {progress.total > 0 && (
-          <Box flexDirection="row" gap={1}>
-            <Text color="gray">/</Text>
-            <Text color="white">{progress.total}</Text>
-            <Text color="gray">Total</Text>
-          </Box>
-        )}
-        <Box flexGrow={1} />
-        <Text color="gray" dimColor>
-          Provider: {provider || "external-agent"}
-        </Text>
-      </Box>
-
-      {/* Main Content - Phase 4: Rich Logs */}
       <Box flexDirection="row" flexGrow={1} overflow="hidden">
-        {/* Task List (collapsible) */}
-        {showTaskList && (
+        {store.overlay !== "none" ? (
           <Box
-            borderStyle="single"
             flexDirection="column"
-            marginRight={1}
-            width={showTracing ? "30%" : "40%"}
+            flexGrow={1}
+            justifyContent="center"
+            padding={1}
           >
-            <Box borderStyle="single" paddingX={1}>
-              <Text bold underline>
-                Work Items
-              </Text>
-            </Box>
-            <Box
-              flexDirection="column"
-              flexGrow={1}
-              overflow="hidden"
-              paddingX={1}
-            >
-              {tasks.length === 0 ? (
-                <Text color="gray" dimColor>
-                  Loading work items...
-                </Text>
-              ) : (
-                tasks.slice(-20).map((task) => (
-                  <Box flexDirection="row" gap={1} key={task.id}>
-                    <Text color={task.id === currentTaskId ? "yellow" : "gray"}>
-                      {task.id === currentTaskId ? "▶" : " "}
-                    </Text>
-                    <Text
-                      color={
-                        task.status === "completed"
-                          ? "green"
-                          : task.status === "failed"
-                            ? "red"
-                            : task.status === "running"
-                              ? "yellow"
-                              : "gray"
-                      }
-                      dimColor={task.status === "pending"}
-                      wrap="truncate-end"
-                    >
-                      {task.status === "completed" && "✓ "}
-                      {task.status === "failed" && "✗ "}
-                      {task.status === "skipped" && "⏭ "}
-                      {task.status === "running" && "▶ "}
-                      {task.status === "pending" && "○ "}
-                      {task.description.slice(0, 30)}
-                    </Text>
-                  </Box>
-                ))
-              )}
-            </Box>
+            {renderOverlay()}
           </Box>
-        )}
-
-        {/* Rich Logs Panel - Phase 4 */}
-        <Box flexDirection="column" flexGrow={1}>
-          <RichLogView height={25} showToolbar={true} />
-        </Box>
-
-        {/* Tracing Panel (optional) */}
-        {showTracing && (
-          <Box
-            borderStyle="single"
-            flexDirection="column"
-            marginLeft={1}
-            width="30%"
-          >
-            <Box borderStyle="single" paddingX={1}>
-              <Text bold underline>
-                Subagent Tracing
-              </Text>
-            </Box>
-            <Box flexDirection="column" padding={1}>
-              <Text color="gray" dimColor>
-                Tracing panel placeholder
-              </Text>
-              <Text color="gray" dimColor>
-                (Phase 2 integration)
-              </Text>
-            </Box>
-          </Box>
+        ) : (
+          <>
+            {store.viewMode === "tasks" ? (
+              <TaskListPanel
+                currentTaskId={store.currentTaskId}
+                recentExecutions={executions}
+                selectedIndex={store.selectedTaskIndex}
+                tasks={store.tasks}
+              />
+            ) : (
+              <IterationHistoryPanel
+                iterations={store.iterations}
+                selectedIndex={store.selectedIterationIndex}
+              />
+            )}
+            <RightPanel
+              mode={store.rightPanelMode}
+              outputLines={store.outputLines}
+              selectedIteration={selectedIteration}
+              selectedTask={selectedTask}
+              systemStatus={{
+                executionCount: executions.length,
+                model: store.settings.model,
+                provider: store.settings.provider || provider,
+                workflowId: selectedWorkflowId,
+                workspace,
+              }}
+              viewMode={store.viewMode}
+            />
+          </>
         )}
       </Box>
 
-      {/* Footer */}
-      <Box
-        borderStyle="single"
-        flexDirection="row"
-        justifyContent="space-between"
-        paddingX={1}
-      >
-        <Text color="gray" dimColor>
-          [T]racing [V]iew [P]ause [D]ashboard [Q]uit
-        </Text>
-        <Text color="gray" dimColor>
-          {workspace}
-        </Text>
-      </Box>
+      <OrchestrationFooter
+        lifecycle={store.lifecycle}
+        message={footerMessage}
+      />
     </Box>
   );
 }

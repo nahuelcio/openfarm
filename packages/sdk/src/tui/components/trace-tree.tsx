@@ -5,7 +5,7 @@
  * Similar to Ralph TUI's subagent tracing panel.
  */
 
-import { Box, Text, useInput } from "ink";
+import { Box, Text, useInput } from "@openfarm/tui-opentui";
 import { useMemo } from "react";
 import { useTracingStore } from "../store/tracing-store";
 import type { TraceNode, TraceStatus } from "../types/tracing";

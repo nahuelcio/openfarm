@@ -15,7 +15,12 @@
     "jsx": "react-jsx",
     "jsxImportSource": "react",
     "rootDir": "./src",
-    "baseUrl": "."
+    "baseUrl": ".",
+    "paths": {
+      "@openfarm/tui-opentui": ["./src/tui/opentui/index.ts"],
+      "@openfarm/tui-opentui/spinner": ["./src/tui/opentui/spinner.tsx"],
+      "@openfarm/tui-opentui/text-input": ["./src/tui/opentui/text-input.tsx"]
+    }
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "**/*.test.ts"]

@@ -1,0 +1,21 @@
+OpenFarm SDK - Project Documentation
+=====================================
+
+This file contains project documentation and notes.
+
+## Status
+- Active development in progress
+- TypeScript implementation
+- Focused on SDK architecture
+
+## Next Steps
+- Complete provider implementation
+- Write integration tests
+- Document API usage examples
+- Setup CI/CD pipeline
+
+## Notes
+- Follow strict TypeScript typing
+- Use conventional commits
+- Maintain kebab-case file naming
+- Keep core packages lean

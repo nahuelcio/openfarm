@@ -5,7 +5,7 @@
  * Handles up/down navigation, wrap-around, and edge cases.
  */
 
-import { useInput } from "ink";
+import { useInput } from "@openfarm/tui-opentui";
 import { useCallback, useState } from "react";
 
 export interface UseListNavigationOptions {

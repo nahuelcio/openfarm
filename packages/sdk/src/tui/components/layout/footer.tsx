@@ -5,7 +5,7 @@
  * Phase 5: Theme support
  */
 
-import { Box, Text } from "ink";
+import { Box, Text } from "@openfarm/tui-opentui";
 import { useTheme } from "../../store/theme-store";
 
 interface FooterProps {

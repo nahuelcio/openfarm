@@ -8,12 +8,12 @@ import {
   initializePredefinedWorkflows,
 } from "@openfarm/core/db";
 import { captureGitChanges } from "@openfarm/operations/git/changes";
+import { Box, Text, useInput } from "@openfarm/tui-opentui";
 import type {
   WorkflowEngineConfig,
   WorkflowExecutionRequest,
 } from "@openfarm/workflow-engine";
 import { executeWorkflow, InMemoryEventBus } from "@openfarm/workflow-engine";
-import { Box, Text, useInput } from "ink";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { OpenFarm } from "../../open-farm";
 import { ErrorDisplay } from "../components/error-display";

@@ -4,7 +4,7 @@
  * Manage and connect to remote OpenFarm instances.
  */
 
-import { Box, Text, useInput } from "ink";
+import { Box, Text, useInput } from "@openfarm/tui-opentui";
 import { useState } from "react";
 import { RemoteInstanceList } from "../components/remote-tabs";
 import { useRemoteStore } from "../store/remote-store";

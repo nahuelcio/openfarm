@@ -2,7 +2,7 @@ import { readdir, readFile, unlink } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import type { Workflow } from "@openfarm/core";
 import { addWorkflow, getDb, getWorkflows } from "@openfarm/core/db";
-import { Box, Text, useInput } from "ink";
+import { Box, Text, useInput } from "@openfarm/tui-opentui";
 import YAML from "js-yaml";
 import { useCallback, useEffect, useState } from "react";
 import { useStore } from "../store";

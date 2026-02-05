@@ -4,7 +4,7 @@
  * Shows execution progress with real-time subagent trace tree.
  */
 
-import { Box, Text, useInput } from "ink";
+import { Box, Text, useInput } from "@openfarm/tui-opentui";
 import { useEffect } from "react";
 import { TraceTree } from "../components/trace-tree";
 import { useTracing } from "../hooks/use-tracing";

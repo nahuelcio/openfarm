@@ -1,6 +1,6 @@
 import { AgentAnalyzer } from "@openfarm/context";
-import { Box, Text, useInput } from "ink";
-import SpinnerComponent from "ink-spinner";
+import { Box, Text, useInput } from "@openfarm/tui-opentui";
+import SpinnerComponent from "@openfarm/tui-opentui/spinner";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { v4 as uuidv4 } from "uuid";

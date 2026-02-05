@@ -5,7 +5,7 @@
  * Similar to Ralph TUI's remote instance management.
  */
 
-import { Box, Text, useInput } from "ink";
+import { Box, Text, useInput } from "@openfarm/tui-opentui";
 import { useRemoteStore } from "../store/remote-store";
 
 interface RemoteTabsProps {

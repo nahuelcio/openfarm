@@ -1,4 +1,4 @@
-import { Box, Text, useInput } from "ink";
+import { Box, Text, useInput } from "@openfarm/tui-opentui";
 import { KeyHelpBar } from "../components";
 import { useStore } from "../store";
 import { useThemeColors } from "../theme/hooks";

@@ -5,7 +5,7 @@
  * Ralph TUI-style dashboard layout with tabs.
  */
 
-import { render } from "ink";
+import { render } from "@openfarm/tui-opentui";
 import type { OpenFarmConfig } from "../types";
 import { AppV2 } from "./app-v2";
 import { useStore } from "./store";

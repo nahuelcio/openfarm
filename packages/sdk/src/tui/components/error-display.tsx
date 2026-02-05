@@ -1,4 +1,4 @@
-import { Box, Text } from "ink";
+import { Box, Text } from "@openfarm/tui-opentui";
 import type { CategorizedError } from "../utils/error-handler";
 
 interface ErrorDisplayProps {

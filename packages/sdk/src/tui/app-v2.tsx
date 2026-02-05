@@ -8,7 +8,7 @@
  * - Footer with shortcuts
  */
 
-import { Box } from "ink";
+import { Box } from "@openfarm/tui-opentui";
 import { useState } from "react";
 import { MainLayout } from "./components/layout";
 import { RemoteTabs } from "./components/remote-tabs";
@@ -88,6 +88,10 @@ export function AppV2() {
     }
   };
 
+  if (screen === "task-loop") {
+    return <TaskLoopScreen />;
+  }
+
   // Render content based on screen
   const renderContent = () => {
     switch (screen) {
@@ -97,8 +101,6 @@ export function AppV2() {
         return <Execute />;
       case "running":
         return <Running />;
-      case "task-loop":
-        return <TaskLoopScreen />;
       case "history":
         return <History />;
       case "diff-viewer":

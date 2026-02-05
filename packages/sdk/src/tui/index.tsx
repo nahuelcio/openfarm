@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { render } from "ink";
+import { render } from "@openfarm/tui-opentui";
 import type { OpenFarmConfig } from "../types";
 import { App } from "./app";
 import { useStore } from "./store";

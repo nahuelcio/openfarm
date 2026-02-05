@@ -9,8 +9,8 @@
  * - Export a archivo
  */
 
-import { Box, Text, useInput } from "ink";
-import TextInput from "ink-text-input";
+import { Box, Text, useInput } from "@openfarm/tui-opentui";
+import TextInput from "@openfarm/tui-opentui/text-input";
 import { useEffect, useRef, useState } from "react";
 import { getLevelIcon, type LogLevel, useLogStore } from "../store/log-store";
 import { useTheme } from "../store/theme-store";

@@ -1,4 +1,4 @@
-import { Box, Text, useInput } from "ink";
+import { Box, Text, useInput } from "@openfarm/tui-opentui";
 import { useEffect, useState } from "react";
 import { useStore } from "../store";
 import { getCurrentGitHash } from "../utils/git-hash";

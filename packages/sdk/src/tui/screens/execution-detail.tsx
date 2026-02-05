@@ -1,5 +1,5 @@
 import { getDb, getWorkflows } from "@openfarm/core/db";
-import { Box, Text, useInput } from "ink";
+import { Box, Text, useInput } from "@openfarm/tui-opentui";
 import { useEffect, useState } from "react";
 import { KeyHelpBar } from "../components";
 import { useStore } from "../store";

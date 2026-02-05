@@ -1,7 +1,7 @@
 import type { Workflow } from "@openfarm/core";
 import { getDb } from "@openfarm/core/db";
-import { Box, Text, useInput } from "ink";
-import TextInput from "ink-text-input";
+import { Box, Text, useInput } from "@openfarm/tui-opentui";
+import TextInput from "@openfarm/tui-opentui/text-input";
 import { useEffect, useState } from "react";
 import { useStore } from "../store";
 import { getAvailableModels, preloadModels } from "../utils/models";
@@ -166,9 +166,19 @@ export function Execute() {
   }, [step, provider, modelOptions.length, externalAgentConfig.cli]);
 
   // Filter models based on search
-  const filteredModels = modelOptions
-    .filter((m) => m.toLowerCase().includes(modelSearch.toLowerCase()))
-    .slice(0, 10);
+  const allFilteredModels = modelOptions.filter((m) =>
+    m.toLowerCase().includes(modelSearch.toLowerCase())
+  );
+  const filteredModels = allFilteredModels.slice(0, 10);
+
+  useEffect(() => {
+    if (!isSelectingFromList) {
+      return;
+    }
+    setSelectedIndex((current) =>
+      Math.min(current, Math.max(filteredModels.length - 1, 0))
+    );
+  }, [filteredModels.length, isSelectingFromList]);
 
   useInput((input, key) => {
     // Escape vuelve al dashboard o paso anterior
@@ -307,7 +317,16 @@ export function Execute() {
 
     // Paso 3: Buscar/Seleccionar Model (opcional)
     if (step === "model") {
-      if (key.downArrow && !isSelectingFromList && filteredModels.length > 0) {
+      if (key.tab && filteredModels.length > 0) {
+        setIsSelectingFromList((current) => !current);
+        if (!isSelectingFromList) {
+          setSelectedIndex(0);
+        }
+      } else if (
+        key.downArrow &&
+        !isSelectingFromList &&
+        filteredModels.length > 0
+      ) {
         setIsSelectingFromList(true);
         setSelectedIndex(0);
       } else if (key.upArrow && isSelectingFromList) {
@@ -322,7 +341,7 @@ export function Execute() {
         if (isSelectingFromList && filteredModels.length > 0) {
           setModel(filteredModels[selectedIndex]);
         } else {
-          setModel(modelSearch);
+          setModel(modelSearch.trim());
         }
         setModelSearch("");
         setIsSelectingFromList(false);
@@ -568,6 +587,7 @@ export function Execute() {
 
                   <Box borderColor="yellow" borderStyle="single" padding={1}>
                     <TextInput
+                      focus={step === "externalAgentConfig"}
                       onChange={setExternalAgentArgs}
                       placeholder="--verbose --project myapp"
                       value={externalAgentArgs}
@@ -620,6 +640,7 @@ export function Execute() {
                 padding={1}
               >
                 <TextInput
+                  focus={step === "model" && !isSelectingFromList}
                   onChange={setModelSearch}
                   placeholder="e.g. claude, gemini, gpt..."
                   value={modelSearch}
@@ -630,8 +651,12 @@ export function Execute() {
             {filteredModels.length > 0 && (
               <Box flexDirection="column" gap={0} marginTop={1}>
                 <Text color="gray" dimColor>
-                  {filteredModels.length} match
-                  {filteredModels.length !== 1 ? "es" : ""}:
+                  {allFilteredModels.length} match
+                  {allFilteredModels.length !== 1 ? "es" : ""}
+                  {allFilteredModels.length > filteredModels.length
+                    ? ` (showing ${filteredModels.length})`
+                    : ""}
+                  :
                 </Text>
                 {filteredModels.map((m, index) => (
                   <Box flexDirection="row" gap={1} key={m}>
@@ -664,9 +689,9 @@ export function Execute() {
             <Box marginTop={1}>
               <Text color="gray" dimColor>
                 {isSelectingFromList
-                  ? "↑↓ Navigate • Enter Select • Esc Back"
+                  ? "↑↓ Navigate • Enter Select • Tab Search • Esc Back"
                   : modelSearch.trim()
-                    ? "↓ Select from list • Enter Use custom"
+                    ? "↓ Select from list • Enter Use custom • Tab Results"
                     : "Type to search • Enter Skip (use default)"}
               </Text>
             </Box>
@@ -719,6 +744,7 @@ export function Execute() {
               <Box flexDirection="column" gap={1} paddingLeft={2}>
                 <Box borderColor="yellow" borderStyle="single" padding={1}>
                   <TextInput
+                    focus={step === "workspace" && selectedIndex === 1}
                     onChange={setCustomPath}
                     placeholder="/path/to/project"
                     value={customPath}
@@ -759,6 +785,7 @@ export function Execute() {
             </Box>
             <Box borderColor="yellow" borderStyle="single" padding={1}>
               <TextInput
+                focus={step === "task"}
                 onChange={setTask}
                 placeholder="What should the AI do?"
                 value={task}

@@ -8,7 +8,7 @@
  * - System status
  */
 
-import { Box, Text, useInput } from "ink";
+import { Box, Text, useInput } from "@openfarm/tui-opentui";
 import { useStore } from "../store";
 
 interface StatCardProps {

@@ -4,7 +4,7 @@
  * Allows users to switch between available themes.
  */
 
-import { Box, Text, useInput } from "ink";
+import { Box, Text, useInput } from "@openfarm/tui-opentui";
 import { useState } from "react";
 import { ThemedText } from "../components/themed-text";
 import { useStore } from "../store";

@@ -1,4 +1,4 @@
-import { Box } from "ink";
+import { Box } from "@openfarm/tui-opentui";
 import { ContextScreen } from "./screens/context";
 import { ContextConfigScreen } from "./screens/context-config";
 import { ContextHistoryScreen } from "./screens/context-history";

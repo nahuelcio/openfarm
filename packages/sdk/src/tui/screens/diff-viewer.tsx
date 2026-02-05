@@ -1,5 +1,5 @@
 import { type DiffFile, DiffProcessor } from "@openfarm/git-diff";
-import { Box, Text, useInput } from "ink";
+import { Box, Text, useInput } from "@openfarm/tui-opentui";
 import { useEffect, useState } from "react";
 import { useStore } from "../store";
 

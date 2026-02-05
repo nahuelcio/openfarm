@@ -5,7 +5,7 @@
  * Start a WebSocket server for remote task loop control.
  */
 
-import { Box, render, Text } from "ink";
+import { Box, render, Text } from "@openfarm/tui-opentui";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { OpenFarmConfig } from "../types";
 

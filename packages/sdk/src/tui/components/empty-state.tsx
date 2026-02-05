@@ -4,7 +4,7 @@
  * Consistent empty state display across all screens.
  */
 
-import { Box, Text } from "ink";
+import { Box, Text } from "@openfarm/tui-opentui";
 import { useThemeColors } from "../theme/hooks";
 
 export interface EmptyStateProps {
