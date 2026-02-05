@@ -119,6 +119,12 @@ export interface CommunicationRequest {
 
   /** Additional strategy-specific options */
   options?: Record<string, unknown>;
+
+  /** Optional callback for stdout streaming (CLI strategies) */
+  onStdout?: (line: string) => void;
+
+  /** Optional callback for stderr streaming (CLI strategies) */
+  onStderr?: (line: string) => void;
 }
 
 /**

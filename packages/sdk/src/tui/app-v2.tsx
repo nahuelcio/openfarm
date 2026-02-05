@@ -133,6 +133,7 @@ export function AppV2() {
       onTabChange={handleTabChange}
       sessionId={currentExecution?.id}
       status={getStatus()}
+      tabHotkeysEnabled={screen !== "execute"}
       tabs={TABS}
       title="OpenFarm"
     >

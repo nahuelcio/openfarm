@@ -17,9 +17,15 @@ interface TabBarProps {
   tabs: Tab[];
   activeTab: string;
   onTabChange: (tabId: string) => void;
+  hotkeysEnabled?: boolean;
 }
 
-export function TabBar({ tabs, activeTab, onTabChange }: TabBarProps) {
+export function TabBar({
+  tabs,
+  activeTab,
+  onTabChange,
+  hotkeysEnabled = true,
+}: TabBarProps) {
   const activeIndex = tabs.findIndex((t) => t.id === activeTab);
 
   const handlePrevTab = useCallback(() => {
@@ -33,6 +39,10 @@ export function TabBar({ tabs, activeTab, onTabChange }: TabBarProps) {
   }, [activeIndex, tabs, onTabChange]);
 
   useInput((input, key) => {
+    if (!hotkeysEnabled) {
+      return;
+    }
+
     if (input === "[") {
       handlePrevTab();
     } else if (input === "]") {

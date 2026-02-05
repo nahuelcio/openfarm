@@ -23,6 +23,7 @@ interface MainLayoutProps {
   activeTab: string;
   onTabChange: (tabId: string) => void;
   footerMessage?: string;
+  tabHotkeysEnabled?: boolean;
 }
 
 export function MainLayout({
@@ -34,6 +35,7 @@ export function MainLayout({
   activeTab,
   onTabChange,
   footerMessage,
+  tabHotkeysEnabled = true,
 }: MainLayoutProps) {
   return (
     <Box flexDirection="column" height="100%">
@@ -42,7 +44,12 @@ export function MainLayout({
 
       {/* Tab Bar */}
       <Box paddingX={1}>
-        <TabBar activeTab={activeTab} onTabChange={onTabChange} tabs={tabs} />
+        <TabBar
+          activeTab={activeTab}
+          hotkeysEnabled={tabHotkeysEnabled}
+          onTabChange={onTabChange}
+          tabs={tabs}
+        />
       </Box>
 
       {/* Main Content */}

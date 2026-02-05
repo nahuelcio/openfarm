@@ -79,11 +79,38 @@ export class OpenCodeProvider implements Provider {
       log(`Running: ${this.commandLabel} ${args.join(" ")}`);
       log("");
 
+      const streamedLines: string[] = [];
+      const sanitizeLine = (line: string): string =>
+        line
+          // biome-ignore lint/suspicious/noControlCharactersInRegex: ANSI escape stripping
+          .replace(/\x1B\[[0-9;]*[A-Za-z]/g, "")
+          .trim();
+
+      const handleStdoutLine = (line: string) => {
+        const cleaned = sanitizeLine(line);
+        if (!cleaned) {
+          return;
+        }
+        streamedLines.push(cleaned);
+        log(`│ ${cleaned}`);
+      };
+
+      const handleStderrLine = (line: string) => {
+        const cleaned = sanitizeLine(line);
+        if (!cleaned) {
+          return;
+        }
+        streamedLines.push(cleaned);
+        log(`⚠ ${cleaned}`);
+      };
+
       const request: CommunicationRequest = {
         args,
         workingDirectory: options.workspace || process.cwd(),
         timeout: this.config.timeout,
         body: this.buildPrompt(options),
+        onStdout: handleStdoutLine,
+        onStderr: handleStderrLine,
       };
 
       const response = await this.communicationStrategy.execute(request);
@@ -99,7 +126,10 @@ export class OpenCodeProvider implements Provider {
 
       let output = response.body;
       try {
-        const parsed = (await this.responseParser.parse(response)) as unknown;
+        const parsed =
+          response.body.trim().length > 0
+            ? ((await this.responseParser.parse(response)) as unknown)
+            : null;
         const parsedOutput =
           typeof parsed === "string"
             ? parsed
@@ -115,16 +145,22 @@ export class OpenCodeProvider implements Provider {
                   )
                   .join("\n")
               : "";
+        const streamedOutput = streamedLines.join("\n");
 
         if (parsedOutput.trim()) {
           output = parsedOutput;
+        } else if (streamedOutput.trim()) {
+          output = streamedOutput;
         } else if (response.body.trim()) {
           output = response.body;
         } else {
           output = "OpenCode command completed successfully";
         }
       } catch (error) {
-        if (!output.trim()) {
+        const streamedOutput = streamedLines.join("\n");
+        if (streamedOutput.trim()) {
+          output = streamedOutput;
+        } else if (!output.trim()) {
           output = "OpenCode command completed successfully";
         }
         log(

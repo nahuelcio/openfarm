@@ -148,11 +148,19 @@ describe("OpenCodeProvider", () => {
     ]);
   });
 
-  it("returns success with fallback output when parser fails and response body is empty", async () => {
+  it("returns success with streamed output when response body is empty", async () => {
+    const parse = vi.fn(async () => {
+      throw new Error("Cannot parse response");
+    });
+
     const execute = vi
       .fn<(request: CommunicationRequest) => Promise<CommunicationResponse>>()
       .mockResolvedValueOnce(createCommunicationResponse({ body: "1.1.52" }))
-      .mockResolvedValueOnce(createCommunicationResponse({ body: "" }));
+      .mockImplementationOnce(async (request) => {
+        request.onStdout?.("created e2e-story.txt");
+        request.onStderr?.("warning: dry mode");
+        return createCommunicationResponse({ body: "" });
+      });
 
     const logs: string[] = [];
     const provider = new OpenCodeProvider(
@@ -163,9 +171,7 @@ describe("OpenCodeProvider", () => {
       },
       {
         type: "stream",
-        parse: vi.fn(async () => {
-          throw new Error("Cannot parse response");
-        }),
+        parse,
         canHandle: vi.fn(() => true),
       },
       {
@@ -186,10 +192,13 @@ describe("OpenCodeProvider", () => {
     });
 
     expect(result.success).toBe(true);
-    expect(result.output).toBe("OpenCode command completed successfully");
-    expect(logs.some((msg) => msg.includes("response parser failed"))).toBe(
+    expect(result.output).toContain("created e2e-story.txt");
+    expect(result.output).toContain("warning: dry mode");
+    expect(parse).not.toHaveBeenCalled();
+    expect(logs.some((msg) => msg.includes("│ created e2e-story.txt"))).toBe(
       true
     );
+    expect(logs.some((msg) => msg.includes("⚠ warning: dry mode"))).toBe(true);
   });
 
   it("fails when OpenCode CLI is not available", async () => {

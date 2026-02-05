@@ -144,6 +144,8 @@ export class CliCommunicationStrategy implements CommunicationStrategy {
       let child: ChildProcess;
       let stdout = "";
       let stderr = "";
+      let stdoutLineBuffer = "";
+      let stderrLineBuffer = "";
       let isTimedOut = false;
       let timeoutId: NodeJS.Timeout | null = null;
 
@@ -174,6 +176,14 @@ export class CliCommunicationStrategy implements CommunicationStrategy {
         child.stdout.on("data", (data: string) => {
           stdout += data;
 
+          if (request.onStdout) {
+            stdoutLineBuffer += data;
+            stdoutLineBuffer = this.emitBufferedLines(
+              stdoutLineBuffer,
+              request.onStdout
+            );
+          }
+
           // Check buffer size limit
           if (stdout.length > this.config.maxBufferSize) {
             logger.debug(
@@ -193,6 +203,14 @@ export class CliCommunicationStrategy implements CommunicationStrategy {
         child.stderr.on("data", (data: string) => {
           stderr += data;
 
+          if (request.onStderr) {
+            stderrLineBuffer += data;
+            stderrLineBuffer = this.emitBufferedLines(
+              stderrLineBuffer,
+              request.onStderr
+            );
+          }
+
           // Check buffer size limit
           if (stderr.length > this.config.maxBufferSize) {
             logger.debug(
@@ -210,6 +228,13 @@ export class CliCommunicationStrategy implements CommunicationStrategy {
       child.on("close", (code, signal) => {
         if (timeoutId) {
           clearTimeout(timeoutId);
+        }
+
+        if (request.onStdout && stdoutLineBuffer.trim()) {
+          request.onStdout(stdoutLineBuffer.trimEnd());
+        }
+        if (request.onStderr && stderrLineBuffer.trim()) {
+          request.onStderr(stderrLineBuffer.trimEnd());
         }
 
         const exitCode =
@@ -269,6 +294,25 @@ export class CliCommunicationStrategy implements CommunicationStrategy {
         }
       }
     });
+  }
+
+  private emitBufferedLines(
+    buffer: string,
+    emit: (line: string) => void
+  ): string {
+    let remaining = buffer;
+    let newlineIndex = remaining.indexOf("\n");
+
+    while (newlineIndex !== -1) {
+      const rawLine = remaining.slice(0, newlineIndex).replace(/\r$/, "");
+      if (rawLine.trim()) {
+        emit(rawLine);
+      }
+      remaining = remaining.slice(newlineIndex + 1);
+      newlineIndex = remaining.indexOf("\n");
+    }
+
+    return remaining;
   }
 
   /**
