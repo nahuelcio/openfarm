@@ -8,6 +8,10 @@ import type {
   ProviderMetadata,
   StreamResponseParser,
 } from "@openfarm/sdk";
+import {
+  AIDER_DEFAULT_TIMEOUT,
+  createAiderMetadata,
+} from "./provider-definition";
 
 /**
  * Aider provider implementation
@@ -32,42 +36,13 @@ export class AiderProvider implements Provider {
     this.configManager = configManager;
 
     this.config = {
-      timeout: 600_000,
+      timeout: AIDER_DEFAULT_TIMEOUT,
       ...config,
     };
   }
 
   getMetadata(): ProviderMetadata {
-    return {
-      type: "aider",
-      name: "Aider",
-      version: "1.0.0",
-      description:
-        "Aider AI pair programming assistant - works directly with your codebase",
-      packageName: "@openfarm/provider-aider",
-      supportedFeatures: [
-        "code-generation",
-        "code-editing",
-        "refactoring",
-        "debugging",
-        "git-integration",
-        "streaming",
-      ],
-      configSchema: {
-        type: "object",
-        properties: {
-          timeout: {
-            type: "number",
-            default: 600_000,
-            minimum: 1000,
-            description: "Timeout in milliseconds",
-          },
-        },
-        required: [],
-        additionalProperties: false,
-      },
-      requiresExternal: true,
-    };
+    return createAiderMetadata();
   }
 
   async execute(options: ExecutionOptions): Promise<ExecutionResult> {
@@ -129,11 +104,20 @@ export class AiderProvider implements Provider {
         };
       }
 
-      // Parse the response
-      const parsed = await this.responseParser.parse(response);
-      const formatted = this.parseAiderOutput(
-        typeof parsed === "string" ? parsed : response.body
-      );
+      let output = response.body;
+      try {
+        const parsed = await this.responseParser.parse(response);
+        output = typeof parsed === "string" ? parsed : response.body;
+      } catch (error) {
+        if (!output.trim()) {
+          output = "Aider command completed successfully";
+        }
+        log(
+          `⚠️ Parser failed, using fallback output: ${error instanceof Error ? error.message : "Unknown error"}`
+        );
+      }
+
+      const formatted = this.parseAiderOutput(output);
 
       return {
         success: true,

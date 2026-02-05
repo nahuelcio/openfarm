@@ -11,46 +11,16 @@ import {
   StreamResponseParser,
 } from "@openfarm/sdk";
 import { AiderProvider } from "./aider-provider";
-
-/**
- * Configuration schema for Aider provider
- */
-const AiderConfigSchema = {
-  type: "object",
-  properties: {
-    timeout: {
-      type: "number",
-      default: 600_000,
-      minimum: 1000,
-      description: "Timeout in milliseconds",
-    },
-  },
-  required: [],
-  additionalProperties: false,
-};
+import {
+  AIDER_DEFAULT_TIMEOUT,
+  createAiderMetadata,
+} from "./provider-definition";
 
 /**
  * Factory for creating AiderProvider instances
  */
 export class AiderProviderFactory implements ProviderFactory {
-  private readonly metadata: ProviderMetadata = {
-    type: "aider",
-    name: "Aider",
-    version: "1.0.0",
-    description:
-      "Aider AI pair programming assistant - works directly with your codebase",
-    packageName: "@openfarm/provider-aider",
-    supportedFeatures: [
-      "code-generation",
-      "code-editing",
-      "refactoring",
-      "debugging",
-      "git-integration",
-      "streaming",
-    ],
-    configSchema: AiderConfigSchema,
-    requiresExternal: true,
-  };
+  private readonly metadata: ProviderMetadata = createAiderMetadata();
 
   getMetadata(): ProviderMetadata {
     return { ...this.metadata };
@@ -101,7 +71,7 @@ export class AiderProviderFactory implements ProviderFactory {
     timeout: number;
   } {
     const defaults = {
-      timeout: 600_000,
+      timeout: AIDER_DEFAULT_TIMEOUT,
     };
 
     if (!config || typeof config !== "object") {

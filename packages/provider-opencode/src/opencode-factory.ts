@@ -11,39 +11,13 @@ import {
   StreamResponseParser,
 } from "@openfarm/sdk";
 import { OpenCodeProvider } from "./opencode-provider";
-
-const OpenCodeConfigSchema = {
-  type: "object",
-  properties: {
-    timeout: {
-      type: "number",
-      default: 600_000,
-      minimum: 1000,
-      description: "Timeout in milliseconds",
-    },
-  },
-  required: [],
-  additionalProperties: false,
-};
+import {
+  createOpenCodeMetadata,
+  OPENCODE_DEFAULT_TIMEOUT,
+} from "./provider-definition";
 
 export class OpenCodeProviderFactory implements ProviderFactory {
-  private readonly metadata: ProviderMetadata = {
-    type: "opencode",
-    name: "OpenCode",
-    version: "1.0.0",
-    description: "OpenCode CLI agent via OpenCode server",
-    packageName: "@openfarm/provider-opencode",
-    supportedFeatures: [
-      "code-generation",
-      "code-editing",
-      "refactoring",
-      "debugging",
-      "file-operations",
-      "streaming",
-    ],
-    configSchema: OpenCodeConfigSchema,
-    requiresExternal: true,
-  };
+  private readonly metadata: ProviderMetadata = createOpenCodeMetadata();
 
   getMetadata(): ProviderMetadata {
     return { ...this.metadata };
@@ -89,7 +63,7 @@ export class OpenCodeProviderFactory implements ProviderFactory {
 
   private parseConfig(config?: unknown): { timeout: number } {
     const defaults = {
-      timeout: 600_000,
+      timeout: OPENCODE_DEFAULT_TIMEOUT,
     };
 
     if (!config || typeof config !== "object") {

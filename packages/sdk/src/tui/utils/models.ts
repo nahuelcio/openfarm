@@ -250,15 +250,47 @@ function parseCliOutput(output: string): string[] {
  * Try to load models from provider package
  */
 async function loadFromProviderPackage(provider: string): Promise<string[]> {
+  const importAtRuntime = new Function(
+    "modulePath",
+    "return import(modulePath);"
+  ) as (modulePath: string) => Promise<Record<string, unknown>>;
+  const hasModelLoader = (
+    mod: Record<string, unknown>
+  ): mod is Record<string, unknown> & {
+    getAvailableModels: () => string[] | Promise<string[]>;
+  } => typeof mod.getAvailableModels === "function";
+
+  const supportedExternalProviders = new Set(["opencode", "aider", "claude"]);
+
   try {
-    const mod = await import(`@openfarm/provider-${provider}`);
-    if (typeof mod.getAvailableModels === "function") {
-      const models = await mod.getAvailableModels();
-      return Array.isArray(models) ? models : [];
+    if (supportedExternalProviders.has(provider)) {
+      const mod = await importAtRuntime(`@openfarm/provider-${provider}`);
+      if (hasModelLoader(mod)) {
+        const models = await mod.getAvailableModels();
+        return Array.isArray(models) ? models : [];
+      }
     }
   } catch {
     // Package not found or doesn't export getAvailableModels
   }
+
+  const supportedLocalProviders = new Set(["opencode", "aider", "claude"]);
+  if (!supportedLocalProviders.has(provider)) {
+    return [];
+  }
+
+  const localSource = `../../../../provider-${provider}/src/index.ts`;
+
+  try {
+    const mod = await importAtRuntime(localSource);
+    if (hasModelLoader(mod)) {
+      const models = await mod.getAvailableModels();
+      return Array.isArray(models) ? models : [];
+    }
+  } catch {
+    // Local source fallback failed
+  }
+
   return [];
 }
 

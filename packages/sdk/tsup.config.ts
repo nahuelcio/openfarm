@@ -41,6 +41,7 @@ export default defineConfig([
       // External providers are optional and loaded dynamically
       "@openfarm/provider-aider",
       "@openfarm/provider-claude",
+      "@openfarm/provider-opencode",
     ],
     outDir: "dist",
     target: "node18",
@@ -81,6 +82,7 @@ export default defineConfig([
       // External providers are optional and loaded dynamically
       "@openfarm/provider-aider",
       "@openfarm/provider-claude",
+      "@openfarm/provider-opencode",
     ],
     outDir: "dist",
     target: "node18",

@@ -8,6 +8,10 @@ import type {
   ProviderMetadata,
   StreamResponseParser,
 } from "@openfarm/sdk";
+import {
+  createOpenCodeMetadata,
+  OPENCODE_DEFAULT_TIMEOUT,
+} from "./provider-definition";
 
 export class OpenCodeProvider implements Provider {
   readonly type = "opencode";
@@ -32,41 +36,13 @@ export class OpenCodeProvider implements Provider {
     this.commandLabel = commandLabel;
 
     this.config = {
-      timeout: 600_000,
+      timeout: OPENCODE_DEFAULT_TIMEOUT,
       ...config,
     };
   }
 
   getMetadata(): ProviderMetadata {
-    return {
-      type: "opencode",
-      name: "OpenCode",
-      version: "1.0.0",
-      description: "OpenCode CLI agent via OpenCode server",
-      packageName: "@openfarm/provider-opencode",
-      supportedFeatures: [
-        "code-generation",
-        "code-editing",
-        "refactoring",
-        "debugging",
-        "file-operations",
-        "streaming",
-      ],
-      configSchema: {
-        type: "object",
-        properties: {
-          timeout: {
-            type: "number",
-            default: 600_000,
-            minimum: 1000,
-            description: "Timeout in milliseconds",
-          },
-        },
-        required: [],
-        additionalProperties: false,
-      },
-      requiresExternal: true,
-    };
+    return createOpenCodeMetadata();
   }
 
   async execute(options: ExecutionOptions): Promise<ExecutionResult> {
