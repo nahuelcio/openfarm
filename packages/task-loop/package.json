@@ -24,6 +24,7 @@
     "@openfarm/workflow-engine": "workspace:*",
     "@openfarm/workflow-executor": "workspace:*",
     "@openfarm/agent-runner": "workspace:*",
+    "@openfarm/git-worktree": "workspace:*",
     "@openfarm/result": "workspace:*",
     "@openfarm/logger": "workspace:*",
     "@openfarm/types": "workspace:*",

@@ -347,6 +347,7 @@
       "dependencies": {
         "@openfarm/agent-runner": "workspace:*",
         "@openfarm/core": "workspace:*",
+        "@openfarm/git-worktree": "workspace:*",
         "@openfarm/logger": "workspace:*",
         "@openfarm/result": "workspace:*",
         "@openfarm/types": "workspace:*",

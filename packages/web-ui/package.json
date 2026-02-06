@@ -24,12 +24,12 @@
   ],
   "scripts": {
     "build": "tsup && bun run build:frontend",
-    "build:frontend": "cp node_modules/xterm/css/xterm.css static/xterm.css && bun build static/terminal.ts --outfile=static/bundle.js --bundle --minify",
+    "build:frontend": "cp node_modules/xterm/css/xterm.css static/xterm.css 2>/dev/null || cp ../../node_modules/xterm/css/xterm.css static/xterm.css && bun build static/terminal.ts --outfile=static/bundle.js --bundle --minify",
     "dev": "tsup --watch",
     "type-check": "tsc --noEmit",
     "lint": "biome check .",
     "clean": "rm -rf dist node_modules",
-    "test": "vitest run"
+    "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
     "node-pty": "0.10.1",
