@@ -43,7 +43,6 @@
     "@openfarm/core": "workspace:*",
     "@openfarm/git-worktree": "workspace:*",
     "@openfarm/remote-server": "workspace:*",
-    "@openfarm/spec": "workspace:*",
     "@openfarm/task-loop": "workspace:*",
     "@openfarm/web-ui": "workspace:*",
     "@openfarm/workflow-engine": "workspace:*",

@@ -58,11 +58,19 @@ export async function runTUIApp(
 
   // If command is spec, delegate to spec CLI
   if (args[0] === "spec") {
-    const specModulePath = "@openfarm/spec";
-    const { runSpecCLI } = (await import(specModulePath)) as {
-      runSpecCLI: (args: string[]) => Promise<void>;
-    };
-    return runSpecCLI(args.slice(1));
+    try {
+      const specModulePath = "@openfarm/spec";
+      const { runSpecCLI } = (await import(specModulePath)) as {
+        runSpecCLI: (args: string[]) => Promise<void>;
+      };
+      return runSpecCLI(args.slice(1));
+    } catch (error) {
+      const importError =
+        error instanceof Error ? error.message : "unknown import error";
+      throw new Error(
+        `The 'spec' command is not available in this OSS build. Missing optional package '@openfarm/spec'. Original error: ${importError}`
+      );
+    }
   }
 
   // TUI unificada: siempre usar AppV2

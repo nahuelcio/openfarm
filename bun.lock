@@ -309,7 +309,6 @@
         "@openfarm/core": "workspace:*",
         "@openfarm/git-worktree": "workspace:*",
         "@openfarm/remote-server": "workspace:*",
-        "@openfarm/spec": "workspace:*",
         "@openfarm/task-loop": "workspace:*",
         "@openfarm/web-ui": "workspace:*",
         "@openfarm/workflow-engine": "workspace:*",
@@ -338,10 +337,6 @@
         "tsup": "^8.5.1",
         "typescript": "^5.6.0",
       },
-    },
-    "packages/spec": {
-      "name": "@openfarm/spec",
-      "version": "0.0.1",
     },
     "packages/task-loop": {
       "name": "@openfarm/task-loop",
@@ -782,8 +777,6 @@
     "@openfarm/runner-utils": ["@openfarm/runner-utils@workspace:packages/runner-utils"],
 
     "@openfarm/sdk": ["@openfarm/sdk@workspace:packages/sdk"],
-
-    "@openfarm/spec": ["@openfarm/spec@workspace:packages/spec"],
 
     "@openfarm/task-loop": ["@openfarm/task-loop@workspace:packages/task-loop"],
 
