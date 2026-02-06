@@ -84,12 +84,7 @@ export function ImprovedSidebar({
   ];
 
   return (
-    <Box
-      borderStyle="single"
-      flexDirection="column"
-      height="100%"
-      width={20}
-    >
+    <Box borderStyle="single" flexDirection="column" height="100%" width={20}>
       {/* Logo/Header */}
       <Box borderStyle={undefined} paddingX={1} paddingY={1}>
         <Text bold color={colors.primary}>

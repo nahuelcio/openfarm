@@ -2,8 +2,7 @@
  * MainLayout Component
  *
  * Terminal shell with:
- * - lateral navigation
- * - contextual side panel
+ * - lateral navigation (improved sidebar)
  * - content panel
  * - adaptive layout for narrow terminals
  */
@@ -15,11 +14,10 @@ import {
   useStdoutDimensions,
 } from "@openfarm/tui-opentui";
 import type { ReactNode } from "react";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { Tab } from "../tabs/tab-bar";
 import { Footer } from "./footer";
 import { getLayoutMode } from "./layout-mode";
-import { SideNav } from "./side-nav";
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -63,18 +61,7 @@ export function MainLayout({
 }: MainLayoutProps) {
   const { columns } = useStdoutDimensions();
   const layoutMode = useMemo(() => getLayoutMode(columns), [columns]);
-  const [singleView, setSingleView] = useState<"navigation" | "content">(
-    "content"
-  );
   const badge = getStatusBadge(status ?? "idle");
-
-  useInput((_, key) => {
-    if (layoutMode === "single" && key.tab) {
-      setSingleView((value) =>
-        value === "content" ? "navigation" : "content"
-      );
-    }
-  });
 
   useInput((input) => {
     if (!tabHotkeysEnabled) {
@@ -130,18 +117,7 @@ export function MainLayout({
     </Box>
   );
 
-  const leftShellPanel = (
-    <Box
-      borderStyle="single"
-      flexDirection="column"
-      flexGrow={1}
-      overflow="hidden"
-    >
-      {leftPanel}
-    </Box>
-  );
-
-  const contentShellPanel = (
+  const contentPanel = (
     <Box
       borderStyle="single"
       flexDirection="column"
@@ -159,40 +135,17 @@ export function MainLayout({
       {header}
 
       <Box flexDirection="row" flexGrow={1} padding={1}>
-        {layoutMode === "triple" ? (
+        {layoutMode === "triple" || layoutMode === "dual" ? (
           <>
-            <SideNav
-              activeTab={activeTab}
-              mode="vertical"
-              onTabChange={onTabChange}
-              tabs={tabs}
-            />
-            <Box flexDirection="column" marginLeft={1} width="34%">
-              {leftShellPanel}
+            {/* Improved Sidebar - always visible */}
+            <Box flexDirection="column" width={22}>
+              {leftPanel}
             </Box>
+            {/* Content */}
             <Box flexDirection="column" flexGrow={1} marginLeft={1}>
-              {contentShellPanel}
+              {contentPanel}
             </Box>
           </>
-        ) : null}
-
-        {layoutMode === "dual" ? (
-          <Box flexDirection="column" flexGrow={1}>
-            <SideNav
-              activeTab={activeTab}
-              mode="horizontal"
-              onTabChange={onTabChange}
-              tabs={tabs}
-            />
-            <Box flexDirection="row" flexGrow={1} marginTop={1}>
-              <Box flexDirection="column" width="36%">
-                {leftShellPanel}
-              </Box>
-              <Box flexDirection="column" flexGrow={1} marginLeft={1}>
-                {contentShellPanel}
-              </Box>
-            </Box>
-          </Box>
         ) : null}
 
         {layoutMode === "single" ? (
@@ -203,25 +156,11 @@ export function MainLayout({
               justifyContent="space-between"
               paddingX={1}
             >
-              <Text>Tab = switch view</Text>
-              <Text>
-                {singleView === "navigation" ? "navigation" : "content"}
-              </Text>
+              <Text>Narrow mode - use 1-7 for navigation</Text>
+              <Text>{badge.label}</Text>
             </Box>
             <Box flexDirection="column" flexGrow={1} marginTop={1}>
-              {singleView === "navigation" ? (
-                <Box flexDirection="column" flexGrow={1} gap={1}>
-                  <SideNav
-                    activeTab={activeTab}
-                    mode="horizontal"
-                    onTabChange={onTabChange}
-                    tabs={tabs}
-                  />
-                  {leftShellPanel}
-                </Box>
-              ) : (
-                contentShellPanel
-              )}
+              {contentPanel}
             </Box>
           </Box>
         ) : null}

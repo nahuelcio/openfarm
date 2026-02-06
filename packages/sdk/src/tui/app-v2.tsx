@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { SectionId } from "./components/layout";
-import { MainLayout, SectionPanel } from "./components/layout";
+import { MainLayout } from "./components/layout";
+import { ImprovedSidebar } from "./components/layout/improved-sidebar";
 import { SplashScreen } from "./components/splash-screen";
 import type { Tab } from "./components/tabs";
 import { useInitialization } from "./hooks/use-initialization";
@@ -218,10 +219,14 @@ export function AppV2() {
       }
       footerShortcuts={getShortcuts(currentSection, screen)}
       leftPanel={
-        <SectionPanel
-          onNavigate={setScreen}
-          screen={screen}
-          sectionId={currentSection}
+        <ImprovedSidebar
+          activeSection={currentSection}
+          onSectionChange={(section) => {
+            const targetScreen = SECTION_SCREEN_MAP[section];
+            if (targetScreen) {
+              setScreen(targetScreen);
+            }
+          }}
         />
       }
       onTabChange={handleTabChange}

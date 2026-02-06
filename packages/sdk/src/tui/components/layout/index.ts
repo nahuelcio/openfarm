@@ -6,6 +6,7 @@
 
 export { Footer } from "./footer";
 export { Header } from "./header";
+export { ImprovedSidebar } from "./improved-sidebar";
 export { getLayoutMode } from "./layout-mode";
 export { MainLayout } from "./main-layout";
 export type { SectionId } from "./section-panel";
