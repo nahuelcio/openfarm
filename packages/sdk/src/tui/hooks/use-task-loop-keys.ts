@@ -25,6 +25,10 @@ export function useTaskLoopKeys(options: UseTaskLoopKeysOptions): void {
   useInput((input, key) => {
     const store = useTaskLoopStore.getState();
 
+    if (store.overlay === "resume") {
+      return;
+    }
+
     if (store.overlay === "help" || store.overlay === "settings") {
       if (key.escape || input === "q") {
         store.setOverlay("none");

@@ -489,4 +489,41 @@ export async function createSchema(db: SQL): Promise<void> {
   `;
   await db`CREATE INDEX IF NOT EXISTS idx_task_loop_sessions_status ON task_loop_sessions(status)`;
   await db`CREATE INDEX IF NOT EXISTS idx_task_loop_sessions_updated_at ON task_loop_sessions(updated_at DESC)`;
+
+  // Create session_checkpoints table for resumable sessions quick lookup
+  await db`
+    CREATE TABLE IF NOT EXISTS session_checkpoints (
+      session_id TEXT PRIMARY KEY,
+      session_type TEXT NOT NULL CHECK(session_type IN ('task-loop')),
+      status TEXT NOT NULL CHECK(status IN ('idle', 'running', 'paused', 'completed', 'failed', 'resuming')),
+      current_task_id TEXT,
+      current_task_title TEXT,
+      completed_tasks INTEGER NOT NULL DEFAULT 0,
+      failed_tasks INTEGER NOT NULL DEFAULT 0,
+      total_tasks INTEGER NOT NULL DEFAULT 0,
+      started_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      resumed_from_id TEXT,
+      metadata TEXT,
+      FOREIGN KEY (session_id) REFERENCES task_loop_sessions(id) ON DELETE CASCADE
+    )
+  `;
+  await db`CREATE INDEX IF NOT EXISTS idx_session_checkpoints_status ON session_checkpoints(status)`;
+  await db`CREATE INDEX IF NOT EXISTS idx_session_checkpoints_updated_at ON session_checkpoints(updated_at DESC)`;
+
+  // Create execution_logs table for persisted task loop logs
+  await db`
+    CREATE TABLE IF NOT EXISTS execution_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      session_id TEXT NOT NULL,
+      timestamp TEXT NOT NULL,
+      level TEXT NOT NULL CHECK(level IN ('debug', 'info', 'warn', 'error')),
+      component TEXT NOT NULL,
+      message TEXT NOT NULL,
+      metadata TEXT,
+      FOREIGN KEY (session_id) REFERENCES task_loop_sessions(id) ON DELETE CASCADE
+    )
+  `;
+  await db`CREATE INDEX IF NOT EXISTS idx_execution_logs_session_id ON execution_logs(session_id)`;
+  await db`CREATE INDEX IF NOT EXISTS idx_execution_logs_timestamp ON execution_logs(timestamp DESC)`;
 }

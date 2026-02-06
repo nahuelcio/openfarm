@@ -35,7 +35,10 @@ interface LogViewConfig {
 interface LogState {
   // Logs
   entries: LogEntry[];
-  addEntry: (entry: Omit<LogEntry, "id" | "timestamp">) => void;
+  addEntry: (
+    entry: Omit<LogEntry, "id" | "timestamp"> & { timestamp?: Date }
+  ) => void;
+  setEntries: (entries: Omit<LogEntry, "id">[]) => void;
   clearEntries: () => void;
 
   // Filters
@@ -86,11 +89,18 @@ export const useLogStore = create<LogState>((set, get) => ({
         {
           ...entry,
           id: generateId(),
-          timestamp: new Date(),
+          timestamp: entry.timestamp || new Date(),
         },
       ],
     }));
   },
+
+  setEntries: (entries) =>
+    set((state) => ({
+      entries: entries
+        .slice(-state.config.maxEntries)
+        .map((entry) => ({ ...entry, id: generateId() })),
+    })),
 
   clearEntries: () => set({ entries: [] }),
 

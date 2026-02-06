@@ -61,7 +61,21 @@ export class AgentToCodingEngineAdapter implements CodingEngine {
       return ok(result.changes || { summary: result.stdout });
     }
 
-    return err(new Error(result.error || "Agent execution failed"));
+    const details: string[] = [];
+    if (result.error) {
+      details.push(result.error);
+    }
+    if (result.stderr?.trim()) {
+      details.push(`stderr: ${result.stderr.trim().slice(0, 500)}`);
+    }
+    if (result.stdout?.trim()) {
+      details.push(`stdout: ${result.stdout.trim().slice(0, 500)}`);
+    }
+    const message =
+      details.length > 0
+        ? `Agent execution failed (${result.status}): ${details.join(" | ")}`
+        : `Agent execution failed (${result.status})`;
+    return err(new Error(message));
   }
 
   async applyChangesIterative(

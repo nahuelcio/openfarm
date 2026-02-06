@@ -8,6 +8,10 @@
 // Use any type to avoid importing from bun during bundling
 type SQL = any;
 
+import {
+  deleteSessionCheckpoint,
+  upsertSessionCheckpoint,
+} from "@openfarm/core/db/session-checkpoints";
 import type {
   TaskLoopConfig,
   TaskLoopSession,
@@ -75,6 +79,30 @@ function deserializeSession(row: TaskLoopSessionRow): TaskLoopSession {
       ? safeJsonParse(row.metadata, undefined, "metadata")
       : undefined,
   };
+}
+
+async function persistCheckpoint(
+  db: SQL,
+  session: TaskLoopSession
+): Promise<void> {
+  const currentTask = session.tasks[session.currentTaskIndex];
+
+  await upsertSessionCheckpoint(db, {
+    sessionId: session.id,
+    sessionType: "task-loop",
+    status: session.status,
+    currentTaskId: currentTask?.id,
+    currentTaskTitle: currentTask?.title,
+    completedTasks: session.completedTasks,
+    failedTasks: session.failedTasks,
+    totalTasks: session.tasks.length,
+    startedAt: session.startedAt,
+    updatedAt: session.updatedAt,
+    metadata: {
+      currentTaskIndex: session.currentTaskIndex,
+      skippedTasks: session.skippedTasks,
+    },
+  });
 }
 
 /**
@@ -249,6 +277,7 @@ export class SessionManager {
   ): Promise<TaskLoopSession> {
     const session = createSession(config, sessionId);
     await saveSession(this.db, session);
+    await persistCheckpoint(this.db, session);
     this.currentSession = session;
     return session;
   }
@@ -271,6 +300,7 @@ export class SessionManager {
     if (this.currentSession) {
       this.currentSession.updatedAt = new Date().toISOString();
       await saveSession(this.db, this.currentSession);
+      await persistCheckpoint(this.db, this.currentSession);
     }
   }
 
@@ -326,6 +356,7 @@ export class SessionManager {
    */
   async delete(sessionId: string): Promise<void> {
     await deleteSession(this.db, sessionId);
+    await deleteSessionCheckpoint(this.db, sessionId);
     if (this.currentSession?.id === sessionId) {
       this.currentSession = null;
     }

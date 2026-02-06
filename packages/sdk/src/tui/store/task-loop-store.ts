@@ -13,6 +13,7 @@ export type RightPanelMode = "details" | "output";
 export type ViewMode = "tasks" | "iterations";
 export type OverlayType =
   | "none"
+  | "resume"
   | "help"
   | "settings"
   | "quit-confirm"

@@ -5,6 +5,7 @@ export { OrchestrationFooter } from "./orchestration-footer";
 export { OrchestrationHeader } from "./orchestration-header";
 export { OverlayContainer } from "./overlay-container";
 export { ProgressBar } from "./progress-bar";
+export { ResumeSessionDialog } from "./resume-session-dialog";
 export { RightPanel } from "./right-panel";
 export { SettingsOverlay } from "./settings-overlay";
 export { TaskListPanel } from "./task-list-panel";

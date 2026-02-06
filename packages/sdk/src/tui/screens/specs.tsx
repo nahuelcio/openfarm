@@ -8,7 +8,6 @@ type SpecStatus = "draft" | "ready" | "implementing" | "done" | "archived";
 type ArtifactKey = "proposal" | "requirements" | "design" | "tasks";
 type PlanStep = "provider" | "model" | "folder" | "plan";
 const MODELS_PER_PAGE = 6;
-const MODEL_LIST_HEIGHT = MODELS_PER_PAGE + 4; // items + border (2) + padding (2)
 
 interface SpecMetadata {
   slug: string;
@@ -57,7 +56,6 @@ const PROVIDERS = [
   { id: "opencode", label: "OpenCode" },
   { id: "claude", label: "Claude Code" },
   { id: "aider", label: "Aider" },
-  { id: "external-agent", label: "External Agent" },
 ] as const;
 
 async function loadSpecModule(): Promise<SpecModule> {
@@ -86,7 +84,7 @@ export function SpecsScreen() {
 
   const [specs, setSpecs] = useState<LoadedSpec[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [artifact, setArtifact] = useState<ArtifactKey>("tasks");
@@ -323,19 +321,6 @@ export function SpecsScreen() {
       return "Step 3/4: Choose folder";
     }
     return "Step 4/4: Write plan description";
-  }, [isPlanning, planStep]);
-
-  const wizardHelp = useMemo(() => {
-    if (!isPlanning) {
-      return null;
-    }
-    if (planStep === "provider") {
-      return "Up/Down provider | Enter continue | Esc cancel";
-    }
-    if (planStep === "plan") {
-      return "Enter create | Esc back";
-    }
-    return "Enter continue | Esc back";
   }, [isPlanning, planStep]);
 
   useInput((input, key) => {
@@ -631,180 +616,152 @@ export function SpecsScreen() {
       ) : null}
 
       {isPlanning ? (
-        <Box borderStyle="single" flexDirection="column" gap={1} padding={1}>
-          <Box flexDirection="column">
-            <Text color="gray" wrap="truncate-end">
-              Provider: {selectedProviderLabel}
-            </Text>
-            <Text color="gray" wrap="truncate-end">
-              Model: {selectedModelLabel}
-            </Text>
-            <Text color="gray" wrap="truncate-end">
-              Folder: {folderInput || "-"}
-            </Text>
-          </Box>
+        <Box flexDirection="column" gap={0}>
+          <Text color="gray" dimColor>
+            {`  Provider: ${selectedProviderLabel}  |  Model: ${selectedModelLabel}`}
+          </Text>
+          <Text color="gray" dimColor>
+            {`  Folder: ${folderInput || "-"}`}
+          </Text>
+          <Text color="gray" dimColor>
+            {" "}
+          </Text>
 
           {planStep === "provider" ? (
-            <Box flexDirection="column" gap={1}>
+            <Box flexDirection="column" gap={0}>
               <Text bold color="cyan">
-                Choose provider
+                {"  Choose provider"}
               </Text>
-              <Box flexDirection="column" paddingLeft={2}>
-                {PROVIDERS.map((provider, index) => (
-                  <Box flexDirection="row" gap={1} key={provider.id}>
-                    <Text color={index === providerIndex ? "yellow" : "gray"}>
-                      {index === providerIndex ? ">" : " "}
-                    </Text>
-                    <Text color={index === providerIndex ? "white" : "gray"}>
-                      {provider.label}
-                    </Text>
-                  </Box>
-                ))}
-              </Box>
+              {PROVIDERS.map((provider, index) => (
+                <Text
+                  bold={index === providerIndex}
+                  color={index === providerIndex ? "yellow" : "gray"}
+                  key={provider.id}
+                >
+                  {index === providerIndex
+                    ? `    > ${provider.label}`
+                    : `      ${provider.label}`}
+                </Text>
+              ))}
+              <Text color="gray" dimColor>
+                {" "}
+              </Text>
+              <Text color="gray" dimColor>
+                {"  Up/Down provider | Enter continue | Esc cancel"}
+              </Text>
             </Box>
           ) : null}
 
           {planStep === "model" ? (
-            <Box flexDirection="column" gap={1}>
+            <Box flexDirection="column" gap={0}>
               <Text bold color="cyan">
-                Choose model
+                {"  Choose model"}
               </Text>
-
-              <Box borderStyle="single" padding={1}>
+              <Text color="gray" dimColor>
+                {loadingModels
+                  ? "  Loading models..."
+                  : modelOptions.length > 0
+                    ? `  ${modelOptions.length} models available:`
+                    : "  Type model name:"}
+              </Text>
+              <Box paddingLeft={2}>
                 <TextInput
                   focus={!isSelectingFromList}
                   onChange={handleModelSearchChange}
-                  placeholder="e.g. claude-sonnet-4, gpt-4.1, etc."
+                  placeholder="type to search..."
                   value={modelSearch}
                 />
               </Box>
-
-              {loadingModels ? (
+              <Text color="gray" dimColor>
+                {" "}
+              </Text>
+              {filteredModels.length > 0 ? (
+                <Box flexDirection="column" gap={0}>
+                  <Text color="gray" dimColor>
+                    {`  ${allFilteredModels.length} matches${allFilteredModels.length > MODELS_PER_PAGE ? ` (${modelPage + 1}/${modelPageCount})` : ""}`}
+                  </Text>
+                  {filteredModels.map((model, index) => {
+                    const selected =
+                      isSelectingFromList && index === modelListIndex;
+                    return (
+                      <Text
+                        bold={selected}
+                        color={selected ? "yellow" : "gray"}
+                        key={`${model}-${modelPageStart + index}`}
+                      >
+                        {selected ? `    > ${model}` : `      ${model}`}
+                      </Text>
+                    );
+                  })}
+                </Box>
+              ) : (
                 <Text color="gray" dimColor>
-                  Loading models...
+                  {"  No matches"}
+                </Text>
+              )}
+              <Text color="gray" dimColor>
+                {" "}
+              </Text>
+              <Text color="gray" dimColor>
+                {isSelectingFromList
+                  ? "  Arrows: navigate | Enter: select | Tab: search"
+                  : "  Enter: skip | Down/Tab: browse list"}
+              </Text>
+              {allFilteredModels.length > MODELS_PER_PAGE ? (
+                <Text color="gray" dimColor>
+                  {"  PgUp/PgDn: page | Esc: back"}
                 </Text>
               ) : (
-                <>
-                  <Text color="gray" dimColor>
-                    {`Found: ${modelOptions.length} | Matches: ${allFilteredModels.length}`}
-                  </Text>
-                  {allFilteredModels.length > MODELS_PER_PAGE && (
-                    <Text color="gray" dimColor>
-                      {`Page ${modelPage + 1}/${modelPageCount}`}
-                    </Text>
-                  )}
-                </>
-              )}
-
-              <Box
-                borderStyle="single"
-                flexDirection="column"
-                height={MODEL_LIST_HEIGHT}
-                overflow="hidden"
-                padding={1}
-              >
-                {filteredModels.length === 0 ? (
-                  <Text color="gray" dimColor>
-                    No matching models.
-                  </Text>
-                ) : (
-                  filteredModels.map((model, index) => (
-                    <Box
-                      flexDirection="row"
-                      gap={1}
-                      key={`${model}-${modelPageStart + index}`}
-                    >
-                      <Text
-                        color={
-                          isSelectingFromList && index === modelListIndex
-                            ? "yellow"
-                            : "gray"
-                        }
-                      >
-                        {isSelectingFromList && index === modelListIndex
-                          ? ">"
-                          : " "}
-                      </Text>
-                      <Text
-                        bold={isSelectingFromList && index === modelListIndex}
-                        color={
-                          isSelectingFromList && index === modelListIndex
-                            ? "white"
-                            : "gray"
-                        }
-                        wrap="truncate-end"
-                      >
-                        {model}
-                      </Text>
-                    </Box>
-                  ))
-                )}
-              </Box>
-
-              {isSelectingFromList ? (
-                <>
-                  <Text color="gray" dimColor>
-                    Up/Down: navigate
-                  </Text>
-                  <Text color="gray" dimColor wrap="truncate-end">
-                    PgUp/PgDn: page | Enter: select | Tab: search
-                  </Text>
-                </>
-              ) : modelSearch.trim() ? (
-                <>
-                  <Text color="gray" dimColor>
-                    Down: enter list | Enter: use custom
-                  </Text>
-                  <Text color="gray" dimColor wrap="truncate-end">
-                    PgUp/PgDn: page | Tab: results
-                  </Text>
-                </>
-              ) : (
-                <>
-                  <Text color="gray" dimColor wrap="truncate-end">
-                    Type to search | Enter: skip (default)
-                  </Text>
-                  <Text color="gray" dimColor wrap="truncate-end">
-                    Down: enter list | Tab: results
-                  </Text>
-                </>
+                <Text color="gray" dimColor>
+                  {"  Esc: back"}
+                </Text>
               )}
             </Box>
           ) : null}
 
           {planStep === "folder" ? (
-            <Box flexDirection="column" gap={1}>
+            <Box flexDirection="column" gap={0}>
               <Text bold color="cyan">
-                Choose folder
+                {"  Choose folder"}
               </Text>
-              <Box borderStyle="single" padding={1}>
+              <Box paddingLeft={2}>
                 <TextInput
                   focus={true}
                   onChange={setFolderInput}
-                  placeholder="/absolute/path/to/workspace"
+                  placeholder="/path/to/workspace"
                   value={folderInput}
                 />
               </Box>
+              <Text color="gray" dimColor>
+                {" "}
+              </Text>
+              <Text color="gray" dimColor>
+                {"  Enter continue | Esc back"}
+              </Text>
             </Box>
           ) : null}
 
           {planStep === "plan" ? (
-            <Box flexDirection="column" gap={1}>
+            <Box flexDirection="column" gap={0}>
               <Text bold color="cyan">
-                Write plan description
+                {"  Write plan description"}
               </Text>
-              <Box borderStyle="single" padding={1}>
+              <Box paddingLeft={2}>
                 <TextInput
                   focus={true}
                   onChange={setPlanInput}
-                  placeholder="Describe what should be planned and generated"
+                  placeholder="Describe what to plan..."
                   value={planInput}
                 />
               </Box>
+              <Text color="gray" dimColor>
+                {" "}
+              </Text>
+              <Text color="gray" dimColor>
+                {"  Enter create | Esc back"}
+              </Text>
             </Box>
           ) : null}
-
-          {wizardHelp ? <Text color="gray">{wizardHelp}</Text> : null}
         </Box>
       ) : (
         <Box borderStyle="single" flexDirection="row" height={22}>
@@ -851,11 +808,7 @@ export function SpecsScreen() {
         </Box>
       )}
 
-      {isPlanning ? (
-        <Text color="gray" wrap="truncate-end">
-          Flow: provider to model to folder to plan description
-        </Text>
-      ) : (
+      {isPlanning ? null : (
         <>
           <Text color="gray" wrap="truncate-end">
             Up/Down navigate | 1 proposal | 2 requirements | 3 design | 4 tasks

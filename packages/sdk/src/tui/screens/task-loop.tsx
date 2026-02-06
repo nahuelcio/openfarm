@@ -1,17 +1,25 @@
 import { getDb, getLocalWorkItems } from "@openfarm/core/db";
+import {
+  createExecutionLog,
+  getExecutionLogs,
+  trimExecutionLogs,
+} from "@openfarm/core/db/execution-logs";
+import { getResumableSessionCheckpoints } from "@openfarm/core/db/session-checkpoints";
 import type { TaskLoopEvent } from "@openfarm/task-loop";
 import { Box, useInput } from "@openfarm/tui-opentui";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ConfirmDialog,
   HelpOverlay,
   IterationHistoryPanel,
   OrchestrationFooter,
   OrchestrationHeader,
+  ResumeSessionDialog,
   RightPanel,
   SettingsOverlay,
   TaskListPanel,
 } from "../components/task-loop";
+import type { ResumableSession } from "../components/task-loop/resume-session-dialog";
 import { useTaskLoopKeys } from "../hooks/use-task-loop-keys";
 import { useStore } from "../store";
 import { type LogLevel, useLogStore } from "../store/log-store";
@@ -68,15 +76,59 @@ export function TaskLoopScreen({ embedded = false }: TaskLoopScreenProps) {
     executions,
     selectedWorkflowId,
   } = useStore();
-  const { addEntry, clearEntries } = useLogStore();
+  const { addEntry, clearEntries, setEntries } = useLogStore();
   const store = useTaskLoopStore();
+  const [resumableSessions, setResumableSessions] = useState<
+    ResumableSession[]
+  >([]);
+  const [selectedResumeIndex, setSelectedResumeIndex] = useState(0);
   const orchestratorRef = useRef<{
     run: (options: {
       onEvent?: (event: TaskLoopEvent) => void;
+      resumeSessionId?: string;
     }) => Promise<unknown>;
     pause: () => void;
   } | null>(null);
   const runningRef = useRef(false);
+  const logPersistQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const trimCounterRef = useRef(0);
+
+  const persistLiveLog = useCallback(
+    (
+      timestamp: Date,
+      level: LogLevel,
+      component: string,
+      message: string,
+      metadata?: Record<string, unknown>
+    ) => {
+      const sessionId = useTaskLoopStore.getState().sessionId;
+      if (!sessionId) {
+        return;
+      }
+
+      logPersistQueueRef.current = logPersistQueueRef.current
+        .then(async () => {
+          const db = await getDb();
+          await createExecutionLog(db, {
+            sessionId,
+            timestamp,
+            level,
+            component,
+            message,
+            metadata,
+          });
+
+          trimCounterRef.current += 1;
+          if (trimCounterRef.current % 200 === 0) {
+            await trimExecutionLogs(db, sessionId);
+          }
+        })
+        .catch((error) => {
+          console.error("Failed to persist task loop log:", error);
+        });
+    },
+    []
+  );
 
   const log = useCallback(
     (
@@ -85,9 +137,67 @@ export function TaskLoopScreen({ embedded = false }: TaskLoopScreenProps) {
       message: string,
       metadata?: Record<string, unknown>
     ) => {
-      addEntry({ level, component, message, metadata });
+      const timestamp = new Date();
+      addEntry({ level, component, message, metadata, timestamp });
+      persistLiveLog(timestamp, level, component, message, metadata);
     },
-    [addEntry]
+    [addEntry, persistLiveLog]
+  );
+
+  const loadResumableSessions = useCallback(async () => {
+    try {
+      const db = await getDb();
+      const checkpoints = await getResumableSessionCheckpoints(db, "task-loop");
+      const resumables: ResumableSession[] = checkpoints.map((checkpoint) => ({
+        id: checkpoint.sessionId,
+        status: checkpoint.status,
+        startedAt: checkpoint.startedAt,
+        updatedAt: checkpoint.updatedAt,
+        currentTaskTitle: checkpoint.currentTaskTitle,
+        completedTasks: checkpoint.completedTasks,
+        failedTasks: checkpoint.failedTasks,
+        totalTasks: checkpoint.totalTasks,
+      }));
+
+      setResumableSessions(resumables);
+      setSelectedResumeIndex((current) =>
+        Math.max(0, Math.min(current, Math.max(0, resumables.length - 1)))
+      );
+
+      if (
+        resumables.length > 0 &&
+        !runningRef.current &&
+        useTaskLoopStore.getState().lifecycle === "ready"
+      ) {
+        useTaskLoopStore.getState().setOverlay("resume");
+      }
+    } catch (error) {
+      log("error", "task-loop", `Failed to load resumable sessions: ${error}`);
+    }
+  }, [log]);
+
+  const loadPersistedLogs = useCallback(
+    async (sessionId: string) => {
+      try {
+        const db = await getDb();
+        const logs = await getExecutionLogs(db, sessionId, {
+          order: "asc",
+          limit: 5000,
+        });
+        setEntries(
+          logs.map((entry) => ({
+            timestamp: entry.timestamp,
+            level: entry.level,
+            component: entry.component,
+            message: entry.message,
+            metadata: entry.metadata,
+          }))
+        );
+      } catch (error) {
+        log("warn", "task-loop", `Failed to load persisted logs: ${error}`);
+      }
+    },
+    [log, setEntries]
   );
 
   const refreshTasks = useCallback(async () => {
@@ -206,7 +316,7 @@ export function TaskLoopScreen({ embedded = false }: TaskLoopScreenProps) {
             status: "running",
             startedAt: event.timestamp,
           });
-          log("info", "agent", `▶ Starting: ${event.taskId?.slice(0, 40)}`, {
+          log("info", "agent", `▶ Starting: ${event.taskId.slice(0, 40)}`, {
             taskId: event.taskId,
           });
           break;
@@ -228,7 +338,7 @@ export function TaskLoopScreen({ embedded = false }: TaskLoopScreenProps) {
             output: JSON.stringify(event.data ?? {}),
           });
           currentStore.setCurrentTaskId(null);
-          log("info", "agent", `✓ Completed: ${event.taskId?.slice(0, 40)}`, {
+          log("info", "agent", `✓ Completed: ${event.taskId.slice(0, 40)}`, {
             taskId: event.taskId,
           });
           break;
@@ -247,7 +357,7 @@ export function TaskLoopScreen({ embedded = false }: TaskLoopScreenProps) {
             output: JSON.stringify(event.data ?? {}),
           });
           currentStore.setCurrentTaskId(null);
-          log("error", "agent", `✗ Failed: ${event.taskId?.slice(0, 40)}`, {
+          log("error", "agent", `✗ Failed: ${event.taskId.slice(0, 40)}`, {
             taskId: event.taskId,
             error: event.data,
           });
@@ -265,7 +375,7 @@ export function TaskLoopScreen({ embedded = false }: TaskLoopScreenProps) {
             completedAt: event.timestamp,
             output: JSON.stringify(event.data ?? {}),
           });
-          log("warn", "agent", `⏭ Skipped: ${event.taskId?.slice(0, 40)}`, {
+          log("warn", "agent", `⏭ Skipped: ${event.taskId.slice(0, 40)}`, {
             taskId: event.taskId,
           });
           break;
@@ -295,53 +405,69 @@ export function TaskLoopScreen({ embedded = false }: TaskLoopScreenProps) {
     [log]
   );
 
-  const startTaskLoop = useCallback(async () => {
-    if (runningRef.current) {
-      return;
-    }
-
-    const currentStore = useTaskLoopStore.getState();
-
-    try {
-      currentStore.beginRun();
-      currentStore.setLifecycle("starting");
-      clearEntries();
-      log(
-        "info",
-        "task-loop",
-        `Provider: ${currentStore.settings.provider || "external-agent"}`
-      );
-      log("info", "task-loop", `Workspace: ${workspace}`);
-
-      const { TaskLoopOrchestrator } = await import("@openfarm/task-loop");
-
-      const orchestrator = new TaskLoopOrchestrator({
-        provider: currentStore.settings.provider || "external-agent",
-        model: currentStore.settings.model || undefined,
-        maxIterations: currentStore.maxIterations,
-        stopOnFailure: currentStore.settings.stopOnFailure,
-      });
-      orchestratorRef.current = orchestrator;
-      runningRef.current = true;
-
-      await orchestrator.run({
-        onEvent: handleEvent,
-      });
-
-      if (useTaskLoopStore.getState().lifecycle !== "error") {
-        useTaskLoopStore.getState().setLifecycle("completed");
+  const startTaskLoop = useCallback(
+    async (resumeSessionId?: string) => {
+      if (runningRef.current) {
+        return;
       }
-    } catch (error) {
-      currentStore.setLifecycle("error");
-      currentStore.setLastError(String(error));
-      log("error", "task-loop", `Fatal error: ${error}`, {
-        error: String(error),
-      });
-    } finally {
-      runningRef.current = false;
-      orchestratorRef.current = null;
-    }
-  }, [clearEntries, handleEvent, log, workspace]);
+
+      const currentStore = useTaskLoopStore.getState();
+
+      try {
+        currentStore.beginRun();
+        currentStore.setLifecycle("starting");
+
+        if (resumeSessionId) {
+          currentStore.setSessionId(resumeSessionId);
+          await loadPersistedLogs(resumeSessionId);
+          log(
+            "info",
+            "task-loop",
+            `Resuming session ${resumeSessionId.slice(0, 12)}`
+          );
+        } else {
+          clearEntries();
+        }
+
+        log(
+          "info",
+          "task-loop",
+          `Provider: ${currentStore.settings.provider || "external-agent"}`
+        );
+        log("info", "task-loop", `Workspace: ${workspace}`);
+
+        const { TaskLoopOrchestrator } = await import("@openfarm/task-loop");
+
+        const orchestrator = new TaskLoopOrchestrator({
+          provider: currentStore.settings.provider || "external-agent",
+          model: currentStore.settings.model || undefined,
+          maxIterations: currentStore.maxIterations,
+          stopOnFailure: currentStore.settings.stopOnFailure,
+        });
+        orchestratorRef.current = orchestrator;
+        runningRef.current = true;
+
+        await orchestrator.run({
+          onEvent: handleEvent,
+          resumeSessionId,
+        });
+
+        if (useTaskLoopStore.getState().lifecycle !== "error") {
+          useTaskLoopStore.getState().setLifecycle("completed");
+        }
+      } catch (error) {
+        currentStore.setLifecycle("error");
+        currentStore.setLastError(String(error));
+        log("error", "task-loop", `Fatal error: ${error}`, {
+          error: String(error),
+        });
+      } finally {
+        runningRef.current = false;
+        orchestratorRef.current = null;
+      }
+    },
+    [clearEntries, handleEvent, loadPersistedLogs, log, workspace]
+  );
 
   const pauseTaskLoop = useCallback(() => {
     orchestratorRef.current?.pause();
@@ -363,6 +489,36 @@ export function TaskLoopScreen({ embedded = false }: TaskLoopScreenProps) {
     goDashboard();
   }, [goDashboard]);
 
+  const cycleResumeSelection = useCallback(
+    (delta: number) => {
+      if (resumableSessions.length === 0) {
+        return;
+      }
+      setSelectedResumeIndex((current) => {
+        const next = current + delta;
+        if (next < 0) {
+          return resumableSessions.length - 1;
+        }
+        if (next >= resumableSessions.length) {
+          return 0;
+        }
+        return next;
+      });
+    },
+    [resumableSessions.length]
+  );
+
+  const resumeSelectedSession = useCallback(() => {
+    const selected = resumableSessions[selectedResumeIndex];
+    if (!selected) {
+      return;
+    }
+    useTaskLoopStore.getState().setOverlay("none");
+    startTaskLoop(selected.id).catch((error) => {
+      console.error("Failed to resume task loop session:", error);
+    });
+  }, [resumableSessions, selectedResumeIndex, startTaskLoop]);
+
   useEffect(() => {
     const currentStore = useTaskLoopStore.getState();
     currentStore.reset();
@@ -372,8 +528,13 @@ export function TaskLoopScreen({ embedded = false }: TaskLoopScreenProps) {
     });
     clearEntries();
     log("info", "task-loop", "Task Loop ready");
-    refreshTasks();
-  }, [clearEntries, log, model, provider, refreshTasks]);
+    refreshTasks().catch((error) => {
+      console.error("Failed to refresh tasks:", error);
+    });
+    loadResumableSessions().catch((error) => {
+      console.error("Failed to load resumable sessions:", error);
+    });
+  }, [clearEntries, loadResumableSessions, log, model, provider, refreshTasks]);
 
   useEffect(() => {
     const active =
@@ -390,7 +551,11 @@ export function TaskLoopScreen({ embedded = false }: TaskLoopScreenProps) {
   }, [store.lifecycle, store.startTime]);
 
   useTaskLoopKeys({
-    onStartOrResume: startTaskLoop,
+    onStartOrResume: () => {
+      startTaskLoop().catch((error) => {
+        console.error("Failed to start task loop:", error);
+      });
+    },
     onPause: pauseTaskLoop,
     onRefresh: refreshTasks,
     onDashboard: goDashboard,
@@ -400,6 +565,31 @@ export function TaskLoopScreen({ embedded = false }: TaskLoopScreenProps) {
   });
 
   useInput((input, key) => {
+    if (store.overlay === "resume") {
+      if (key.escape || input === "q") {
+        store.setOverlay("none");
+        return;
+      }
+      if (input === "r") {
+        loadResumableSessions().catch((error) => {
+          console.error("Failed to load resumable sessions:", error);
+        });
+        return;
+      }
+      if (key.upArrow || input === "k") {
+        cycleResumeSelection(-1);
+        return;
+      }
+      if (key.downArrow || input === "j") {
+        cycleResumeSelection(1);
+        return;
+      }
+      if (key.return) {
+        resumeSelectedSession();
+      }
+      return;
+    }
+
     if (store.overlay !== "settings") {
       return;
     }
@@ -456,6 +646,14 @@ export function TaskLoopScreen({ embedded = false }: TaskLoopScreenProps) {
   }, [store.lifecycle]);
 
   const renderOverlay = () => {
+    if (store.overlay === "resume") {
+      return (
+        <ResumeSessionDialog
+          selectedIndex={selectedResumeIndex}
+          sessions={resumableSessions}
+        />
+      );
+    }
     if (store.overlay === "help") {
       return <HelpOverlay />;
     }

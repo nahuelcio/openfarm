@@ -8,9 +8,11 @@
 import { randomUUID } from "node:crypto";
 import { hostname, platform } from "node:os";
 import { logger } from "@openfarm/logger";
-import type {
+import {
+  type TaskLoopConfig,
+  type TaskLoopEvent,
   TaskLoopOrchestrator,
-  TaskLoopSession,
+  type TaskLoopSession,
 } from "@openfarm/task-loop";
 import { type WebSocket, WebSocketServer } from "ws";
 import packageJson from "../package.json";
@@ -50,6 +52,8 @@ export class RemoteServer {
   private readonly clients = new Map<WebSocket, ClientConnection>();
   private readonly config: Required<RemoteServerConfig>;
   private orchestrator?: TaskLoopOrchestrator;
+  private activeSession?: TaskLoopSession;
+  private runPromise?: Promise<TaskLoopSession>;
   private heartbeatInterval?: ReturnType<typeof setInterval>;
 
   constructor(config: RemoteServerConfig) {
@@ -124,17 +128,6 @@ export class RemoteServer {
         resolve();
       }
     });
-  }
-
-  /**
-   * Set the task loop orchestrator to control
-   */
-  setOrchestrator(orchestrator: TaskLoopOrchestrator): void {
-    this.orchestrator = orchestrator;
-
-    // Subscribe to orchestrator events
-    // This would need to be implemented in the orchestrator
-    // orchestrator.onEvent((event) => this.broadcast({ type: "event", ... }));
   }
 
   /**
@@ -289,25 +282,66 @@ export class RemoteServer {
   /**
    * Handle start command
    */
-  private handleStart(client: ClientConnection, _config: unknown): void {
-    if (!this.orchestrator) {
+  private handleStart(client: ClientConnection, config: unknown): void {
+    const parsed = this.parseStartConfig(config);
+    if (!parsed) {
       this.send(client.ws, {
         type: "error",
-        message: "No orchestrator configured",
+        message: "Invalid start config",
       });
       return;
     }
 
-    // Start the task loop
-    // this.orchestrator.run(config);
+    if (this.runPromise) {
+      this.send(client.ws, {
+        type: "error",
+        message: "Task loop is already running on this server",
+      });
+      return;
+    }
 
+    this.orchestrator = new TaskLoopOrchestrator(parsed.taskLoopConfig);
     this.broadcast({
       type: "log",
       level: "info",
-      message: "Task loop started",
+      message: parsed.resumeSessionId
+        ? `Resuming task loop session ${parsed.resumeSessionId}`
+        : "Task loop started",
       timestamp: new Date().toISOString(),
       sourceClientId: client.id,
     });
+
+    this.runPromise = this.orchestrator
+      .run({
+        resumeSessionId: parsed.resumeSessionId,
+        onEvent: (event: TaskLoopEvent) => {
+          this.handleTaskLoopEvent(event);
+        },
+      })
+      .then((session) => {
+        this.activeSession = session;
+        this.broadcast({
+          type: "log",
+          level: "info",
+          message: `Task loop finished with status ${session.status}`,
+          timestamp: new Date().toISOString(),
+        });
+        this.broadcastStatus();
+        return session;
+      })
+      .catch((error) => {
+        this.broadcast({
+          type: "log",
+          level: "error",
+          message: `Task loop failed: ${error instanceof Error ? error.message : String(error)}`,
+          timestamp: new Date().toISOString(),
+        });
+      })
+      .finally(() => {
+        this.runPromise = undefined;
+      }) as Promise<TaskLoopSession>;
+
+    this.broadcastStatus();
   }
 
   /**
@@ -330,15 +364,33 @@ export class RemoteServer {
       timestamp: new Date().toISOString(),
       sourceClientId: client.id,
     });
+    this.broadcastStatus();
   }
 
   /**
    * Handle resume command
    */
   private handleResume(client: ClientConnection): void {
-    this.send(client.ws, {
-      type: "error",
-      message: "Resume is not supported by the remote server",
+    if (this.runPromise) {
+      this.send(client.ws, {
+        type: "error",
+        message: "Task loop is already running",
+      });
+      return;
+    }
+
+    const session = this.activeSession;
+    if (!(session && session.status === "paused")) {
+      this.send(client.ws, {
+        type: "error",
+        message: "No paused session available to resume",
+      });
+      return;
+    }
+
+    this.handleStart(client, {
+      config: session.config,
+      resumeSessionId: session.id,
     });
   }
 
@@ -362,21 +414,97 @@ export class RemoteServer {
       timestamp: new Date().toISOString(),
       sourceClientId: client.id,
     });
+    this.broadcastStatus();
   }
 
   /**
    * Send current status to client
    */
   private sendStatus(client: ClientConnection): void {
-    // Get current session from orchestrator
-    const session: TaskLoopSession | undefined =
-      this.orchestrator?.getSession() ?? undefined;
+    const session = this.getCurrentSession();
 
     this.send(client.ws, {
       type: "status",
       session,
       systemInfo: this.getSystemInfo(),
     });
+  }
+
+  private getCurrentSession(): TaskLoopSession | undefined {
+    return this.orchestrator?.getSession() || this.activeSession;
+  }
+
+  private broadcastStatus(): void {
+    const message: ServerMessage = {
+      type: "status",
+      session: this.getCurrentSession(),
+      systemInfo: this.getSystemInfo(),
+    };
+    this.broadcast(message);
+  }
+
+  private handleTaskLoopEvent(event: TaskLoopEvent): void {
+    this.broadcast({
+      type: "event",
+      eventType: event.type,
+      data: event,
+    });
+
+    if (event.type === "session.started") {
+      this.broadcast({
+        type: "log",
+        level: "info",
+        message: `Session started: ${event.sessionId}`,
+        timestamp: event.timestamp,
+      });
+    }
+
+    if (event.type === "session.paused") {
+      this.broadcast({
+        type: "log",
+        level: "warn",
+        message: `Session paused: ${event.sessionId}`,
+        timestamp: event.timestamp,
+      });
+    }
+
+    if (event.type === "session.failed") {
+      this.broadcast({
+        type: "log",
+        level: "error",
+        message: `Session failed: ${event.sessionId}`,
+        timestamp: event.timestamp,
+      });
+    }
+
+    this.activeSession = this.orchestrator?.getSession() || this.activeSession;
+    this.broadcastStatus();
+  }
+
+  private parseStartConfig(
+    input: unknown
+  ): { taskLoopConfig: TaskLoopConfig; resumeSessionId?: string } | null {
+    if (!input || typeof input !== "object") {
+      return null;
+    }
+
+    const data = input as {
+      config?: TaskLoopConfig;
+      resumeSessionId?: string;
+    };
+
+    if (data.config && typeof data.config === "object") {
+      return {
+        taskLoopConfig: data.config,
+        resumeSessionId: data.resumeSessionId,
+      };
+    }
+
+    const maybeConfig = input as TaskLoopConfig;
+
+    return {
+      taskLoopConfig: maybeConfig,
+    };
   }
 
   /**

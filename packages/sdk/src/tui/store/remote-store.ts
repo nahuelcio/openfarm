@@ -4,64 +4,13 @@
  * Manages connections to multiple remote OpenFarm instances.
  */
 
+import { RemoteClient } from "@openfarm/remote-server";
 import { create } from "zustand";
 import type {
   IRemoteClient,
   RemoteClientHandlers,
   RemoteInstance,
 } from "../types/remote";
-
-// Stub RemoteClient implementation for now
-// In production, this would import from @openfarm/remote-server
-class StubRemoteClient implements IRemoteClient {
-  private readonly handlers: RemoteClientHandlers;
-  private connected = false;
-
-  constructor(
-    _config: { url: string; token?: string },
-    handlers: RemoteClientHandlers
-  ) {
-    this.handlers = handlers;
-  }
-
-  async connect(): Promise<void> {
-    this.connected = true;
-    this.handlers.onConnect?.();
-  }
-
-  disconnect(): void {
-    this.connected = false;
-    this.handlers.onDisconnect?.("manual");
-  }
-
-  startTaskLoop(_config: unknown): void {
-    this.handlers.onLog?.("info", "Starting task loop...");
-  }
-
-  pause(): void {
-    this.handlers.onLog?.("info", "Pausing...");
-  }
-
-  resume(): void {
-    this.handlers.onLog?.("info", "Resuming...");
-  }
-
-  cancel(): void {
-    this.handlers.onLog?.("info", "Cancelling...");
-  }
-
-  getStatus(): void {
-    this.handlers.onLog?.("info", "Getting status...");
-  }
-
-  getState() {
-    return { status: this.connected ? "connected" : "disconnected" };
-  }
-
-  isConnected() {
-    return this.connected;
-  }
-}
 
 interface RemoteState {
   /** List of configured remote instances */
@@ -99,6 +48,21 @@ interface RemoteState {
 
   /** Save instances to config */
   saveInstances: () => Promise<void>;
+
+  /** Start remote task loop */
+  startTaskLoop: (id: string, config: unknown) => void;
+
+  /** Pause remote task loop */
+  pauseTaskLoop: (id: string) => void;
+
+  /** Resume remote task loop */
+  resumeTaskLoop: (id: string) => void;
+
+  /** Cancel remote task loop */
+  cancelTaskLoop: (id: string) => void;
+
+  /** Request current remote status */
+  requestStatus: (id: string) => void;
 }
 
 export const useRemoteStore = create<RemoteState>((set, get) => ({
@@ -151,31 +115,44 @@ export const useRemoteStore = create<RemoteState>((set, get) => ({
     updateInstance(id, { status: "connecting", error: undefined });
 
     try {
-      const client = new StubRemoteClient(
+      const handlers: RemoteClientHandlers = {
+        onConnect: () => {
+          updateInstance(id, { status: "connected", error: undefined });
+        },
+        onDisconnect: (_reason: string) => {
+          updateInstance(id, { status: "disconnected" });
+        },
+        onError: (error: Error) => {
+          updateInstance(id, { status: "error", error: error.message });
+        },
+        onLog: (level: string, message: string) => {
+          console.log(`[${instance.name}] ${level}: ${message}`);
+        },
+        onStatusUpdate: (session, systemInfo) => {
+          updateInstance(id, { session: session as any, systemInfo });
+        },
+        onEvent: (eventType, data) => {
+          const event = data as { sessionId?: string };
+          if (
+            eventType.startsWith("session.") &&
+            event.sessionId &&
+            get().selectedInstanceId === id
+          ) {
+            console.log(`[${instance.name}] event: ${eventType}`);
+          }
+        },
+      };
+
+      const client = new RemoteClient(
         {
           url: instance.url,
           token: instance.token,
         },
-        {
-          onConnect: () => {
-            updateInstance(id, { status: "connected", error: undefined });
-          },
-          onDisconnect: (reason: string) => {
-            updateInstance(id, { status: "disconnected" });
-          },
-          onError: (error: Error) => {
-            updateInstance(id, { status: "error", error: error.message });
-          },
-          onLog: (level: string, message: string) => {
-            console.log(`[${instance.name}] ${level}: ${message}`);
-          },
-          onStatusUpdate: (session, systemInfo) => {
-            updateInstance(id, { session: session as any, systemInfo });
-          },
-        }
+        handlers
       );
 
       await client.connect();
+      client.getStatus();
       clients.set(id, client);
 
       set({ clients: new Map(clients) });
@@ -216,5 +193,30 @@ export const useRemoteStore = create<RemoteState>((set, get) => ({
 
   saveInstances: async () => {
     // TODO: Save to config file
+  },
+
+  startTaskLoop: (id, config) => {
+    const client = get().clients.get(id);
+    client?.startTaskLoop(config);
+  },
+
+  pauseTaskLoop: (id) => {
+    const client = get().clients.get(id);
+    client?.pause();
+  },
+
+  resumeTaskLoop: (id) => {
+    const client = get().clients.get(id);
+    client?.resume();
+  },
+
+  cancelTaskLoop: (id) => {
+    const client = get().clients.get(id);
+    client?.cancel();
+  },
+
+  requestStatus: (id) => {
+    const client = get().clients.get(id);
+    client?.getStatus();
   },
 }));

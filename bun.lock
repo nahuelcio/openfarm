@@ -343,6 +343,7 @@
       "name": "@openfarm/spec",
       "version": "0.0.1",
       "dependencies": {
+        "@openfarm/agent-runner": "workspace:*",
         "js-yaml": "^4.1.1",
       },
       "devDependencies": {

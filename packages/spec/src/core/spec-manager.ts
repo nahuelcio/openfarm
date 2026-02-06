@@ -1,4 +1,11 @@
-import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import {
+  access,
+  mkdir,
+  readFile,
+  rename,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import path from "node:path";
 import {
   type CreateSpecInput,
@@ -109,14 +116,45 @@ export class SpecManager {
     await mkdir(this.archiveDir, { recursive: true });
   }
 
-  public async create(input: CreateSpecInput): Promise<LoadedSpec> {
-    await this.init();
-    const slug = slugify(input.name);
-    if (!slug) {
+  public async exists(slug: string): Promise<boolean> {
+    const specPath = path.join(this.specsDir, slug);
+    try {
+      await access(specPath);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  private async generateUniqueSlug(baseName: string): Promise<string> {
+    const baseSlug = slugify(baseName);
+    if (!baseSlug) {
       throw new Error("Name must generate a valid slug");
     }
+
+    // Check if base slug is available
+    if (!(await this.exists(baseSlug))) {
+      return baseSlug;
+    }
+
+    // Try adding incrementing numbers
+    for (let i = 2; i <= 100; i++) {
+      const candidate = `${baseSlug}-${i}`;
+      if (!(await this.exists(candidate))) {
+        return candidate;
+      }
+    }
+
+    // Fall back to timestamp if too many duplicates
+    const timestamp = Date.now().toString(36);
+    return `${baseSlug}-${timestamp}`;
+  }
+
+  public async create(input: CreateSpecInput): Promise<LoadedSpec> {
+    await this.init();
+    const slug = await this.generateUniqueSlug(input.name);
     const specDir = path.join(this.specsDir, slug);
-    await mkdir(specDir, { recursive: false });
+    await mkdir(specDir, { recursive: true });
 
     const now = new Date().toISOString();
     const metadata: SpecMetadata = {
