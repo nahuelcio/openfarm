@@ -8,7 +8,7 @@ type SpecStatus = "draft" | "ready" | "implementing" | "done" | "archived";
 type ArtifactKey = "proposal" | "requirements" | "design" | "tasks";
 type PlanStep = "provider" | "model" | "folder" | "plan";
 const MODELS_PER_PAGE = 6;
-const MODEL_LIST_HEIGHT = MODELS_PER_PAGE + 2;
+const MODEL_LIST_HEIGHT = MODELS_PER_PAGE + 4; // items + border (2) + padding (2)
 
 interface SpecMetadata {
   slug: string;
