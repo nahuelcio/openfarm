@@ -72,8 +72,12 @@ export function NewDashboard() {
   const { executions, currentExecution, setScreen, setCurrentExecution } =
     useStore();
 
-  const hasActiveSession = useExecutionRuntimeStore((s) => s.hasActiveSession());
-  const activeSessionId = useExecutionRuntimeStore((s) => s.getActiveSessionId());
+  const hasActiveSession = useExecutionRuntimeStore((s) =>
+    s.hasActiveSession()
+  );
+  const activeSessionId = useExecutionRuntimeStore((s) =>
+    s.getActiveSessionId()
+  );
   const activeSession = useExecutionRuntimeStore((s) =>
     activeSessionId ? s.sessions[activeSessionId] : undefined
   );
@@ -133,9 +137,7 @@ export function NewDashboard() {
             {"▶ Running: "}
             <Text color="white">
               {(() => {
-                const exec = executions.find(
-                  (e) => e.id === activeSessionId
-                );
+                const exec = executions.find((e) => e.id === activeSessionId);
                 const taskText = exec?.task || "...";
                 return taskText.length > 40
                   ? `${taskText.slice(0, 40)}...`

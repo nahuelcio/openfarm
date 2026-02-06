@@ -139,7 +139,9 @@ export function AppV2() {
     }
   }, [activeTab, currentSection, setActiveTab]);
 
-  const hasActiveSession = useExecutionRuntimeStore((s) => s.hasActiveSession());
+  const hasActiveSession = useExecutionRuntimeStore((s) =>
+    s.hasActiveSession()
+  );
 
   const executionStatus = useMemo(() => {
     // Runtime store is the source of truth for active executions

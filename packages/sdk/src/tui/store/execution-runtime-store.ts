@@ -33,19 +33,28 @@ export interface ExecutionRuntimeSession {
 interface ExecutionRuntimeState {
   sessions: Record<string, ExecutionRuntimeSession>;
 
-  createSession: (executionId: string, startTime: number) => ExecutionRuntimeSession;
+  createSession: (
+    executionId: string,
+    startTime: number
+  ) => ExecutionRuntimeSession;
   getSession: (executionId: string) => ExecutionRuntimeSession | undefined;
   hasActiveSession: () => boolean;
   getActiveSessionId: () => string | null;
 
   addLog: (executionId: string, msg: string) => void;
-  updateSession: (executionId: string, updates: Partial<ExecutionRuntimeSession>) => void;
+  updateSession: (
+    executionId: string,
+    updates: Partial<ExecutionRuntimeSession>
+  ) => void;
 
   cancelExecution: (executionId: string) => void;
   removeSession: (executionId: string) => void;
 }
 
-function createEmptySession(executionId: string, startTime: number): ExecutionRuntimeSession {
+function createEmptySession(
+  executionId: string,
+  startTime: number
+): ExecutionRuntimeSession {
   return {
     executionId,
     logs: [],
@@ -66,10 +75,13 @@ function createEmptySession(executionId: string, startTime: number): ExecutionRu
 // Transform raw log messages for cleaner TUI display
 function transformLogMessage(msg: string): string | null {
   if (msg.startsWith("[INFO] Starting step:")) return null;
-  const completedMatch = msg.match(/\[INFO\] Completed step: (\S+) \(([^)]+)\) in (\d+)ms/);
+  const completedMatch = msg.match(
+    /\[INFO\] Completed step: (\S+) \(([^)]+)\) in (\d+)ms/
+  );
   if (completedMatch) {
     const duration = Number.parseInt(completedMatch[3], 10);
-    const formatted = duration >= 1000 ? `${(duration / 1000).toFixed(1)}s` : `${duration}ms`;
+    const formatted =
+      duration >= 1000 ? `${(duration / 1000).toFixed(1)}s` : `${duration}ms`;
     return `\u2713 ${completedMatch[2]} completed in ${formatted}`;
   }
   if (msg.trim() === "done" || msg.trim() === "\u2502 done") return null;
@@ -79,7 +91,10 @@ function transformLogMessage(msg: string): string | null {
   return msg;
 }
 
-function updateStats(stats: { tokens: number; files: number }, msg: string): { tokens: number; files: number } {
+function updateStats(
+  stats: { tokens: number; files: number },
+  msg: string
+): { tokens: number; files: number } {
   let { tokens, files } = stats;
   if (msg.includes("Tokens:") || msg.includes("tokens")) {
     const match = msg.match(/(\d+)\s*tokens?/i);
@@ -91,137 +106,150 @@ function updateStats(stats: { tokens: number; files: number }, msg: string): { t
   return { tokens, files };
 }
 
-export const useExecutionRuntimeStore = create<ExecutionRuntimeState>((set, get) => ({
-  sessions: {},
+export const useExecutionRuntimeStore = create<ExecutionRuntimeState>(
+  (set, get) => ({
+    sessions: {},
 
-  createSession: (executionId, startTime) => {
-    const session = createEmptySession(executionId, startTime);
-    set((state) => ({
-      sessions: { ...state.sessions, [executionId]: session },
-    }));
-    return session;
-  },
+    createSession: (executionId, startTime) => {
+      const session = createEmptySession(executionId, startTime);
+      set((state) => ({
+        sessions: { ...state.sessions, [executionId]: session },
+      }));
+      return session;
+    },
 
-  getSession: (executionId) => {
-    return get().sessions[executionId];
-  },
+    getSession: (executionId) => {
+      return get().sessions[executionId];
+    },
 
-  hasActiveSession: () => {
-    return Object.values(get().sessions).some((s) => !s.isDone);
-  },
+    hasActiveSession: () => {
+      return Object.values(get().sessions).some((s) => !s.isDone);
+    },
 
-  getActiveSessionId: () => {
-    const active = Object.values(get().sessions).find((s) => !s.isDone);
-    return active?.executionId ?? null;
-  },
+    getActiveSessionId: () => {
+      const active = Object.values(get().sessions).find((s) => !s.isDone);
+      return active?.executionId ?? null;
+    },
 
-  addLog: (executionId, msg) => {
-    if (!msg || msg.trim() === "") return;
+    addLog: (executionId, msg) => {
+      if (!msg || msg.trim() === "") return;
 
-    const session = get().sessions[executionId];
-    if (!session) return;
+      const session = get().sessions[executionId];
+      if (!session) return;
 
-    // Always write raw message to log file
-    if (session.logFilePath) {
-      try {
-        const timestamp = new Date().toISOString();
-        appendFileSync(session.logFilePath, `[${timestamp}] ${msg}\n`);
-      } catch {
-        // Ignore file write errors
+      // Always write raw message to log file
+      if (session.logFilePath) {
+        try {
+          const timestamp = new Date().toISOString();
+          appendFileSync(session.logFilePath, `[${timestamp}] ${msg}\n`);
+        } catch {
+          // Ignore file write errors
+        }
       }
-    }
 
-    // Track stats from raw message
-    const newStats = updateStats(session.stats, msg);
+      // Track stats from raw message
+      const newStats = updateStats(session.stats, msg);
 
-    // Transform for TUI display
-    const transformed = transformLogMessage(msg);
-    if (transformed === null) {
-      // Still update stats even if we don't display the message
-      if (newStats.tokens !== session.stats.tokens || newStats.files !== session.stats.files) {
-        set((state) => ({
+      // Transform for TUI display
+      const transformed = transformLogMessage(msg);
+      if (transformed === null) {
+        // Still update stats even if we don't display the message
+        if (
+          newStats.tokens !== session.stats.tokens ||
+          newStats.files !== session.stats.files
+        ) {
+          set((state) => ({
+            sessions: {
+              ...state.sessions,
+              [executionId]: {
+                ...state.sessions[executionId],
+                stats: newStats,
+              },
+            },
+          }));
+        }
+        return;
+      }
+
+      // Skip duplicates
+      if (transformed === session.lastLogRef) return;
+
+      set((state) => {
+        const s = state.sessions[executionId];
+        if (!s) return state;
+        const logs = [...s.logs, transformed];
+        return {
           sessions: {
             ...state.sessions,
-            [executionId]: { ...state.sessions[executionId], stats: newStats },
+            [executionId]: {
+              ...s,
+              logs:
+                logs.length > MAX_LOG_ENTRIES
+                  ? logs.slice(-MAX_LOG_ENTRIES)
+                  : logs,
+              lastLogRef: transformed,
+              stats: newStats,
+            },
           },
-        }));
+        };
+      });
+    },
+
+    updateSession: (executionId, updates) => {
+      set((state) => {
+        const s = state.sessions[executionId];
+        if (!s) return state;
+        return {
+          sessions: {
+            ...state.sessions,
+            [executionId]: { ...s, ...updates },
+          },
+        };
+      });
+    },
+
+    cancelExecution: (executionId) => {
+      const session = get().sessions[executionId];
+      if (!session || session.isDone) return;
+
+      // Abort the execution
+      session.abortController?.abort();
+
+      // Kill tmux session if running
+      if (session.externalAgentSession) {
+        try {
+          execSync(
+            `tmux kill-session -t ${session.externalAgentSession} 2>/dev/null || true`
+          );
+        } catch {
+          // Ignore
+        }
       }
-      return;
-    }
 
-    // Skip duplicates
-    if (transformed === session.lastLogRef) return;
-
-    set((state) => {
-      const s = state.sessions[executionId];
-      if (!s) return state;
-      const logs = [...s.logs, transformed];
-      return {
-        sessions: {
-          ...state.sessions,
-          [executionId]: {
-            ...s,
-            logs: logs.length > MAX_LOG_ENTRIES ? logs.slice(-MAX_LOG_ENTRIES) : logs,
-            lastLogRef: transformed,
-            stats: newStats,
+      // Update session state
+      set((state) => {
+        const s = state.sessions[executionId];
+        if (!s) return state;
+        return {
+          sessions: {
+            ...state.sessions,
+            [executionId]: {
+              ...s,
+              isDone: true,
+              success: false,
+              abortController: null,
+              externalAgentSession: null,
+            },
           },
-        },
-      };
-    });
-  },
+        };
+      });
+    },
 
-  updateSession: (executionId, updates) => {
-    set((state) => {
-      const s = state.sessions[executionId];
-      if (!s) return state;
-      return {
-        sessions: {
-          ...state.sessions,
-          [executionId]: { ...s, ...updates },
-        },
-      };
-    });
-  },
-
-  cancelExecution: (executionId) => {
-    const session = get().sessions[executionId];
-    if (!session || session.isDone) return;
-
-    // Abort the execution
-    session.abortController?.abort();
-
-    // Kill tmux session if running
-    if (session.externalAgentSession) {
-      try {
-        execSync(`tmux kill-session -t ${session.externalAgentSession} 2>/dev/null || true`);
-      } catch {
-        // Ignore
-      }
-    }
-
-    // Update session state
-    set((state) => {
-      const s = state.sessions[executionId];
-      if (!s) return state;
-      return {
-        sessions: {
-          ...state.sessions,
-          [executionId]: {
-            ...s,
-            isDone: true,
-            success: false,
-            abortController: null,
-            externalAgentSession: null,
-          },
-        },
-      };
-    });
-  },
-
-  removeSession: (executionId) => {
-    set((state) => {
-      const { [executionId]: _removed, ...rest } = state.sessions;
-      return { sessions: rest };
-    });
-  },
-}));
+    removeSession: (executionId) => {
+      set((state) => {
+        const { [executionId]: _removed, ...rest } = state.sessions;
+        return { sessions: rest };
+      });
+    },
+  })
+);

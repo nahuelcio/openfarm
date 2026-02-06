@@ -5,7 +5,18 @@ import { useStore } from "../store";
 import { useExecutionRuntimeStore } from "../store/execution-runtime-store";
 import { startExecution } from "../utils/execution-runner";
 
-const SPINNER_FRAMES = ["\u280B", "\u2819", "\u2839", "\u2838", "\u283C", "\u2834", "\u2826", "\u2827", "\u2807", "\u280F"];
+const SPINNER_FRAMES = [
+  "\u280B",
+  "\u2819",
+  "\u2839",
+  "\u2838",
+  "\u283C",
+  "\u2834",
+  "\u2826",
+  "\u2827",
+  "\u2807",
+  "\u280F",
+];
 
 export function formatDuration(ms: number): string {
   if (ms < 1000) return `${ms}ms`;
@@ -17,17 +28,38 @@ export function formatDuration(ms: number): string {
 
 // --- Log display helpers ---
 
-type LogType = "header" | "separator" | "step" | "command" | "output" | "success" | "error" | "warning" | "info";
+type LogType =
+  | "header"
+  | "separator"
+  | "step"
+  | "command"
+  | "output"
+  | "success"
+  | "error"
+  | "warning"
+  | "info";
 
 function classifyLog(line: string): LogType {
   if (!line || line.trim() === "") return "info";
-  if (line.startsWith("\u2500") || line.startsWith("\u2550")) return "separator";
-  if (line.startsWith("[ERROR]") || line.startsWith("Error:") || line.startsWith("\u274C") || line.startsWith("\u2717")) return "error";
+  if (line.startsWith("\u2500") || line.startsWith("\u2550"))
+    return "separator";
+  if (
+    line.startsWith("[ERROR]") ||
+    line.startsWith("Error:") ||
+    line.startsWith("\u274C") ||
+    line.startsWith("\u2717")
+  )
+    return "error";
   if (line.startsWith("\u2705") || line.startsWith("\u2713")) return "success";
   if (line.startsWith("\u26A0")) return "warning";
   if (line.startsWith("$") || line.startsWith("\uD83D\uDE80")) return "command";
   if (line.startsWith("  ")) return "output";
-  if (line.startsWith("\u2502") || line.startsWith("\u251C") || line.startsWith("\u2514")) return "output";
+  if (
+    line.startsWith("\u2502") ||
+    line.startsWith("\u251C") ||
+    line.startsWith("\u2514")
+  )
+    return "output";
   if (line.startsWith("\u25B8") || line.startsWith("\u25B9")) return "step";
   return "info";
 }
@@ -65,8 +97,8 @@ export function Running() {
   } = useStore();
 
   // Read runtime session from the persistent store
-  const session = useExecutionRuntimeStore(
-    (s) => (currentExecution ? s.sessions[currentExecution.id] : undefined)
+  const session = useExecutionRuntimeStore((s) =>
+    currentExecution ? s.sessions[currentExecution.id] : undefined
   );
 
   const [spinnerIdx, setSpinnerIdx] = useState(0);
@@ -100,7 +132,9 @@ export function Running() {
     if (executionStarted.current) return;
 
     // Check if session already exists (user navigated back to running execution)
-    const existing = useExecutionRuntimeStore.getState().getSession(currentExecution.id);
+    const existing = useExecutionRuntimeStore
+      .getState()
+      .getSession(currentExecution.id);
     if (existing) {
       // Resume viewing - session is alive, just sync elapsed
       executionStarted.current = true;
@@ -110,7 +144,9 @@ export function Running() {
 
     // First time: create session and start execution
     executionStarted.current = true;
-    useExecutionRuntimeStore.getState().createSession(currentExecution.id, Date.now());
+    useExecutionRuntimeStore
+      .getState()
+      .createSession(currentExecution.id, Date.now());
 
     startExecution({
       executionId: currentExecution.id,
@@ -133,7 +169,9 @@ export function Running() {
     // Cancel with 'c' - only this cancels, not Esc
     if ((input === "c" || input === "C") && session && !session.isDone) {
       useExecutionRuntimeStore.getState().cancelExecution(currentExecution!.id);
-      useStore.getState().updateExecution(currentExecution!.id, { status: "cancelled" });
+      useStore
+        .getState()
+        .updateExecution(currentExecution!.id, { status: "cancelled" });
     }
 
     // Esc = navigate away WITHOUT cancelling
@@ -166,7 +204,10 @@ export function Running() {
   const categorizedError = session?.categorizedError || null;
 
   const visibleLogs = logs.slice(-maxLogLines);
-  const boxHeight = Math.max(8, Math.min(visibleLogs.length + (isDone ? 0 : 1), maxLogLines) + 2);
+  const boxHeight = Math.max(
+    8,
+    Math.min(visibleLogs.length + (isDone ? 0 : 1), maxLogLines) + 2
+  );
 
   const statusColor = isDone ? (success ? "green" : "red") : "cyan";
   const borderColor = isDone ? (success ? "green" : "red") : "gray";
@@ -215,11 +256,11 @@ export function Running() {
         <Text color="gray">
           {logs.length} lines
           {stats.tokens > 0 ? `  ${stats.tokens.toLocaleString()} tok` : ""}
-          {stats.files > 0 ? `  ${stats.files} file${stats.files !== 1 ? "s" : ""}` : ""}
+          {stats.files > 0
+            ? `  ${stats.files} file${stats.files !== 1 ? "s" : ""}`
+            : ""}
         </Text>
-        <Text color="gray">
-          {isDone ? "esc back" : "esc back  c cancel"}
-        </Text>
+        <Text color="gray">{isDone ? "esc back" : "esc back  c cancel"}</Text>
       </Box>
     </Box>
   );

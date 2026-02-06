@@ -107,7 +107,9 @@ async function executeWorkflowWithEngine(
     const engineConfig: WorkflowEngineConfig = {
       db: await getDb(),
       logger: {
-        debug: async (_message: string) => { /* suppress debug */ },
+        debug: async (_message: string) => {
+          /* suppress debug */
+        },
         info: async (message: string) => onLog(`[INFO] ${message}`),
         error: async (message: string) => onLog(`[ERROR] ${message}`),
       },
@@ -144,7 +146,9 @@ async function executeWorkflowWithEngine(
                 if (provider === "external-agent" && externalAgentConfig) {
                   executeOptions.cli = externalAgentConfig.cli;
                   executeOptions.args = externalAgentConfig.args
-                    ? externalAgentConfig.args.split(" ").filter((a) => a.trim())
+                    ? externalAgentConfig.args
+                        .split(" ")
+                        .filter((a) => a.trim())
                     : [];
                   executeOptions.agentName = externalAgentConfig.agentName;
                   const sessionName = `openfarm-${externalAgentConfig.agentName || externalAgentConfig.cli}`;
@@ -175,39 +179,69 @@ async function executeWorkflowWithEngine(
                 const pattern = params?.pattern as string;
 
                 if (!pattern) {
-                  return { success: false, error: new Error("Git branch step requires 'pattern' parameter") };
+                  return {
+                    success: false,
+                    error: new Error(
+                      "Git branch step requires 'pattern' parameter"
+                    ),
+                  };
                 }
 
                 const datePlaceholder = "${Date.now";
                 const dateNumber = Date.now().toString();
                 // biome-ignore lint/style/useTemplate: Intentional string building
-                const branchName = pattern.replace(datePlaceholder + "}", dateNumber);
+                const branchName = pattern.replace(
+                  datePlaceholder + "}",
+                  dateNumber
+                );
 
                 let originalBranch = "main";
                 try {
-                  originalBranch = execSync("git branch --show-current", { cwd: workspace, encoding: "utf-8" }).trim();
-                } catch { /* Fallback to main */ }
+                  originalBranch = execSync("git branch --show-current", {
+                    cwd: workspace,
+                    encoding: "utf-8",
+                  }).trim();
+                } catch {
+                  /* Fallback to main */
+                }
 
                 try {
-                  execSync(`git branch ${branchName}`, { cwd: workspace, stdio: "pipe" });
+                  execSync(`git branch ${branchName}`, {
+                    cwd: workspace,
+                    stdio: "pipe",
+                  });
                 } catch (_error) {
                   try {
-                    execSync(`git branch -D ${branchName}`, { cwd: workspace, stdio: "pipe" });
-                    execSync(`git branch ${branchName}`, { cwd: workspace, stdio: "pipe" });
+                    execSync(`git branch -D ${branchName}`, {
+                      cwd: workspace,
+                      stdio: "pipe",
+                    });
+                    execSync(`git branch ${branchName}`, {
+                      cwd: workspace,
+                      stdio: "pipe",
+                    });
                   } catch (recreateError) {
-                    return { success: false, error: new Error(`Failed to create branch ${branchName}: ${recreateError}`) };
+                    return {
+                      success: false,
+                      error: new Error(
+                        `Failed to create branch ${branchName}: ${recreateError}`
+                      ),
+                    };
                   }
                 }
 
                 executionContext.context.branchName = branchName;
-                (executionContext.context as any).originalBranch = originalBranch;
+                (executionContext.context as any).originalBranch =
+                  originalBranch;
 
                 onLog(`\u2705 Created branch: ${branchName}`);
                 return { success: true, value: branchName };
               }
 
               case "git.worktree": {
-                const { createWorktree } = await import("@openfarm/git-worktree");
+                const { createWorktree } = await import(
+                  "@openfarm/git-worktree"
+                );
                 const { join } = await import("node:path");
                 const { tmpdir } = await import("node:os");
                 const { mkdirSync, existsSync } = await import("node:fs");
@@ -215,23 +249,40 @@ async function executeWorkflowWithEngine(
 
                 const operation = params?.operation as string;
                 if (operation !== "create") {
-                  return { success: false, error: new Error("Only 'create' operation is supported for git.worktree") };
+                  return {
+                    success: false,
+                    error: new Error(
+                      "Only 'create' operation is supported for git.worktree"
+                    ),
+                  };
                 }
 
-                const branchName = executionContext.context.branchName as string;
+                const branchName = executionContext.context
+                  .branchName as string;
                 if (!branchName) {
-                  return { success: false, error: new Error("No branch name found in context. Run git.branch step first.") };
+                  return {
+                    success: false,
+                    error: new Error(
+                      "No branch name found in context. Run git.branch step first."
+                    ),
+                  };
                 }
 
                 const timestamp = Date.now();
-                const worktreeParent = join(tmpdir(), `openfarm-worktree-${timestamp}`);
+                const worktreeParent = join(
+                  tmpdir(),
+                  `openfarm-worktree-${timestamp}`
+                );
                 const worktreePath = join(worktreeParent, "work");
 
                 if (!existsSync(worktreeParent)) {
                   mkdirSync(worktreeParent, { recursive: true });
                 }
 
-                const gitRoot = execSync("git rev-parse --show-toplevel", { cwd: workspace, encoding: "utf-8" }).trim();
+                const gitRoot = execSync("git rev-parse --show-toplevel", {
+                  cwd: workspace,
+                  encoding: "utf-8",
+                }).trim();
                 onLog(`  worktree: ${worktreePath}`);
 
                 const worktreeResult = await createWorktree(gitRoot, {
@@ -241,30 +292,42 @@ async function executeWorkflowWithEngine(
                 });
 
                 if (!worktreeResult.ok) {
-                  onLog(`\u274C Worktree creation failed: ${worktreeResult.error.message}`);
+                  onLog(
+                    `\u274C Worktree creation failed: ${worktreeResult.error.message}`
+                  );
                   return { success: false, error: worktreeResult.error };
                 }
 
-                executionContext.context.worktreePath = worktreeResult.value.path;
-                (executionContext.context as any).worktreeParent = worktreeParent;
+                executionContext.context.worktreePath =
+                  worktreeResult.value.path;
+                (executionContext.context as any).worktreeParent =
+                  worktreeParent;
 
                 onLog("\u2713 worktree ready");
                 return { success: true, value: worktreeResult.value.path };
               }
 
               default:
-                return { success: false, error: new Error(`Unsupported action: ${action}`) };
+                return {
+                  success: false,
+                  error: new Error(`Unsupported action: ${action}`),
+                };
             }
           } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
+            const message =
+              error instanceof Error ? error.message : String(error);
             if (message === "CANCELLED") throw error;
-            return { success: false, error: new Error(`Step execution failed: ${message}`) };
+            return {
+              success: false,
+              error: new Error(`Step execution failed: ${message}`),
+            };
           }
         },
       },
       errorHandler: {
         handle: async (error: unknown, _context: any) => {
-          const message = error instanceof Error ? error.message : String(error);
+          const message =
+            error instanceof Error ? error.message : String(error);
           onLog(`[ERROR] ${message}`);
         },
       },
@@ -290,7 +353,10 @@ async function executeWorkflowWithEngine(
 
       if (branchName) {
         try {
-          execSync(`git checkout ${originalBranch}`, { cwd: workspace, stdio: "pipe" });
+          execSync(`git checkout ${originalBranch}`, {
+            cwd: workspace,
+            stdio: "pipe",
+          });
         } catch (error) {
           onLog(`\u26A0\uFE0F Failed to checkout ${originalBranch}: ${error}`);
         }
@@ -298,7 +364,10 @@ async function executeWorkflowWithEngine(
 
       if (worktreePath) {
         try {
-          const gitRoot = execSync("git rev-parse --show-toplevel", { cwd: workspace, encoding: "utf-8" }).trim();
+          const gitRoot = execSync("git rev-parse --show-toplevel", {
+            cwd: workspace,
+            encoding: "utf-8",
+          }).trim();
           await removeWorktree(gitRoot, worktreePath, true);
         } catch (error) {
           onLog(`\u26A0\uFE0F Failed to remove worktree: ${error}`);
@@ -306,12 +375,19 @@ async function executeWorkflowWithEngine(
       }
 
       if (worktreeParent) {
-        try { rmSync(worktreeParent, { recursive: true, force: true }); } catch { /* ignore */ }
+        try {
+          rmSync(worktreeParent, { recursive: true, force: true });
+        } catch {
+          /* ignore */
+        }
       }
 
       if (branchName) {
         try {
-          execSync(`git branch -D ${branchName}`, { cwd: workspace, stdio: "pipe" });
+          execSync(`git branch -D ${branchName}`, {
+            cwd: workspace,
+            stdio: "pipe",
+          });
         } catch (error) {
           onLog(`\u26A0\uFE0F Failed to delete branch: ${error}`);
         }
@@ -332,7 +408,9 @@ async function executeWorkflowWithEngine(
  * Start an execution. This runs independently of React component lifecycle.
  * All state is written to the runtime store.
  */
-export async function startExecution(params: StartExecutionParams): Promise<void> {
+export async function startExecution(
+  params: StartExecutionParams
+): Promise<void> {
   const {
     executionId,
     task,
@@ -354,9 +432,16 @@ export async function startExecution(params: StartExecutionParams): Promise<void
 
   // Setup log file
   const logsDir = join(process.cwd(), "logs");
-  try { mkdirSync(logsDir, { recursive: true }); } catch { /* exists */ }
+  try {
+    mkdirSync(logsDir, { recursive: true });
+  } catch {
+    /* exists */
+  }
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const logFilePath = join(logsDir, `execution-${executionId}-${timestamp}.txt`);
+  const logFilePath = join(
+    logsDir,
+    `execution-${executionId}-${timestamp}.txt`
+  );
 
   const header = [
     "=".repeat(80),
@@ -370,7 +455,11 @@ export async function startExecution(params: StartExecutionParams): Promise<void
     "=".repeat(80),
     "",
   ].join("\n");
-  try { appendFileSync(logFilePath, header); } catch { /* ignore */ }
+  try {
+    appendFileSync(logFilePath, header);
+  } catch {
+    /* ignore */
+  }
 
   store.updateSession(executionId, { logFilePath });
 
@@ -489,7 +578,12 @@ export async function startExecution(params: StartExecutionParams): Promise<void
     const duration = Date.now() - (session?.startTime || Date.now());
     const updatedSession = runtimeStore.getState().getSession(executionId);
 
-    writeLogFooter(logFilePath, result.success ? "COMPLETED" : "FAILED", duration, completedAt);
+    writeLogFooter(
+      logFilePath,
+      result.success ? "COMPLETED" : "FAILED",
+      duration,
+      completedAt
+    );
 
     appStore.getState().updateExecution(executionId, {
       status: result.success ? "completed" : "failed",
@@ -560,7 +654,12 @@ export async function startExecution(params: StartExecutionParams): Promise<void
   }
 }
 
-function writeLogFooter(logFilePath: string, status: string, duration: number, at: Date): void {
+function writeLogFooter(
+  logFilePath: string,
+  status: string,
+  duration: number,
+  at: Date
+): void {
   try {
     const footer = [
       "",
@@ -576,7 +675,10 @@ function writeLogFooter(logFilePath: string, status: string, duration: number, a
   }
 }
 
-function scheduleCleanup(runtimeStore: typeof useExecutionRuntimeStore, executionId: string): void {
+function scheduleCleanup(
+  runtimeStore: typeof useExecutionRuntimeStore,
+  executionId: string
+): void {
   setTimeout(() => {
     const session = runtimeStore.getState().getSession(executionId);
     if (session?.isDone) {
