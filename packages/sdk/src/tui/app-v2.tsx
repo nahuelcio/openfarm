@@ -1,7 +1,9 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { SectionId } from "./components/layout";
 import { MainLayout, SectionPanel } from "./components/layout";
+import { SplashScreen } from "./components/splash-screen";
 import type { Tab } from "./components/tabs";
+import { useInitialization } from "./hooks/use-initialization";
 import { ContextScreen } from "./screens/context";
 import { ContextConfigScreen } from "./screens/context-config";
 import { ContextHistoryScreen } from "./screens/context-history";
@@ -111,18 +113,31 @@ function getShortcuts(section: SectionId, screen: Screen) {
 }
 
 export function AppV2() {
-  const { screen, setScreen, activeTab, setActiveTab, currentExecution } =
-    useStore();
+  const {
+    screen,
+    setScreen,
+    activeTab,
+    setActiveTab,
+    currentExecution,
+    provider,
+  } = useStore();
+  const [showSplash, setShowSplash] = useState(true);
+  const {
+    isReady,
+    progress,
+    status: loadingStatus,
+  } = useInitialization(provider);
 
   const currentSection = useMemo(() => resolveSection(screen), [screen]);
 
+  // Sync tab with current section
   useEffect(() => {
     if (activeTab !== currentSection) {
       setActiveTab(currentSection as TabId);
     }
   }, [activeTab, currentSection, setActiveTab]);
 
-  const status = useMemo(() => {
+  const executionStatus = useMemo(() => {
     if (!currentExecution) {
       return "idle" as const;
     }
@@ -184,6 +199,17 @@ export function AppV2() {
     }
   };
 
+  // Show splash screen while loading (must be after all hooks)
+  if (showSplash && !isReady) {
+    return (
+      <SplashScreen
+        loadingProgress={progress}
+        loadingText={loadingStatus}
+        onReady={() => setShowSplash(false)}
+      />
+    );
+  }
+
   return (
     <MainLayout
       activeTab={currentSection}
@@ -200,7 +226,7 @@ export function AppV2() {
       }
       onTabChange={handleTabChange}
       sessionId={currentExecution?.id}
-      status={status}
+      status={executionStatus}
       tabHotkeysEnabled={screen !== "execute"}
       tabs={TABS}
       title="OpenFarm"
