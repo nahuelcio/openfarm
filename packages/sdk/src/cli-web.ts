@@ -1,21 +1,26 @@
 #!/usr/bin/env node
 /**
- * CLI entry point for Web UI mode
+ * CLI entry point for Web UI mode (Thin Client)
  *
  * Usage: bun run web
+ * Flags: --port <number>, --host <string>, --no-open
  */
 
-import { runWebApp } from "./web-cli";
-import type { OpenFarmConfig } from "./types";
+import { startWebServer, parseConfig } from "@openfarm/web-ui";
 
-const config: OpenFarmConfig = {
-  apiUrl: process.env.OPENFARM_API_URL,
-  apiKey: process.env.OPENFARM_API_KEY,
-  defaultProvider: process.env.OPENFARM_PROVIDER || "external-agent",
-  defaultModel: process.env.OPENFARM_MODEL,
-};
+const config = parseConfig(process.argv.slice(2));
 
-runWebApp(process.argv.slice(2), config).catch((error) => {
-  console.error("Failed to start Web UI:", error);
-  process.exit(1);
+console.log("Starting OpenFarm Web UI (Thin Client)...");
+
+const server = await startWebServer(config);
+
+process.on("SIGINT", () => {
+  console.log("\nShutting down server...");
+  server.close();
+  process.exit(0);
+});
+
+process.on("SIGTERM", () => {
+  server.close();
+  process.exit(0);
 });

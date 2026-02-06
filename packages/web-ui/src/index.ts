@@ -1,25 +1,16 @@
 /**
  * @openfarm/web-ui
  *
- * Web runtime for OpenFarm TUI.
- * Drop-in replacement for @openfarm/tui-opentui that renders to DOM.
+ * Thin Client web terminal for OpenFarm TUI.
+ * Renders the TUI in a browser via xterm.js connected to a PTY backend.
  */
 
-// Runtime API (compatible con @opentui/react)
-export {
-  Box,
-  Text,
-  render,
-  useApp,
-  useInput,
-  useKeyboard,
-  useStdout,
-  useStdoutDimensions,
-} from "./runtime";
-
-export type { BoxProps } from "./runtime";
-export type { TextProps } from "./runtime";
-export type { InputKey } from "./runtime";
-
-// Utils
-export { createWebApp } from "./create-web-app.tsx";
+export { startWebServer } from "./server.ts";
+export { parseConfig, isLocalhost } from "./config.ts";
+export { PtyManager } from "./pty-manager.ts";
+export { WsHandler } from "./ws-handler.ts";
+export type {
+  WebServerConfig,
+  WebServerHandle,
+  PtyManagerOptions,
+} from "./types.ts";

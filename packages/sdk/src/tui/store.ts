@@ -22,7 +22,6 @@ export type Screen =
   | "execute"
   | "running"
   | "task-loop"
-  | "specs"
   | "history"
   | "execution-detail"
   | "diff-viewer"
@@ -42,8 +41,7 @@ export type TabId =
   | "workflows"
   | "context"
   | "remotes"
-  | "task-loop"
-  | "specs";
+  | "task-loop";
 
 export interface Execution {
   id: string;

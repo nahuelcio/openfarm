@@ -12,8 +12,7 @@ export type SectionId =
   | "workflows"
   | "context"
   | "remotes"
-  | "task-loop"
-  | "specs";
+  | "task-loop";
 
 interface SectionPanelProps {
   sectionId: SectionId;

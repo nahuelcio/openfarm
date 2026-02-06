@@ -1,38 +1,27 @@
 #!/usr/bin/env bun
 import type { OpenFarmConfig } from "./types";
 
-async function runWebMode(
-  _args: string[],
-  _config: OpenFarmConfig,
-  _themeId?: string
-): Promise<void> {
-  // Web mode necesita un servidor HTTP porque el frontend corre en el browser
-  // En dev, usamos Vite. En prod, serían archivos estáticos.
-  const { startWebServer } = await import("@openfarm/web-ui/server");
+async function runWebMode(args: string[]): Promise<void> {
+  const { startWebServer, parseConfig } = await import("@openfarm/web-ui");
 
-  const portIndex = _args.indexOf("--port");
-  const port =
-    portIndex >= 0 && _args[portIndex + 1]
-      ? Number.parseInt(_args[portIndex + 1], 10)
-      : 3000;
+  const config = parseConfig(args);
 
-  const noOpen = _args.includes("--no-open");
+  console.log("Starting OpenFarm Web UI (Thin Client)...");
 
-  console.log("🌐 Starting OpenFarm Web UI...");
+  const server = await startWebServer(config);
 
-  const server = await startWebServer({
-    port,
-    open: !noOpen,
-  });
-
-  // Mantener el proceso vivo hasta que el usuario cierre
-  process.on("SIGINT", async () => {
-    console.log("\n👋 Shutting down server...");
-    await server.close();
+  process.on("SIGINT", () => {
+    console.log("\nShutting down server...");
+    server.close();
     process.exit(0);
   });
 
-  // Esperar indefinidamente
+  process.on("SIGTERM", () => {
+    server.close();
+    process.exit(0);
+  });
+
+  // Keep process alive
   await new Promise(() => {});
 }
 
@@ -50,9 +39,9 @@ export async function runTUIApp(
   const themeId =
     themeIndex >= 0 && args[themeIndex + 1] ? args[themeIndex + 1] : undefined;
 
-  // If --web flag, run web mode
+  // If --web flag, run web mode (Thin Client: xterm.js + PTY)
   if (useWeb) {
-    return runWebMode(args, config, themeId);
+    return runWebMode(args);
   }
 
   // If first argument is "context", use the context CLI

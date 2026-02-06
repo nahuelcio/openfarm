@@ -15,7 +15,6 @@ import { History } from "./screens/history";
 import { NewDashboard } from "./screens/new-dashboard";
 import { RemoteInstancesScreen } from "./screens/remote-instances";
 import { Running } from "./screens/running";
-import { SpecsScreen } from "./screens/specs";
 import { TaskLoopScreen } from "./screens/task-loop";
 import { ThemeSelector } from "./screens/theme-selector";
 import { WorkflowEditor } from "./screens/workflow-editor";
@@ -30,7 +29,6 @@ const TABS: Tab[] = [
   { id: "context", label: "Context", shortcut: "5" },
   { id: "remotes", label: "Remotes", shortcut: "6" },
   { id: "task-loop", label: "Loop", shortcut: "7" },
-  { id: "specs", label: "Specs", shortcut: "8" },
 ];
 
 const SECTION_SCREEN_MAP: Record<SectionId, Screen> = {
@@ -41,7 +39,6 @@ const SECTION_SCREEN_MAP: Record<SectionId, Screen> = {
   context: "context-config",
   remotes: "remotes",
   "task-loop": "task-loop",
-  specs: "specs",
 };
 
 function resolveSection(screen: Screen): SectionId {
@@ -70,9 +67,6 @@ function resolveSection(screen: Screen): SectionId {
   }
   if (screen === "task-loop") {
     return "task-loop";
-  }
-  if (screen === "specs") {
-    return "specs";
   }
   return "dashboard";
 }
@@ -113,15 +107,6 @@ function getShortcuts(section: SectionId, screen: Screen) {
       { key: "o", label: "panel" },
       { key: "v", label: "mode" },
       { key: "q", label: "quit loop" },
-    ];
-  }
-
-  if (section === "specs" || screen === "specs") {
-    return [
-      ...base,
-      { key: "r", label: "refresh" },
-      { key: "i", label: "implement" },
-      { key: "a", label: "archive" },
     ];
   }
 
@@ -210,8 +195,6 @@ export function AppV2() {
         return <ThemeSelector />;
       case "task-loop":
         return <TaskLoopScreen embedded={true} />;
-      case "specs":
-        return <SpecsScreen />;
       default:
         return <NewDashboard />;
     }
@@ -249,7 +232,7 @@ export function AppV2() {
       onTabChange={handleTabChange}
       sessionId={currentExecution?.id}
       status={executionStatus}
-      tabHotkeysEnabled={screen !== "execute" && screen !== "specs"}
+      tabHotkeysEnabled={screen !== "execute"}
       tabs={TABS}
       title="OpenFarm"
     >

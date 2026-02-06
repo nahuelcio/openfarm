@@ -10,8 +10,7 @@ export type SectionId =
   | "workflows"
   | "context"
   | "remotes"
-  | "task-loop"
-  | "specs";
+  | "task-loop";
 
 interface ImprovedSidebarProps {
   activeSection: SectionId;
@@ -102,7 +101,6 @@ export function ImprovedSidebar({
       "context",
       "remotes",
       "task-loop",
-      "specs",
     ];
     return sections.indexOf(activeSection);
   });
@@ -115,7 +113,6 @@ export function ImprovedSidebar({
     { id: "context", label: "Context", shortcut: "5" },
     { id: "remotes", label: "Remotes", shortcut: "6" },
     { id: "task-loop", label: "Task Loop", shortcut: "7" },
-    { id: "specs", label: "Specs", shortcut: "8" },
   ];
 
   // Sync focused index when active section changes externally (e.g., via [ ] shortcuts)
@@ -128,10 +125,10 @@ export function ImprovedSidebar({
 
   // Handle keyboard input
   useInput((input) => {
-    // Number keys 1-8 for direct navigation (global shortcut)
+    // Number keys 1-7 for direct navigation (global shortcut)
     // BUT only when NOT typing in an input field
     const num = Number.parseInt(input, 10);
-    if (!(isTyping || Number.isNaN(num)) && num >= 1 && num <= 8) {
+    if (!(isTyping || Number.isNaN(num)) && num >= 1 && num <= 7) {
       const section = sections[num - 1];
       if (section) {
         setFocusedIndex(num - 1);
