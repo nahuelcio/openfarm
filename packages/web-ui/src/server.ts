@@ -16,14 +16,14 @@ interface ServerConfig {
 }
 
 // biome-ignore lint/complexity/useArrowFunction: <explanation>
-const __dirname = function () {
+const __dirname = (function () {
   try {
     return path.dirname(fileURLToPath(import.meta.url));
   } catch {
     // Fallback para cuando no hay import.meta.url
     return process.cwd();
   }
-}();
+})();
 
 export async function startWebServer(config: ServerConfig = {}): Promise<{
   url: string;

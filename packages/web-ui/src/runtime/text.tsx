@@ -31,7 +31,12 @@ export function Text({
     textDecoration: `${underline ? "underline " : ""}${strikethrough ? "line-through" : ""}`,
     fontStyle: italic ? "italic" : "normal",
     opacity: dimColor ? 0.65 : 1,
-    whiteSpace: wrap === "nowrap" ? "nowrap" : wrap === "truncate-end" ? "nowrap" : "pre-wrap",
+    whiteSpace:
+      wrap === "nowrap"
+        ? "nowrap"
+        : wrap === "truncate-end"
+          ? "nowrap"
+          : "pre-wrap",
     overflow: wrap === "truncate-end" ? "hidden" : "visible",
     textOverflow: wrap === "truncate-end" ? "ellipsis" : "clip",
     textAlign: align,

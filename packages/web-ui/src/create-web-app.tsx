@@ -32,17 +32,22 @@ export function createWebApp(
   AppComponent: () => ReactElement,
   config: WebAppConfig = {}
 ): { start: () => Promise<void>; stop: () => void } {
-  const { title = "OpenFarm Web", theme = "dark", containerId = "root" } = config;
+  const {
+    title = "OpenFarm Web",
+    theme = "dark",
+    containerId = "root",
+  } = config;
 
   let renderResult: ReturnType<typeof render> | null = null;
 
   const applyTheme = () => {
     const root = document.documentElement;
-    const themeVars = theme === "auto"
-      ? window.matchMedia("(prefers-color-scheme: dark)").matches
-        ? THEMES.dark
-        : THEMES.light
-      : THEMES[theme];
+    const themeVars =
+      theme === "auto"
+        ? window.matchMedia("(prefers-color-scheme: dark)").matches
+          ? THEMES.dark
+          : THEMES.light
+        : THEMES[theme];
 
     for (const [key, value] of Object.entries(themeVars)) {
       root.style.setProperty(key, value);

@@ -11,9 +11,10 @@ async function runWebMode(
   const { startWebServer } = await import("@openfarm/web-ui/server");
 
   const portIndex = _args.indexOf("--port");
-  const port = portIndex >= 0 && _args[portIndex + 1]
-    ? Number.parseInt(_args[portIndex + 1], 10)
-    : 3000;
+  const port =
+    portIndex >= 0 && _args[portIndex + 1]
+      ? Number.parseInt(_args[portIndex + 1], 10)
+      : 3000;
 
   const noOpen = _args.includes("--no-open");
 

@@ -8,6 +8,7 @@ type SpecStatus = "draft" | "ready" | "implementing" | "done" | "archived";
 type ArtifactKey = "proposal" | "requirements" | "design" | "tasks";
 type PlanStep = "provider" | "model" | "folder" | "plan";
 const MODELS_PER_PAGE = 6;
+const MODEL_LIST_HEIGHT = MODELS_PER_PAGE + 2;
 
 interface SpecMetadata {
   slug: string;
@@ -695,7 +696,13 @@ export function SpecsScreen() {
                 </>
               )}
 
-              <Box borderStyle="single" flexDirection="column" paddingX={1}>
+              <Box
+                borderStyle="single"
+                flexDirection="column"
+                height={MODEL_LIST_HEIGHT}
+                overflow="hidden"
+                padding={1}
+              >
                 {filteredModels.length === 0 ? (
                   <Text color="gray" dimColor>
                     No matching models.

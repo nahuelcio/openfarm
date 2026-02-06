@@ -79,7 +79,13 @@ function parseKeyEvent(event: KeyboardEvent): { input: string; key: InputKey } {
 }
 
 export function useKeyboard(
-  handler: (key: { name?: string; ctrl?: boolean; shift?: boolean; meta?: boolean; sequence?: string }) => void,
+  handler: (key: {
+    name?: string;
+    ctrl?: boolean;
+    shift?: boolean;
+    meta?: boolean;
+    sequence?: string;
+  }) => void,
   options?: { isActive?: boolean }
 ): void {
   const active = options?.isActive ?? true;
