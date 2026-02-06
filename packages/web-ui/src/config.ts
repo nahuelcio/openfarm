@@ -33,7 +33,9 @@ export function parseConfig(args: string[]): WebServerConfig {
 
   // Validate port
   if (Number.isNaN(port) || port < 1024 || port > 65535) {
-    console.error(`[web-ui] Invalid port: ${port}. Must be between 1024-65535.`);
+    console.error(
+      `[web-ui] Invalid port: ${port}. Must be between 1024-65535.`
+    );
     process.exit(1);
   }
 

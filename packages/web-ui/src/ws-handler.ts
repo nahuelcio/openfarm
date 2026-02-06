@@ -105,13 +105,21 @@ export class WsHandler {
       if (parts.length === 3) {
         const cols = Number.parseInt(parts[1], 10);
         const rows = Number.parseInt(parts[2], 10);
-        if (!Number.isNaN(cols) && !Number.isNaN(rows) && cols > 0 && rows > 0) {
+        if (
+          !Number.isNaN(cols) &&
+          !Number.isNaN(rows) &&
+          cols > 0 &&
+          rows > 0
+        ) {
           this.pty.resize(cols, rows);
         }
       }
     } else if (msg === ControlMessage.Ping) {
       // Respond with pong to all clients (or just the sender, but we don't track which sent it)
-      const pong = Buffer.from([CONTROL_PREFIX, ...Buffer.from(ControlMessage.Pong)]);
+      const pong = Buffer.from([
+        CONTROL_PREFIX,
+        ...Buffer.from(ControlMessage.Pong),
+      ]);
       this.broadcast(pong);
     }
   }

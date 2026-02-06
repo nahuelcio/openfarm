@@ -69,7 +69,14 @@ export class PtyManager {
     // Launch the PTY bridge under Node.js (node-pty requires Node, not Bun)
     this.bridge = spawn(
       nodePath,
-      [bridgePath, this.options.cwd, String(this.cols), String(this.rows), cmd, ...cmdArgs],
+      [
+        bridgePath,
+        this.options.cwd,
+        String(this.cols),
+        String(this.rows),
+        cmd,
+        ...cmdArgs,
+      ],
       {
         cwd: this.options.cwd,
         env: process.env,

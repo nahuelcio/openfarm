@@ -55,9 +55,7 @@ export async function startWebServer(
   const port = await findAvailablePort(config.port, config.host);
 
   if (port !== config.port) {
-    console.log(
-      `[web-ui] Port ${config.port} in use, using ${port} instead.`
-    );
+    console.log(`[web-ui] Port ${config.port} in use, using ${port} instead.`);
   }
 
   // Warn if binding to non-localhost
@@ -65,9 +63,7 @@ export async function startWebServer(
     console.warn(
       `\n⚠️  WARNING: Binding to ${config.host} exposes this server to the network.`
     );
-    console.warn(
-      "   Anyone with network access can control your terminal.\n"
-    );
+    console.warn("   Anyone with network access can control your terminal.\n");
     if (config.token) {
       console.log(`   Security token: ${config.token}`);
       console.log(
