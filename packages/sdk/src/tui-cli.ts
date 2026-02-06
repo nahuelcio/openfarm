@@ -1,6 +1,40 @@
 #!/usr/bin/env bun
 import type { OpenFarmConfig } from "./types";
 
+async function runWebMode(
+  _args: string[],
+  _config: OpenFarmConfig,
+  _themeId?: string
+): Promise<void> {
+  // Web mode necesita un servidor HTTP porque el frontend corre en el browser
+  // En dev, usamos Vite. En prod, serían archivos estáticos.
+  const { startWebServer } = await import("@openfarm/web-ui/server");
+
+  const portIndex = _args.indexOf("--port");
+  const port = portIndex >= 0 && _args[portIndex + 1]
+    ? Number.parseInt(_args[portIndex + 1], 10)
+    : 3000;
+
+  const noOpen = _args.includes("--no-open");
+
+  console.log("🌐 Starting OpenFarm Web UI...");
+
+  const server = await startWebServer({
+    port,
+    open: !noOpen,
+  });
+
+  // Mantener el proceso vivo hasta que el usuario cierre
+  process.on("SIGINT", async () => {
+    console.log("\n👋 Shutting down server...");
+    await server.close();
+    process.exit(0);
+  });
+
+  // Esperar indefinidamente
+  await new Promise(() => {});
+}
+
 export async function runTUIApp(
   args: string[],
   config: OpenFarmConfig
@@ -8,22 +42,37 @@ export async function runTUIApp(
   // Parse flags
   const useTaskLoop = args.includes("--task-loop") || args.includes("--loop");
   const useRemote = args.includes("--remote") || args.includes("--server");
+  const useWeb = args.includes("--web");
 
   // Parse --theme flag
   const themeIndex = args.indexOf("--theme");
   const themeId =
     themeIndex >= 0 && args[themeIndex + 1] ? args[themeIndex + 1] : undefined;
 
-  // Si el primer argumento es "context", usar el CLI de contexto
+  // If --web flag, run web mode
+  if (useWeb) {
+    return runWebMode(args, config, themeId);
+  }
+
+  // If first argument is "context", use the context CLI
   if (args[0] === "context") {
     const { runContextCLI } = await import("./cli-context");
     return runContextCLI(args.slice(1), config);
   }
 
-  // Si es comando remote-server, iniciar servidor
+  // If command is remote-server, start server
   if (args[0] === "remote-server" || args[0] === "server" || useRemote) {
     const { runRemoteServerCLI } = await import("./cli/remote-server-cli");
     return runRemoteServerCLI(args.slice(1), config);
+  }
+
+  // If command is spec, delegate to spec CLI
+  if (args[0] === "spec") {
+    const specModulePath = "@openfarm/spec";
+    const { runSpecCLI } = (await import(specModulePath)) as {
+      runSpecCLI: (args: string[]) => Promise<void>;
+    };
+    return runSpecCLI(args.slice(1));
   }
 
   // TUI unificada: siempre usar AppV2

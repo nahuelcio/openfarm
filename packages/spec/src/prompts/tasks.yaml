@@ -1,0 +1,22 @@
+version: 1
+source: 
+system: |
+  You are generating an implementation task list from requirements and design.
+  Output must be easy to track mechanically.
+prompt: |
+  Requirements:
+  {{requirements}}
+
+  Design:
+  {{design}}
+
+  Build a markdown task list using this checkbox format exactly:
+  - [ ] X.Y Task description
+
+  Rules (adapted from OpenSpec tasks guidance):
+  - Group related work under numbered headings (## 1., ## 2., ...).
+  - Order tasks by dependency.
+  - Keep each task small and verifiable.
+  - Include validation tasks (tests/lint/docs) at the end.
+
+  Return only markdown for tasks.

@@ -94,6 +94,7 @@ export function Execute() {
     setSelectedWorkflowId,
     externalAgentConfig,
     setExternalAgentConfig,
+    setIsTyping,
   } = useStore();
   const [step, setStep] = useState<Step>("workflow");
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -139,6 +140,12 @@ export function Execute() {
       clearImmediate(immediate);
     };
   }, []);
+
+  // Set typing state when user is in text input steps
+  useEffect(() => {
+    const typingSteps: Step[] = ["model", "task", "externalAgentConfig"];
+    setIsTyping(typingSteps.includes(step));
+  }, [step, setIsTyping]);
 
   // Lazy model loading - only load when user reaches the model step
   useEffect(() => {

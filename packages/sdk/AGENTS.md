@@ -4,7 +4,7 @@ The OpenFarm SDK provides a unified interface for AI-powered code execution acro
 # Tech Stack
 - **Language**: TypeScript (ES2022)
 - **Runtime**: Bun (Primary) / Node.js
-- **CLI Framework**: Ink (React-based CLI)
+- **CLI Framework**: OpenTUI (React-based TUI - proprietary library)
 - **State Management**: Zustand (TUI state)
 - **Database**: SQLite (via `@openfarm/core` and `better-sqlite3`)
 - **Build Tools**: `tsup` (esbuild), `typescript`
@@ -20,7 +20,7 @@ The SDK follows a modular, extensible architecture designed for high performance
 - **Provider System**: Uses the Template Method pattern via `BaseProvider` to enforce a consistent execution lifecycle (Validate -> Prepare -> Execute -> Parse -> Format).
 - **Communication Strategies**: Reusable interaction patterns including `HttpStrategy` for API calls and `CliStrategy` for wrapping CLI-based tools.
 - **Response Parsers**: Standardized parsing for different AI outputs (JSON, streaming, etc.).
-- **TUI Layer**: A React-based terminal interface built with Ink for interactive task execution and history management.
+- **TUI Layer**: A React-based terminal interface built with OpenTUI for interactive task execution and history management.
 
 ### Directory Structure
 ```
@@ -29,7 +29,7 @@ src/
 ├── providers/       # Built-in providers (e.g., direct-api)
 ├── strategies/      # Communication patterns (HTTP, CLI)
 ├── parsers/         # Response format handlers
-├── tui/             # Ink-based terminal interface components
+├── tui/             # OpenTUI-based terminal interface components
 ├── utils/           # Shared utilities (logger, etc.)
 ├── types.ts         # Global type definitions
 ├── open-farm.ts     # Main OpenFarm class (Primary Entry Point)
@@ -117,5 +117,6 @@ The SDK uses standardized `ProviderError` types. All errors are normalized in th
 
 # External Integrations
 - **Anthropic/OpenAI**: Supported via `direct-api` and specific provider packages.
-- **Aider**: Requires local `aider` CLI installation.
-- **Claude Code**: Requires `@anthropic-ai/claude-code` global installation.
+- **Aider**: Requires local `aider` CLI installation. Package: `@openfarm/provider-aider`
+- **Claude Code**: Requires `@anthropic-ai/claude-code` global installation. Package: `@openfarm/provider-claude`
+- **OpenCode**: Requires `opencode` CLI installation. Package: `@openfarm/provider-opencode`

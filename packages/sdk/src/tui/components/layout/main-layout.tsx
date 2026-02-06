@@ -156,7 +156,7 @@ export function MainLayout({
               justifyContent="space-between"
               paddingX={1}
             >
-              <Text>Narrow mode - use 1-7 for navigation</Text>
+              <Text>Narrow mode - use 1-8 for navigation</Text>
               <Text>{badge.label}</Text>
             </Box>
             <Box flexDirection="column" flexGrow={1} marginTop={1}>

@@ -32,7 +32,9 @@
     "tui": "bun run src/cli.ts",
     "tui:cli": "bun run src/cli.ts --cli",
     "loop": "bun run src/cli.ts task-loop",
-    "server": "bun run src/cli.ts remote-server"
+    "server": "bun run src/cli.ts remote-server",
+    "web": "bun run src/cli-web.ts",
+    "web:dev": "cd ../web-ui && bun run dev"
   },
   "dependencies": {
     "@openfarm/agent-runner": "workspace:*",
@@ -41,7 +43,9 @@
     "@openfarm/core": "workspace:*",
     "@openfarm/git-worktree": "workspace:*",
     "@openfarm/remote-server": "workspace:*",
+    "@openfarm/spec": "workspace:*",
     "@openfarm/task-loop": "workspace:*",
+    "@openfarm/web-ui": "workspace:*",
     "@openfarm/workflow-engine": "workspace:*",
     "@opentui/core": "^0.1.77",
     "@opentui/react": "^0.1.77",

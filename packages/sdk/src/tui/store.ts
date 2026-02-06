@@ -22,6 +22,7 @@ export type Screen =
   | "execute"
   | "running"
   | "task-loop"
+  | "specs"
   | "history"
   | "execution-detail"
   | "diff-viewer"
@@ -41,7 +42,8 @@ export type TabId =
   | "workflows"
   | "context"
   | "remotes"
-  | "task-loop";
+  | "task-loop"
+  | "specs";
 
 export interface Execution {
   id: string;
@@ -163,6 +165,10 @@ interface AppState {
   ) => Promise<GeneratedContext | null>;
   setCurrentContext: (context: GeneratedContext | null) => void;
   setCachedContext: (context: GeneratedContext | null) => void;
+
+  // Typing state to disable shortcuts when in input fields
+  isTyping: boolean;
+  setIsTyping: (typing: boolean) => void;
 }
 
 export const useStore = create<AppState>((set) => ({
@@ -356,4 +362,8 @@ export const useStore = create<AppState>((set) => ({
   },
   setCurrentContext: (context) => set({ currentContext: context }),
   setCachedContext: (context) => set({ cachedContext: context }),
+
+  // Typing state
+  isTyping: false,
+  setIsTyping: (typing) => set({ isTyping: typing }),
 }));

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useStore } from "../store";
 import { getAvailableModels } from "../utils/models";
 
@@ -17,18 +17,37 @@ const LOADING_STEPS = [
 
 export function useInitialization(provider: string): InitializationState {
   const [isReady, setIsReady] = useState(false);
-  const [progress, setProgress] = useState(0);
+  const [displayProgress, setDisplayProgress] = useState(0);
   const [status, setStatus] = useState("Initializing");
+  const targetProgressRef = useRef(0);
 
   const { loadExecutionsFromDb, loadContextsFromDb, setAvailableModels } =
     useStore();
+
+  // Smooth progress animation
+  useEffect(() => {
+    const animate = () => {
+      const diff = targetProgressRef.current - displayProgress;
+      if (Math.abs(diff) < 0.5) {
+        setDisplayProgress(targetProgressRef.current);
+        return;
+      }
+
+      const step = diff * 0.15; // smooth easing factor
+      setDisplayProgress((prev) => {
+        const next = prev + step;
+        return Math.min(next, targetProgressRef.current);
+      });
+    };
+
+    const interval = setInterval(animate, 16); // ~60fps
+    return () => clearInterval(interval);
+  }, [displayProgress]);
 
   useEffect(() => {
     let cancelled = false;
 
     async function initialize() {
-      let accumulatedProgress = 0;
-
       for (let i = 0; i < LOADING_STEPS.length; i++) {
         if (cancelled) {
           return;
@@ -68,13 +87,17 @@ export function useInitialization(provider: string): InitializationState {
           );
         }
 
-        accumulatedProgress += LOADING_STEPS[i].weight;
-        setProgress(accumulatedProgress);
+        // Update target progress (animation will smooth it)
+        const newProgress = LOADING_STEPS.slice(0, i + 1).reduce(
+          (sum, step) => sum + step.weight,
+          0
+        );
+        targetProgressRef.current = newProgress;
       }
 
       if (!cancelled) {
-        setProgress(100);
-        setIsReady(true);
+        targetProgressRef.current = 100;
+        setTimeout(() => setIsReady(true), 600);
       }
     }
 
@@ -85,5 +108,5 @@ export function useInitialization(provider: string): InitializationState {
     };
   }, [loadExecutionsFromDb, loadContextsFromDb, setAvailableModels, provider]);
 
-  return { isReady, progress, status };
+  return { isReady, progress: Math.floor(displayProgress), status };
 }

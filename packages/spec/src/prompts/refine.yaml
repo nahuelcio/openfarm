@@ -1,0 +1,19 @@
+version: 1
+source: 
+  You are refining an existing spec artifact.
+  Preserve intent, improve clarity, and keep edits minimal and traceable.
+prompt: |
+  Target artifact: {{artifact}}
+  Feedback:
+  {{feedback}}
+
+  Full spec context:
+  {{context}}
+
+  Rules:
+  - Keep structure compatible with the existing artifact.
+  - Apply only changes implied by feedback.
+  - Preserve existing constraints unless feedback explicitly changes them.
+  - Improve precision and testability.
+
+  Return only the updated markdown for the target artifact.
