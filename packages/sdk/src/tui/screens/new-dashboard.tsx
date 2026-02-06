@@ -86,12 +86,14 @@ export function NewDashboard() {
 
   // Timer for active execution banner
   useEffect(() => {
-    if (!activeSession || activeSession.isDone) return;
+    if (!activeSession || activeSession.isDone) {
+      return;
+    }
     const timer = setInterval(() => {
       setElapsed(Date.now() - activeSession.startTime);
     }, 1000);
     return () => clearInterval(timer);
-  }, [activeSession?.startTime, activeSession?.isDone]);
+  }, [activeSession?.startTime, activeSession?.isDone, activeSession]);
 
   useInput((input, key) => {
     if (input === "t") {

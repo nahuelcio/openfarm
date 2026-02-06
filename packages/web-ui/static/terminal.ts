@@ -1,13 +1,13 @@
-import { Terminal } from "xterm";
 import { FitAddon } from "@xterm/addon-fit";
-import { WebLinksAddon } from "@xterm/addon-web-links";
 import { SearchAddon } from "@xterm/addon-search";
+import { WebLinksAddon } from "@xterm/addon-web-links";
+import { Terminal } from "xterm";
 
 // Control message protocol
 const CONTROL_PREFIX = 0x00;
 
 // Reconnection backoff
-const RECONNECT_DELAYS = [1000, 2000, 4000, 8000, 16000, 30000];
+const RECONNECT_DELAYS = [1000, 2000, 4000, 8000, 16_000, 30_000];
 
 // DOM elements
 const statusProject = document.getElementById("status-project")!;
@@ -43,7 +43,7 @@ const terminal = new Terminal({
   },
   cursorBlink: true,
   allowProposedApi: true,
-  scrollback: 10000,
+  scrollback: 10_000,
 });
 
 // Addons
@@ -63,6 +63,7 @@ fitAddon.fit();
 let ws: WebSocket | null = null;
 let reconnectAttempt = 0;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+const utf8Decoder = new TextDecoder();
 
 function setStatus(status: "connected" | "reconnecting" | "disconnected") {
   statusIndicator.className = `status-${status}`;
@@ -116,7 +117,15 @@ function connect() {
         return;
       }
 
-      terminal.write(bytes);
+      terminal.write(utf8Decoder.decode(bytes, { stream: true }));
+    } else if (data instanceof Blob) {
+      data.arrayBuffer().then((buffer) => {
+        const bytes = new Uint8Array(buffer);
+        if (bytes.length > 0 && bytes[0] === CONTROL_PREFIX) {
+          return;
+        }
+        terminal.write(utf8Decoder.decode(bytes, { stream: true }));
+      });
     } else if (typeof data === "string") {
       terminal.write(data);
     }
@@ -134,7 +143,9 @@ function connect() {
 }
 
 function scheduleReconnect() {
-  if (reconnectTimer) return;
+  if (reconnectTimer) {
+    return;
+  }
 
   const delay =
     RECONNECT_DELAYS[Math.min(reconnectAttempt, RECONNECT_DELAYS.length - 1)];
@@ -161,7 +172,9 @@ terminal.onResize(({ cols, rows }) => {
 // Handle window resize with debounce
 let resizeTimer: ReturnType<typeof setTimeout> | null = null;
 window.addEventListener("resize", () => {
-  if (resizeTimer) clearTimeout(resizeTimer);
+  if (resizeTimer) {
+    clearTimeout(resizeTimer);
+  }
   resizeTimer = setTimeout(() => {
     fitAddon.fit();
   }, 100);

@@ -131,7 +131,9 @@ async function executeWorkflowWithEngine(
           try {
             switch (action) {
               case "agent.code": {
-                if (signal.aborted) throw new Error("CANCELLED");
+                if (signal.aborted) {
+                  throw new Error("CANCELLED");
+                }
 
                 onLog(`\u{1F916} Executing agent code with ${provider}...`);
 
@@ -158,7 +160,9 @@ async function executeWorkflowWithEngine(
                 const result = await openFarm.execute(executeOptions);
                 onAgentSessionStart?.("");
 
-                if (signal.aborted) throw new Error("CANCELLED");
+                if (signal.aborted) {
+                  throw new Error("CANCELLED");
+                }
 
                 if (result.success) {
                   return {
@@ -189,9 +193,8 @@ async function executeWorkflowWithEngine(
 
                 const datePlaceholder = "${Date.now";
                 const dateNumber = Date.now().toString();
-                // biome-ignore lint/style/useTemplate: Intentional string building
                 const branchName = pattern.replace(
-                  datePlaceholder + "}",
+                  `${datePlaceholder}}`,
                   dateNumber
                 );
 
@@ -316,7 +319,9 @@ async function executeWorkflowWithEngine(
           } catch (error) {
             const message =
               error instanceof Error ? error.message : String(error);
-            if (message === "CANCELLED") throw error;
+            if (message === "CANCELLED") {
+              throw error;
+            }
             return {
               success: false,
               error: new Error(`Step execution failed: ${message}`),
@@ -424,7 +429,7 @@ export async function startExecution(
   } = params;
 
   const store = runtimeStore.getState();
-  const app = appStore.getState();
+  const _app = appStore.getState();
 
   // Create abort controller and store in session
   const abortController = new AbortController();
@@ -602,7 +607,9 @@ export async function startExecution(
     });
     scheduleCleanup(runtimeStore, executionId);
   } catch (error) {
-    if (abortController.signal.aborted) return;
+    if (abortController.signal.aborted) {
+      return;
+    }
 
     const message = error instanceof Error ? error.message : String(error);
     const session = runtimeStore.getState().getSession(executionId);

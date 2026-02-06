@@ -19,8 +19,12 @@ const SPINNER_FRAMES = [
 ];
 
 export function formatDuration(ms: number): string {
-  if (ms < 1000) return `${ms}ms`;
-  if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`;
+  if (ms < 1000) {
+    return `${ms}ms`;
+  }
+  if (ms < 60_000) {
+    return `${(ms / 1000).toFixed(1)}s`;
+  }
   const mins = Math.floor(ms / 60_000);
   const secs = ((ms % 60_000) / 1000).toFixed(0);
   return `${mins}m ${secs}s`;
@@ -40,27 +44,42 @@ type LogType =
   | "info";
 
 function classifyLog(line: string): LogType {
-  if (!line || line.trim() === "") return "info";
-  if (line.startsWith("\u2500") || line.startsWith("\u2550"))
+  if (!line || line.trim() === "") {
+    return "info";
+  }
+  if (line.startsWith("\u2500") || line.startsWith("\u2550")) {
     return "separator";
+  }
   if (
     line.startsWith("[ERROR]") ||
     line.startsWith("Error:") ||
     line.startsWith("\u274C") ||
     line.startsWith("\u2717")
-  )
+  ) {
     return "error";
-  if (line.startsWith("\u2705") || line.startsWith("\u2713")) return "success";
-  if (line.startsWith("\u26A0")) return "warning";
-  if (line.startsWith("$") || line.startsWith("\uD83D\uDE80")) return "command";
-  if (line.startsWith("  ")) return "output";
+  }
+  if (line.startsWith("\u2705") || line.startsWith("\u2713")) {
+    return "success";
+  }
+  if (line.startsWith("\u26A0")) {
+    return "warning";
+  }
+  if (line.startsWith("$") || line.startsWith("\uD83D\uDE80")) {
+    return "command";
+  }
+  if (line.startsWith("  ")) {
+    return "output";
+  }
   if (
     line.startsWith("\u2502") ||
     line.startsWith("\u251C") ||
     line.startsWith("\u2514")
-  )
+  ) {
     return "output";
-  if (line.startsWith("\u25B8") || line.startsWith("\u25B9")) return "step";
+  }
+  if (line.startsWith("\u25B8") || line.startsWith("\u25B9")) {
+    return "step";
+  }
   return "info";
 }
 
@@ -81,8 +100,12 @@ function getLogColor(line: string): string | undefined {
 }
 
 function formatLogLine(line: string, maxWidth: number): string {
-  if (!line) return "";
-  if (line.length > maxWidth) return `${line.slice(0, maxWidth - 1)}\u2026`;
+  if (!line) {
+    return "";
+  }
+  if (line.length > maxWidth) {
+    return `${line.slice(0, maxWidth - 1)}\u2026`;
+  }
   return line;
 }
 
@@ -107,7 +130,9 @@ export function Running() {
 
   // Spinner animation
   useEffect(() => {
-    if (session?.isDone) return;
+    if (session?.isDone) {
+      return;
+    }
     const timer = setInterval(() => {
       setSpinnerIdx((i) => (i + 1) % SPINNER_FRAMES.length);
     }, 80);
@@ -116,7 +141,9 @@ export function Running() {
 
   // Elapsed timer
   useEffect(() => {
-    if (session?.isDone) return;
+    if (session?.isDone) {
+      return;
+    }
     const timer = setInterval(() => {
       if (session?.startTime) {
         setElapsed(Date.now() - session.startTime);
@@ -128,8 +155,12 @@ export function Running() {
   // Start execution on first mount (or resume view if session already exists)
   // biome-ignore lint/correctness/useExhaustiveDependencies: only trigger on executionId
   useEffect(() => {
-    if (!currentExecution) return;
-    if (executionStarted.current) return;
+    if (!currentExecution) {
+      return;
+    }
+    if (executionStarted.current) {
+      return;
+    }
 
     // Check if session already exists (user navigated back to running execution)
     const existing = useExecutionRuntimeStore
@@ -186,7 +217,9 @@ export function Running() {
 
   const { stdout } = useStdout();
 
-  if (!currentExecution) return null;
+  if (!currentExecution) {
+    return null;
+  }
 
   const spinner = SPINNER_FRAMES[spinnerIdx];
   const termWidth = Math.max(stdout?.columns || 80, 60);
@@ -196,8 +229,8 @@ export function Running() {
   const maxLogLines = Math.max(6, termHeight - 6);
 
   const logs = session?.logs || [];
-  const isDone = session?.isDone || false;
-  const success = session?.success || false;
+  const isDone = session?.isDone;
+  const success = session?.success;
   const currentStep = session?.currentStep || "";
   const stepProgress = session?.stepProgress || { current: 0, total: 0 };
   const stats = session?.stats || { tokens: 0, files: 0 };
@@ -237,7 +270,7 @@ export function Running() {
         width={boxWidth}
       >
         {visibleLogs.map((log, i) => (
-          <Text key={i} color={getLogColor(log)} wrap="truncate-end">
+          <Text color={getLogColor(log)} key={i} wrap="truncate-end">
             {formatLogLine(log, contentWidth)}
           </Text>
         ))}

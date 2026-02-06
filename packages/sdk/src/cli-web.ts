@@ -6,7 +6,7 @@
  * Flags: --port <number>, --host <string>, --no-open
  */
 
-import { startWebServer, parseConfig } from "@openfarm/web-ui";
+import { parseConfig, startWebServer } from "@openfarm/web-ui";
 
 const config = parseConfig(process.argv.slice(2));
 

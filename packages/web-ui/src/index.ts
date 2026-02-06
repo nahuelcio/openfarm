@@ -5,12 +5,12 @@
  * Renders the TUI in a browser via xterm.js connected to a PTY backend.
  */
 
-export { startWebServer } from "./server.ts";
-export { parseConfig, isLocalhost } from "./config.ts";
+export { isLocalhost, parseConfig } from "./config.ts";
 export { PtyManager } from "./pty-manager.ts";
-export { WsHandler } from "./ws-handler.ts";
+export { startWebServer } from "./server.ts";
 export type {
+  PtyManagerOptions,
   WebServerConfig,
   WebServerHandle,
-  PtyManagerOptions,
 } from "./types.ts";
+export { WsHandler } from "./ws-handler.ts";

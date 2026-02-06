@@ -1,10 +1,9 @@
-import { spawn } from "node:child_process";
-import { execSync } from "node:child_process";
 import type { ChildProcess } from "node:child_process";
+import { execSync, spawn } from "node:child_process";
 import path from "node:path";
 import type { PtyManagerOptions } from "./types.ts";
 
-const REPLAY_BUFFER_SIZE = 16384; // 16KB of recent output
+const REPLAY_BUFFER_SIZE = 16_384; // 16KB of recent output
 const MAX_RESTART_ATTEMPTS = 3;
 const RESTART_DELAYS = [1000, 2000, 4000];
 
@@ -26,7 +25,9 @@ function resolveBridgePath(): string {
   for (const p of candidates) {
     try {
       const fs = require("node:fs");
-      if (fs.existsSync(p)) return p;
+      if (fs.existsSync(p)) {
+        return p;
+      }
     } catch {
       // continue
     }
@@ -46,9 +47,9 @@ export class PtyManager {
   private restartCount = 0;
   private alive = false;
   private ready = false;
-  private dataCallbacks: Array<(data: Buffer) => void> = [];
-  private exitCallbacks: Array<(code: number | null) => void> = [];
-  private options: PtyManagerOptions;
+  private readonly dataCallbacks: Array<(data: Buffer) => void> = [];
+  private readonly exitCallbacks: Array<(code: number | null) => void> = [];
+  private readonly options: PtyManagerOptions;
   private cols: number;
   private rows: number;
   private lineBuffer = "";
@@ -60,7 +61,9 @@ export class PtyManager {
   }
 
   start(): void {
-    if (this.alive) return;
+    if (this.alive) {
+      return;
+    }
 
     const nodePath = resolveNodePath();
     const bridgePath = resolveBridgePath();
@@ -96,7 +99,9 @@ export class PtyManager {
       this.lineBuffer = lines.pop() || "";
 
       for (const line of lines) {
-        if (!line.trim()) continue;
+        if (!line.trim()) {
+          continue;
+        }
         try {
           const msg: BridgeMessage = JSON.parse(line);
           this.handleBridgeMessage(msg);
@@ -127,7 +132,9 @@ export class PtyManager {
   }
 
   write(data: string | Buffer): void {
-    if (!this.alive || !this.bridge?.stdin || !this.ready) return;
+    if (!(this.alive && this.bridge?.stdin && this.ready)) {
+      return;
+    }
     const str = Buffer.isBuffer(data) ? data.toString("utf-8") : data;
     const payload = Buffer.from(str, "utf-8").toString("base64");
     this.sendToBridge({ type: "data", payload });
@@ -206,7 +213,7 @@ export class PtyManager {
 
   private sendToBridge(msg: Record<string, unknown>): void {
     try {
-      this.bridge?.stdin?.write(JSON.stringify(msg) + "\n");
+      this.bridge?.stdin?.write(`${JSON.stringify(msg)}\n`);
     } catch {
       // Bridge died
     }
@@ -222,7 +229,9 @@ export class PtyManager {
   }
 
   private maybeRestart(): void {
-    if (this.restartCount >= MAX_RESTART_ATTEMPTS) return;
+    if (this.restartCount >= MAX_RESTART_ATTEMPTS) {
+      return;
+    }
 
     const delay = RESTART_DELAYS[this.restartCount] ?? 4000;
     this.restartCount++;

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+"use strict";
 /**
  * PTY Bridge - Runs under Node.js to provide real PTY support.
  * Communicates with the parent Bun process via stdin/stdout.
@@ -19,13 +20,13 @@ const pty = require("node-pty");
 
 const args = process.argv.slice(2);
 const cwd = args[0] || process.cwd();
-const cols = parseInt(args[1] || "120", 10);
-const rows = parseInt(args[2] || "40", 10);
+const cols = Number.parseInt(args[1] || "120", 10);
+const rows = Number.parseInt(args[2] || "40", 10);
 const cmd = args[3] || "bun";
 const cmdArgs = args.slice(4);
 
 function send(msg) {
-  process.stdout.write(JSON.stringify(msg) + "\n");
+  process.stdout.write(`${JSON.stringify(msg)}\n`);
 }
 
 const term = pty.spawn(cmd, cmdArgs.length ? cmdArgs : ["run", "tui"], {
@@ -42,7 +43,10 @@ const term = pty.spawn(cmd, cmdArgs.length ? cmdArgs : ["run", "tui"], {
 });
 
 term.onData((data) => {
-  send({ type: "data", payload: Buffer.from(data, "utf-8").toString("base64") });
+  send({
+    type: "data",
+    payload: Buffer.from(data, "utf-8").toString("base64"),
+  });
 });
 
 term.onExit(({ exitCode }) => {
@@ -61,7 +65,9 @@ process.stdin.on("data", (chunk) => {
   buffer = lines.pop() || "";
 
   for (const line of lines) {
-    if (!line.trim()) continue;
+    if (!line.trim()) {
+      continue;
+    }
     try {
       const msg = JSON.parse(line);
       switch (msg.type) {

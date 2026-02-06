@@ -1,5 +1,5 @@
-import crypto from "node:crypto";
 import { execSync } from "node:child_process";
+import crypto from "node:crypto";
 import type { WebServerConfig } from "./types.ts";
 
 const DEFAULT_PORT = 3001;
@@ -32,7 +32,7 @@ export function parseConfig(args: string[]): WebServerConfig {
   const token = isRemote ? crypto.randomBytes(16).toString("hex") : undefined;
 
   // Validate port
-  if (Number.isNaN(port) || port < 1024 || port > 65535) {
+  if (Number.isNaN(port) || port < 1024 || port > 65_535) {
     console.error(
       `[web-ui] Invalid port: ${port}. Must be between 1024-65535.`
     );

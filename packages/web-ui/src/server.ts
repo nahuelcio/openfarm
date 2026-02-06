@@ -1,11 +1,11 @@
-import http from "node:http";
 import fs from "node:fs";
+import http from "node:http";
 import path from "node:path";
 import { WebSocketServer } from "ws";
-import { PtyManager } from "./pty-manager.ts";
-import { WsHandler } from "./ws-handler.ts";
 import { isLocalhost } from "./config.ts";
+import { PtyManager } from "./pty-manager.ts";
 import type { WebServerConfig, WebServerHandle } from "./types.ts";
+import { WsHandler } from "./ws-handler.ts";
 
 const MIME_TYPES: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
@@ -26,7 +26,9 @@ function getStaticDir(): string {
     path.resolve(thisDir, "static"),
   ];
   for (const candidate of candidates) {
-    if (fs.existsSync(candidate)) return candidate;
+    if (fs.existsSync(candidate)) {
+      return candidate;
+    }
   }
   return candidates[0];
 }
@@ -43,7 +45,9 @@ async function findAvailablePort(
       });
       server.on("error", () => resolve(false));
     });
-    if (available) return port;
+    if (available) {
+      return port;
+    }
   }
   return startPort;
 }

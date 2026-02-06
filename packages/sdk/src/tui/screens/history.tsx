@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import { KeyHelpBar } from "../components";
 import { useListNavigation } from "../hooks";
 import { type Execution, useStore } from "../store";
-import { useThemeColors } from "../theme/hooks";
 import { useExecutionRuntimeStore } from "../store/execution-runtime-store";
+import { useThemeColors } from "../theme/hooks";
 import { getStatusColor, getStatusIcon } from "../utils/status-helpers";
 
 export function History() {

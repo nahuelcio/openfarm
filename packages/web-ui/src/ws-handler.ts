@@ -7,14 +7,14 @@ const HEARTBEAT_TIMEOUT = 60_000; // 60s
 const CLEANUP_TIMEOUT = 5 * 60_000; // 5 minutes
 
 export class WsHandler {
-  private clients = new Set<WebSocket>();
-  private clientAlive = new Map<WebSocket, number>();
+  private readonly clients = new Set<WebSocket>();
+  private readonly clientAlive = new Map<WebSocket, number>();
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private cleanupTimer: ReturnType<typeof setTimeout> | null = null;
-  private onCleanup: (() => void) | null = null;
+  private readonly onCleanup: (() => void) | null = null;
 
   constructor(
-    private pty: PtyManager,
+    private readonly pty: PtyManager,
     options?: { onCleanup?: () => void }
   ) {
     this.onCleanup = options?.onCleanup ?? null;
@@ -38,7 +38,7 @@ export class WsHandler {
     }
 
     // Send replay buffer so new client sees current state
-    const replay = this.pty.getReplayBuffer();
+    const replay = this.sanitizeReplayBuffer(this.pty.getReplayBuffer());
     if (replay.length > 0) {
       try {
         ws.send(replay);
@@ -106,8 +106,7 @@ export class WsHandler {
         const cols = Number.parseInt(parts[1], 10);
         const rows = Number.parseInt(parts[2], 10);
         if (
-          !Number.isNaN(cols) &&
-          !Number.isNaN(rows) &&
+          !(Number.isNaN(cols) || Number.isNaN(rows)) &&
           cols > 0 &&
           rows > 0
         ) {
@@ -175,5 +174,32 @@ export class WsHandler {
         }
       }
     }, HEARTBEAT_INTERVAL);
+  }
+
+  private sanitizeReplayBuffer(replay: Buffer): Buffer {
+    if (replay.length === 0 || replay[0] !== 0x5b) {
+      return replay;
+    }
+
+    const escIdx = replay.indexOf(0x1b);
+    const lfIdx = replay.indexOf(0x0a);
+    const crIdx = replay.indexOf(0x0d);
+    const candidates: number[] = [];
+
+    if (escIdx >= 0) {
+      candidates.push(escIdx);
+    }
+    if (lfIdx >= 0 && lfIdx + 1 < replay.length) {
+      candidates.push(lfIdx + 1);
+    }
+    if (crIdx >= 0 && crIdx + 1 < replay.length) {
+      candidates.push(crIdx + 1);
+    }
+
+    if (candidates.length === 0) {
+      return Buffer.alloc(0);
+    }
+
+    return replay.subarray(Math.min(...candidates));
   }
 }

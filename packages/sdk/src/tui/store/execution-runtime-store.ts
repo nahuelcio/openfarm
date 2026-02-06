@@ -74,7 +74,9 @@ function createEmptySession(
 
 // Transform raw log messages for cleaner TUI display
 function transformLogMessage(msg: string): string | null {
-  if (msg.startsWith("[INFO] Starting step:")) return null;
+  if (msg.startsWith("[INFO] Starting step:")) {
+    return null;
+  }
   const completedMatch = msg.match(
     /\[INFO\] Completed step: (\S+) \(([^)]+)\) in (\d+)ms/
   );
@@ -84,10 +86,18 @@ function transformLogMessage(msg: string): string | null {
       duration >= 1000 ? `${(duration / 1000).toFixed(1)}s` : `${duration}ms`;
     return `\u2713 ${completedMatch[2]} completed in ${formatted}`;
   }
-  if (msg.trim() === "done" || msg.trim() === "\u2502 done") return null;
-  if (msg.startsWith("\u2502 ")) return `  ${msg.slice(2)}`;
-  if (msg.startsWith("[ERROR] ")) return `\u2717 ${msg.slice(8)}`;
-  if (msg.includes("Executing agent code with")) return null;
+  if (msg.trim() === "done" || msg.trim() === "\u2502 done") {
+    return null;
+  }
+  if (msg.startsWith("\u2502 ")) {
+    return `  ${msg.slice(2)}`;
+  }
+  if (msg.startsWith("[ERROR] ")) {
+    return `\u2717 ${msg.slice(8)}`;
+  }
+  if (msg.includes("Executing agent code with")) {
+    return null;
+  }
   return msg;
 }
 
@@ -98,10 +108,12 @@ function updateStats(
   let { tokens, files } = stats;
   if (msg.includes("Tokens:") || msg.includes("tokens")) {
     const match = msg.match(/(\d+)\s*tokens?/i);
-    if (match) tokens = Number.parseInt(match[1], 10);
+    if (match) {
+      tokens = Number.parseInt(match[1], 10);
+    }
   }
   if (msg.includes("Created:") || msg.includes("Edited:")) {
-    files = files + 1;
+    files += 1;
   }
   return { tokens, files };
 }
@@ -132,10 +144,14 @@ export const useExecutionRuntimeStore = create<ExecutionRuntimeState>(
     },
 
     addLog: (executionId, msg) => {
-      if (!msg || msg.trim() === "") return;
+      if (!msg || msg.trim() === "") {
+        return;
+      }
 
       const session = get().sessions[executionId];
-      if (!session) return;
+      if (!session) {
+        return;
+      }
 
       // Always write raw message to log file
       if (session.logFilePath) {
@@ -172,11 +188,15 @@ export const useExecutionRuntimeStore = create<ExecutionRuntimeState>(
       }
 
       // Skip duplicates
-      if (transformed === session.lastLogRef) return;
+      if (transformed === session.lastLogRef) {
+        return;
+      }
 
       set((state) => {
         const s = state.sessions[executionId];
-        if (!s) return state;
+        if (!s) {
+          return state;
+        }
         const logs = [...s.logs, transformed];
         return {
           sessions: {
@@ -198,7 +218,9 @@ export const useExecutionRuntimeStore = create<ExecutionRuntimeState>(
     updateSession: (executionId, updates) => {
       set((state) => {
         const s = state.sessions[executionId];
-        if (!s) return state;
+        if (!s) {
+          return state;
+        }
         return {
           sessions: {
             ...state.sessions,
@@ -210,7 +232,9 @@ export const useExecutionRuntimeStore = create<ExecutionRuntimeState>(
 
     cancelExecution: (executionId) => {
       const session = get().sessions[executionId];
-      if (!session || session.isDone) return;
+      if (!session || session.isDone) {
+        return;
+      }
 
       // Abort the execution
       session.abortController?.abort();
@@ -229,7 +253,9 @@ export const useExecutionRuntimeStore = create<ExecutionRuntimeState>(
       // Update session state
       set((state) => {
         const s = state.sessions[executionId];
-        if (!s) return state;
+        if (!s) {
+          return state;
+        }
         return {
           sessions: {
             ...state.sessions,
