@@ -5,6 +5,7 @@ import { KeyHelpBar } from "../components";
 import { useListNavigation } from "../hooks";
 import { type Execution, useStore } from "../store";
 import { useThemeColors } from "../theme/hooks";
+import { useExecutionRuntimeStore } from "../store/execution-runtime-store";
 import { getStatusColor, getStatusIcon } from "../utils/status-helpers";
 
 export function History() {
@@ -34,7 +35,15 @@ export function History() {
       const selected = executions[index];
       if (selected) {
         setCurrentExecution(selected);
-        setScreen("execution-detail");
+        // If this execution has an active runtime session, go to live view
+        const runtimeSession = useExecutionRuntimeStore
+          .getState()
+          .getSession(selected.id);
+        if (runtimeSession && !runtimeSession.isDone) {
+          setScreen("running");
+        } else {
+          setScreen("execution-detail");
+        }
       }
     },
   });

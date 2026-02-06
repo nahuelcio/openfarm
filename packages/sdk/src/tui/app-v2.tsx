@@ -20,6 +20,7 @@ import { ThemeSelector } from "./screens/theme-selector";
 import { WorkflowEditor } from "./screens/workflow-editor";
 import { WorkflowList } from "./screens/workflow-list";
 import { type Screen, type TabId, useStore } from "./store";
+import { useExecutionRuntimeStore } from "./store/execution-runtime-store";
 
 const TABS: Tab[] = [
   { id: "dashboard", label: "Dashboard", shortcut: "1" },
@@ -138,7 +139,13 @@ export function AppV2() {
     }
   }, [activeTab, currentSection, setActiveTab]);
 
+  const hasActiveSession = useExecutionRuntimeStore((s) => s.hasActiveSession());
+
   const executionStatus = useMemo(() => {
+    // Runtime store is the source of truth for active executions
+    if (hasActiveSession) {
+      return "running" as const;
+    }
     if (!currentExecution) {
       return "idle" as const;
     }
@@ -152,7 +159,7 @@ export function AppV2() {
       return "error" as const;
     }
     return "idle" as const;
-  }, [currentExecution]);
+  }, [currentExecution, hasActiveSession]);
 
   const handleTabChange = (tabId: string) => {
     const section = tabId as SectionId;

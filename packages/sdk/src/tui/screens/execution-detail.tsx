@@ -3,6 +3,7 @@ import { Box, Text, useInput } from "@openfarm/tui-opentui";
 import { useEffect, useState } from "react";
 import { KeyHelpBar } from "../components";
 import { useStore } from "../store";
+import { useExecutionRuntimeStore } from "../store/execution-runtime-store";
 import { useThemeColors } from "../theme/hooks";
 import { getStatusColor, getStatusIcon } from "../utils/status-helpers";
 
@@ -83,8 +84,18 @@ export function ExecutionDetail() {
       setScreen("diff-viewer");
     }
     if (input === "c" && currentExecution?.status === "running") {
-      // Cancel the running execution
+      // Cancel via runtime store (which handles abort + tmux kill)
+      useExecutionRuntimeStore.getState().cancelExecution(currentExecution.id);
       updateExecution(currentExecution.id, { status: "cancelled" });
+    }
+    // Press 'l' to switch to live Running view
+    if (input === "l" && currentExecution?.status === "running") {
+      const runtimeSession = useExecutionRuntimeStore
+        .getState()
+        .getSession(currentExecution.id);
+      if (runtimeSession && !runtimeSession.isDone) {
+        setScreen("running");
+      }
     }
   });
 
@@ -217,7 +228,10 @@ export function ExecutionDetail() {
         hints={[
           { key: "Esc", label: "Back" },
           ...(currentExecution?.status === "running"
-            ? [{ key: "c", label: "Cancel" }]
+            ? [
+                { key: "l", label: "Live view" },
+                { key: "c", label: "Cancel" },
+              ]
             : []),
           ...(currentExecution?.diff ? [{ key: "d", label: "View diff" }] : []),
           { key: "r", label: "Rerun" },

@@ -2,58 +2,34 @@
 /**
  * Web UI Entry Point for OpenFarm SDK
  *
- * Misma app que la TUI pero renderizada en el browser.
- * Usa @openfarm/web-ui como runtime en vez de @opentui/react.
+ * Thin client web mode backed by @openfarm/web-ui server runtime.
  */
 
-import type { ReactElement } from "react";
 import type { OpenFarmConfig } from "./types";
 
-// Lazy imports para no cargar dependencias de web en modo TUI
-async function loadWebRuntime() {
-  const { createWebApp } = await import("@openfarm/web-ui");
-  return { createWebApp };
-}
-
-async function loadApp() {
-  const { AppV2 } = await import("./tui/app-v2");
-  const { useStore } = await import("./tui/store");
-  const { preloadAllCommonModels } = await import("./tui/utils/models");
-  return { AppV2, useStore, preloadAllCommonModels };
-}
-
 export async function runWebApp(
-  _args: string[],
-  config?: OpenFarmConfig
+  args: string[],
+  _config?: OpenFarmConfig
 ): Promise<void> {
-  const [{ createWebApp }, { AppV2, useStore, preloadAllCommonModels }] =
-    await Promise.all([loadWebRuntime(), loadApp()]);
+  const { startWebServer, parseConfig } = await import("@openfarm/web-ui");
+  const webConfig = parseConfig(args);
 
-  // Initialize stores (misma lógica que TUI)
-  if (config) {
-    useStore.setState({
-      config,
-      provider: config.defaultProvider || "external-agent",
-    });
-  }
+  console.log("Starting OpenFarm Web UI (Thin Client)...");
 
-  // Preload models en background
-  preloadAllCommonModels();
+  const server = await startWebServer(webConfig);
 
-  // Load execution history
-  const { loadExecutionsFromDb } = useStore.getState();
-  loadExecutionsFromDb();
-
-  // Create wrapper component para pasar contexto si es necesario
-  const WebAppWrapper = (): ReactElement => <AppV2 />;
-
-  // Start web app
-  const app = createWebApp(WebAppWrapper, {
-    title: "OpenFarm",
-    theme: "dark",
+  process.on("SIGINT", () => {
+    console.log("\nShutting down server...");
+    server.close();
+    process.exit(0);
   });
 
-  await app.start();
+  process.on("SIGTERM", () => {
+    server.close();
+    process.exit(0);
+  });
+
+  await new Promise(() => {});
 }
 
 // Entry point directo

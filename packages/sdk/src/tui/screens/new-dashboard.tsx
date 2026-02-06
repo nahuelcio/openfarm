@@ -9,7 +9,10 @@
  */
 
 import { Box, Text, useInput } from "@openfarm/tui-opentui";
+import { useEffect, useState } from "react";
 import { useStore } from "../store";
+import { useExecutionRuntimeStore } from "../store/execution-runtime-store";
+import { formatDuration } from "./running";
 
 interface StatCardProps {
   label: string;
@@ -66,11 +69,37 @@ function TaskItem({ status, title, id }: TaskItemProps) {
 }
 
 export function NewDashboard() {
-  const { executions, currentExecution, setScreen } = useStore();
+  const { executions, currentExecution, setScreen, setCurrentExecution } =
+    useStore();
+
+  const hasActiveSession = useExecutionRuntimeStore((s) => s.hasActiveSession());
+  const activeSessionId = useExecutionRuntimeStore((s) => s.getActiveSessionId());
+  const activeSession = useExecutionRuntimeStore((s) =>
+    activeSessionId ? s.sessions[activeSessionId] : undefined
+  );
+
+  const [elapsed, setElapsed] = useState(0);
+
+  // Timer for active execution banner
+  useEffect(() => {
+    if (!activeSession || activeSession.isDone) return;
+    const timer = setInterval(() => {
+      setElapsed(Date.now() - activeSession.startTime);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [activeSession?.startTime, activeSession?.isDone]);
 
   useInput((input, key) => {
     if (input === "t") {
       setScreen("theme-selector");
+    }
+    // Press 'r' to return to running execution
+    if (input === "r" && hasActiveSession && activeSessionId) {
+      const exec = executions.find((e) => e.id === activeSessionId);
+      if (exec) {
+        setCurrentExecution(exec);
+        setScreen("running");
+      }
     }
   });
 
@@ -91,6 +120,35 @@ export function NewDashboard() {
 
   return (
     <Box flexDirection="column" flexGrow={1} gap={1} padding={1}>
+      {/* Running execution banner */}
+      {hasActiveSession && activeSession && (
+        <Box
+          borderColor="yellow"
+          borderStyle="single"
+          flexDirection="row"
+          justifyContent="space-between"
+          paddingX={1}
+        >
+          <Text bold color="yellow">
+            {"▶ Running: "}
+            <Text color="white">
+              {(() => {
+                const exec = executions.find(
+                  (e) => e.id === activeSessionId
+                );
+                const taskText = exec?.task || "...";
+                return taskText.length > 40
+                  ? `${taskText.slice(0, 40)}...`
+                  : taskText;
+              })()}
+            </Text>
+          </Text>
+          <Text color="gray">
+            {formatDuration(elapsed)} {"  [r] view"}
+          </Text>
+        </Box>
+      )}
+
       {/* Stats Row */}
       <Box flexDirection="row" gap={2}>
         <StatCard label="Total" value={totalExecutions} />
