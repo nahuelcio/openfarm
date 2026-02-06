@@ -61,7 +61,6 @@ export class ClaudeProvider implements Provider {
         throw new Error("Task is required and cannot be empty");
       }
 
-      log("🔍 Checking Claude Code...");
       const isAvailable = await this.testConnection();
       if (!isAvailable) {
         const error =
@@ -74,15 +73,11 @@ export class ClaudeProvider implements Provider {
           error,
         };
       }
-      log("✅ Claude Code found");
-      log("");
 
       const args = this.buildCliArgs(options);
-
       log(
-        `🚀 Running: claude ${args.map((a) => (a.includes(" ") ? `"${a}"` : a)).join(" ")}`
+        `🚀 claude ${args.map((a) => (a.includes(" ") ? `"${a}"` : a)).join(" ")}`
       );
-      log("");
 
       const request: CommunicationRequest = {
         args,

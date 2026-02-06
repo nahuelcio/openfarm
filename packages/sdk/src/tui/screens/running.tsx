@@ -8,7 +8,7 @@ import {
   initializePredefinedWorkflows,
 } from "@openfarm/core/db";
 import { captureGitChanges } from "@openfarm/operations/git/changes";
-import { Box, Text, useInput } from "@openfarm/tui-opentui";
+import { Box, Text, useInput, useStdout } from "@openfarm/tui-opentui";
 import type {
   WorkflowEngineConfig,
   WorkflowExecutionRequest,
@@ -115,7 +115,7 @@ async function executeWorkflowWithEngine(
     const engineConfig: WorkflowEngineConfig = {
       db: await getDb(),
       logger: {
-        debug: async (message: string) => onLog(`[DEBUG] ${message}`),
+        debug: async (_message: string) => { /* suppress debug in TUI */ },
         info: async (message: string) => onLog(`[INFO] ${message}`),
         error: async (message: string) => onLog(`[ERROR] ${message}`),
       },
@@ -317,9 +317,7 @@ async function executeWorkflowWithEngine(
                 }).trim();
 
                 // Create worktree
-                onLog(`🔧 Creating worktree at: ${worktreePath}`);
-                onLog(`🔧 Using branch: ${branchName}`);
-                onLog(`🔧 Git root: ${gitRoot}`);
+                onLog(`  worktree: ${worktreePath}`);
 
                 const worktreeResult = await createWorktree(gitRoot, {
                   path: worktreePath,
@@ -343,7 +341,7 @@ async function executeWorkflowWithEngine(
                 (executionContext.context as any).worktreeParent =
                   worktreeParent;
 
-                onLog(`✅ Created worktree: ${worktreeResult.value.path}`);
+                onLog(`✓ worktree ready`);
                 return { success: true, value: worktreeResult.value.path };
               }
 
@@ -454,6 +452,71 @@ async function executeWorkflowWithEngine(
   }
 }
 
+// Classify log lines for color + formatting
+type LogType = "header" | "separator" | "step" | "command" | "output" | "success" | "error" | "warning" | "info";
+
+function classifyLog(line: string): LogType {
+  if (!line || line.trim() === "") return "info";
+  if (line.startsWith("─") || line.startsWith("═")) return "separator";
+  if (line.startsWith("[ERROR]") || line.startsWith("Error:") || line.startsWith("❌")) return "error";
+  if (line.startsWith("✅") || line.startsWith("✓")) return "success";
+  if (line.startsWith("⚠")) return "warning";
+  if (line.startsWith("$") || line.startsWith("🚀")) return "command";
+  if (line.startsWith("  ")) return "output";  // indented agent output
+  if (line.startsWith("│") || line.startsWith("├") || line.startsWith("└")) return "output";
+  if (line.startsWith("▸") || line.startsWith("▹")) return "step";
+  return "info";
+}
+
+const LOG_COLORS: Record<LogType, string | undefined> = {
+  header: "cyan",
+  separator: "gray",
+  step: "cyan",
+  command: "yellow",
+  output: undefined,  // default terminal color
+  success: "green",
+  error: "red",
+  warning: "yellow",
+  info: "gray",
+};
+
+function getLogColor(line: string): string | undefined {
+  return LOG_COLORS[classifyLog(line)];
+}
+
+// Truncate a line to fit the content width
+function formatLogLine(line: string, maxWidth: number): string {
+  if (!line) return "";
+  if (line.length > maxWidth) {
+    return `${line.slice(0, maxWidth - 1)}…`;
+  }
+  return line;
+}
+
+// Filter and transform raw log messages for cleaner TUI display
+function transformLogMessage(msg: string): string | null {
+  // Remove [INFO] Starting step - redundant with step header
+  if (msg.startsWith("[INFO] Starting step:")) return null;
+  // Transform [INFO] Completed step into cleaner format
+  const completedMatch = msg.match(/\[INFO\] Completed step: (\S+) \(([^)]+)\) in (\d+)ms/);
+  if (completedMatch) {
+    const duration = Number.parseInt(completedMatch[3], 10);
+    const formatted = duration >= 1000 ? `${(duration / 1000).toFixed(1)}s` : `${duration}ms`;
+    return `✓ ${completedMatch[2]} completed in ${formatted}`;
+  }
+  // Remove raw "done" from JSON parser
+  if (msg.trim() === "done" || msg.trim() === "│ done") return null;
+  // Clean up agent output lines - use tree-style indent
+  if (msg.startsWith("│ ")) {
+    return `  ${msg.slice(2)}`;
+  }
+  // Remove [INFO]/[ERROR] prefixes for cleaner look
+  if (msg.startsWith("[ERROR] ")) return `✗ ${msg.slice(8)}`;
+  // Remove emoji-heavy "Executing agent code" - redundant with step tracking
+  if (msg.includes("Executing agent code with")) return null;
+  return msg;
+}
+
 export function Running() {
   const {
     setScreen,
@@ -516,13 +579,18 @@ export function Running() {
   const logFilePath = useRef<string | null>(null);
   const logInitialized = useRef(false);
 
+  const lastLogRef = useRef<string>("");
+
   const onLog = useCallback(
     (msg: string) => {
       if (aborted.current) {
         return;
       }
 
-      // Detect step changes
+      // Skip empty/whitespace-only lines
+      if (!msg || msg.trim() === "") return;
+
+      // Detect step changes (before filtering)
       if (msg.includes("Creating branch:")) {
         setCurrentStep("Creating branch");
       } else if (msg.includes("Creating worktree")) {
@@ -531,11 +599,11 @@ export function Running() {
         setCurrentStep("Running AI agent");
       } else if (msg.includes("Returning to original branch")) {
         setCurrentStep("Cleaning up");
-      } else if (msg.includes("Executing workflow:")) {
+      } else if (msg.includes("Workflow:")) {
         setCurrentStep("Initializing");
       }
 
-      // Write to log file
+      // Always write raw message to log file (unfiltered)
       if (logFilePath.current) {
         try {
           const timestamp = new Date().toISOString();
@@ -545,12 +613,22 @@ export function Running() {
         }
       }
 
-      // Add log with 500 entry limit (ring buffer approach)
+      // Track stats from raw message
+      updateStats(msg);
+
+      // Transform for TUI display (filter noise, reformat)
+      const transformed = transformLogMessage(msg);
+      if (transformed === null) return;
+
+      // Skip duplicates
+      if (transformed === lastLogRef.current) return;
+      lastLogRef.current = transformed;
+
+      // Add to visible logs (500 entry ring buffer)
       setLogs((prev) => {
-        const next = [...prev, msg];
+        const next = [...prev, transformed];
         return next.length > 500 ? next.slice(-500) : next;
       });
-      updateStats(msg);
     },
     [updateStats]
   );
@@ -606,11 +684,6 @@ export function Running() {
       // Allow React to finish rendering before starting heavy work
       await new Promise((resolve) => setImmediate(resolve));
       try {
-        // Log file info (only once)
-        if (logFilePath.current) {
-          onLog(`📝 Log file: ${logFilePath.current}`);
-        }
-
         // Get workflow info from database
         const db = await getDb();
         await initializePredefinedWorkflows(db);
@@ -619,30 +692,15 @@ export function Running() {
           (w) => w.id === selectedWorkflowId
         );
 
-        // Show workflow info
-        onLog(
-          `🔄 Executing workflow: ${currentWorkflow?.name || selectedWorkflowId}`
-        );
-        if (currentWorkflow?.description) {
-          onLog(`   ${currentWorkflow.description}`);
-        }
-
-        // Show actual steps from workflow
-        if (currentWorkflow?.steps && currentWorkflow.steps.length > 0) {
-          const stepNames = currentWorkflow.steps
-            .map((step) => step.id)
-            .join(" → ");
-          onLog(`   Steps: ${stepNames}`);
-        }
-
-        onLog("");
-        onLog(`🔧 Provider: ${currentExecution.provider}`);
-        if (currentExecution.model) {
-          onLog(`🤖 Model: ${currentExecution.model}`);
-        }
-        onLog(`📁 ${currentExecution.workspace}`);
-        onLog(`📝 ${currentExecution.task}`);
-        onLog("");
+        // Compact execution config header
+        const wfName = currentWorkflow?.name || selectedWorkflowId;
+        const modelStr = currentExecution.model ? ` · ${currentExecution.model}` : "";
+        onLog(`${wfName} · ${currentExecution.provider}${modelStr}`);
+        // Show workspace as short path
+        const ws = currentExecution.workspace;
+        const shortWs = ws.includes("/") ? `…/${ws.split("/").slice(-2).join("/")}` : ws;
+        onLog(`${shortWs}`);
+        onLog("─".repeat(40));
 
         updateExecution(currentExecution.id, { status: "running" });
 
@@ -678,7 +736,7 @@ export function Running() {
 
         // Add execution result output to logs if not already there
         if (result.success && result.worktreePath) {
-          onLog(`\n📄 Worktree:\n${result.worktreePath}`);
+          onLog(`  output: ${result.worktreePath}`);
         }
 
         // Capture git diff and file changes from worktree if available
@@ -876,70 +934,75 @@ export function Running() {
     }
   });
 
+  const { stdout } = useStdout();
+
   if (!currentExecution) {
     return null;
   }
 
   const spinner = SPINNER_FRAMES[spinnerIdx];
-  const visibleLogs = logs.slice(-18);
+  const termWidth = Math.max(stdout?.columns || 80, 60);
+  const boxWidth = Math.min(termWidth - 2, 120);
+  // Content width: border(2) + paddingLeft(1) + paddingRight(1) = 4
+  const contentWidth = boxWidth - 4;
+  // Dynamic: show at least 6 lines, grow with content, cap at terminal height - 6
+  const termHeight = stdout?.rows || 24;
+  const maxLogLines = Math.max(6, termHeight - 6);
+  const visibleLogs = logs.slice(-maxLogLines);
+  // Box height: content lines + border(2), min 8
+  const boxHeight = Math.max(8, Math.min(visibleLogs.length + (isDone ? 0 : 1), maxLogLines) + 2);
+
+  const statusColor = isDone ? (success ? "green" : "red") : "cyan";
+  const borderColor = isDone ? (success ? "green" : "red") : "gray";
 
   return (
-    <Box flexDirection="column">
-      {/* Header con tiempo */}
-      <Box flexDirection="row" justifyContent="space-between">
-        <Text bold color={isDone ? (success ? "green" : "red") : "cyan"}>
+    <Box flexDirection="column" width={boxWidth}>
+      {/* Status bar */}
+      <Box flexDirection="row" justifyContent="space-between" width={boxWidth}>
+        <Text bold color={statusColor}>
           {isDone
             ? success
-              ? "✅ Success"
-              : "❌ Failed"
-            : `${spinner} ${currentStep || "Running"} ${stepProgress.current > 0 ? `[${stepProgress.current}/${stepProgress.total}]` : ""}`}
+              ? "✓ Success"
+              : "✗ Failed"
+            : `${spinner} ${currentStep || "Running"}${stepProgress.current > 0 ? ` [${stepProgress.current}/${stepProgress.total}]` : ""}`}
         </Text>
         <Text color="gray">{formatDuration(elapsed)}</Text>
       </Box>
 
-      <Text color="gray">{"─".repeat(60)}</Text>
-
-      {/* Output */}
+      {/* Log output */}
       <Box
-        borderColor={isDone ? (success ? "green" : "red") : "gray"}
+        borderColor={borderColor}
         borderStyle="single"
         flexDirection="column"
-        height={20}
-        padding={1}
-        width={70}
+        height={boxHeight}
+        paddingLeft={1}
+        paddingRight={1}
+        width={boxWidth}
       >
         {visibleLogs.map((log, i) => (
-          <Text key={i} wrap="wrap">
-            {log || " "}
+          <Text key={i} color={getLogColor(log)} wrap="truncate-end">
+            {formatLogLine(log, contentWidth)}
           </Text>
         ))}
         {!isDone && <Text color="cyan">{spinner}</Text>}
       </Box>
 
-      <Text color="gray">{"─".repeat(60)}</Text>
-
       {/* Error Display */}
       {isDone && !success && categorizedError && (
-        <Box marginTop={1}>
+        <Box marginTop={1} width={boxWidth}>
           <ErrorDisplay error={categorizedError} />
         </Box>
       )}
 
-      {/* Stats */}
-      <Box flexDirection="row" justifyContent="space-between">
-        <Text color="gray">{logs.length} lines</Text>
-        {stats.tokens > 0 && (
-          <Text color={isDone ? "gray" : "yellow"}>
-            {stats.tokens.toLocaleString()} tokens{!isDone && " ..."}
-          </Text>
-        )}
-        {stats.files > 0 && (
-          <Text color="gray">
-            {stats.files} file{stats.files !== 1 ? "s" : ""}
-          </Text>
-        )}
+      {/* Footer */}
+      <Box flexDirection="row" justifyContent="space-between" width={boxWidth}>
         <Text color="gray">
-          {isDone ? "Esc to back" : "[c] Cancel  •  Esc Back"}
+          {logs.length} lines
+          {stats.tokens > 0 ? `  ${stats.tokens.toLocaleString()} tok` : ""}
+          {stats.files > 0 ? `  ${stats.files} file${stats.files !== 1 ? "s" : ""}` : ""}
+        </Text>
+        <Text color="gray">
+          {isDone ? "esc back" : "esc back  c cancel"}
         </Text>
       </Box>
     </Box>

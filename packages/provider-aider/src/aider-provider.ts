@@ -65,7 +65,6 @@ export class AiderProvider implements Provider {
         throw new Error("Workspace path is required for Aider");
       }
 
-      log("🔍 Checking Aider installation...");
       const isAvailable = await this.testConnection();
       if (!isAvailable) {
         const error = "Aider not found. Install: pip install aider-chat";
@@ -77,15 +76,11 @@ export class AiderProvider implements Provider {
           error,
         };
       }
-      log("✅ Aider found");
-      log("");
 
       const args = this.buildCliArgs(options);
-
       log(
-        `🚀 Starting: aider ${args.map((a) => (a.includes(" ") ? `"${a}"` : a)).join(" ")}`
+        `🚀 aider ${args.map((a) => (a.includes(" ") ? `"${a}"` : a)).join(" ")}`
       );
-      log("");
 
       const request: CommunicationRequest = {
         args,

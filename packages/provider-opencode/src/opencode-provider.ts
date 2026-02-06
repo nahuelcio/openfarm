@@ -60,11 +60,10 @@ export class OpenCodeProvider implements Provider {
         throw new Error("Task is required and cannot be empty");
       }
 
-      log("Checking OpenCode CLI...");
       const isAvailable = await this.testConnection();
       if (!isAvailable) {
         const error = `OpenCode CLI not found. Install/check with: ${this.commandLabel} --version`;
-        log(`Error: ${error}`);
+        log(`❌ ${error}`);
         return {
           success: false,
           output: error,
@@ -72,12 +71,9 @@ export class OpenCodeProvider implements Provider {
           error,
         };
       }
-      log("OpenCode CLI found");
-      log("");
 
       const args = this.buildCliArgs(options);
-      log(`Running: ${this.commandLabel} ${args.join(" ")}`);
-      log("");
+      log(`🚀 ${this.commandLabel} ${args.join(" ")}`);
 
       const streamedLines: string[] = [];
       let lastStreamedLine: string | null = null;
