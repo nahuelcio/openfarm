@@ -115,7 +115,9 @@ async function executeWorkflowWithEngine(
     const engineConfig: WorkflowEngineConfig = {
       db: await getDb(),
       logger: {
-        debug: async (_message: string) => { /* suppress debug in TUI */ },
+        debug: async (_message: string) => {
+          /* suppress debug in TUI */
+        },
         info: async (message: string) => onLog(`[INFO] ${message}`),
         error: async (message: string) => onLog(`[ERROR] ${message}`),
       },
@@ -453,17 +455,32 @@ async function executeWorkflowWithEngine(
 }
 
 // Classify log lines for color + formatting
-type LogType = "header" | "separator" | "step" | "command" | "output" | "success" | "error" | "warning" | "info";
+type LogType =
+  | "header"
+  | "separator"
+  | "step"
+  | "command"
+  | "output"
+  | "success"
+  | "error"
+  | "warning"
+  | "info";
 
 function classifyLog(line: string): LogType {
   if (!line || line.trim() === "") return "info";
   if (line.startsWith("─") || line.startsWith("═")) return "separator";
-  if (line.startsWith("[ERROR]") || line.startsWith("Error:") || line.startsWith("❌")) return "error";
+  if (
+    line.startsWith("[ERROR]") ||
+    line.startsWith("Error:") ||
+    line.startsWith("❌")
+  )
+    return "error";
   if (line.startsWith("✅") || line.startsWith("✓")) return "success";
   if (line.startsWith("⚠")) return "warning";
   if (line.startsWith("$") || line.startsWith("🚀")) return "command";
-  if (line.startsWith("  ")) return "output";  // indented agent output
-  if (line.startsWith("│") || line.startsWith("├") || line.startsWith("└")) return "output";
+  if (line.startsWith("  ")) return "output"; // indented agent output
+  if (line.startsWith("│") || line.startsWith("├") || line.startsWith("└"))
+    return "output";
   if (line.startsWith("▸") || line.startsWith("▹")) return "step";
   return "info";
 }
@@ -473,7 +490,7 @@ const LOG_COLORS: Record<LogType, string | undefined> = {
   separator: "gray",
   step: "cyan",
   command: "yellow",
-  output: undefined,  // default terminal color
+  output: undefined, // default terminal color
   success: "green",
   error: "red",
   warning: "yellow",
@@ -498,10 +515,13 @@ function transformLogMessage(msg: string): string | null {
   // Remove [INFO] Starting step - redundant with step header
   if (msg.startsWith("[INFO] Starting step:")) return null;
   // Transform [INFO] Completed step into cleaner format
-  const completedMatch = msg.match(/\[INFO\] Completed step: (\S+) \(([^)]+)\) in (\d+)ms/);
+  const completedMatch = msg.match(
+    /\[INFO\] Completed step: (\S+) \(([^)]+)\) in (\d+)ms/
+  );
   if (completedMatch) {
     const duration = Number.parseInt(completedMatch[3], 10);
-    const formatted = duration >= 1000 ? `${(duration / 1000).toFixed(1)}s` : `${duration}ms`;
+    const formatted =
+      duration >= 1000 ? `${(duration / 1000).toFixed(1)}s` : `${duration}ms`;
     return `✓ ${completedMatch[2]} completed in ${formatted}`;
   }
   // Remove raw "done" from JSON parser
@@ -694,11 +714,15 @@ export function Running() {
 
         // Compact execution config header
         const wfName = currentWorkflow?.name || selectedWorkflowId;
-        const modelStr = currentExecution.model ? ` · ${currentExecution.model}` : "";
+        const modelStr = currentExecution.model
+          ? ` · ${currentExecution.model}`
+          : "";
         onLog(`${wfName} · ${currentExecution.provider}${modelStr}`);
         // Show workspace as short path
         const ws = currentExecution.workspace;
-        const shortWs = ws.includes("/") ? `…/${ws.split("/").slice(-2).join("/")}` : ws;
+        const shortWs = ws.includes("/")
+          ? `…/${ws.split("/").slice(-2).join("/")}`
+          : ws;
         onLog(`${shortWs}`);
         onLog("─".repeat(40));
 
@@ -950,7 +974,10 @@ export function Running() {
   const maxLogLines = Math.max(6, termHeight - 6);
   const visibleLogs = logs.slice(-maxLogLines);
   // Box height: content lines + border(2), min 8
-  const boxHeight = Math.max(8, Math.min(visibleLogs.length + (isDone ? 0 : 1), maxLogLines) + 2);
+  const boxHeight = Math.max(
+    8,
+    Math.min(visibleLogs.length + (isDone ? 0 : 1), maxLogLines) + 2
+  );
 
   const statusColor = isDone ? (success ? "green" : "red") : "cyan";
   const borderColor = isDone ? (success ? "green" : "red") : "gray";
@@ -999,11 +1026,11 @@ export function Running() {
         <Text color="gray">
           {logs.length} lines
           {stats.tokens > 0 ? `  ${stats.tokens.toLocaleString()} tok` : ""}
-          {stats.files > 0 ? `  ${stats.files} file${stats.files !== 1 ? "s" : ""}` : ""}
+          {stats.files > 0
+            ? `  ${stats.files} file${stats.files !== 1 ? "s" : ""}`
+            : ""}
         </Text>
-        <Text color="gray">
-          {isDone ? "esc back" : "esc back  c cancel"}
-        </Text>
+        <Text color="gray">{isDone ? "esc back" : "esc back  c cancel"}</Text>
       </Box>
     </Box>
   );
