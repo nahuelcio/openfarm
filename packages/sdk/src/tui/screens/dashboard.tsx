@@ -1,5 +1,8 @@
 import { Box, Text, useInput } from "@openfarm/tui-opentui";
+import { useState } from "react";
 import { KeyHelpBar } from "../components";
+import { OverlayContainer } from "../components/task-loop/overlay-container";
+import { useNavigationKeys } from "../hooks";
 import { useStore } from "../store";
 import { useThemeColors } from "../theme/hooks";
 import { getStatusColor, getStatusIcon } from "../utils/status-helpers";
@@ -7,8 +10,25 @@ import { getStatusColor, getStatusIcon } from "../utils/status-helpers";
 export function Dashboard() {
   const { setScreen, executions, config } = useStore();
   const colors = useThemeColors();
+  const [helpVisible, setHelpVisible] = useState(false);
 
+  // Use standardized navigation keys
+  const { showingHelp } = useNavigationKeys({
+    screen: "dashboard",
+    enableHelp: true,
+    enableQuit: true,
+    onQuit: () => process.exit(0),
+    onNavigate: setScreen,
+    onToggleHelp: setHelpVisible,
+  });
+
+  // Screen-specific shortcuts
   useInput((input, key) => {
+    // Don't process if help is showing (handled by useNavigationKeys)
+    if (showingHelp || helpVisible) {
+      return;
+    }
+
     if (input === "1" || (key.ctrl && input === "n")) {
       setScreen("execute");
     } else if (input === "2" || (key.ctrl && input === "h")) {
@@ -21,6 +41,46 @@ export function Dashboard() {
       process.exit(0);
     }
   });
+
+  // Help content for dashboard
+  const helpContent = (
+    <>
+      <Box flexDirection="column">
+        <Text bold>Navigation</Text>
+        <Text> 1 New Task (execute)</Text>
+        <Text> 2 History</Text>
+        <Text> 3 Workflows</Text>
+        <Text> 4 Generate Context</Text>
+        <Text> d Go to Dashboard</Text>
+      </Box>
+      <Box flexDirection="column" marginTop={1}>
+        <Text bold>System</Text>
+        <Text> ? Toggle Help</Text>
+        <Text> Ctrl+Q Quit</Text>
+        <Text> q Quit</Text>
+      </Box>
+    </>
+  );
+
+  // Render help overlay if showing
+  if (showingHelp || helpVisible) {
+    return (
+      <Box flexDirection="column" gap={1}>
+        <Box flexDirection="row" justifyContent="space-between">
+          <Text bold color={colors.primary}>
+            🌾 OpenFarm
+          </Text>
+          <Text color={colors.muted}>
+            Provider: {config?.defaultProvider || "external-agent"}
+          </Text>
+        </Box>
+        <Text color={colors.border}>{"─".repeat(60)}</Text>
+        <OverlayContainer title="Dashboard Help">
+          {helpContent}
+        </OverlayContainer>
+      </Box>
+    );
+  }
 
   const successCount = executions.filter(
     (e) => e.status === "completed"
@@ -99,6 +159,7 @@ export function Dashboard() {
           { key: "2", label: "History" },
           { key: "3", label: "Workflows" },
           { key: "4", label: "Context" },
+          { key: "?", label: "Help" },
           { key: "Ctrl+Q", label: "Quit" },
         ]}
       />

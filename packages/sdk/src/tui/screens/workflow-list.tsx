@@ -5,7 +5,10 @@ import { addWorkflow, getDb, getWorkflows } from "@openfarm/core/db";
 import { Box, Text, useInput } from "@openfarm/tui-opentui";
 import YAML from "js-yaml";
 import { useCallback, useEffect, useState } from "react";
+import { OverlayContainer } from "../components/task-loop/overlay-container";
+import { useNavigationKeys } from "../hooks";
 import { useStore } from "../store";
+import { useThemeColors } from "../theme/hooks";
 
 async function loadWorkflowsFromYaml(): Promise<Workflow[]> {
   const possiblePaths = [
@@ -69,10 +72,19 @@ async function resetDatabase(): Promise<boolean> {
 
 export function WorkflowList() {
   const { setScreen, setCurrentWorkflow, workflows, setWorkflows } = useStore();
+  const colors = useThemeColors();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+
+  // Use standardized navigation keys
+  const { showingHelp } = useNavigationKeys({
+    screen: "workflows",
+    parentScreen: "dashboard",
+    enableHelp: true,
+    onNavigate: setScreen,
+  });
 
   const loadWorkflows = useCallback(
     async (attempt = 0) => {
@@ -111,8 +123,8 @@ export function WorkflowList() {
   }, [loadWorkflows]);
 
   useInput((input, key) => {
-    if (key.escape) {
-      setScreen("dashboard");
+    // Don't process if help is showing
+    if (showingHelp) {
       return;
     }
 
@@ -184,6 +196,47 @@ export function WorkflowList() {
   // Validar índice
   const safeIndex = selectedIndex >= workflows.length ? 0 : selectedIndex;
 
+  // Help content for workflow list screen
+  const helpContent = (
+    <>
+      <Box flexDirection="column">
+        <Text bold>Navigation</Text>
+        <Text> ↑/↓ Navigate workflows</Text>
+        <Text> Enter Edit workflow</Text>
+        <Text> Esc Back to Dashboard</Text>
+        <Text> d Go to Dashboard</Text>
+      </Box>
+      <Box flexDirection="column" marginTop={1}>
+        <Text bold>Actions</Text>
+        <Text> R Reload workflows</Text>
+        <Text> I Import from YAML</Text>
+        <Text> X Reset database</Text>
+      </Box>
+      <Box flexDirection="column" marginTop={1}>
+        <Text bold>System</Text>
+        <Text> ? Toggle Help</Text>
+      </Box>
+    </>
+  );
+
+  // Render help overlay
+  if (showingHelp) {
+    return (
+      <Box flexDirection="column" gap={1}>
+        <Box flexDirection="row" justifyContent="space-between">
+          <Text bold color={colors.primary}>
+            Workflows
+          </Text>
+          <Text color={colors.muted}>{workflows.length} found</Text>
+        </Box>
+        <Text color={colors.border}>{"─".repeat(60)}</Text>
+        <OverlayContainer title="Workflows Help">
+          {helpContent}
+        </OverlayContainer>
+      </Box>
+    );
+  }
+
   return (
     <Box flexDirection="column" gap={1}>
       <Box flexDirection="row" justifyContent="space-between">
@@ -251,7 +304,7 @@ export function WorkflowList() {
       <Text color="gray">{"─".repeat(60)}</Text>
       <Text color="gray">
         Navigate: Up/Down • Edit: Enter • Reload: R • Import: I • Reset: X •
-        Back: Esc
+        Back: Esc • Help: ?
       </Text>
     </Box>
   );

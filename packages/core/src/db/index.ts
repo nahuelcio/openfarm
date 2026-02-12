@@ -22,6 +22,7 @@ export * from "./integrations";
 // Re-export all CRUD functions
 export * from "./jobs";
 export * from "./project-context-summaries";
+export * from "./remote-instances";
 export * from "./schema-migrations";
 export * from "./session-checkpoints";
 export * from "./system-configs";

@@ -4,6 +4,8 @@
  * Manages connections to multiple remote OpenFarm instances.
  */
 
+import { getDb } from "@openfarm/core/db";
+import { getRemoteInstances, saveRemoteInstances } from "@openfarm/core/db";
 import { RemoteClient } from "@openfarm/remote-server";
 import { create } from "zustand";
 import type {
@@ -186,13 +188,37 @@ export const useRemoteStore = create<RemoteState>((set, get) => ({
   },
 
   loadInstances: async () => {
-    // TODO: Load from config file
-    // For now, return empty
-    set({ instances: [] });
+    try {
+      const db = await getDb();
+      const instances = await getRemoteInstances(db);
+      // Map stored instances to include default status
+      const instancesWithStatus = instances.map((i) => ({
+        ...i,
+        status: "disconnected" as const,
+      }));
+      set({ instances: instancesWithStatus });
+    } catch (error) {
+      console.error("Failed to load remote instances:", error);
+      set({ instances: [] });
+    }
   },
 
   saveInstances: async () => {
-    // TODO: Save to config file
+    try {
+      const db = await getDb();
+      const { instances } = get();
+      // Strip runtime fields before saving
+      const instancesToSave = instances.map(
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        ({ status, error, session, systemInfo, ...rest }) => rest
+      );
+      const result = await saveRemoteInstances(db, instancesToSave);
+      if (!result.ok) {
+        console.error("Failed to save remote instances:", result.error);
+      }
+    } catch (error) {
+      console.error("Failed to save remote instances:", error);
+    }
   },
 
   startTaskLoop: (id, config) => {

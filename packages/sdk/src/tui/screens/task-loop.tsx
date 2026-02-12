@@ -544,8 +544,9 @@ export function TaskLoopScreen({ embedded = false }: TaskLoopScreenProps) {
     if (!(active && store.startTime)) {
       return;
     }
+    const startTime = store.startTime;
     const interval = setInterval(() => {
-      useTaskLoopStore.getState().setElapsedMs(Date.now() - store.startTime!);
+      useTaskLoopStore.getState().setElapsedMs(Date.now() - startTime);
     }, 1000);
     return () => clearInterval(interval);
   }, [store.lifecycle, store.startTime]);
@@ -564,67 +565,86 @@ export function TaskLoopScreen({ embedded = false }: TaskLoopScreenProps) {
     onEnter: () => useTaskLoopStore.getState().toggleRightPanelMode(),
   });
 
-  useInput((input, key) => {
-    if (store.overlay === "resume") {
-      if (key.escape || input === "q") {
-        store.setOverlay("none");
-        return;
-      }
-      if (input === "r") {
-        loadResumableSessions().catch((error) => {
-          console.error("Failed to load resumable sessions:", error);
-        });
-        return;
-      }
-      if (key.upArrow || input === "k") {
-        cycleResumeSelection(-1);
-        return;
-      }
-      if (key.downArrow || input === "j") {
-        cycleResumeSelection(1);
-        return;
-      }
-      if (key.return) {
-        resumeSelectedSession();
-      }
-      return;
-    }
+  useInput(
+    useCallback(
+      (input, key) => {
+        const currentStore = useTaskLoopStore.getState();
 
-    if (store.overlay !== "settings") {
-      return;
-    }
-    if (key.escape) {
-      store.setOverlay("none");
-      return;
-    }
-    if (input === "p") {
-      const currentIndex = PROVIDER_PRESETS.indexOf(store.settings.provider);
-      const nextIndex = (currentIndex + 1) % PROVIDER_PRESETS.length;
-      const nextProvider = PROVIDER_PRESETS[nextIndex];
-      store.setSettings({ provider: nextProvider });
-      setProvider(nextProvider);
-      return;
-    }
-    if (input === "m") {
-      const currentIndex = MODEL_PRESETS.indexOf(store.settings.model);
-      const nextIndex = (currentIndex + 1) % MODEL_PRESETS.length;
-      const nextModel = MODEL_PRESETS[nextIndex];
-      store.setSettings({ model: nextModel });
-      setModel(nextModel);
-      return;
-    }
-    if (input === "+") {
-      store.incrementMaxIterations();
-      return;
-    }
-    if (input === "-") {
-      store.decrementMaxIterations();
-      return;
-    }
-    if (input === "f") {
-      store.setSettings({ stopOnFailure: !store.settings.stopOnFailure });
-    }
-  });
+        if (currentStore.overlay === "resume") {
+          if (key.escape || input === "q") {
+            currentStore.setOverlay("none");
+            return;
+          }
+          if (input === "r") {
+            loadResumableSessions().catch((error) => {
+              console.error("Failed to load resumable sessions:", error);
+            });
+            return;
+          }
+          if (key.upArrow || input === "k") {
+            cycleResumeSelection(-1);
+            return;
+          }
+          if (key.downArrow || input === "j") {
+            cycleResumeSelection(1);
+            return;
+          }
+          if (key.return) {
+            resumeSelectedSession();
+          }
+          return;
+        }
+
+        if (currentStore.overlay !== "settings") {
+          return;
+        }
+        if (key.escape) {
+          currentStore.setOverlay("none");
+          return;
+        }
+        if (input === "p") {
+          const currentIndex = PROVIDER_PRESETS.indexOf(
+            currentStore.settings.provider
+          );
+          const nextIndex = (currentIndex + 1) % PROVIDER_PRESETS.length;
+          const nextProvider = PROVIDER_PRESETS[nextIndex];
+          currentStore.setSettings({ provider: nextProvider });
+          setProvider(nextProvider);
+          return;
+        }
+        if (input === "m") {
+          const currentIndex = MODEL_PRESETS.indexOf(
+            currentStore.settings.model
+          );
+          const nextIndex = (currentIndex + 1) % MODEL_PRESETS.length;
+          const nextModel = MODEL_PRESETS[nextIndex];
+          currentStore.setSettings({ model: nextModel });
+          setModel(nextModel);
+          return;
+        }
+        if (input === "+") {
+          currentStore.incrementMaxIterations();
+          return;
+        }
+        if (input === "-") {
+          currentStore.decrementMaxIterations();
+          return;
+        }
+        if (input === "f") {
+          currentStore.setSettings({
+            stopOnFailure: !currentStore.settings.stopOnFailure,
+          });
+        }
+      },
+      [
+        cycleResumeSelection,
+        loadResumableSessions,
+        resumeSelectedSession,
+        setModel,
+        setProvider,
+      ]
+    )
+  );
 
   const selectedTask = store.tasks[store.selectedTaskIndex];
   const selectedIteration = store.iterations[store.selectedIterationIndex];

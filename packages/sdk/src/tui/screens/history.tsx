@@ -2,7 +2,8 @@ import { getDb, getWorkflows } from "@openfarm/core/db";
 import { Box, Text, useInput } from "@openfarm/tui-opentui";
 import { useEffect, useState } from "react";
 import { KeyHelpBar } from "../components";
-import { useListNavigation } from "../hooks";
+import { OverlayContainer } from "../components/task-loop/overlay-container";
+import { useListNavigation, useNavigationKeys } from "../hooks";
 import { type Execution, useStore } from "../store";
 import { useExecutionRuntimeStore } from "../store/execution-runtime-store";
 import { useThemeColors } from "../theme/hooks";
@@ -25,6 +26,14 @@ export function History() {
   const [workflowNames, setWorkflowNames] = useState<Record<string, string>>(
     {}
   );
+
+  // Use standardized navigation keys
+  const { showingHelp } = useNavigationKeys({
+    screen: "history",
+    parentScreen: "dashboard",
+    enableHelp: true,
+    onNavigate: setScreen,
+  });
 
   // Use shared list navigation hook
   const { selectedIndex } = useListNavigation({
@@ -93,13 +102,15 @@ export function History() {
     setScreen("running");
   };
 
-  // Handle special keys not covered by useListNavigation
+  // Handle special keys not covered by useListNavigation or useNavigationKeys
   useInput((input, key) => {
-    if (key.escape) {
-      setScreen("dashboard");
+    // Don't process if help is showing
+    if (showingHelp) {
+      return;
     }
-    // Press 'd' to view diff directly
-    if (input === "d" && executions.length > 0) {
+
+    // Press 'D' to view diff directly (not 'd' which is for dashboard)
+    if (input === "D" && executions.length > 0) {
       const selected = executions[selectedIndex];
       if (selected?.diff) {
         setSelectedExecutionForDiff(selected);
@@ -114,6 +125,41 @@ export function History() {
       }
     }
   });
+
+  // Help content for history screen
+  const helpContent = (
+    <>
+      <Box flexDirection="column">
+        <Text bold>Navigation</Text>
+        <Text> ↑/↓ Navigate executions</Text>
+        <Text> Enter View execution details</Text>
+        <Text> Esc Back to Dashboard</Text>
+        <Text> d Go to Dashboard</Text>
+      </Box>
+      <Box flexDirection="column" marginTop={1}>
+        <Text bold>Actions</Text>
+        <Text> r Rerun execution</Text>
+        <Text> D View diff (uppercase)</Text>
+      </Box>
+      <Box flexDirection="column" marginTop={1}>
+        <Text bold>System</Text>
+        <Text> ? Toggle Help</Text>
+      </Box>
+    </>
+  );
+
+  // Render help overlay
+  if (showingHelp) {
+    return (
+      <Box flexDirection="column" gap={1}>
+        <Text bold color={colors.primary}>
+          📜 History
+        </Text>
+        <Text color={colors.border}>{"─".repeat(60)}</Text>
+        <OverlayContainer title="History Help">{helpContent}</OverlayContainer>
+      </Box>
+    );
+  }
 
   return (
     <Box flexDirection="column" gap={1}>
@@ -164,9 +210,10 @@ export function History() {
         hints={[
           { key: "↑/↓", label: "Navigate" },
           { key: "Enter", label: "View details" },
-          { key: "d", label: "View diff" },
+          { key: "D", label: "View diff" },
           { key: "r", label: "Rerun" },
           { key: "Esc", label: "Back" },
+          { key: "?", label: "Help" },
         ]}
       />
     </Box>

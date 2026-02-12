@@ -8,6 +8,17 @@ interface TextInputProps {
   focus?: boolean;
 }
 
+/** Props for the OpenTUI input element */
+interface OpenTuiInputProps {
+  value: string;
+  placeholder?: string;
+  focused?: boolean;
+  onInput?: (value: string) => void;
+  onChange?: (value: string) => void;
+  onSubmit?: (value: string) => void;
+  [key: string]: unknown;
+}
+
 export default function TextInput({
   value,
   placeholder,
@@ -19,12 +30,14 @@ export default function TextInput({
     onChange(nextValue);
   };
 
-  return createElement("input", {
+  const inputProps: OpenTuiInputProps = {
     value,
     placeholder,
     focused: focus,
     onInput: handleValueChange,
     onChange: handleValueChange,
     onSubmit,
-  } as any);
+  };
+
+  return createElement("input", inputProps);
 }

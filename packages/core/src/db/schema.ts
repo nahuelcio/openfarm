@@ -526,4 +526,17 @@ export async function createSchema(db: SQL): Promise<void> {
   `;
   await db`CREATE INDEX IF NOT EXISTS idx_execution_logs_session_id ON execution_logs(session_id)`;
   await db`CREATE INDEX IF NOT EXISTS idx_execution_logs_timestamp ON execution_logs(timestamp DESC)`;
+
+  // Create remote_instances table for TUI remote instance persistence
+  await db`
+    CREATE TABLE IF NOT EXISTS remote_instances (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      url TEXT NOT NULL,
+      token TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+  `;
+  await db`CREATE INDEX IF NOT EXISTS idx_remote_instances_name ON remote_instances(name)`;
 }

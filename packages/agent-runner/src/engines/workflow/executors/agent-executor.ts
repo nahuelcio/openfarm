@@ -10,6 +10,10 @@ import type {
 import type { CodingEngine } from "@openfarm/core/types/adapters";
 import { err, ok, type Result } from "@openfarm/result";
 import { llmService } from "../../../llm";
+import {
+  type EngineResolutionContext,
+  resolveEngine,
+} from "../engine-resolver";
 import type { StepExecutionRequest } from "../types";
 import {
   type AgentAuthorConfig,
@@ -555,14 +559,37 @@ export async function executeAgentCode(
     tuiConfig = await openCodeConfigService.getTuiConfig();
   }
 
-  // Determine which engine to use
+  // Determine which engine to use using the engine resolver
   let engineToUse: CodingEngine;
 
-  const defaultEngine = services.codingEngine;
-  const engineFactory = services.codingEngineFactory;
-  const defaultEngineOptions = services.defaultEngineOptions;
+  try {
+    engineToUse = await resolveEngine(
+      validatedConfig,
+      context as EngineResolutionContext,
+      {
+        codingEngine: services.codingEngine,
+        codingEngineFactory: services.codingEngineFactory,
+        defaultEngineOptions: services.defaultEngineOptions,
+      },
+      {
+        resolvedModel,
+        maxIterations: tuiConfig?.maxIterations,
+        useOpenCode,
+        onLog: services.defaultEngineOptions.onLog,
+        onChanges: services.defaultEngineOptions.onChanges,
+        onChatMessage: services.defaultEngineOptions.onChatMessage,
+      }
+    );
+  } catch (error) {
+    return err(
+      error instanceof Error
+        ? error
+        : new Error(`Failed to resolve engine: ${String(error)}`)
+    );
+  }
 
-  // Check if step overrides previewMode or readOnly
+  // Log step configuration if overrides are applied
+  const defaultEngineOptions = services.defaultEngineOptions;
   const stepPreviewMode =
     validatedConfig.previewMode !== undefined
       ? validatedConfig.previewMode
@@ -572,118 +599,6 @@ export async function executeAgentCode(
 
   if (stepPreviewMode !== defaultEngineOptions.previewMode) {
     await logger(`Step overrides previewMode: ${stepPreviewMode}`);
-  }
-
-  const resolvedWorktreePath =
-    validatedConfig.worktreePath ??
-    context.worktreePath ??
-    defaultEngineOptions.worktreePath;
-  const resolvedPodName =
-    validatedConfig.podName ?? context.podName ?? defaultEngineOptions.podName;
-  const resolvedRuntimeType =
-    validatedConfig.runtimeType ??
-    defaultEngineOptions.runtimeType ??
-    (resolvedPodName
-      ? "kubernetes"
-      : resolvedWorktreePath
-        ? "worktree"
-        : defaultEngineOptions.containerName ||
-            defaultEngineOptions.ephemeral ||
-            defaultEngineOptions.imageName
-          ? "docker"
-          : "local");
-
-  const runtimeOptions = {
-    runtimeType: resolvedRuntimeType,
-    worktreePath: resolvedWorktreePath,
-    baseBranch:
-      validatedConfig.baseBranch ??
-      defaultEngineOptions.baseBranch ??
-      context.defaultBranch,
-    containerName:
-      validatedConfig.containerName ?? defaultEngineOptions.containerName,
-    podName: resolvedPodName,
-    namespace: validatedConfig.namespace ?? defaultEngineOptions.namespace,
-    imageName: validatedConfig.imageName ?? defaultEngineOptions.imageName,
-    ephemeral: validatedConfig.ephemeral ?? defaultEngineOptions.ephemeral,
-  };
-
-  if (engineFactory && resolvedModel) {
-    await logger(`Creating engine with step-specific model: ${resolvedModel}`);
-    engineToUse = engineFactory({
-      provider:
-        validatedConfig.provider || (useOpenCode ? "opencode" : "claude-code"),
-      model: resolvedModel,
-      previewMode: stepPreviewMode,
-      chatOnly: validatedConfig.chatOnly,
-      mcpServers: defaultEngineOptions.mcpServers,
-      onLog: defaultEngineOptions.onLog,
-      onChanges: defaultEngineOptions.onChanges,
-      onChatMessage: defaultEngineOptions.onChatMessage,
-      maxIterations: tuiConfig?.maxIterations,
-      ...runtimeOptions,
-    });
-    await logger(`Using step-specific model: ${resolvedModel}`);
-  } else {
-    const stepModelToUse = validatedConfig.model;
-
-    // If previewMode/chatOnly/provider differs and we have a factory, create new engine with correct mode
-    const stepProvider =
-      validatedConfig.provider || context.agentConfiguration?.provider;
-
-    if (
-      (stepPreviewMode !== defaultEngineOptions.previewMode ||
-        validatedConfig.chatOnly !==
-          (defaultEngineOptions as Record<string, unknown>).chatOnly ||
-        stepProvider !== context.agentConfiguration?.provider ||
-        stepModelToUse) &&
-      engineFactory
-    ) {
-      await logger(
-        `Creating engine with step-specific configuration: provider=${stepProvider}, previewMode=${stepPreviewMode}, chatOnly=${validatedConfig.chatOnly}${stepModelToUse ? `, model=${stepModelToUse}` : ""}`
-      );
-      engineToUse = engineFactory({
-        provider: stepProvider,
-        model: stepModelToUse || resolvedModel,
-        previewMode: stepPreviewMode,
-        chatOnly: validatedConfig.chatOnly,
-        mcpServers: defaultEngineOptions.mcpServers,
-        onLog: defaultEngineOptions.onLog,
-        onChanges: defaultEngineOptions.onChanges,
-        onChatMessage: defaultEngineOptions.onChatMessage,
-        maxIterations: tuiConfig?.maxIterations,
-        ...runtimeOptions,
-      });
-    } else {
-      if (defaultEngine) {
-        engineToUse = defaultEngine;
-      } else {
-        if (engineFactory && defaultEngineOptions) {
-          // Fallback: create engine using factory if default instance is missing
-          // This happens when running via simple-step-executor which only sets up the factory
-          engineToUse = engineFactory({
-            provider:
-              validatedConfig.provider ||
-              (useOpenCode ? "opencode" : "claude-code"),
-
-            model: resolvedModel || "default",
-            previewMode:
-              stepPreviewMode !== undefined
-                ? stepPreviewMode
-                : defaultEngineOptions.previewMode,
-            chatOnly: validatedConfig.chatOnly ?? false,
-            mcpServers: defaultEngineOptions.mcpServers,
-            onLog: defaultEngineOptions.onLog,
-            onChanges: defaultEngineOptions.onChanges,
-            onChatMessage: defaultEngineOptions.onChatMessage,
-            maxIterations: tuiConfig?.maxIterations,
-            ...runtimeOptions,
-          });
-        } else {
-          return err(new Error("No coding engine available"));
-        }
-      }
-    }
   }
 
   const modeLabel = stepPreviewMode ? " (read-only mode)" : "";

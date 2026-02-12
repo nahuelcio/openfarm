@@ -36,6 +36,43 @@ const mapBorderStyle = (
   return "single";
 };
 
+/** Props for the OpenTUI box element */
+interface OpenTuiBoxProps {
+  border?: boolean;
+  borderStyle?: "single" | "double" | "rounded" | "bold";
+  borderColor?: string;
+  padding?: number;
+  paddingLeft?: number;
+  paddingRight?: number;
+  paddingTop?: number;
+  paddingBottom?: number;
+  margin?: number;
+  marginLeft?: number;
+  marginRight?: number;
+  marginTop?: number;
+  marginBottom?: number;
+  flexDirection?: "row" | "column";
+  flexGrow?: number;
+  justifyContent?:
+    | "flex-start"
+    | "center"
+    | "flex-end"
+    | "space-between"
+    | "space-around"
+    | "space-evenly";
+  alignItems?: "flex-start" | "center" | "flex-end" | "stretch";
+  gap?: number;
+  width?: number | string;
+  height?: number | string;
+  overflow?: "hidden" | "visible";
+  title?: string;
+  onMouse?: (event: TuiMouseEvent) => void;
+  onMouseDown?: (event: TuiMouseEvent) => void;
+  onMouseUp?: (event: TuiMouseEvent) => void;
+  onMouseMove?: (event: TuiMouseEvent) => void;
+  [key: string]: unknown;
+}
+
 type BoxLikeProps = PropsWithChildren<{
   border?: boolean;
   borderStyle?: BorderStyle;
@@ -88,23 +125,30 @@ export function Box({
   ...rest
 }: BoxLikeProps) {
   const showBorder = border ?? borderStyle !== undefined;
-  const props = {
+  const props: OpenTuiBoxProps = {
     ...rest,
     border: showBorder,
     borderStyle: showBorder ? mapBorderStyle(borderStyle) : undefined,
     borderColor,
     padding,
-    paddingLeft: paddingX ?? rest.paddingLeft,
-    paddingRight: paddingX ?? rest.paddingRight,
-    paddingTop: paddingY ?? rest.paddingTop,
-    paddingBottom: paddingY ?? rest.paddingBottom,
+    paddingLeft: paddingX ?? (rest.paddingLeft as number | undefined),
+    paddingRight: paddingX ?? (rest.paddingRight as number | undefined),
+    paddingTop: paddingY ?? (rest.paddingTop as number | undefined),
+    paddingBottom: paddingY ?? (rest.paddingBottom as number | undefined),
     margin,
-    marginLeft: marginX ?? rest.marginLeft,
-    marginRight: marginX ?? rest.marginRight,
-    marginTop: marginY ?? rest.marginTop,
-    marginBottom: marginY ?? rest.marginBottom,
+    marginLeft: marginX ?? (rest.marginLeft as number | undefined),
+    marginRight: marginX ?? (rest.marginRight as number | undefined),
+    marginTop: marginY ?? (rest.marginTop as number | undefined),
+    marginBottom: marginY ?? (rest.marginBottom as number | undefined),
   };
-  return createElement("box", props as any, children);
+  return createElement("box", props, children);
+}
+
+/** Props for the OpenTUI text/span elements */
+interface OpenTuiTextProps {
+  fg?: string;
+  opacity?: number;
+  [key: string]: unknown;
 }
 
 type TextProps = PropsWithChildren<{
@@ -133,13 +177,15 @@ export function Text({
       ? createElement("u", null, children)
       : children;
 
+  const textProps: OpenTuiTextProps = {
+    ...rest,
+    fg: color,
+    opacity: dimColor ? 0.65 : (rest.opacity as number | undefined),
+  };
+
   const base = createElement(
     TextNode,
-    {
-      ...rest,
-      fg: color,
-      opacity: dimColor ? 0.65 : rest.opacity,
-    } as any,
+    textProps,
     createElement(TextNestingContext.Provider, { value: true }, content)
   );
 
@@ -165,7 +211,10 @@ interface InputKey {
   meta: boolean;
 }
 
-const toInputKey = (key: any): InputKey => ({
+// Type for the key event from useKeyboard
+type KeyboardKeyEvent = Parameters<Parameters<typeof useKeyboard>[0]>[0];
+
+const toInputKey = (key: KeyboardKeyEvent): InputKey => ({
   upArrow: key.name === "up",
   downArrow: key.name === "down",
   leftArrow: key.name === "left",
@@ -184,7 +233,7 @@ const toInputKey = (key: any): InputKey => ({
   meta: Boolean(key.meta),
 });
 
-const toInput = (key: any): string => {
+const toInput = (key: KeyboardKeyEvent): string => {
   if (typeof key.sequence === "string" && key.sequence.length === 1) {
     return key.sequence;
   }
@@ -209,7 +258,10 @@ export function useInput(
 
 export function useApp(): { exit: (error?: Error) => void } {
   return {
-    exit: () => {
+    exit: (error?: Error) => {
+      if (error) {
+        console.error(error);
+      }
       currentRenderer?.destroy();
     },
   };

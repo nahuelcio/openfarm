@@ -3,6 +3,8 @@ import { getDb } from "@openfarm/core/db";
 import { Box, Text, useInput } from "@openfarm/tui-opentui";
 import TextInput from "@openfarm/tui-opentui/text-input";
 import { useEffect, useState } from "react";
+import { OverlayContainer } from "../components/task-loop/overlay-container";
+import { useNavigationKeys } from "../hooks";
 import { useStore } from "../store";
 import { getAvailableModels, preloadModels } from "../utils/models";
 import {
@@ -110,6 +112,15 @@ export function Execute() {
   const [selectedPreset, setSelectedPreset] = useState(0);
   const [externalAgentArgs, setExternalAgentArgs] = useState("");
 
+  // Use standardized navigation keys
+  const { showingHelp } = useNavigationKeys({
+    screen: "execute",
+    parentScreen: "dashboard",
+    enableHelp: true,
+    onNavigate: setScreen,
+    blockNavigation: step === "task" && task.trim().length > 0,
+  });
+
   // Start with hardcoded defaults - zero async, zero lag
   const [workflows, setWorkflows] = useState<Workflow[]>(DEFAULT_WORKFLOWS);
 
@@ -157,13 +168,16 @@ export function Execute() {
     }
 
     let mounted = true;
+    // Capture provider at request time to prevent race conditions
+    const requestProvider = provider;
     setLoadingModels(true);
 
     // For external-agent, pass the selected CLI to get appropriate models
     const cli =
       provider === "external-agent" ? externalAgentConfig.cli : undefined;
     getAvailableModels(provider, cli).then((models) => {
-      if (mounted) {
+      // Only update if still mounted AND provider hasn't changed
+      if (mounted && provider === requestProvider) {
         setModelOptions(models);
         setLoadingModels(false);
       }
@@ -210,7 +224,44 @@ export function Execute() {
     );
   }, [filteredModels.length, isSelectingFromList]);
 
+  // Help content for execute screen
+  const helpContent = (
+    <>
+      <Box flexDirection="column">
+        <Text bold>Navigation</Text>
+        <Text> ↑/↓ Navigate options</Text>
+        <Text> Enter Confirm selection</Text>
+        <Text> Esc Go back / Cancel</Text>
+        <Text> d Go to Dashboard</Text>
+      </Box>
+      <Box flexDirection="column" marginTop={1}>
+        <Text bold>Workflow Steps</Text>
+        <Text> 0 Select Workflow</Text>
+        <Text> 1 Select Provider</Text>
+        <Text> 2 Configure External Agent (if needed)</Text>
+        <Text> 3 Select Model (optional)</Text>
+        <Text> 4 Select Workspace</Text>
+        <Text> 5 Describe Task</Text>
+      </Box>
+      <Box flexDirection="column" marginTop={1}>
+        <Text bold>Model Selection</Text>
+        <Text> Tab Toggle search/list mode</Text>
+        <Text> ↓ Select from list (when searching)</Text>
+        <Text> PgUp/PgDn Change page</Text>
+      </Box>
+      <Box flexDirection="column" marginTop={1}>
+        <Text bold>System</Text>
+        <Text> ? Toggle Help</Text>
+      </Box>
+    </>
+  );
+
   useInput((input, key) => {
+    // Don't process keys if help is showing
+    if (showingHelp) {
+      return;
+    }
+
     // Escape vuelve al dashboard o paso anterior
     if (key.escape) {
       if (step === "workflow") {
@@ -493,6 +544,21 @@ export function Execute() {
 
   const currentWorkflow = workflows.find((w) => w.id === selectedWorkflowId);
   const _selectedWorkflow = workflows[selectedIndex];
+
+  // Render help overlay
+  if (showingHelp) {
+    return (
+      <Box flexDirection="column" gap={1}>
+        <Text bold color="cyan">
+          🚀 New Execution
+        </Text>
+        <Text color="gray">{"─".repeat(60)}</Text>
+        <OverlayContainer title="New Execution Help">
+          {helpContent}
+        </OverlayContainer>
+      </Box>
+    );
+  }
 
   return (
     <Box flexDirection="column" gap={1}>
@@ -871,7 +937,7 @@ export function Execute() {
       <Text color="gray">{"─".repeat(60)}</Text>
 
       {/* Help */}
-      <Text color="gray">↑↓ Navigate • Enter Confirm • Esc Back</Text>
+      <Text color="gray">↑↓ Navigate • Enter Confirm • Esc Back • ? Help</Text>
     </Box>
   );
 }

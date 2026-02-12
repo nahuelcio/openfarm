@@ -1,4 +1,5 @@
 import { useInput } from "@openfarm/tui-opentui";
+import { useCallback, useRef } from "react";
 import { useTaskLoopStore } from "../store/task-loop-store";
 
 interface UseTaskLoopKeysOptions {
@@ -11,19 +12,20 @@ interface UseTaskLoopKeysOptions {
   onEnter: () => void;
 }
 
-export function useTaskLoopKeys(options: UseTaskLoopKeysOptions): void {
-  const {
-    onStartOrResume,
-    onPause,
-    onRefresh,
-    onDashboard,
-    onConfirmQuit,
-    onConfirmInterrupt,
-    onEnter,
-  } = options;
+interface InputKey {
+  upArrow: boolean;
+  downArrow: boolean;
+  return: boolean;
+  escape: boolean;
+}
 
-  useInput((input, key) => {
+export function useTaskLoopKeys(options: UseTaskLoopKeysOptions): void {
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
+
+  const handleInput = useCallback((input: string, key: InputKey) => {
     const store = useTaskLoopStore.getState();
+    const opts = optionsRef.current;
 
     if (store.overlay === "resume") {
       return;
@@ -39,7 +41,7 @@ export function useTaskLoopKeys(options: UseTaskLoopKeysOptions): void {
     if (store.overlay === "quit-confirm") {
       if (input.toLowerCase() === "y") {
         store.setOverlay("none");
-        onConfirmQuit();
+        opts.onConfirmQuit();
       }
       if (input.toLowerCase() === "n" || key.escape) {
         store.setOverlay("none");
@@ -50,7 +52,7 @@ export function useTaskLoopKeys(options: UseTaskLoopKeysOptions): void {
     if (store.overlay === "interrupt-confirm") {
       if (input.toLowerCase() === "y") {
         store.setOverlay("none");
-        onConfirmInterrupt();
+        opts.onConfirmInterrupt();
       }
       if (input.toLowerCase() === "n" || key.escape) {
         store.setOverlay("none");
@@ -60,14 +62,14 @@ export function useTaskLoopKeys(options: UseTaskLoopKeysOptions): void {
 
     if (input === "s") {
       if (store.lifecycle === "ready" || store.lifecycle === "paused") {
-        onStartOrResume();
+        opts.onStartOrResume();
       }
       return;
     }
 
     if (input === "p") {
       if (store.lifecycle === "executing" || store.lifecycle === "selecting") {
-        onPause();
+        opts.onPause();
       }
       return;
     }
@@ -112,7 +114,7 @@ export function useTaskLoopKeys(options: UseTaskLoopKeysOptions): void {
 
     if (input === "r") {
       if (store.lifecycle === "ready" || store.lifecycle === "paused") {
-        onRefresh();
+        opts.onRefresh();
       }
       return;
     }
@@ -131,7 +133,7 @@ export function useTaskLoopKeys(options: UseTaskLoopKeysOptions): void {
       if (store.lifecycle === "executing" || store.lifecycle === "selecting") {
         store.setOverlay("quit-confirm");
       } else {
-        onConfirmQuit();
+        opts.onConfirmQuit();
       }
       return;
     }
@@ -140,13 +142,13 @@ export function useTaskLoopKeys(options: UseTaskLoopKeysOptions): void {
       if (store.lifecycle === "executing" || store.lifecycle === "selecting") {
         store.setOverlay("interrupt-confirm");
       } else {
-        onDashboard();
+        opts.onDashboard();
       }
       return;
     }
 
     if (key.return) {
-      onEnter();
+      opts.onEnter();
       return;
     }
 
@@ -166,5 +168,7 @@ export function useTaskLoopKeys(options: UseTaskLoopKeysOptions): void {
         store.selectLastIteration();
       }
     }
-  });
+  }, []);
+
+  useInput(handleInput);
 }

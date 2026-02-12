@@ -7,8 +7,11 @@
 import { Box, Text, useInput } from "@openfarm/tui-opentui";
 import { useEffect, useState } from "react";
 import { RemoteInstanceList } from "../components/remote-tabs";
+import { OverlayContainer } from "../components/task-loop/overlay-container";
+import { useNavigationKeys } from "../hooks";
 import { useStore } from "../store";
 import { useRemoteStore } from "../store/remote-store";
+import { useThemeColors } from "../theme/hooks";
 
 export function RemoteInstancesScreen() {
   const {
@@ -22,12 +25,27 @@ export function RemoteInstancesScreen() {
     cancelTaskLoop,
     requestStatus,
   } = useRemoteStore();
-  const { provider, model } = useStore();
+  const { provider, model, setScreen } = useStore();
+  const colors = useThemeColors();
   const [showAddForm, setShowAddForm] = useState(false);
   const [newInstanceName, setNewInstanceName] = useState("");
   const [newInstanceUrl, setNewInstanceUrl] = useState("");
 
+  // Use standardized navigation keys
+  const { showingHelp } = useNavigationKeys({
+    screen: "remote-instance",
+    parentScreen: "dashboard",
+    enableHelp: true,
+    onNavigate: setScreen,
+    blockNavigation: showAddForm,
+  });
+
   useInput((input, key) => {
+    // Don't process if help is showing
+    if (showingHelp) {
+      return;
+    }
+
     if (showAddForm) {
       if (key.return && newInstanceName && newInstanceUrl) {
         addInstance({
@@ -85,6 +103,49 @@ export function RemoteInstancesScreen() {
       selectInstance(instances[0].id);
     }
   }, [instances, selectedInstanceId, selectInstance]);
+
+  // Help content for remote instances screen
+  const helpContent = (
+    <>
+      <Box flexDirection="column">
+        <Text bold>Navigation</Text>
+        <Text> ↑/↓ Navigate instances</Text>
+        <Text> Enter Select instance</Text>
+        <Text> Esc Back to Dashboard (when not in add form)</Text>
+        <Text> d Go to Dashboard</Text>
+      </Box>
+      <Box flexDirection="column" marginTop={1}>
+        <Text bold>Instance Management</Text>
+        <Text> a Add new instance</Text>
+      </Box>
+      <Box flexDirection="column" marginTop={1}>
+        <Text bold>Task Loop Control (when instance selected)</Text>
+        <Text> s Start loop</Text>
+        <Text> p Pause loop</Text>
+        <Text> r Resume loop</Text>
+        <Text> x Cancel loop</Text>
+        <Text> g Refresh status</Text>
+      </Box>
+      <Box flexDirection="column" marginTop={1}>
+        <Text bold>System</Text>
+        <Text> ? Toggle Help</Text>
+      </Box>
+    </>
+  );
+
+  // Render help overlay
+  if (showingHelp) {
+    return (
+      <Box flexDirection="column" flexGrow={1} padding={1}>
+        <Text bold color={colors.primary}>
+          Remote Instance Management
+        </Text>
+        <OverlayContainer title="Remote Instances Help">
+          {helpContent}
+        </OverlayContainer>
+      </Box>
+    );
+  }
 
   return (
     <Box flexDirection="column" flexGrow={1} padding={1}>
@@ -150,7 +211,7 @@ export function RemoteInstancesScreen() {
           {instances.filter((i) => i.status === "connected").length}
         </Text>
         <Text color="gray">
-          [s] start loop [p] pause [r] resume [x] cancel [g] refresh status
+          [s] start [p] pause [r] resume [x] cancel [g] refresh [?] help
         </Text>
       </Box>
     </Box>
