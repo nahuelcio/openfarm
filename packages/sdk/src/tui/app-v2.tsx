@@ -5,6 +5,9 @@ import { ImprovedSidebar } from "./components/layout/improved-sidebar";
 import { SplashScreen } from "./components/splash-screen";
 import type { Tab } from "./components/tabs";
 import { useInitialization } from "./hooks/use-initialization";
+import { AgentChat } from "./screens/agent-chat";
+import { FileExplorer } from "./screens/file-explorer";
+import { WarpTerminal } from "./screens/warp-terminal";
 import { ContextScreen } from "./screens/context";
 import { ContextConfigScreen } from "./screens/context-config";
 import { ContextHistoryScreen } from "./screens/context-history";
@@ -40,6 +43,7 @@ const SECTION_SCREEN_MAP: Record<SectionId, Screen> = {
   context: "context-config",
   remotes: "remotes",
   "task-loop": "task-loop",
+  "agent-chat": "agent-chat",
 };
 
 function resolveSection(screen: Screen): SectionId {
@@ -204,6 +208,12 @@ export function AppV2() {
         return <ThemeSelector />;
       case "task-loop":
         return <TaskLoopScreen embedded={true} />;
+      case "agent-chat":
+        return <AgentChat />;
+      case "file-explorer":
+        return <FileExplorer />;
+      case "warp-terminal":
+        return <WarpTerminal />;
       default:
         return <NewDashboard />;
     }

@@ -293,6 +293,10 @@ export function useStdoutDimensions(): { rows: number; columns: number } {
   return dims;
 }
 
+export function useStdin(): { isRawModeSupported: boolean } {
+  return { isRawModeSupported: true };
+}
+
 export function render(node: React.ReactNode) {
   let destroyed = false;
   let rootRef: ReturnType<typeof createRoot> | null = null;

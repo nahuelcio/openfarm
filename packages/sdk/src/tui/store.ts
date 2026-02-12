@@ -32,6 +32,9 @@ export type Screen =
   | "context-history"
   | "remotes"
   | "remote-instance"
+  | "agent-chat"
+  | "file-explorer"
+  | "warp-terminal"
   | "theme-selector";
 
 export type TabId =

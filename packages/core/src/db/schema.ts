@@ -539,4 +539,47 @@ export async function createSchema(db: SQL): Promise<void> {
     )
   `;
   await db`CREATE INDEX IF NOT EXISTS idx_remote_instances_name ON remote_instances(name)`;
+
+  // Create warp_conversations table for TUI Warp Terminal chat
+  await db`
+    CREATE TABLE IF NOT EXISTS warp_conversations (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      provider TEXT NOT NULL,
+      model TEXT,
+      workspace_path TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+  `;
+  await db`CREATE INDEX IF NOT EXISTS idx_warp_conversations_updated_at ON warp_conversations(updated_at DESC)`;
+
+  // Create warp_messages table for TUI Warp Terminal chat messages
+  await db`
+    CREATE TABLE IF NOT EXISTS warp_messages (
+      id TEXT PRIMARY KEY,
+      conversation_id TEXT NOT NULL,
+      role TEXT NOT NULL CHECK(role IN ('user', 'assistant', 'system')),
+      content TEXT NOT NULL,
+      status TEXT NOT NULL CHECK(status IN ('sending', 'streaming', 'complete', 'error')),
+      blocks TEXT,
+      tokens_used INTEGER,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (conversation_id) REFERENCES warp_conversations(id) ON DELETE CASCADE
+    )
+  `;
+  await db`CREATE INDEX IF NOT EXISTS idx_warp_messages_conversation_id ON warp_messages(conversation_id)`;
+  await db`CREATE INDEX IF NOT EXISTS idx_warp_messages_created_at ON warp_messages(created_at ASC)`;
+
+  // Create warp_context_files table for files mentioned in chat
+  await db`
+    CREATE TABLE IF NOT EXISTS warp_context_files (
+      conversation_id TEXT NOT NULL,
+      file_path TEXT NOT NULL,
+      content_snapshot TEXT,
+      PRIMARY KEY (conversation_id, file_path),
+      FOREIGN KEY (conversation_id) REFERENCES warp_conversations(id) ON DELETE CASCADE
+    )
+  `;
+  await db`CREATE INDEX IF NOT EXISTS idx_warp_context_files_conversation_id ON warp_context_files(conversation_id)`;
 }

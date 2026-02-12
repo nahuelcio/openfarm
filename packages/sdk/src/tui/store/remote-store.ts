@@ -4,8 +4,11 @@
  * Manages connections to multiple remote OpenFarm instances.
  */
 
-import { getDb } from "@openfarm/core/db";
-import { getRemoteInstances, saveRemoteInstances } from "@openfarm/core/db";
+import {
+  getDb,
+  getRemoteInstances,
+  saveRemoteInstances,
+} from "@openfarm/core/db";
 import { RemoteClient } from "@openfarm/remote-server";
 import { create } from "zustand";
 import type {

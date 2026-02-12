@@ -29,6 +29,7 @@ export * from "./system-configs";
 export * from "./tui-executions";
 export * from "./types";
 export * from "./utils";
+export * from "./warp-chat";
 export * from "./work-items";
 export * from "./workflows/index";
 

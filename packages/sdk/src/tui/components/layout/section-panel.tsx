@@ -12,7 +12,8 @@ export type SectionId =
   | "workflows"
   | "context"
   | "remotes"
-  | "task-loop";
+  | "task-loop"
+  | "agent-chat";
 
 interface SectionPanelProps {
   sectionId: SectionId;

@@ -99,6 +99,18 @@ export function NewDashboard() {
     if (input === "t") {
       setScreen("theme-selector");
     }
+    // Press 'c' to open Agent Chat
+    if (input === "c") {
+      setScreen("agent-chat");
+    }
+    // Press 'f' to open File Explorer
+    if (input === "f") {
+      setScreen("file-explorer");
+    }
+    // Press 'w' to open Warp Terminal
+    if (input === "w") {
+      setScreen("warp-terminal");
+    }
     // Press 'r' to return to running execution
     if (input === "r" && hasActiveSession && activeSessionId) {
       const exec = executions.find((e) => e.id === activeSessionId);
@@ -238,7 +250,7 @@ export function NewDashboard() {
       <Box borderColor="gray" borderStyle="single" paddingX={1}>
         <Text color="gray">Quick Actions: </Text>
         <Text>
-          [n] New execution [r] Resume [h] History [w] Workflows [t] Themes
+          [n] New [w] Warp [c] Chat [f] Files [r] Resume [h] History [t] Themes
         </Text>
       </Box>
     </Box>

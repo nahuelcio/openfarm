@@ -4,6 +4,8 @@
  * React hooks for TUI functionality.
  */
 
+export type { UseClipboardReturn } from "./use-clipboard";
+export { useClipboard } from "./use-clipboard";
 export type {
   UseListNavigationOptions,
   UseListNavigationReturn,

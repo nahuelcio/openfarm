@@ -37,6 +37,8 @@ export function Dashboard() {
       setScreen("workflows");
     } else if (input === "4") {
       setScreen("context-config");
+    } else if (input === "5" || (key.ctrl && input === "a")) {
+      setScreen("agent-chat");
     } else if (key.ctrl && input === "q") {
       process.exit(0);
     }
@@ -126,6 +128,9 @@ export function Dashboard() {
           <Text color={colors.primary}>4</Text> - Generate Context
         </Text>
         <Text>
+          <Text color={colors.primary}>5</Text> - Agent Chat 💬
+        </Text>
+        <Text>
           <Text color={colors.primary}>Ctrl+Q</Text> - Quit
         </Text>
       </Box>
@@ -159,6 +164,7 @@ export function Dashboard() {
           { key: "2", label: "History" },
           { key: "3", label: "Workflows" },
           { key: "4", label: "Context" },
+          { key: "5", label: "Chat" },
           { key: "?", label: "Help" },
           { key: "Ctrl+Q", label: "Quit" },
         ]}

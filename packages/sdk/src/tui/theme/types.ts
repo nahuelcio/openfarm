@@ -95,4 +95,5 @@ export type ThemeId =
   | "dracula"
   | "solarized-dark"
   | "solarized-light"
-  | "high-contrast";
+  | "high-contrast"
+  | "warp-dark";

@@ -68,7 +68,12 @@ export const triggerInput = (
   }> = {}
 ) => {
   const handler = (
-    globalThis as unknown as { __testInputHandler?: (input: string, key: Record<string, boolean>) => void }
+    globalThis as unknown as {
+      __testInputHandler?: (
+        input: string,
+        key: Record<string, boolean>
+      ) => void;
+    }
   ).__testInputHandler;
   if (handler) {
     handler(input, {

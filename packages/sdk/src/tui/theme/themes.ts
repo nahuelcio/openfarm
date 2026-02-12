@@ -352,6 +352,75 @@ export const highContrastTheme: Theme = {
 };
 
 // ==========================================
+// WARP DARK THEME
+// ==========================================
+export const warpDarkTheme: Theme = {
+  id: "warp-dark",
+  name: "Warp Dark",
+  colors: {
+    background: "#1a1b26",
+    foreground: "#a9b1d6",
+    primary: "#7aa2f7",
+    secondary: "#bb9af7",
+    success: "#73daca",
+    error: "#f7768e",
+    warning: "#e0af68",
+    info: "#7dcfff",
+    muted: "#565f89",
+    border: "#24283b",
+
+    // Status colors
+    statusIdle: "#565f89",
+    statusRunning: "#73daca",
+    statusPaused: "#e0af68",
+    statusError: "#f7768e",
+    statusCompleted: "#7dcfff",
+
+    // Log level colors
+    logDebug: "#565f89",
+    logInfo: "#7dcfff",
+    logWarn: "#e0af68",
+    logError: "#f7768e",
+
+    // UI component colors
+    headerBg: "#16161e",
+    headerFg: "#a9b1d6",
+    footerBg: "#16161e",
+    footerFg: "#565f89",
+    selectedBg: "#7aa2f7",
+    selectedFg: "#1a1b26",
+  },
+  styles: {
+    header: { color: "#a9b1d6", bold: true },
+    headerStatus: { color: "#e0af68" },
+
+    taskRunning: { color: "#e0af68", bold: true },
+    taskCompleted: { color: "#73daca" },
+    taskFailed: { color: "#f7768e" },
+    taskPending: { color: "#565f89" },
+
+    logDebug: { color: "#565f89", dimColor: true },
+    logInfo: { color: "#a9b1d6" },
+    logWarn: { color: "#e0af68" },
+    logError: { color: "#f7768e", bold: true },
+
+    spinner: { color: "#7aa2f7" },
+    tabActive: { color: "#7aa2f7", bold: true },
+    tabInactive: { color: "#565f89" },
+    border: { color: "#24283b" },
+    label: { color: "#bb9af7" },
+    value: { color: "#a9b1d6" },
+
+    treeIcon: { color: "#e0af68" },
+    treeExpanded: { color: "#7aa2f7" },
+    treeCollapsed: { color: "#565f89" },
+
+    buttonPrimary: { color: "#7aa2f7", bold: true },
+    buttonSecondary: { color: "#565f89" },
+  },
+};
+
+// ==========================================
 // THEME REGISTRY
 // ==========================================
 export const BUILT_IN_THEMES: Record<string, Theme> = {
@@ -360,6 +429,7 @@ export const BUILT_IN_THEMES: Record<string, Theme> = {
   "solarized-dark": solarizedDarkTheme,
   "solarized-light": solarizedLightTheme,
   "high-contrast": highContrastTheme,
+  "warp-dark": warpDarkTheme,
 };
 
-export const DEFAULT_THEME_ID = "default";
+export const DEFAULT_THEME_ID = "warp-dark";

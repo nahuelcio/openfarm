@@ -5,6 +5,7 @@ export {
   Text,
   useApp,
   useInput,
+  useStdin,
   useStdout,
   useStdoutDimensions,
 } from "./runtime";
