@@ -20,7 +20,10 @@ import {
   createAIServiceFromEnv,
   MockAIService,
 } from "../services/ai-service";
-import { detectSmartContext, buildContextPrompt } from "../services/context-resolver";
+import {
+  detectSmartContext,
+  buildContextPrompt,
+} from "../services/context-resolver";
 
 // Simple ID generator for chat messages
 function generateId(): string {
@@ -396,11 +399,15 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       }
 
       // Stream from AI service
-      const stream = service.streamFromMessages(aiMessages, undefined, (chunk) => {
-        if (signal.aborted) {
-          throw new Error("AbortError");
+      const stream = service.streamFromMessages(
+        aiMessages,
+        undefined,
+        (chunk) => {
+          if (signal.aborted) {
+            throw new Error("AbortError");
+          }
         }
-      });
+      );
 
       for await (const chunk of stream) {
         if (signal.aborted) {

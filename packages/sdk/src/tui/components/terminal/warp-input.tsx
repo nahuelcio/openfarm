@@ -21,7 +21,11 @@ export interface WarpInputProps {
   /** When AI message is submitted */
   onAIMessage: (message: string) => void;
   /** When terminal command is submitted */
-  onTerminalCommand?: (command: string, output: string, exitCode: number) => void;
+  onTerminalCommand?: (
+    command: string,
+    output: string,
+    exitCode: number
+  ) => void;
   /** Placeholder text */
   placeholder?: string;
   /** Disabled state */
@@ -75,7 +79,8 @@ export function WarpInput({
 
     // History navigation
     if (key.upArrow && history.length > 0) {
-      const newIndex = historyIndex < history.length - 1 ? historyIndex + 1 : historyIndex;
+      const newIndex =
+        historyIndex < history.length - 1 ? historyIndex + 1 : historyIndex;
       setHistoryIndex(newIndex);
       if (newIndex >= 0) {
         setContent(history[history.length - 1 - newIndex] || "");
@@ -164,7 +169,12 @@ export function WarpInput({
 
   const modeConfig = {
     ai: { icon: "🤖", color: colors.primary, label: "AI", prompt: "❯" },
-    terminal: { icon: "⚡", color: colors.warning, label: "Terminal", prompt: "$" },
+    terminal: {
+      icon: "⚡",
+      color: colors.warning,
+      label: "Terminal",
+      prompt: "$",
+    },
   };
 
   const currentMode = modeConfig[mode];

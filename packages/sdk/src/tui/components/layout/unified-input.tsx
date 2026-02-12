@@ -102,9 +102,7 @@ export function UnifiedInput({
         <Text color={disabled ? colors.muted : colors.foreground}>
           {content || (
             <Text color={colors.muted} dimColor>
-              {mode === "chat"
-                ? "Ask the AI..."
-                : "Run command..."}
+              {mode === "chat" ? "Ask the AI..." : "Run command..."}
             </Text>
           )}
         </Text>

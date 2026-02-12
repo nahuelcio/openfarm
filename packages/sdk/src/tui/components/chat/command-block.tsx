@@ -73,7 +73,11 @@ export function CommandBlock({ block, onUpdate, onDelete }: CommandBlockProps) {
         executionTimeMs: Date.now() - startTime,
       });
     } catch (error) {
-      const err = error as { stdout?: string; stderr?: string; status?: number };
+      const err = error as {
+        stdout?: string;
+        stderr?: string;
+        status?: number;
+      };
       onUpdate?.({
         ...block,
         status: "error",

@@ -31,12 +31,18 @@ export interface TerminalBlockProps {
 /**
  * Displays a terminal command block with output
  */
-export function TerminalBlock({ block, onRerun, onDelete }: TerminalBlockProps) {
+export function TerminalBlock({
+  block,
+  onRerun,
+  onDelete,
+}: TerminalBlockProps) {
   const colors = useThemeColors();
   const [isExpanded, setIsExpanded] = useState(true);
   const [isRerunning, setIsRerunning] = useState(false);
   const [newOutput, setNewOutput] = useState<string | null>(null);
-  const [newStatus, setNewStatus] = useState<TerminalBlockData["status"] | null>(null);
+  const [newStatus, setNewStatus] = useState<
+    TerminalBlockData["status"] | null
+  >(null);
   const { copy, copied } = useClipboard();
 
   const displayOutput = newOutput !== null ? newOutput : block.output;
@@ -84,9 +90,8 @@ export function TerminalBlock({ block, onRerun, onDelete }: TerminalBlockProps) 
   // Truncate long output
   const outputLines = displayOutput.split("\n");
   const shouldTruncate = outputLines.length > 20;
-  const displayLines = shouldTruncate && !isExpanded
-    ? outputLines.slice(0, 20)
-    : outputLines;
+  const displayLines =
+    shouldTruncate && !isExpanded ? outputLines.slice(0, 20) : outputLines;
 
   return (
     <Box
@@ -146,7 +151,12 @@ export function TerminalBlock({ block, onRerun, onDelete }: TerminalBlockProps) 
             </Text>
           ) : (
             displayLines.map((line, i) => (
-              <Text key={i} color={colors.foreground} dimColor wrap="truncate-end">
+              <Text
+                key={i}
+                color={colors.foreground}
+                dimColor
+                wrap="truncate-end"
+              >
                 {line || " "}
               </Text>
             ))

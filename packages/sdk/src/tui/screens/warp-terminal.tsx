@@ -12,12 +12,18 @@ import { useEffect, useState, useRef } from "react";
 import { Box, Text, useInput } from "@openfarm/tui-opentui";
 import { useThemeColors } from "../theme/hooks";
 import { WarpInput } from "../components/terminal/warp-input";
-import { TerminalBlock, type TerminalBlockData } from "../components/terminal/command-block";
+import {
+  TerminalBlock,
+  type TerminalBlockData,
+} from "../components/terminal/command-block";
 import { FileTree } from "../components/files/file-tree";
 import { useNavigationKeys } from "../hooks";
 import { useStore } from "../store";
 import { KeyHelpBar } from "../components";
-import { detectSmartContext, buildContextPrompt } from "../services/context-resolver";
+import {
+  detectSmartContext,
+  buildContextPrompt,
+} from "../services/context-resolver";
 import {
   AIService,
   createAIServiceFromEnv,
@@ -46,7 +52,9 @@ export function WarpTerminal() {
   const [mode, setMode] = useState<InputMode>("terminal");
   const [activePanel, setActivePanel] = useState<Panel>("none");
   const [blocks, setBlocks] = useState<Block[]>([]);
-  const [aiMessages, setAiMessages] = useState<Array<{ role: string; content: string }>>([]);
+  const [aiMessages, setAiMessages] = useState<
+    Array<{ role: string; content: string }>
+  >([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [selectedBlock, setSelectedBlock] = useState<number>(-1);
 
@@ -85,8 +93,14 @@ export function WarpTerminal() {
   });
 
   // Execute terminal command
-  const handleTerminalCommand = async (command: string, output: string, exitCode: number) => {
-    const { TerminalBlock } = await import("../components/terminal/command-block");
+  const handleTerminalCommand = async (
+    command: string,
+    output: string,
+    exitCode: number
+  ) => {
+    const { TerminalBlock } = await import(
+      "../components/terminal/command-block"
+    );
 
     setBlocks((prev) => [
       ...prev,
@@ -109,7 +123,10 @@ export function WarpTerminal() {
 
       setAiMessages((prev) => [
         ...prev,
-        { role: "user", content: `I ran: ${command}\n\nOutput:\n${output}\n\n${prompt}` },
+        {
+          role: "user",
+          content: `I ran: ${command}\n\nOutput:\n${output}\n\n${prompt}`,
+        },
       ]);
     }
   };
@@ -143,10 +160,15 @@ export function WarpTerminal() {
         fullResponse += chunk;
       }
 
-      setAiMessages((prev) => [...prev, { role: "assistant", content: fullResponse }]);
+      setAiMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: fullResponse },
+      ]);
 
       // Check if AI suggested a command
-      const commandMatch = fullResponse.match(/```(?:bash|sh)?\n?\$?\s*([^`]+)```/);
+      const commandMatch = fullResponse.match(
+        /```(?:bash|sh)?\n?\$?\s*([^`]+)```/
+      );
       if (commandMatch) {
         const suggestedCommand = commandMatch[1].trim();
         // Could show suggestion to user
@@ -180,9 +202,7 @@ export function WarpTerminal() {
             {mode === "ai" ? "🤖 AI" : "⚡ Terminal"}
           </Text>
           {activePanel === "files" && <Text color={colors.info}>🗂️ Files</Text>}
-          <Text color={colors.muted}>
-            {blocks.length} commands
-          </Text>
+          <Text color={colors.muted}>{blocks.length} commands</Text>
         </Box>
       </Box>
 
@@ -190,7 +210,12 @@ export function WarpTerminal() {
       <Box flexDirection="row" flexGrow={1}>
         {/* File panel */}
         {activePanel === "files" && (
-          <Box borderColor={colors.border} borderStyle="single" width={30} padding={1}>
+          <Box
+            borderColor={colors.border}
+            borderStyle="single"
+            width={30}
+            padding={1}
+          >
             <Text bold color={colors.primary} marginBottom={1}>
               🗂️ Files
             </Text>
@@ -234,11 +259,18 @@ export function WarpTerminal() {
                         timestamp: block.timestamp,
                       }}
                       onDelete={() => {
-                        setBlocks((prev) => prev.filter((b) => b.id !== block.id));
+                        setBlocks((prev) =>
+                          prev.filter((b) => b.id !== block.id)
+                        );
                       }}
                     />
                   ) : (
-                    <Box borderColor={colors.primary} borderStyle="single" padding={1} marginY={1}>
+                    <Box
+                      borderColor={colors.primary}
+                      borderStyle="single"
+                      padding={1}
+                      marginY={1}
+                    >
                       <Text color={colors.primary} bold>
                         🤖 AI
                       </Text>
@@ -263,17 +295,18 @@ export function WarpTerminal() {
                 </Text>
                 {aiMessages.slice(-5).map((msg, i) => (
                   <Box key={i} flexDirection="column" marginY={1}>
-                    <Text color={msg.role === "user" ? colors.warning : colors.primary} bold>
+                    <Text
+                      color={
+                        msg.role === "user" ? colors.warning : colors.primary
+                      }
+                      bold
+                    >
                       {msg.role === "user" ? "You:" : "AI:"}
                     </Text>
                     <Text color={colors.foreground}>{msg.content}</Text>
                   </Box>
                 ))}
-                {isStreaming && (
-                  <Text color={colors.info}>
-                    ◉ Thinking...
-                  </Text>
-                )}
+                {isStreaming && <Text color={colors.info}>◉ Thinking...</Text>}
               </Box>
             )}
           </Box>

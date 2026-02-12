@@ -25,7 +25,9 @@ export interface GitStatus {
 /**
  * Detects smart context from the workspace
  */
-export async function detectSmartContext(workspace: string): Promise<SmartContext> {
+export async function detectSmartContext(
+  workspace: string
+): Promise<SmartContext> {
   const recentFiles = getRecentFiles(workspace, 10);
   const gitStatus = getGitStatus(workspace);
   const recentErrors = getRecentErrors(workspace);
@@ -99,7 +101,13 @@ function getGitStatus(workspace: string): GitStatus {
 
     return { branch, modified, added, deleted, untracked };
   } catch {
-    return { branch: "unknown", modified: [], added: [], deleted: [], untracked: [] };
+    return {
+      branch: "unknown",
+      modified: [],
+      added: [],
+      deleted: [],
+      untracked: [],
+    };
   }
 }
 
@@ -144,7 +152,9 @@ export function buildContextPrompt(context: SmartContext): string {
 
   // Recent files
   if (context.recentFiles.length > 0) {
-    const fileList = context.recentFiles.map((f) => f.split("/").pop()).join(", ");
+    const fileList = context.recentFiles
+      .map((f) => f.split("/").pop())
+      .join(", ");
     parts.push(`Recently touched: ${fileList}`);
   }
 

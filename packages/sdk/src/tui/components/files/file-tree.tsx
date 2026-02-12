@@ -42,7 +42,9 @@ export function FileTree({
   const colors = useThemeColors();
   const [tree, setTree] = useState<FileNode | null>(null);
   const [cursor, setCursor] = useState(0);
-  const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set([rootPath]));
+  const [expandedDirs, setExpandedDirs] = useState<Set<string>>(
+    new Set([rootPath])
+  );
 
   // Build tree from filesystem
   useEffect(() => {
@@ -134,7 +136,9 @@ export function FileTree({
   // Update cursor when selected path changes
   useEffect(() => {
     if (selectedPath) {
-      const index = visibleNodes.findIndex(({ node }) => node.path === selectedPath);
+      const index = visibleNodes.findIndex(
+        ({ node }) => node.path === selectedPath
+      );
       if (index !== -1) {
         setCursor(index);
       }

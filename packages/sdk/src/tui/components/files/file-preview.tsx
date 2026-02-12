@@ -62,8 +62,10 @@ export function FilePreview({
   const visibleLines = lines.slice(scrollLine, scrollLine + maxHeight);
 
   const getLanguage = (filePath: string): string => {
-    if (filePath.endsWith(".ts") || filePath.endsWith(".tsx")) return "typescript";
-    if (filePath.endsWith(".js") || filePath.endsWith(".jsx")) return "javascript";
+    if (filePath.endsWith(".ts") || filePath.endsWith(".tsx"))
+      return "typescript";
+    if (filePath.endsWith(".js") || filePath.endsWith(".jsx"))
+      return "javascript";
     if (filePath.endsWith(".json")) return "json";
     if (filePath.endsWith(".md")) return "markdown";
     if (filePath.endsWith(".css") || filePath.endsWith(".scss")) return "css";
@@ -135,7 +137,10 @@ export function FilePreview({
     let lastEnd = 0;
     for (const m of matches) {
       if (m.start > lastEnd) {
-        tokens.push({ text: line.slice(lastEnd, m.start), color: colors.foreground });
+        tokens.push({
+          text: line.slice(lastEnd, m.start),
+          color: colors.foreground,
+        });
       }
       tokens.push({ text: m.text, color: colors.success });
       lastEnd = m.end;
@@ -227,7 +232,10 @@ export function FilePreview({
               </Box>
               <Box flexGrow={1}>
                 {isHighlighted ? (
-                  <Text backgroundColor={colors.warning} color={colors.background}>
+                  <Text
+                    backgroundColor={colors.warning}
+                    color={colors.background}
+                  >
                     {line || " "}
                   </Text>
                 ) : (
@@ -243,8 +251,9 @@ export function FilePreview({
       {lines.length > maxHeight && (
         <Box marginTop={1}>
           <Text color={colors.muted} dimColor>
-            Showing {scrollLine + 1}-{Math.min(scrollLine + maxHeight, lines.length)} of{" "}
-            {lines.length} lines
+            Showing {scrollLine + 1}-
+            {Math.min(scrollLine + maxHeight, lines.length)} of {lines.length}{" "}
+            lines
           </Text>
         </Box>
       )}

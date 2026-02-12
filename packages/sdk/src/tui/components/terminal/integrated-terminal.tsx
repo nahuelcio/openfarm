@@ -28,7 +28,11 @@ export interface TerminalProps {
   /** When command output changes */
   onOutput?: (output: string, command: string) => void;
   /** When a command completes */
-  onCommandComplete?: (command: string, output: string, exitCode: number) => void;
+  onCommandComplete?: (
+    command: string,
+    output: string,
+    exitCode: number
+  ) => void;
   /** Height in rows */
   height?: number;
   /** Read only mode (for showing blocks) */
@@ -97,13 +101,19 @@ export function IntegratedTerminal({
         });
 
         pty.onExit(({ exitCode }: { exitCode: number }) => {
-          onCommandComplete?.(currentCommandRef.current, bufferRef.current, exitCode);
+          onCommandComplete?.(
+            currentCommandRef.current,
+            bufferRef.current,
+            exitCode
+          );
           bufferRef.current = "";
           currentCommandRef.current = "";
         });
       } catch (error) {
         console.error("[IntegratedTerminal] Failed to spawn PTY:", error);
-        setLines(["Error: node-pty not available. Install with: bun add node-pty"]);
+        setLines([
+          "Error: node-pty not available. Install with: bun add node-pty",
+        ]);
       }
     };
 

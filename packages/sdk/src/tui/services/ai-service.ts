@@ -39,24 +39,25 @@ export class AIService {
     const { provider, apiKey, model, apiUrl } = this.config;
 
     // Provider-specific defaults
-    const providerDefaults: Record<AIProvider, { url: string; model: string }> = {
-      openai: {
-        url: "https://api.openai.com",
-        model: "gpt-4o-mini",
-      },
-      anthropic: {
-        url: "https://api.anthropic.com",
-        model: "claude-3-sonnet-20240229",
-      },
-      openrouter: {
-        url: "https://openrouter.ai/api",
-        model: "anthropic/claude-3.5-sonnet",
-      },
-      local: {
-        url: "http://localhost:11434",
-        model: "llama2",
-      },
-    };
+    const providerDefaults: Record<AIProvider, { url: string; model: string }> =
+      {
+        openai: {
+          url: "https://api.openai.com",
+          model: "gpt-4o-mini",
+        },
+        anthropic: {
+          url: "https://api.anthropic.com",
+          model: "claude-3-sonnet-20240229",
+        },
+        openrouter: {
+          url: "https://openrouter.ai/api",
+          model: "anthropic/claude-3.5-sonnet",
+        },
+        local: {
+          url: "http://localhost:11434",
+          model: "llama2",
+        },
+      };
 
     const defaults = providerDefaults[provider];
 
@@ -69,7 +70,10 @@ export class AIService {
         provider === "anthropic"
           ? { "anthropic-version": "2023-06-01" }
           : provider === "openrouter"
-            ? { "HTTP-Referer": "https://openfarm.dev", "X-Title": "OpenFarm TUI" }
+            ? {
+                "HTTP-Referer": "https://openfarm.dev",
+                "X-Title": "OpenFarm TUI",
+              }
             : undefined,
     });
   }
@@ -161,8 +165,10 @@ export class AIService {
     systemPrompt?: string,
     onChunk?: (chunk: string) => void
   ): AsyncGenerator<string, void, unknown> {
-    const formattedMessages: Array<{ role: "user" | "assistant" | "system"; content: string }> =
-      [];
+    const formattedMessages: Array<{
+      role: "user" | "assistant" | "system";
+      content: string;
+    }> = [];
 
     if (systemPrompt) {
       formattedMessages.push({ role: "system", content: systemPrompt });
@@ -196,10 +202,15 @@ export class AIService {
  */
 export function createAIServiceFromEnv(): AIService | null {
   const provider = (process.env.AI_PROVIDER as AIProvider) || "openai";
-  const apiKey = process.env.AI_API_KEY || process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY;
+  const apiKey =
+    process.env.AI_API_KEY ||
+    process.env.OPENAI_API_KEY ||
+    process.env.ANTHROPIC_API_KEY;
 
   if (!apiKey) {
-    console.warn("[AIService] No API key found. Set AI_API_KEY environment variable.");
+    console.warn(
+      "[AIService] No API key found. Set AI_API_KEY environment variable."
+    );
     return null;
   }
 
