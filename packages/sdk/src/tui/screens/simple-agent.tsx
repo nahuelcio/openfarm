@@ -234,7 +234,8 @@ export function SimpleAgent() {
           </Text>
           {config && (
             <Text color={colors.background} dimColor>
-              📁 {config.workspace.split("/").pop()} • {config.provider}/{config.model.split("/").pop()}
+              📁 {config.workspace.split("/").pop()} • {config.provider}/
+              {config.model.split("/").pop()}
             </Text>
           )}
         </Box>

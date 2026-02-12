@@ -3,7 +3,7 @@
  *
  * Configuración rápida antes de empezar:
  * 1. Qué hacer (tarea)
- * 2. Qué workflow usar  
+ * 2. Qué workflow usar
  * 3. Dónde (ruta)
  * 4. Qué provider usar
  * 5. Qué modelo usar (dinámico según provider)
@@ -26,18 +26,38 @@ interface SetupConfig {
 }
 
 const WORKFLOWS = [
-  { id: "auto", name: "🤖 Auto (decide por mí)", desc: "El agente elige qué hacer" },
-  { id: "code", name: "💻 Escribir código", desc: "Implementa una feature o fix" },
+  {
+    id: "auto",
+    name: "🤖 Auto (decide por mí)",
+    desc: "El agente elige qué hacer",
+  },
+  {
+    id: "code",
+    name: "💻 Escribir código",
+    desc: "Implementa una feature o fix",
+  },
   { id: "review", name: "👀 Revisar código", desc: "Revisa y sugiere mejoras" },
   { id: "test", name: "🧪 Crear tests", desc: "Genera tests para tu código" },
   { id: "refactor", name: "🔨 Refactorizar", desc: "Mejora código existente" },
 ];
 
 const PROVIDERS = [
-  { id: "opencode", name: "🤖 OpenCode", desc: "Agente de código con OpenCode" },
-  { id: "claude", name: "🧠 Claude Code", desc: "Anthropic Claude para código" },
+  {
+    id: "opencode",
+    name: "🤖 OpenCode",
+    desc: "Agente de código con OpenCode",
+  },
+  {
+    id: "claude",
+    name: "🧠 Claude Code",
+    desc: "Anthropic Claude para código",
+  },
   { id: "aider", name: "🤝 Aider", desc: "Pair programming con AI" },
-  { id: "external-agent", name: "⚙️ External Agent", desc: "Agente externo configurable" },
+  {
+    id: "external-agent",
+    name: "⚙️ External Agent",
+    desc: "Agente externo configurable",
+  },
 ];
 
 // Default models por provider mientras carga
@@ -52,7 +72,9 @@ export function SimpleSetup() {
   const colors = useThemeColors();
   const { setScreen } = useStore();
 
-  const [step, setStep] = useState<"task" | "workflow" | "path" | "provider" | "model" | "confirm">("task");
+  const [step, setStep] = useState<
+    "task" | "workflow" | "path" | "provider" | "model" | "confirm"
+  >("task");
   const [config, setConfig] = useState<SetupConfig>({
     task: "",
     workflow: "auto",
@@ -128,8 +150,7 @@ export function SimpleSetup() {
       else if (step === "model") {
         setStep("provider");
         setModelFilter("");
-      }
-      else if (step === "confirm") setStep("model");
+      } else if (step === "confirm") setStep("model");
       return;
     }
 
@@ -286,7 +307,9 @@ export function SimpleSetup() {
     return (
       <>
         <Text color={colors.foreground}>{before}</Text>
-        <Text backgroundColor={colors.primary} color={colors.background}>{at}</Text>
+        <Text backgroundColor={colors.primary} color={colors.background}>
+          {at}
+        </Text>
         <Text color={colors.foreground}>{after}</Text>
       </>
     );
@@ -294,22 +317,48 @@ export function SimpleSetup() {
 
   return (
     <Box flexDirection="column" height="100%" padding={2}>
-      <Text bold color={colors.primary}>🌾 OpenFarm - Configuración</Text>
+      <Text bold color={colors.primary}>
+        🌾 OpenFarm - Configuración
+      </Text>
       <Text color={colors.muted} dimColor>
-        Paso {step === "task" ? 1 : step === "workflow" ? 2 : step === "path" ? 3 : step === "provider" ? 4 : step === "model" ? 5 : 6} de 6
+        Paso{" "}
+        {step === "task"
+          ? 1
+          : step === "workflow"
+            ? 2
+            : step === "path"
+              ? 3
+              : step === "provider"
+                ? 4
+                : step === "model"
+                  ? 5
+                  : 6}{" "}
+        de 6
       </Text>
       <Box marginY={1} borderStyle="single" borderColor={colors.border} />
 
       {/* PASO 1: TAREA */}
       {step === "task" && (
         <Box flexDirection="column">
-          <Text bold marginBottom={1}>¿Qué necesitas que haga?</Text>
+          <Text bold marginBottom={1}>
+            ¿Qué necesitas que haga?
+          </Text>
           <Box borderStyle="bold" borderColor={colors.primary} padding={1}>
-            <Text color={colors.primary} bold marginRight={1}>❯</Text>
-            {taskInput ? renderInput(taskInput) : <Text color={colors.muted} dimCode>Ej: Arreglar el bug en login...</Text>}
+            <Text color={colors.primary} bold marginRight={1}>
+              ❯
+            </Text>
+            {taskInput ? (
+              renderInput(taskInput)
+            ) : (
+              <Text color={colors.muted} dimCode>
+                Ej: Arreglar el bug en login...
+              </Text>
+            )}
           </Box>
           <Box marginTop={2} flexDirection="column">
-            <Text color={colors.muted} dimCode>Ejemplos:</Text>
+            <Text color={colors.muted} dimCode>
+              Ejemplos:
+            </Text>
             <Text color="cyan">• "Arregla el bug donde el login falla"</Text>
             <Text color="cyan">• "Agrega validación de email al registro"</Text>
             <Text color="cyan">• "Crea tests para la API de usuarios"</Text>
@@ -320,13 +369,26 @@ export function SimpleSetup() {
       {/* PASO 2: WORKFLOW */}
       {step === "workflow" && (
         <Box flexDirection="column">
-          <Text bold marginBottom={1}>¿Qué tipo de trabajo?</Text>
+          <Text bold marginBottom={1}>
+            ¿Qué tipo de trabajo?
+          </Text>
           {WORKFLOWS.map((wf, i) => (
             <Box key={wf.id} flexDirection="row" marginY={1}>
-              <Text color={i === workflowIndex ? colors.primary : colors.muted}>{i === workflowIndex ? "▶ " : "  "}</Text>
+              <Text color={i === workflowIndex ? colors.primary : colors.muted}>
+                {i === workflowIndex ? "▶ " : "  "}
+              </Text>
               <Box flexDirection="column">
-                <Text bold={i === workflowIndex} color={i === workflowIndex ? colors.primary : colors.foreground}>{wf.name}</Text>
-                <Text color={colors.muted} dimCode>{wf.desc}</Text>
+                <Text
+                  bold={i === workflowIndex}
+                  color={
+                    i === workflowIndex ? colors.primary : colors.foreground
+                  }
+                >
+                  {wf.name}
+                </Text>
+                <Text color={colors.muted} dimCode>
+                  {wf.desc}
+                </Text>
               </Box>
             </Box>
           ))}
@@ -336,9 +398,13 @@ export function SimpleSetup() {
       {/* PASO 3: RUTA */}
       {step === "path" && (
         <Box flexDirection="column">
-          <Text bold marginBottom={1}>¿Dónde trabajar?</Text>
+          <Text bold marginBottom={1}>
+            ¿Dónde trabajar?
+          </Text>
           <Box borderStyle="bold" borderColor={colors.primary} padding={1}>
-            <Text color={colors.primary} bold marginRight={1}>📁</Text>
+            <Text color={colors.primary} bold marginRight={1}>
+              📁
+            </Text>
             {renderInput(pathInput)}
           </Box>
         </Box>
@@ -347,13 +413,26 @@ export function SimpleSetup() {
       {/* PASO 4: PROVIDER */}
       {step === "provider" && (
         <Box flexDirection="column">
-          <Text bold marginBottom={1}>¿Qué agente usar?</Text>
+          <Text bold marginBottom={1}>
+            ¿Qué agente usar?
+          </Text>
           {PROVIDERS.map((p, i) => (
             <Box key={p.id} flexDirection="row" marginY={1}>
-              <Text color={i === providerIndex ? colors.primary : colors.muted}>{i === providerIndex ? "▶ " : "  "}</Text>
+              <Text color={i === providerIndex ? colors.primary : colors.muted}>
+                {i === providerIndex ? "▶ " : "  "}
+              </Text>
               <Box flexDirection="column">
-                <Text bold={i === providerIndex} color={i === providerIndex ? colors.primary : colors.foreground}>{p.name}</Text>
-                <Text color={colors.muted} dimCode>{p.desc}</Text>
+                <Text
+                  bold={i === providerIndex}
+                  color={
+                    i === providerIndex ? colors.primary : colors.foreground
+                  }
+                >
+                  {p.name}
+                </Text>
+                <Text color={colors.muted} dimCode>
+                  {p.desc}
+                </Text>
               </Box>
             </Box>
           ))}
@@ -364,16 +443,27 @@ export function SimpleSetup() {
       {step === "model" && (
         <Box flexDirection="column">
           <Text bold marginBottom={1}>
-            ¿Qué modelo de {PROVIDERS.find(p => p.id === config.provider)?.name}?
+            ¿Qué modelo de{" "}
+            {PROVIDERS.find((p) => p.id === config.provider)?.name}?
           </Text>
-          
+
           {/* Filtro */}
-          <Box borderStyle="single" borderColor={isLoadingModels ? colors.muted : colors.info} padding={1} marginBottom={1}>
-            <Text color={isLoadingModels ? colors.muted : colors.info} marginRight={1}>
+          <Box
+            borderStyle="single"
+            borderColor={isLoadingModels ? colors.muted : colors.info}
+            padding={1}
+            marginBottom={1}
+          >
+            <Text
+              color={isLoadingModels ? colors.muted : colors.info}
+              marginRight={1}
+            >
               {isLoadingModels ? "⏳" : "🔍"}
             </Text>
             <Text color={modelFilter ? colors.foreground : colors.muted}>
-              {isLoadingModels ? "Cargando modelos..." : modelFilter || "Escribe para filtrar modelos..."}
+              {isLoadingModels
+                ? "Cargando modelos..."
+                : modelFilter || "Escribe para filtrar modelos..."}
             </Text>
           </Box>
 
@@ -391,8 +481,8 @@ export function SimpleSetup() {
                 <Text color={i === modelIndex ? colors.primary : colors.muted}>
                   {i === modelIndex ? "▶ " : "  "}
                 </Text>
-                <Text 
-                  bold={i === modelIndex} 
+                <Text
+                  bold={i === modelIndex}
                   color={i === modelIndex ? colors.primary : colors.foreground}
                   wrap="truncate-end"
                 >
@@ -415,31 +505,61 @@ export function SimpleSetup() {
       {/* PASO 6: CONFIRMAR */}
       {step === "confirm" && (
         <Box flexDirection="column">
-          <Text bold color={colors.success} marginBottom={1}>✅ Todo listo</Text>
-          <Box borderStyle="single" borderColor={colors.border} padding={1} marginY={1}>
+          <Text bold color={colors.success} marginBottom={1}>
+            ✅ Todo listo
+          </Text>
+          <Box
+            borderStyle="single"
+            borderColor={colors.border}
+            padding={1}
+            marginY={1}
+          >
             <Box flexDirection="row" marginY={1}>
-              <Text color={colors.muted} width={12}>Tarea:</Text>
-              <Text color={colors.foreground} wrap="wrap">{config.task}</Text>
+              <Text color={colors.muted} width={12}>
+                Tarea:
+              </Text>
+              <Text color={colors.foreground} wrap="wrap">
+                {config.task}
+              </Text>
             </Box>
             <Box flexDirection="row" marginY={1}>
-              <Text color={colors.muted} width={12}>Workflow:</Text>
-              <Text color={colors.foreground}>{WORKFLOWS.find((w) => w.id === config.workflow)?.name}</Text>
+              <Text color={colors.muted} width={12}>
+                Workflow:
+              </Text>
+              <Text color={colors.foreground}>
+                {WORKFLOWS.find((w) => w.id === config.workflow)?.name}
+              </Text>
             </Box>
             <Box flexDirection="row" marginY={1}>
-              <Text color={colors.muted} width={12}>Ubicación:</Text>
+              <Text color={colors.muted} width={12}>
+                Ubicación:
+              </Text>
               <Text color={colors.foreground}>{config.workspace}</Text>
             </Box>
             <Box flexDirection="row" marginY={1}>
-              <Text color={colors.muted} width={12}>Agente:</Text>
-              <Text color={colors.foreground}>{PROVIDERS.find((p) => p.id === config.provider)?.name}</Text>
+              <Text color={colors.muted} width={12}>
+                Agente:
+              </Text>
+              <Text color={colors.foreground}>
+                {PROVIDERS.find((p) => p.id === config.provider)?.name}
+              </Text>
             </Box>
             <Box flexDirection="row" marginY={1}>
-              <Text color={colors.muted} width={12}>Modelo:</Text>
+              <Text color={colors.muted} width={12}>
+                Modelo:
+              </Text>
               <Text color={colors.foreground}>{config.model}</Text>
             </Box>
           </Box>
           <Box flexDirection="row" gap={4} marginTop={2}>
-            <Text backgroundColor={colors.primary} bold color={colors.background} paddingX={2}>Enter: ¡Empezar!</Text>
+            <Text
+              backgroundColor={colors.primary}
+              bold
+              color={colors.background}
+              paddingX={2}
+            >
+              Enter: ¡Empezar!
+            </Text>
             <Text color={colors.muted}>E: Editar</Text>
           </Box>
         </Box>
@@ -449,7 +569,11 @@ export function SimpleSetup() {
       <Box marginTop={2}>
         <Text color={colors.muted} dimCode>
           {step !== "task" ? "Esc: Volver • " : ""}
-          {step === "model" ? "Escribir: Filtrar • ↑↓: Navegar • Enter: Seleccionar" : step === "confirm" ? "Enter: Empezar • E: Editar" : "↑↓: Elegir • Enter: Continuar"}
+          {step === "model"
+            ? "Escribir: Filtrar • ↑↓: Navegar • Enter: Seleccionar"
+            : step === "confirm"
+              ? "Enter: Empezar • E: Editar"
+              : "↑↓: Elegir • Enter: Continuar"}
         </Text>
       </Box>
     </Box>
