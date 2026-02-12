@@ -5,9 +5,6 @@ import { ImprovedSidebar } from "./components/layout/improved-sidebar";
 import { SplashScreen } from "./components/splash-screen";
 import type { Tab } from "./components/tabs";
 import { useInitialization } from "./hooks/use-initialization";
-import { AgentChat } from "./screens/agent-chat";
-import { FileExplorer } from "./screens/file-explorer";
-import { WarpTerminal } from "./screens/warp-terminal";
 import { ContextScreen } from "./screens/context";
 import { ContextConfigScreen } from "./screens/context-config";
 import { ContextHistoryScreen } from "./screens/context-history";
@@ -18,6 +15,8 @@ import { History } from "./screens/history";
 import { NewDashboard } from "./screens/new-dashboard";
 import { RemoteInstancesScreen } from "./screens/remote-instances";
 import { Running } from "./screens/running";
+import { SimpleAgent } from "./screens/simple-agent";
+import { SimpleSetup } from "./screens/simple-setup";
 import { TaskLoopScreen } from "./screens/task-loop";
 import { ThemeSelector } from "./screens/theme-selector";
 import { WorkflowEditor } from "./screens/workflow-editor";
@@ -209,11 +208,9 @@ export function AppV2() {
       case "task-loop":
         return <TaskLoopScreen embedded={true} />;
       case "agent-chat":
-        return <AgentChat />;
-      case "file-explorer":
-        return <FileExplorer />;
-      case "warp-terminal":
-        return <WarpTerminal />;
+        return <SimpleAgent />;
+      case "simple-setup":
+        return <SimpleSetup />;
       default:
         return <NewDashboard />;
     }

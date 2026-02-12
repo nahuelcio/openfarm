@@ -35,6 +35,7 @@ export type Screen =
   | "agent-chat"
   | "file-explorer"
   | "warp-terminal"
+  | "simple-setup"
   | "theme-selector";
 
 export type TabId =

@@ -1,257 +1,59 @@
 /**
- * NewDashboard Screen
+ * Simple Dashboard
  *
- * Ralph TUI-style dashboard with:
- * - Active tasks panel
- * - Recent sessions
- * - Quick stats
- * - System status
+ * Pantalla de inicio ultra-simple.
+ * Cualquier tecla inicia el agente.
  */
 
 import { Box, Text, useInput } from "@openfarm/tui-opentui";
-import { useEffect, useState } from "react";
 import { useStore } from "../store";
-import { useExecutionRuntimeStore } from "../store/execution-runtime-store";
-import { formatDuration } from "./running";
 
-interface StatCardProps {
-  label: string;
-  value: string | number;
-  color?: string;
-}
+export function NewDashboard() {
+  const { setScreen } = useStore();
 
-function StatCard({ label, value, color = "white" }: StatCardProps) {
+  useInput(() => {
+    setScreen("simple-setup");
+  });
+
   return (
     <Box
       alignItems="center"
-      borderColor="gray"
-      borderStyle="single"
       flexDirection="column"
-      paddingX={2}
-      paddingY={1}
-      width={20}
+      flexGrow={1}
+      justifyContent="center"
     >
-      <Text color="gray" dimColor>
-        {label}
+      {/* Logo grande */}
+      <Text bold color="green">
+        🌾 OpenFarm
       </Text>
-      <Text bold color={color}>
-        {value}
+
+      <Text bold color="white" marginTop={2}>
+        Tu agente de código inteligente
       </Text>
-    </Box>
-  );
-}
 
-interface TaskItemProps {
-  status: "pending" | "running" | "completed" | "failed" | "cancelled";
-  title: string;
-  id: string;
-}
-
-function TaskItem({ status, title, id }: TaskItemProps) {
-  const statusConfig = {
-    pending: { symbol: "○", color: "gray" },
-    running: { symbol: "▶", color: "yellow" },
-    completed: { symbol: "✓", color: "green" },
-    failed: { symbol: "✗", color: "red" },
-    cancelled: { symbol: "⊘", color: "gray" },
-  };
-
-  const config = statusConfig[status];
-
-  return (
-    <Box flexDirection="row" gap={1}>
-      <Text color={config.color}>{config.symbol}</Text>
-      <Text wrap="truncate-end">
-        {title} <Text color="gray">({id})</Text>
-      </Text>
-    </Box>
-  );
-}
-
-export function NewDashboard() {
-  const { executions, currentExecution, setScreen, setCurrentExecution } =
-    useStore();
-
-  const hasActiveSession = useExecutionRuntimeStore((s) =>
-    s.hasActiveSession()
-  );
-  const activeSessionId = useExecutionRuntimeStore((s) =>
-    s.getActiveSessionId()
-  );
-  const activeSession = useExecutionRuntimeStore((s) =>
-    activeSessionId ? s.sessions[activeSessionId] : undefined
-  );
-
-  const [elapsed, setElapsed] = useState(0);
-
-  // Timer for active execution banner
-  useEffect(() => {
-    if (!activeSession || activeSession.isDone) {
-      return;
-    }
-    const timer = setInterval(() => {
-      setElapsed(Date.now() - activeSession.startTime);
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [activeSession?.startTime, activeSession?.isDone, activeSession]);
-
-  useInput((input, key) => {
-    if (input === "t") {
-      setScreen("theme-selector");
-    }
-    // Press 'c' to open Agent Chat
-    if (input === "c") {
-      setScreen("agent-chat");
-    }
-    // Press 'f' to open File Explorer
-    if (input === "f") {
-      setScreen("file-explorer");
-    }
-    // Press 'w' to open Warp Terminal
-    if (input === "w") {
-      setScreen("warp-terminal");
-    }
-    // Press 'r' to return to running execution
-    if (input === "r" && hasActiveSession && activeSessionId) {
-      const exec = executions.find((e) => e.id === activeSessionId);
-      if (exec) {
-        setCurrentExecution(exec);
-        setScreen("running");
-      }
-    }
-  });
-
-  // Calculate stats
-  const totalExecutions = executions.length;
-  const completedExecutions = executions.filter(
-    (e) => e.status === "completed"
-  ).length;
-  const failedExecutions = executions.filter(
-    (e) => e.status === "failed"
-  ).length;
-  const runningExecutions = executions.filter(
-    (e) => e.status === "running"
-  ).length;
-
-  // Recent tasks (last 5)
-  const recentTasks = executions.slice(0, 5);
-
-  return (
-    <Box flexDirection="column" flexGrow={1} gap={1} padding={1}>
-      {/* Running execution banner */}
-      {hasActiveSession && activeSession && (
-        <Box
-          borderColor="yellow"
-          borderStyle="single"
-          flexDirection="row"
-          justifyContent="space-between"
-          paddingX={1}
-        >
-          <Text bold color="yellow">
-            {"▶ Running: "}
-            <Text color="white">
-              {(() => {
-                const exec = executions.find((e) => e.id === activeSessionId);
-                const taskText = exec?.task || "...";
-                return taskText.length > 40
-                  ? `${taskText.slice(0, 40)}...`
-                  : taskText;
-              })()}
-            </Text>
-          </Text>
-          <Text color="gray">
-            {formatDuration(elapsed)} {"  [r] view"}
-          </Text>
-        </Box>
-      )}
-
-      {/* Stats Row */}
-      <Box flexDirection="row" gap={2}>
-        <StatCard label="Total" value={totalExecutions} />
-        <StatCard color="green" label="Completed" value={completedExecutions} />
-        <StatCard color="red" label="Failed" value={failedExecutions} />
-        <StatCard color="yellow" label="Running" value={runningExecutions} />
-      </Box>
-
-      {/* Main Content */}
-      <Box flexDirection="row" flexGrow={1} gap={2}>
-        {/* Active Tasks */}
-        <Box
-          borderColor="cyan"
-          borderStyle="single"
-          flexDirection="column"
-          paddingX={1}
-          width="50%"
-        >
-          <Text bold color="cyan">
-            Recent Executions
-          </Text>
-          <Box flexDirection="column" gap={1} marginTop={1}>
-            {recentTasks.length === 0 ? (
-              <Text color="gray">No executions yet</Text>
-            ) : (
-              recentTasks.map((task) => (
-                <TaskItem
-                  id={task.id.slice(0, 8)}
-                  key={task.id}
-                  status={task.status}
-                  title={task.task}
-                />
-              ))
-            )}
-          </Box>
-        </Box>
-
-        {/* System Status */}
-        <Box
-          borderColor="gray"
-          borderStyle="single"
-          flexDirection="column"
-          paddingX={1}
-          width="50%"
-        >
-          <Text bold>System Status</Text>
-          <Box flexDirection="column" gap={1} marginTop={1}>
-            <Box flexDirection="row" justifyContent="space-between">
-              <Text color="gray">Provider:</Text>
-              <Text>External Agent</Text>
-            </Box>
-            <Box flexDirection="row" justifyContent="space-between">
-              <Text color="gray">Workflow:</Text>
-              <Text>task_runner</Text>
-            </Box>
-            <Box flexDirection="row" justifyContent="space-between">
-              <Text color="gray">Workspace:</Text>
-              <Text wrap="truncate-end">{process.cwd()}</Text>
-            </Box>
-            {currentExecution && (
-              <>
-                <Box flexDirection="row" justifyContent="space-between">
-                  <Text color="gray">Current Task:</Text>
-                  <Text wrap="truncate-end">{currentExecution.task}</Text>
-                </Box>
-                <Box flexDirection="row" justifyContent="space-between">
-                  <Text color="gray">Status:</Text>
-                  <Text
-                    color={
-                      currentExecution.status === "running" ? "yellow" : "white"
-                    }
-                  >
-                    {currentExecution.status}
-                  </Text>
-                </Box>
-              </>
-            )}
-          </Box>
-        </Box>
-      </Box>
-
-      {/* Quick Actions */}
-      <Box borderColor="gray" borderStyle="single" paddingX={1}>
-        <Text color="gray">Quick Actions: </Text>
-        <Text>
-          [n] New [w] Warp [c] Chat [f] Files [r] Resume [h] History [t] Themes
+      {/* Instrucción principal */}
+      <Box backgroundColor="cyan" marginTop={4} paddingX={2} paddingY={1}>
+        <Text bold color="black">
+          PRESIONA CUALQUIER TECLA PARA CONFIGURAR
         </Text>
+      </Box>
+
+      <Text color="gray" dimColor marginTop={2}>
+        Elige: tarea, workflow, ubicación y AI
+      </Text>
+
+      {/* Ejemplos */}
+      <Box alignItems="center" flexDirection="column" marginTop={2}>
+        <Text color="gray" dimColor>
+          En 5 pasos simples:
+        </Text>
+        <Text color="cyan" marginTop={1}>
+          1. Qué necesitas
+        </Text>
+        <Text color="cyan">2. Tipo de trabajo</Text>
+        <Text color="cyan">3. Dónde trabajar</Text>
+        <Text color="cyan">4. Qué AI usar</Text>
+        <Text color="cyan">5. ¡Empezar!</Text>
       </Box>
     </Box>
   );
