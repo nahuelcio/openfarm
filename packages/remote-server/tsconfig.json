@@ -13,7 +13,10 @@
     "declarationMap": true,
     "sourceMap": true,
     "outDir": "./dist",
-    "noEmit": true
+    "noEmit": true,
+    "paths": {
+      "@openfarm/git-worktree": ["../git-worktree/src"]
+    }
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
