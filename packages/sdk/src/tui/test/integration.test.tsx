@@ -11,7 +11,7 @@
 import type { ReactElement } from "react";
 import { createElement } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { AppV2 } from "../app-v2";
+import { AppV2 } from "../app";
 import { type Screen, useStore } from "../store";
 import { useExecutionRuntimeStore } from "../store/execution-runtime-store";
 

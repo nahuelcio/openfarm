@@ -5,15 +5,7 @@ import { useTaskLoopStore } from "../../store/task-loop-store";
 import { useThemeColors } from "../../theme/hooks";
 import { getStatusIcon } from "../../utils/status-helpers";
 
-export type SectionId =
-  | "dashboard"
-  | "execute"
-  | "history"
-  | "workflows"
-  | "context"
-  | "remotes"
-  | "task-loop"
-  | "agent-chat";
+export type SectionId = "dashboard" | "execute" | "multi-agents" | "history";
 
 interface SectionPanelProps {
   sectionId: SectionId;
@@ -383,28 +375,20 @@ export function SectionPanel({
           sectionId={sectionId}
         />
       ) : null}
+      {sectionId === "multi-agents" ? (
+        <Box padding={2}>
+          <Text bold>🤖 Multi-Agent Dashboard</Text>
+          <Text color="gray" dim>
+            Press 3 to access
+          </Text>
+        </Box>
+      ) : null}
       {sectionId === "history" ? (
         <HistoryPanel
           onNavigate={onNavigate}
           screen={screen}
           sectionId={sectionId}
         />
-      ) : null}
-      {sectionId === "workflows" ? (
-        <WorkflowsPanel onNavigate={onNavigate} />
-      ) : null}
-      {sectionId === "context" ? (
-        <ContextPanel
-          onNavigate={onNavigate}
-          screen={screen}
-          sectionId={sectionId}
-        />
-      ) : null}
-      {sectionId === "remotes" ? (
-        <RemotesPanel onNavigate={onNavigate} />
-      ) : null}
-      {sectionId === "task-loop" ? (
-        <TaskLoopPanel onNavigate={onNavigate} />
       ) : null}
     </Box>
   );

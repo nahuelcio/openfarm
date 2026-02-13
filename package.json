@@ -21,32 +21,32 @@
     "prepare": "lefthook install"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^3.0.31",
-    "@ai-sdk/openai": "^3.0.23",
+    "@ai-sdk/anthropic": "^3.0.43",
+    "@ai-sdk/openai": "^3.0.28",
     "better-sqlite3": "^12.6.2",
     "node-pty": "^1.1.0",
-    "pino": "^10.1.0",
+    "pino": "^10.3.1",
     "pino-pretty": "^13.1.3",
-    "uuid": "^11.0.3",
-    "vitest": "^4.0.17",
-    "zod": "^4.1.11"
+    "uuid": "^11.1.0",
+    "vitest": "^4.0.18",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.3.11",
-    "@playwright/test": "^1.57.0",
+    "@biomejs/biome": "^2.3.15",
+    "@playwright/test": "^1.58.2",
     "@types/better-sqlite3": "^7.6.13",
     "@types/jest": "^30.0.0",
     "@types/js-yaml": "^4.0.9",
-    "@types/node": "^25.0.9",
-    "@types/react": "^19.2.10",
+    "@types/node": "^25.2.3",
+    "@types/react": "^19.2.14",
     "@types/uuid": "^10.0.0",
     "jest": "^30.2.0",
     "js-yaml": "^4.1.1",
-    "lefthook": "^2.0.16",
+    "lefthook": "^2.1.1",
     "react": "^19.2.4",
     "ts-jest": "^29.4.6",
-    "turbo": "^2.4.1",
+    "turbo": "^2.8.7",
     "typescript": "^5.9.3",
-    "ultracite": "^7.0.11"
+    "ultracite": "^7.1.5"
   }
 }

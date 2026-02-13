@@ -1,6 +1,6 @@
 import { Box, Text, useInput, useStdout } from "@openfarm/tui-opentui";
 import { useEffect, useRef, useState } from "react";
-import { ErrorDisplay } from "../components/error-display";
+import { ErrorDisplay } from "../components";
 import { useStore } from "../store";
 import { useExecutionRuntimeStore } from "../store/execution-runtime-store";
 import { startExecution } from "../utils/execution-runner";

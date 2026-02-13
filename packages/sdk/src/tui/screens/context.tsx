@@ -5,7 +5,7 @@ import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { OpenFarm } from "../../open-farm.js";
-import { ErrorDisplay } from "../components/error-display";
+import { ErrorDisplay } from "../components";
 import { useStore } from "../store";
 import { copyToClipboard } from "../utils/clipboard";
 import { type CategorizedError, categorizeError } from "../utils/error-handler";

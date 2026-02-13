@@ -7,9 +7,8 @@
 
 import { Box, Text, useInput } from "@openfarm/tui-opentui";
 import { useEffect, useState } from "react";
-import { KeyHelpBar } from "../components";
+import { HelpOverlay, KeyHelpBar } from "../components";
 import { ChatPanel } from "../components/chat";
-import { OverlayContainer } from "../components/task-loop/overlay-container";
 import { useNavigationKeys } from "../hooks";
 import { useStore } from "../store";
 import { useChatStore } from "../store/chat-store";
@@ -82,20 +81,9 @@ export function AgentChat() {
     </>
   );
 
-  // Render help overlay
+  // Render help overlay using shared HelpOverlay component
   if (showingHelp || helpVisible) {
-    return (
-      <Box flexDirection="column" height={24}>
-        <Box flexDirection="row" justifyContent="space-between">
-          <Text bold color={colors.primary}>
-            💬 Agent Chat
-          </Text>
-          <Text color={colors.muted}>{conversations.length} conversations</Text>
-        </Box>
-        <Text color={colors.border}>{"─".repeat(60)}</Text>
-        <OverlayContainer title="Chat Help">{helpContent}</OverlayContainer>
-      </Box>
-    );
+    return <HelpOverlay content={helpContent} title="Chat Help" />;
   }
 
   return (

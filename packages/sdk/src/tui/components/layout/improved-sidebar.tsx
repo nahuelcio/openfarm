@@ -3,15 +3,7 @@ import { useEffect, useState } from "react";
 import { useStore } from "../../store";
 import { useThemeColors } from "../../theme/hooks";
 
-export type SectionId =
-  | "dashboard"
-  | "execute"
-  | "history"
-  | "workflows"
-  | "context"
-  | "remotes"
-  | "task-loop"
-  | "agent-chat";
+export type SectionId = "dashboard" | "execute" | "multi-agents" | "history";
 
 interface ImprovedSidebarProps {
   activeSection: SectionId;
@@ -97,23 +89,17 @@ export function ImprovedSidebar({
     const sections: SectionId[] = [
       "dashboard",
       "execute",
+      "multi-agents",
       "history",
-      "workflows",
-      "context",
-      "remotes",
-      "task-loop",
     ];
     return sections.indexOf(activeSection);
   });
 
   const sections: Array<{ id: SectionId; label: string; shortcut: string }> = [
-    { id: "dashboard", label: "Dashboard", shortcut: "1" },
-    { id: "execute", label: "Execute", shortcut: "2" },
-    { id: "history", label: "History", shortcut: "3" },
-    { id: "workflows", label: "Workflows", shortcut: "4" },
-    { id: "context", label: "Context", shortcut: "5" },
-    { id: "remotes", label: "Remotes", shortcut: "6" },
-    { id: "task-loop", label: "Task Loop", shortcut: "7" },
+    { id: "dashboard", label: "🏠 Home", shortcut: "1" },
+    { id: "execute", label: "⚡ Execute", shortcut: "2" },
+    { id: "multi-agents", label: "🤖 Agents", shortcut: "3" },
+    { id: "history", label: "📜 History", shortcut: "4" },
   ];
 
   // Sync focused index when active section changes externally (e.g., via [ ] shortcuts)
@@ -129,7 +115,7 @@ export function ImprovedSidebar({
     // Number keys 1-7 for direct navigation (global shortcut)
     // BUT only when NOT typing in an input field
     const num = Number.parseInt(input, 10);
-    if (!(isTyping || Number.isNaN(num)) && num >= 1 && num <= 7) {
+    if (!(isTyping || Number.isNaN(num)) && num >= 1 && num <= 4) {
       const section = sections[num - 1];
       if (section) {
         setFocusedIndex(num - 1);

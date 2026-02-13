@@ -15,6 +15,7 @@ import {
 } from "@openfarm/tui-opentui";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
+import { StatusBadge } from "../status/status-badge";
 import type { Tab } from "../tabs/tab-bar";
 import { Footer } from "./footer";
 import { getLayoutMode } from "./layout-mode";
@@ -33,19 +34,6 @@ interface MainLayoutProps {
   tabHotkeysEnabled?: boolean;
 }
 
-function getStatusBadge(status: "idle" | "running" | "paused" | "error") {
-  if (status === "running") {
-    return { icon: "●", label: "running" };
-  }
-  if (status === "paused") {
-    return { icon: "◐", label: "paused" };
-  }
-  if (status === "error") {
-    return { icon: "✕", label: "error" };
-  }
-  return { icon: "○", label: "idle" };
-}
-
 export function MainLayout({
   children,
   leftPanel,
@@ -61,7 +49,7 @@ export function MainLayout({
 }: MainLayoutProps) {
   const { columns } = useStdoutDimensions();
   const layoutMode = useMemo(() => getLayoutMode(columns), [columns]);
-  const badge = getStatusBadge(status ?? "idle");
+  const badgeStatus = status ?? "idle";
 
   useInput((input) => {
     if (!tabHotkeysEnabled) {
@@ -111,9 +99,7 @@ export function MainLayout({
         {shellTitle}
         {sessionId ? ` · ${sessionId.slice(0, 8)}` : ""}
       </Text>
-      <Text>
-        {badge.icon} {badge.label}
-      </Text>
+      <StatusBadge showLabel={true} status={badgeStatus} />
     </Box>
   );
 
@@ -157,7 +143,7 @@ export function MainLayout({
               paddingX={1}
             >
               <Text>Narrow mode - use 1-8 for navigation</Text>
-              <Text>{badge.label}</Text>
+              <StatusBadge showLabel={true} status={badgeStatus} />
             </Box>
             <Box flexDirection="column" flexGrow={1} marginTop={1}>
               {contentPanel}

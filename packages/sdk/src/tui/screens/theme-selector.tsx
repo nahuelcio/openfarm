@@ -6,7 +6,7 @@
 
 import { Box, Text, useInput } from "@openfarm/tui-opentui";
 import { useState } from "react";
-import { ThemedText } from "../components/themed-text";
+import { ThemedText } from "../components";
 import { useStore } from "../store";
 import {
   useAvailableThemes,

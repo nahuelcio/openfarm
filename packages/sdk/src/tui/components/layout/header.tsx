@@ -7,6 +7,7 @@
 
 import { Box, Text } from "@openfarm/tui-opentui";
 import { useTheme } from "../../store/theme-store";
+import { StatusBadge } from "../status/status-badge";
 
 interface HeaderProps {
   title?: string;
@@ -19,32 +20,7 @@ export function Header({
   status = "idle",
   sessionId,
 }: HeaderProps) {
-  const { colors, getColor } = useTheme();
-
-  const getStatusConfig = () => {
-    switch (status) {
-      case "idle":
-        return { color: getColor("statusIdle"), symbol: "○", label: "Idle" };
-      case "running":
-        return {
-          color: getColor("statusRunning"),
-          symbol: "▶",
-          label: "Running",
-        };
-      case "paused":
-        return {
-          color: getColor("statusPaused"),
-          symbol: "⏸",
-          label: "Paused",
-        };
-      case "error":
-        return { color: getColor("statusError"), symbol: "✗", label: "Error" };
-      default:
-        return { color: getColor("statusIdle"), symbol: "○", label: "Idle" };
-    }
-  };
-
-  const config = getStatusConfig();
+  const { colors } = useTheme();
 
   return (
     <Box
@@ -66,11 +42,8 @@ export function Header({
           </Text>
         )}
       </Box>
-
       <Box flexDirection="row" gap={2}>
-        <Text color={config.color}>
-          {config.symbol} {config.label}
-        </Text>
+        <StatusBadge status={status} />
         <Text color={colors.muted}>| ? Help</Text>
       </Box>
     </Box>

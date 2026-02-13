@@ -36,7 +36,8 @@ export type Screen =
   | "file-explorer"
   | "warp-terminal"
   | "simple-setup"
-  | "theme-selector";
+  | "theme-selector"
+  | "multi-agent-dashboard";
 
 export type TabId =
   | "dashboard"

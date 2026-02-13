@@ -1,8 +1,7 @@
 import { getDb, getWorkflows } from "@openfarm/core/db";
 import { Box, Text, useInput } from "@openfarm/tui-opentui";
 import { useEffect, useState } from "react";
-import { KeyHelpBar } from "../components";
-import { OverlayContainer } from "../components/task-loop/overlay-container";
+import { HelpOverlay, KeyHelpBar } from "../components";
 import { useListNavigation, useNavigationKeys } from "../hooks";
 import { type Execution, useStore } from "../store";
 import { useExecutionRuntimeStore } from "../store/execution-runtime-store";
@@ -126,38 +125,31 @@ export function History() {
     }
   });
 
-  // Help content for history screen
-  const helpContent = (
-    <>
-      <Box flexDirection="column">
-        <Text bold>Navigation</Text>
-        <Text> ↑/↓ Navigate executions</Text>
-        <Text> Enter View execution details</Text>
-        <Text> Esc Back to Dashboard</Text>
-        <Text> d Go to Dashboard</Text>
-      </Box>
-      <Box flexDirection="column" marginTop={1}>
-        <Text bold>Actions</Text>
-        <Text> r Rerun execution</Text>
-        <Text> D View diff (uppercase)</Text>
-      </Box>
-      <Box flexDirection="column" marginTop={1}>
-        <Text bold>System</Text>
-        <Text> ? Toggle Help</Text>
-      </Box>
-    </>
-  );
-
-  // Render help overlay
   if (showingHelp) {
     return (
-      <Box flexDirection="column" gap={1}>
-        <Text bold color={colors.primary}>
-          📜 History
-        </Text>
-        <Text color={colors.border}>{"─".repeat(60)}</Text>
-        <OverlayContainer title="History Help">{helpContent}</OverlayContainer>
-      </Box>
+      <HelpOverlay
+        content={
+          <>
+            <Box flexDirection="column">
+              <Text bold>Navigation</Text>
+              <Text> ↑/↓ Navigate executions</Text>
+              <Text> Enter View execution details</Text>
+              <Text> Esc Back to Dashboard</Text>
+              <Text> d Go to Dashboard</Text>
+            </Box>
+            <Box flexDirection="column" marginTop={1}>
+              <Text bold>Actions</Text>
+              <Text> r Rerun execution</Text>
+              <Text> D View diff (uppercase)</Text>
+            </Box>
+            <Box flexDirection="column" marginTop={1}>
+              <Text bold>System</Text>
+              <Text> ? Toggle Help</Text>
+            </Box>
+          </>
+        }
+        title="History Help"
+      />
     );
   }
 

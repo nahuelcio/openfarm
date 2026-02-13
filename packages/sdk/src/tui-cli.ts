@@ -91,6 +91,6 @@ export async function runTUIApp(
     });
   }
 
-  const { runTUIV2 } = await import("./tui/index-v2");
+  const { runTUIV2 } = await import("./tui/index");
   await runTUIV2(config, themeId);
 }

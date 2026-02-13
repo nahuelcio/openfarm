@@ -4,21 +4,10 @@
  * Executable command block with output capture and actions.
  */
 
+import { Box, Text, useClipboard, useInput } from "@openfarm/tui-opentui";
 import { useState } from "react";
-import { Box, Text, useInput } from "@openfarm/tui-opentui";
-import { useClipboard } from "../../hooks/use-clipboard";
 import { useThemeColors } from "../../theme/hooks";
-import { execSync } from "child_process";
-
-export interface CommandBlockData {
-  id: string;
-  command: string;
-  output?: string;
-  status: "pending" | "running" | "success" | "error";
-  exitCode?: number;
-  executionTimeMs?: number;
-  workingDirectory?: string;
-}
+import { formatDuration } from "../../utils/format-duration";
 
 export interface CommandBlockProps {
   block: CommandBlockData;
@@ -61,7 +50,7 @@ export function CommandBlock({ block, onUpdate, onDelete }: CommandBlockProps) {
       const output = execSync(block.command, {
         cwd: block.workingDirectory || process.cwd(),
         encoding: "utf-8",
-        timeout: 30000,
+        timeout: 30_000,
         maxBuffer: 1024 * 1024, // 1MB
       });
 
@@ -146,7 +135,7 @@ export function CommandBlock({ block, onUpdate, onDelete }: CommandBlockProps) {
             <Text color={colors.warning}>{editValue}</Text>
           ) : (
             <>
-              <Text color={colors.foreground} bold>
+              <Text bold color={colors.foreground}>
                 $
               </Text>
               <Text color={colors.foreground}>{block.command}</Text>
@@ -191,7 +180,7 @@ export function CommandBlock({ block, onUpdate, onDelete }: CommandBlockProps) {
           paddingY={1}
         >
           {block.output.split("\n").map((line, i) => (
-            <Text key={i} color={colors.muted} dimColor wrap="truncate-end">
+            <Text color={colors.muted} dimColor key={i} wrap="truncate-end">
               {line}
             </Text>
           ))}
@@ -217,6 +206,6 @@ export function CommandBlock({ block, onUpdate, onDelete }: CommandBlockProps) {
 
 function formatDuration(ms: number): string {
   if (ms < 1000) return `${ms}ms`;
-  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
-  return `${(ms / 60000).toFixed(1)}m`;
+  if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`;
+  return `${(ms / 60_000).toFixed(1)}m`;
 }

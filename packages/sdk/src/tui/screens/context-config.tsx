@@ -1,10 +1,9 @@
 import { Box, Text, useInput } from "@openfarm/tui-opentui";
 import TextInput from "@openfarm/tui-opentui/text-input";
 import { useEffect, useState } from "react";
-import { OverlayContainer } from "../components/task-loop/overlay-container";
+import { HelpOverlay } from "../components";
 import { useNavigationKeys } from "../hooks";
 import { useStore } from "../store";
-import { useThemeColors } from "../theme/hooks";
 import { getAvailableModels } from "../utils/models";
 
 interface ProviderOption {
@@ -14,7 +13,6 @@ interface ProviderOption {
 
 export function ContextConfigScreen() {
   const { setScreen, setContextProvider, setContextModel } = useStore();
-  const colors = useThemeColors();
 
   const [step, setStep] = useState<"provider" | "model">("provider");
   const [providers] = useState<ProviderOption[]>([
@@ -129,48 +127,36 @@ export function ContextConfigScreen() {
     }
   });
 
-  // Help content for context config screen
-  const helpContent = (
-    <>
-      <Box flexDirection="column">
-        <Text bold>Navigation</Text>
-        <Text> ↑/↓ Navigate options</Text>
-        <Text> Enter Confirm selection</Text>
-        <Text> Esc Go back / Cancel</Text>
-        <Text> d Go to Dashboard</Text>
-      </Box>
-      <Box flexDirection="column" marginTop={1}>
-        <Text bold>Steps</Text>
-        <Text> Step 1: Select Provider</Text>
-        <Text> Step 2: Select Model (optional)</Text>
-      </Box>
-      <Box flexDirection="column" marginTop={1}>
-        <Text bold>Model Selection</Text>
-        <Text> ↓ Select from list</Text>
-        <Text> Type to search custom model</Text>
-      </Box>
-      <Box flexDirection="column" marginTop={1}>
-        <Text bold>Shortcuts</Text>
-        <Text> h View context history</Text>
-      </Box>
-      <Box flexDirection="column" marginTop={1}>
-        <Text bold>System</Text>
-        <Text> ? Toggle Help</Text>
-      </Box>
-    </>
-  );
-
-  // Render help overlay
+  // Render help overlay using shared HelpOverlay component
   if (showingHelp) {
     return (
-      <Box flexDirection="column" padding={1}>
-        <Text bold color={colors.primary}>
-          Generate Context
-        </Text>
-        <OverlayContainer title="Generate Context Help">
-          {helpContent}
-        </OverlayContainer>
-      </Box>
+      <HelpOverlay title="Generate Context Help">
+        <Box flexDirection="column">
+          <Text bold>Navigation</Text>
+          <Text> ↑/↓ Navigate options</Text>
+          <Text> Enter Confirm selection</Text>
+          <Text> Esc Go back / Cancel</Text>
+          <Text> d Go to Dashboard</Text>
+        </Box>
+        <Box flexDirection="column" marginTop={1}>
+          <Text bold>Steps</Text>
+          <Text> Step 1: Select Provider</Text>
+          <Text> Step 2: Select Model (optional)</Text>
+        </Box>
+        <Box flexDirection="column" marginTop={1}>
+          <Text bold>Model Selection</Text>
+          <Text> ↓ Select from list</Text>
+          <Text> Type to search custom model</Text>
+        </Box>
+        <Box flexDirection="column" marginTop={1}>
+          <Text bold>Shortcuts</Text>
+          <Text> h View context history</Text>
+        </Box>
+        <Box flexDirection="column" marginTop={1}>
+          <Text bold>System</Text>
+          <Text> ? Toggle Help</Text>
+        </Box>
+      </HelpOverlay>
     );
   }
 
