@@ -8,8 +8,8 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
-    "lint": "bunx @biomejs/biome lint packages && bunx @biomejs/biome check --config-path openfarm-desktop/biome.json openfarm-desktop/src",
-    "lint:fix": "bunx @biomejs/biome lint packages --write && bunx @biomejs/biome check --config-path openfarm-desktop/biome.json openfarm-desktop/src --write",
+    "lint": "bunx @biomejs/biome lint packages && bun run --cwd openfarm-desktop lint",
+    "lint:fix": "bunx @biomejs/biome lint packages --write && bun run --cwd openfarm-desktop lint",
     "type-check": "turbo run type-check",
     "test": "turbo run test",
     "tui": "bun run packages/sdk/src/cli.ts",
