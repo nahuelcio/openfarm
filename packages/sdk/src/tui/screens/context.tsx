@@ -1,4 +1,4 @@
-import { AgentAnalyzer } from "@openfarm/context";
+import { AgentAnalyzer } from "@openfarm/context/agent-analyzer";
 import { Box, Text, useInput } from "@openfarm/tui-opentui";
 import SpinnerComponent from "@openfarm/tui-opentui/spinner";
 import type React from "react";

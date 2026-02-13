@@ -113,7 +113,7 @@ export function AgentDetailsPanel({ agent }: AgentDetailsPanelProps) {
           <Text bold marginTop={2} underline>
             Output
           </Text>
-          <Box flex={1} marginTop={1} overflow="auto">
+          <Box flex={1} marginTop={1} overflow="visible">
             <Text dim numberOfLines={20}>
               {agent.output.slice(-2000)}
             </Text>

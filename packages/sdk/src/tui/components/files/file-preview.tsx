@@ -4,7 +4,7 @@
  * Code preview with syntax highlighting for terminal.
  */
 
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { Box, Text } from "@openfarm/tui-opentui";
 import { useThemeColors } from "../../theme/hooks";
 
@@ -79,7 +79,7 @@ export function FilePreview({
   const language = getLanguage(path);
 
   // Simple syntax highlighting
-  const highlightLine = (line: string): JSX.Element => {
+  const highlightLine = (line: string): ReactNode => {
     const tokens: Array<{ text: string; color: string }> = [];
 
     // Keywords

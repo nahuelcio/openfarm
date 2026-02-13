@@ -33,7 +33,7 @@ export function AgentDashboard() {
       </Box>
 
       <Box flex={1} flexDirection="row" overflow="hidden">
-        <Box flex={2} flexDirection="column" overflow="auto" padding={1}>
+        <Box flex={2} flexDirection="column" overflow="visible" padding={1}>
           {agents.length === 0 ? (
             <Box alignItems="center" flex={1} justifyContent="center">
               <Text color="gray">
@@ -59,7 +59,7 @@ export function AgentDashboard() {
             borderColor="gray"
             borderLeft="single"
             borderStyle="bold"
-            overflow="auto"
+            overflow="visible"
             width={60}
           >
             <AgentDetailsPanel agent={selectedAgent} />

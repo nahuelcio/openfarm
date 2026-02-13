@@ -28,7 +28,7 @@ describe("provider-opencode getAvailableModels", () => {
       ].join("\n"),
     });
 
-    const mod = await import("./index");
+    const mod = await import("./models");
     const models = mod.getAvailableModels();
 
     expect(models).toEqual([
@@ -57,7 +57,7 @@ describe("provider-opencode getAvailableModels", () => {
       ].join("\n"),
     });
 
-    const mod = await import("./index");
+    const mod = await import("./models");
     const models = mod.getAvailableModels();
 
     expect(models).toContain("opencode/gpt-5-nano");
@@ -75,7 +75,7 @@ describe("provider-opencode getAvailableModels", () => {
       stdout: "",
     });
 
-    const mod = await import("./index");
+    const mod = await import("./models");
     const models = mod.getAvailableModels();
 
     expect(models).toContain("opencode/gpt-5-nano");
@@ -90,7 +90,7 @@ describe("provider-opencode getAvailableModels", () => {
       stdout: "opencode/glm-4.7-free\n",
     });
 
-    const mod = await import("./index");
+    const mod = await import("./models");
     const models = mod.getAvailableModels();
 
     expect(models).toEqual(["opencode/glm-4.7-free"]);

@@ -4,10 +4,22 @@
  * Executable command block with output capture and actions.
  */
 
-import { Box, Text, useClipboard, useInput } from "@openfarm/tui-opentui";
+import { execSync } from "node:child_process";
+import { Box, Text, useInput } from "@openfarm/tui-opentui";
 import { useState } from "react";
 import { useThemeColors } from "../../theme/hooks";
+import { copyToClipboard } from "../../utils/clipboard";
 import { formatDuration } from "../../utils/format-duration";
+
+export interface CommandBlockData {
+  id: string;
+  command: string;
+  output?: string;
+  status: "pending" | "running" | "success" | "error";
+  exitCode?: number;
+  executionTimeMs?: number;
+  workingDirectory?: string;
+}
 
 export interface CommandBlockProps {
   block: CommandBlockData;
@@ -23,7 +35,7 @@ export function CommandBlock({ block, onUpdate, onDelete }: CommandBlockProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(block.command);
-  const { copy, copied } = useClipboard();
+  const [copied, setCopied] = useState(false);
 
   const statusConfig = {
     pending: { icon: "○", color: colors.muted, label: "Pending" },
@@ -106,9 +118,9 @@ export function CommandBlock({ block, onUpdate, onDelete }: CommandBlockProps) {
     if (input === "r" || input === "R") {
       handleExecute();
     } else if (input === "c" || input === "C") {
-      copy(block.command);
+      setCopied(copyToClipboard(block.command));
     } else if (input === "y" || input === "Y") {
-      copy(block.output || "");
+      setCopied(copyToClipboard(block.output || ""));
     } else if (input === "e" || input === "E") {
       setIsEditing(true);
     } else if (input === "d" || input === "D") {
