@@ -1,17 +1,41 @@
 #!/usr/bin/env node
-import { render } from "ink";
-import type { OpenFarmConfig } from "../types";
-import { App } from "./app";
-import { useStore } from "./store";
+/**
+ * TUI v2 Entry Point
+ *
+ * Ralph TUI-style dashboard layout with tabs.
+ */
 
-export async function runTUI(config?: OpenFarmConfig): Promise<void> {
+import { render } from "@openfarm/tui-opentui";
+import type { OpenFarmConfig } from "../types";
+import { AppV2 } from "./app";
+import { useStore } from "./store";
+import { useThemeStore } from "./theme/store";
+import { preloadAllCommonModels } from "./utils/models";
+
+export async function runTUIV2(
+  config?: OpenFarmConfig,
+  themeId?: string
+): Promise<void> {
   if (config) {
     useStore.setState({
       config,
-      provider: config.defaultProvider || "opencode",
+      provider: config.defaultProvider || "external-agent",
     });
   }
 
-  const { waitUntilExit } = render(<App />);
+  // Set theme if provided
+  if (themeId) {
+    useThemeStore.getState().setTheme(themeId);
+  }
+
+  const { waitUntilExit } = render(<AppV2 />);
+
+  // Preload models in background for faster UX
+  preloadAllCommonModels();
+
+  // Load execution history from database (non-blocking for faster startup)
+  const { loadExecutionsFromDb } = useStore.getState();
+  loadExecutionsFromDb();
+
   await waitUntilExit();
 }

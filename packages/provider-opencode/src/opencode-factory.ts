@@ -7,37 +7,17 @@ import type {
 } from "@openfarm/sdk";
 import {
   CliCommunicationStrategy,
-  createProviderConfigManager,
-  HttpCommunicationStrategy,
+  ConfigManagers,
+  StreamResponseParser,
 } from "@openfarm/sdk";
-import { OpenCodeProvider } from "./opencode-provider.js";
-
-const _OpenCodeConfigSchema = {
-  type: "object",
-  properties: {
-    mode: { type: "string", enum: ["local", "cloud"] },
-    baseUrl: { type: "string" },
-    password: { type: "string" },
-    timeout: { type: "number", default: 600_000, minimum: 1000 },
-  },
-  required: [],
-};
+import { OpenCodeProvider } from "./opencode-provider";
+import {
+  createOpenCodeMetadata,
+  OPENCODE_DEFAULT_TIMEOUT,
+} from "./provider-definition";
 
 export class OpenCodeProviderFactory implements ProviderFactory {
-  private readonly metadata: ProviderMetadata = {
-    type: "opencode",
-    name: "OpenCode",
-    version: "1.0.0",
-    description: "OpenCode AI coding assistant",
-    packageName: "@openfarm/provider-opencode",
-    supportedFeatures: [
-      "code-generation",
-      "code-editing",
-      "debugging",
-      "refactoring",
-    ],
-    requiresExternal: true,
-  };
+  private readonly metadata: ProviderMetadata = createOpenCodeMetadata();
 
   getMetadata(): ProviderMetadata {
     return { ...this.metadata };
@@ -48,73 +28,82 @@ export class OpenCodeProviderFactory implements ProviderFactory {
   }
 
   create(config?: unknown): Provider {
-    const parsedConfig = this.parseConfig(config);
-    const strategy = this.createCommunicationStrategy(parsedConfig);
-    const configManager = this.createConfigManager(parsedConfig);
+    if (config !== undefined && config !== null) {
+      this.validateConfig(config);
+    }
 
-    return new OpenCodeProvider(strategy, null, configManager, parsedConfig);
+    const parsedConfig = this.parseConfig(config);
+    const { communicationStrategy, commandLabel } =
+      this.createCommunicationStrategy(parsedConfig);
+    const responseParser = this.createResponseParser();
+    const configManager = this.createConfigurationManager(parsedConfig);
+
+    return new OpenCodeProvider(
+      communicationStrategy,
+      responseParser,
+      configManager,
+      parsedConfig,
+      commandLabel
+    );
   }
 
-  private parseConfig(config?: unknown): {
-    mode: "local" | "cloud";
-    baseUrl?: string;
-    password?: string;
-    timeout: number;
-  } {
+  private validateConfig(config: unknown): void {
+    if (typeof config !== "object" || config === null) {
+      throw new Error("Configuration must be an object");
+    }
+
+    const configObj = config as Record<string, unknown>;
+
+    if (configObj.timeout !== undefined) {
+      if (typeof configObj.timeout !== "number" || configObj.timeout < 1000) {
+        throw new Error("Timeout must be a number >= 1000");
+      }
+    }
+  }
+
+  private parseConfig(config?: unknown): { timeout: number } {
     const defaults = {
-      mode: "local" as const,
-      timeout: 600_000,
+      timeout: OPENCODE_DEFAULT_TIMEOUT,
     };
 
     if (!config || typeof config !== "object") {
       return defaults;
     }
 
-    const c = config as Record<string, unknown>;
+    const configObj = config as Record<string, unknown>;
+
     return {
-      mode: (c.mode as "local" | "cloud") || defaults.mode,
-      baseUrl: c.baseUrl as string | undefined,
-      password: c.password as string | undefined,
-      timeout: (c.timeout as number) || defaults.timeout,
+      timeout: (configObj.timeout as number) || defaults.timeout,
     };
   }
 
-  private createCommunicationStrategy(config: {
-    mode: "local" | "cloud";
-    baseUrl?: string;
-    password?: string;
-    timeout: number;
-  }): CommunicationStrategy {
-    // LOCAL: usa opencode CLI directamente
-    if (config.mode === "local") {
-      return new CliCommunicationStrategy({
-        executable: "opencode",
+  private createCommunicationStrategy(config: { timeout: number }): {
+    communicationStrategy: CommunicationStrategy;
+    commandLabel: string;
+  } {
+    const command = process.env.OPENCODE_COMMAND || "bunx";
+    const useBunx = command === "bunx";
+    const defaultArgs = useBunx ? ["opencode-ai"] : [];
+    const commandLabel = useBunx ? "bunx opencode-ai" : command;
+
+    return {
+      communicationStrategy: new CliCommunicationStrategy({
+        executable: command,
+        defaultArgs,
         timeout: config.timeout,
-      });
-    }
-
-    // CLOUD: usa HTTP API
-    if (!config.baseUrl) {
-      throw new Error("baseUrl required for cloud mode");
-    }
-
-    return new HttpCommunicationStrategy({
-      baseUrl: config.baseUrl,
-      timeout: config.timeout,
-      auth: config.password
-        ? {
-            type: "basic",
-            username: "opencode",
-            password: config.password,
-          }
-        : undefined,
-    });
+      }),
+      commandLabel,
+    };
   }
 
-  private createConfigManager(config: {
+  private createResponseParser(): StreamResponseParser {
+    return new StreamResponseParser();
+  }
+
+  private createConfigurationManager(config: {
     timeout: number;
   }): ConfigurationManager {
-    return createProviderConfigManager("opencode", undefined, {
+    return ConfigManagers.cli("opencode", {
       timeout: config.timeout,
     });
   }

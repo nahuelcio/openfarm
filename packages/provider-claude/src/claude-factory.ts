@@ -11,48 +11,16 @@ import {
   StreamResponseParser,
 } from "@openfarm/sdk";
 import { ClaudeProvider } from "./claude-provider";
-
-/**
- * Configuration schema for Claude provider
- */
-const ClaudeConfigSchema = {
-  type: "object",
-  properties: {
-    timeout: {
-      type: "number",
-      default: 600_000,
-      minimum: 1000,
-      description: "Timeout in milliseconds",
-    },
-  },
-  required: [],
-  additionalProperties: false,
-};
+import {
+  CLAUDE_DEFAULT_TIMEOUT,
+  createClaudeMetadata,
+} from "./provider-definition";
 
 /**
  * Factory for creating ClaudeProvider instances
  */
 export class ClaudeProviderFactory implements ProviderFactory {
-  private readonly metadata: ProviderMetadata = {
-    type: "claude",
-    name: "Claude Code",
-    version: "1.0.0",
-    description:
-      "Claude Code AI assistant with advanced code understanding and editing capabilities",
-    packageName: "@openfarm/provider-claude",
-    supportedFeatures: [
-      "code-generation",
-      "code-editing",
-      "refactoring",
-      "debugging",
-      "code-analysis",
-      "file-operations",
-      "bash-execution",
-      "web-search",
-    ],
-    configSchema: ClaudeConfigSchema,
-    requiresExternal: true,
-  };
+  private readonly metadata: ProviderMetadata = createClaudeMetadata();
 
   getMetadata(): ProviderMetadata {
     return { ...this.metadata };
@@ -103,7 +71,7 @@ export class ClaudeProviderFactory implements ProviderFactory {
     timeout: number;
   } {
     const defaults = {
-      timeout: 600_000,
+      timeout: CLAUDE_DEFAULT_TIMEOUT,
     };
 
     if (!config || typeof config !== "object") {

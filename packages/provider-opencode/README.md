@@ -1,6 +1,6 @@
 # @openfarm/provider-opencode
 
-OpenCode provider for OpenFarm - supports both local CLI and cloud HTTP modes.
+OpenCode provider for OpenFarm using the OpenCode CLI.
 
 ## Installation
 
@@ -8,39 +8,25 @@ OpenCode provider for OpenFarm - supports both local CLI and cloud HTTP modes.
 npm install @openfarm/provider-opencode
 ```
 
-## Usage
+**Prerequisites**: OpenCode CLI must be available on your system:
 
-### Local Mode (CLI)
-
-```typescript
-import { OpenCodeProvider } from '@openfarm/provider-opencode';
-
-const provider = new OpenCodeProvider({
-  mode: 'local',
-  timeout: 600000
-});
-
-const result = await provider.execute({
-  task: 'Fix the bug in user authentication',
-  workspace: '/path/to/project'
-});
+```bash
+bunx opencode-ai --version
 ```
 
-### Cloud Mode (HTTP)
+If you want to attach to an existing OpenCode server, set `OPENCODE_SERVER_URL`.
+
+## Usage
 
 ```typescript
-import { OpenCodeProvider } from '@openfarm/provider-opencode';
+import { OpenFarm } from "@openfarm/sdk";
 
-const provider = new OpenCodeProvider({
-  mode: 'cloud',
-  baseUrl: 'https://api.opencode.ai',
-  password: 'your-api-key',
-  timeout: 600000
-});
+const client = new OpenFarm({ defaultProvider: "opencode" });
 
-const result = await provider.execute({
-  task: 'Implement user registration feature',
-  model: 'claude-3-5-sonnet-20241022'
+const result = await client.execute({
+  task: "Add input validation to the login form",
+  workspace: "/path/to/project",
+  model: "anthropic/claude-3-5-sonnet",
 });
 ```
 
@@ -48,19 +34,14 @@ const result = await provider.execute({
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `mode` | `'local' \| 'cloud'` | `'local'` | Execution mode |
-| `baseUrl` | `string` | - | Base URL for cloud mode (required for cloud) |
-| `password` | `string` | - | API password for cloud mode |
 | `timeout` | `number` | `600000` | Timeout in milliseconds |
 
-## Features
+## Environment Variables
 
-- **Dual Mode Support**: Works with both local OpenCode CLI and cloud API
-- **Real-time Streaming**: Live progress updates during execution
-- **Token Usage Tracking**: Detailed token consumption metrics
-- **File Change Tracking**: Monitors created and modified files
-- **Error Handling**: Comprehensive error reporting and recovery
-- **Type Safety**: Full TypeScript support with strict typing
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `OPENCODE_SERVER_URL` | - | Attach to a running OpenCode server URL (optional) |
+| `OPENCODE_COMMAND` | `bunx` | CLI command to execute |
 
 ## License
 

@@ -127,7 +127,7 @@ describe("commitChanges", () => {
     await commitChanges(mockConfig, 'Test "quoted" message', mockFs, mockExec);
 
     // Check that commit was called with escaped quotes
-    const commitCall = (mockExec as any).mock.calls.find((call) =>
+    const commitCall = (mockExec as any).mock.calls.find((call: string[]) =>
       call[0].includes("commit -m")
     );
     expect(commitCall).toBeDefined();

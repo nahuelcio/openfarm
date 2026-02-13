@@ -1,6 +1,8 @@
-import { Box, Text, useInput } from "ink";
-import TextInput from "ink-text-input";
+import { Box, Text, useInput } from "@openfarm/tui-opentui";
+import TextInput from "@openfarm/tui-opentui/text-input";
 import { useEffect, useState } from "react";
+import { HelpOverlay } from "../components";
+import { useNavigationKeys } from "../hooks";
 import { useStore } from "../store";
 import { getAvailableModels } from "../utils/models";
 
@@ -15,8 +17,9 @@ export function ContextConfigScreen() {
   const [step, setStep] = useState<"provider" | "model">("provider");
   const [providers] = useState<ProviderOption[]>([
     { id: "direct-api", name: "OpenAI" },
-    { id: "claude", name: "Claude" },
     { id: "opencode", name: "OpenCode" },
+    { id: "claude", name: "Claude" },
+    { id: "external-agent", name: "External Agent" },
     { id: "aider", name: "Aider" },
   ]);
   const [providerIndex, setProviderIndex] = useState(0);
@@ -25,6 +28,14 @@ export function ContextConfigScreen() {
   const [isSelectingFromList, setIsSelectingFromList] = useState(false);
 
   const [modelOptions, setModelOptions] = useState<string[]>([]);
+
+  // Use standardized navigation keys
+  const { showingHelp } = useNavigationKeys({
+    screen: "context-config",
+    parentScreen: "dashboard",
+    enableHelp: true,
+    onNavigate: setScreen,
+  });
 
   const selectedProvider = providers[providerIndex];
 
@@ -58,6 +69,11 @@ export function ContextConfigScreen() {
   }, [step]);
 
   useInput((input, key) => {
+    // Don't process if help is showing
+    if (showingHelp) {
+      return;
+    }
+
     if (step === "provider") {
       if (key.upArrow) {
         setProviderIndex((prev) =>
@@ -104,11 +120,45 @@ export function ContextConfigScreen() {
           setStep("provider");
         }
       }
-      if (input === "q") {
-        setScreen("dashboard");
+      // 'q' is handled by useNavigationKeys for dashboard navigation
+      if (input === "h") {
+        setScreen("context-history");
       }
     }
   });
+
+  // Render help overlay using shared HelpOverlay component
+  if (showingHelp) {
+    return (
+      <HelpOverlay title="Generate Context Help">
+        <Box flexDirection="column">
+          <Text bold>Navigation</Text>
+          <Text> ↑/↓ Navigate options</Text>
+          <Text> Enter Confirm selection</Text>
+          <Text> Esc Go back / Cancel</Text>
+          <Text> d Go to Dashboard</Text>
+        </Box>
+        <Box flexDirection="column" marginTop={1}>
+          <Text bold>Steps</Text>
+          <Text> Step 1: Select Provider</Text>
+          <Text> Step 2: Select Model (optional)</Text>
+        </Box>
+        <Box flexDirection="column" marginTop={1}>
+          <Text bold>Model Selection</Text>
+          <Text> ↓ Select from list</Text>
+          <Text> Type to search custom model</Text>
+        </Box>
+        <Box flexDirection="column" marginTop={1}>
+          <Text bold>Shortcuts</Text>
+          <Text> h View context history</Text>
+        </Box>
+        <Box flexDirection="column" marginTop={1}>
+          <Text bold>System</Text>
+          <Text> ? Toggle Help</Text>
+        </Box>
+      </HelpOverlay>
+    );
+  }
 
   return (
     <Box flexDirection="column" padding={1}>
@@ -139,8 +189,11 @@ export function ContextConfigScreen() {
             <Text color="green">{selectedProvider.name}</Text>
           </Box>
 
-          <Box marginTop={2}>
-            <Text color="yellow">Press Enter to continue, q to cancel</Text>
+          <Box flexDirection="column" gap={0} marginTop={2}>
+            <Text color="yellow">Press Enter to continue, Esc to cancel</Text>
+            <Text color="gray" dimColor>
+              h = view context history, ? = help
+            </Text>
           </Box>
         </>
       )}
@@ -211,7 +264,8 @@ export function ContextConfigScreen() {
                   ? "↑↓ Navigate • Enter Select • Esc Back"
                   : modelSearch.trim()
                     ? "↓ Select from list • Enter Use custom"
-                    : "Type to search • Enter Skip (use default)"}
+                    : "Type to search • Enter Skip (use default)"}{" "}
+                • ? Help
               </Text>
             </Box>
           </Box>

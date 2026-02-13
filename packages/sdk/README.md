@@ -33,7 +33,6 @@ OpenFarm uses a modular provider system that supports multiple AI coding assista
 ### Built-in Providers
 
 - **direct-api**: Direct API integration for simple HTTP-based AI services
-- **opencode**: OpenCode AI assistant (requires `@openfarm/provider-opencode`)
 - **aider**: Aider AI pair programming (requires `@openfarm/provider-aider`)
 - **claude**: Claude Code assistant (requires `@openfarm/provider-claude`)
 
@@ -43,7 +42,6 @@ External providers are automatically discovered and lazy-loaded:
 
 ```bash
 # Install additional providers
-npm install @openfarm/provider-opencode
 npm install @openfarm/provider-aider
 npm install @openfarm/provider-claude
 ```
@@ -51,10 +49,10 @@ npm install @openfarm/provider-claude
 ```typescript
 // They're automatically available
 const providers = openFarm.getAvailableProviders();
-console.log(providers); // ['direct-api', 'opencode', 'aider', 'claude']
+console.log(providers); // ['direct-api', 'aider', 'claude']
 
 // Switch providers dynamically
-openFarm.setProvider('opencode');
+openFarm.setProvider('aider');
 await openFarm.execute({ task: 'Fix the authentication bug' });
 ```
 
@@ -62,7 +60,7 @@ await openFarm.execute({ task: 'Fix the authentication bug' });
 
 ```typescript
 const openFarm = new OpenFarm({
-  defaultProvider: 'opencode',
+  defaultProvider: 'direct-api',
   defaultModel: 'claude-3-5-sonnet-20241022',
   timeout: 600000,
   retries: 3
@@ -96,7 +94,7 @@ console.log(providers);
 ### Get Provider Metadata
 
 ```typescript
-const metadata = openFarm.getProviderMetadata('opencode');
+const metadata = openFarm.getProviderMetadata('aider');
 console.log(metadata.description);
 console.log(metadata.supportedFeatures);
 ```
@@ -105,7 +103,7 @@ console.log(metadata.supportedFeatures);
 
 ```typescript
 // Preload providers for better performance
-await openFarm.preloadProvider('opencode');
+await openFarm.preloadProvider('aider');
 
 // Or preload all providers
 await openFarm.preloadAllProviders();
@@ -162,11 +160,11 @@ If you're migrating from the old executor system:
 ```typescript
 // Old way (deprecated)
 import { createExecutor } from '@openfarm/sdk';
-const executor = createExecutor('opencode');
+const executor = createExecutor('aider');
 
 // New way
 import { OpenFarm } from '@openfarm/sdk';
-const openFarm = new OpenFarm({ defaultProvider: 'opencode' });
+const openFarm = new OpenFarm({ defaultProvider: 'aider' });
 ```
 
 The new provider system offers:

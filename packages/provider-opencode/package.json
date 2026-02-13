@@ -1,7 +1,7 @@
 {
   "name": "@openfarm/provider-opencode",
   "version": "0.1.0",
-  "description": "OpenCode provider for OpenFarm - supports both local CLI and cloud HTTP modes",
+  "description": "OpenCode provider for OpenFarm - CLI-based coding agent with OpenCode server",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

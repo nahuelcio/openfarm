@@ -23,6 +23,8 @@ npm install @openfarm/sdk
 
 ## 📝 Usage
 
+### Programmatic API
+
 ```typescript
 import { OpenFarm } from '@openfarm/sdk'
 
@@ -38,6 +40,96 @@ const result = await client.execute({
 
 console.log(result.diff)
 ```
+
+## 🖥️ Terminal UI (TUI)
+
+OpenFarm includes an interactive Terminal UI for local development and testing. The TUI is built with [Ink](https://github.com/vadimdemedes/ink) (React for terminals).
+
+### Running the TUI
+
+From the project root (after `bun install`):
+
+```bash
+bun run tui
+```
+
+Or using npx without installation:
+
+```bash
+npx @openfarm/sdk tui
+```
+
+Or run directly:
+
+```bash
+bun run packages/sdk/src/tui/index.tsx
+```
+
+### Features
+
+- **Interactive Execution** - Execute AI coding tasks with multiple providers
+- **Multiple Providers** - Choose between OpenCode, Claude Code, and Aider
+- **Execution History** - All executions saved to local SQLite database
+- **Diff Viewer** - View code changes with syntax highlighting
+- **Real-time Streaming** - Watch logs and token usage update live
+- **Smart Error Handling** - Categorized errors with actionable suggestions
+- **Workflow Management** - View, edit, and select predefined workflows
+- **Context Generator** - Generate project context for better AI understanding
+
+### Navigation
+
+- **↑/↓ Arrows** - Navigate options and history
+- **Enter** - Select/Confirm
+- **Esc** - Go back/Cancel
+- **Tab** - Switch between sections (where applicable)
+
+### Providers
+
+The TUI supports multiple AI coding providers:
+
+- **OpenCode** - Default provider, optimized for coding tasks
+- **Claude Code** - Anthropic's Claude with coding capabilities
+- **Aider** - Open source AI pair programmer
+
+### Configuration
+
+Set API keys via environment variables:
+
+```bash
+# Anthropic API key (for Claude Code)
+export ANTHROPIC_API_KEY=sk-ant-...
+
+# OpenAI API key (for some providers)
+export OPENAI_API_KEY=sk-...
+
+# Database path (optional, defaults to ./db.db)
+export DB_PATH=/path/to/openfarm.db
+```
+
+### Execution History
+
+All executions are automatically saved to a local SQLite database including:
+- Full execution logs
+- Token usage and costs
+- Git diffs of all changes
+- Error details with suggestions
+- Duration and performance metrics
+
+Access history from the main menu to review past runs, view diffs, and learn from previous executions.
+
+### Workflow Types
+
+Available workflows:
+- **task_runner** (default) - Creates branch → Sets up worktree → Executes → Cleans up
+- **simple** - Direct execution in current directory
+- Custom workflows can be added via YAML files in `packages/core/workflows`
+
+### Tips
+
+- Use the **Context Generator** before complex tasks to improve AI understanding
+- Press **Enter** on any execution in History to view the diff
+- Check execution history to debug failed runs with categorized error messages
+- The diff viewer shows file-by-file changes with additions/deletions highlighted
 
 ## 🏗️ Development
 

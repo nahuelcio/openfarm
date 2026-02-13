@@ -2,7 +2,15 @@
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
   "extends": ["ultracite/core"],
   "files": {
-    "includes": ["**/*", "!.turbo", "!!**/.claude"]
+    "includes": [
+      "**/*",
+      "!.turbo",
+      "!!**/.claude",
+      "!**/dist",
+      "!**/coverage",
+      "!packages/web-ui/static/bundle.js",
+      "!packages/web-ui/static/xterm.css"
+    ]
   },
 
   "javascript": {

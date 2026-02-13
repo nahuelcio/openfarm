@@ -6,7 +6,7 @@ import type { OpenFarmConfig } from "./types";
 const config: OpenFarmConfig = {
   apiUrl: process.env.OPENFARM_API_URL,
   apiKey: process.env.OPENFARM_API_KEY,
-  defaultProvider: process.env.OPENFARM_PROVIDER || "opencode",
+  defaultProvider: process.env.OPENFARM_PROVIDER || "external-agent",
   defaultModel: process.env.OPENFARM_MODEL,
 };
 

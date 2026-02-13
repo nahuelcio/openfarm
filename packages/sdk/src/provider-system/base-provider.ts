@@ -6,6 +6,35 @@
  */
 
 import type { ExecutionOptions, ExecutionResult } from "../types";
+import { createLogger } from "../utils/logger";
+
+/**
+ * Abstract base class that all providers should extend.
+ * Implements template method pattern for consistent execution flow.
+ */
+export interface CommunicationResponse {
+  /** Response status code (HTTP status or process exit code) */
+  status: number;
+
+  /** Response headers (for HTTP responses) */
+  headers?: Record<string, string>;
+
+  /** Response body or stdout content */
+  body: string;
+
+  /** Error output or stderr content */
+  error?: string;
+
+  /** Whether the operation was successful */
+  success: boolean;
+
+  /** Response duration in milliseconds */
+  duration?: number;
+
+  /** Additional metadata */
+  metadata?: Record<string, unknown>;
+}
+
 import type {
   CommunicationRequest,
   CommunicationStrategy,
@@ -17,10 +46,6 @@ import type {
   ResponseParser,
 } from "./types";
 
-/**
- * Abstract base class that all providers should extend.
- * Implements the template method pattern for consistent execution flow.
- */
 export abstract class BaseProvider implements Provider {
   /** Provider type identifier - must be implemented by subclasses */
   abstract readonly type: string;
@@ -133,7 +158,7 @@ export abstract class BaseProvider implements Provider {
    */
   protected abstract formatResult(
     parsedResult: unknown,
-    response: any,
+    response: CommunicationResponse,
     duration: number
   ): Promise<ExecutionResult>;
 
@@ -243,18 +268,16 @@ export abstract class BaseProvider implements Provider {
    * Log error messages. Can be overridden by subclasses for custom logging.
    */
   protected logError(message: string, error: unknown): void {
-    // In a real implementation, this would use a proper logging system
-    console.error(`[${this.type}] ${message}:`, error);
+    const logger = createLogger(this.type);
+    logger.error(message, error);
   }
 
   /**
    * Log debug messages. Can be overridden by subclasses for custom logging.
    */
   protected logDebug(message: string, data?: unknown): void {
-    // Only log in verbose mode or development
-    if (process.env.NODE_ENV === "development") {
-      console.debug(`[${this.type}] ${message}`, data || "");
-    }
+    const logger = createLogger(this.type);
+    logger.debug(message, data);
   }
 
   /**

@@ -36,7 +36,6 @@ export * from "./mocks/index.js";
 // Registry implementation
 export { globalProviderRegistry, ProviderRegistry } from "./registry";
 export * from "./test-utils/index.js";
-
 // Core interfaces and types
 export type {
   CommunicationRequest,
@@ -51,5 +50,5 @@ export type {
   ProviderFactory,
   ProviderMetadata,
   ProviderRegistry as IProviderRegistry,
-  ResponseParser,
+  ResponseParser as InternalResponseParser,
 } from "./types";
