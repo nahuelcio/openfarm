@@ -2,6 +2,8 @@
 
 // Re-export from core for convenience
 export { defaultFileSystem } from "@openfarm/core/db/connection";
+// Utils
+export { CircuitBreaker } from "@openfarm/utils";
 // Engine factory and types
 export {
   type CodingEngineFactoryOptions,
@@ -46,5 +48,3 @@ export {
   startOpenCodeServer,
   stopOpenCodeServer,
 } from "./services/opencode-server";
-// Utils
-export { CircuitBreaker } from "./utils/circuit-breaker";

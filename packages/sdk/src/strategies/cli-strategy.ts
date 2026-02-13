@@ -11,7 +11,10 @@ import type {
   CommunicationResponse,
   CommunicationStrategy,
 } from "../provider-system/types";
+import { createLogger } from "../utils/logger";
 import type { CliExecutionOptions } from "./types";
+
+const logger = createLogger("CliStrategy");
 
 /**
  * CLI process configuration.
@@ -107,7 +110,7 @@ export class CliCommunicationStrategy implements CommunicationStrategy {
       // Some tools don't support --version but still indicate they're available
       return response.status !== 127; // 127 = command not found
     } catch (error) {
-      this.log(`Connection test failed: ${error}`);
+      logger.debug(`Connection test failed: ${error}`);
       return false;
     }
   }
@@ -135,12 +138,14 @@ export class CliCommunicationStrategy implements CommunicationStrategy {
         stdio: ["pipe", "pipe", "pipe"],
       };
 
-      this.log(`Executing: ${this.config.executable} ${args.join(" ")}`);
-      this.log(`Working directory: ${workingDirectory}`);
+      logger.debug(`Executing: ${this.config.executable} ${args.join(" ")}`);
+      logger.debug(`Working directory: ${workingDirectory}`);
 
       let child: ChildProcess;
       let stdout = "";
       let stderr = "";
+      let stdoutLineBuffer = "";
+      let stderrLineBuffer = "";
       let isTimedOut = false;
       let timeoutId: NodeJS.Timeout | null = null;
 
@@ -155,7 +160,7 @@ export class CliCommunicationStrategy implements CommunicationStrategy {
       if (timeout > 0) {
         timeoutId = setTimeout(() => {
           isTimedOut = true;
-          this.log(
+          logger.debug(
             `Process timed out after ${timeout}ms, killing with ${this.config.killSignal}`
           );
 
@@ -171,9 +176,17 @@ export class CliCommunicationStrategy implements CommunicationStrategy {
         child.stdout.on("data", (data: string) => {
           stdout += data;
 
+          if (request.onStdout) {
+            stdoutLineBuffer += data;
+            stdoutLineBuffer = this.emitBufferedLines(
+              stdoutLineBuffer,
+              request.onStdout
+            );
+          }
+
           // Check buffer size limit
           if (stdout.length > this.config.maxBufferSize) {
-            this.log(
+            logger.debug(
               `Stdout buffer exceeded ${this.config.maxBufferSize} bytes, truncating`
             );
             stdout =
@@ -190,9 +203,17 @@ export class CliCommunicationStrategy implements CommunicationStrategy {
         child.stderr.on("data", (data: string) => {
           stderr += data;
 
+          if (request.onStderr) {
+            stderrLineBuffer += data;
+            stderrLineBuffer = this.emitBufferedLines(
+              stderrLineBuffer,
+              request.onStderr
+            );
+          }
+
           // Check buffer size limit
           if (stderr.length > this.config.maxBufferSize) {
-            this.log(
+            logger.debug(
               `Stderr buffer exceeded ${this.config.maxBufferSize} bytes, truncating`
             );
             stderr =
@@ -207,6 +228,13 @@ export class CliCommunicationStrategy implements CommunicationStrategy {
       child.on("close", (code, signal) => {
         if (timeoutId) {
           clearTimeout(timeoutId);
+        }
+
+        if (request.onStdout && stdoutLineBuffer.trim()) {
+          request.onStdout(stdoutLineBuffer.trimEnd());
+        }
+        if (request.onStderr && stderrLineBuffer.trim()) {
+          request.onStderr(stderrLineBuffer.trimEnd());
         }
 
         const exitCode =
@@ -262,10 +290,29 @@ export class CliCommunicationStrategy implements CommunicationStrategy {
           // Always close stdin to signal EOF
           child.stdin.end();
         } catch (error) {
-          this.log(`Failed to write to stdin: ${error}`);
+          logger.debug(`Failed to write to stdin: ${error}`);
         }
       }
     });
+  }
+
+  private emitBufferedLines(
+    buffer: string,
+    emit: (line: string) => void
+  ): string {
+    let remaining = buffer;
+    let newlineIndex = remaining.indexOf("\n");
+
+    while (newlineIndex !== -1) {
+      const rawLine = remaining.slice(0, newlineIndex).replace(/\r$/, "");
+      if (rawLine.trim()) {
+        emit(rawLine);
+      }
+      remaining = remaining.slice(newlineIndex + 1);
+      newlineIndex = remaining.indexOf("\n");
+    }
+
+    return remaining;
   }
 
   /**
@@ -372,14 +419,14 @@ export class CliCommunicationStrategy implements CommunicationStrategy {
     }
 
     const args = [...this.config.defaultArgs, ...(request.args || [])];
-    this.log(`→ ${this.config.executable} ${args.join(" ")}`);
+    logger.debug(`→ ${this.config.executable} ${args.join(" ")}`);
 
     if (request.workingDirectory) {
-      this.log(`  Working directory: ${request.workingDirectory}`);
+      logger.debug(`  Working directory: ${request.workingDirectory}`);
     }
 
     if (request.env && Object.keys(request.env).length > 0) {
-      this.log(`  Environment: ${JSON.stringify(request.env)}`);
+      logger.debug(`  Environment: ${JSON.stringify(request.env)}`);
     }
 
     if (request.body) {
@@ -389,7 +436,7 @@ export class CliCommunicationStrategy implements CommunicationStrategy {
           : JSON.stringify(request.body);
       const truncated =
         bodyStr.length > 200 ? `${bodyStr.substring(0, 200)}...` : bodyStr;
-      this.log(`  Input: ${truncated}`);
+      logger.debug(`  Input: ${truncated}`);
     }
   }
 
@@ -402,10 +449,10 @@ export class CliCommunicationStrategy implements CommunicationStrategy {
     }
 
     const status = response.success ? "✓" : "✗";
-    this.log(`← ${status} ${response.status} (${duration}ms)`);
+    logger.debug(`← ${status} ${response.status} (${duration}ms)`);
 
     if (response.error) {
-      this.log(`  Error: ${response.error}`);
+      logger.debug(`  Error: ${response.error}`);
     }
 
     if (response.body) {
@@ -413,18 +460,11 @@ export class CliCommunicationStrategy implements CommunicationStrategy {
         response.body.length > 200
           ? `${response.body.substring(0, 200)}...`
           : response.body;
-      this.log(`  Output: ${truncated}`);
+      logger.debug(`  Output: ${truncated}`);
     }
 
     if (response.metadata?.signal) {
-      this.log(`  Signal: ${response.metadata.signal}`);
+      logger.debug(`  Signal: ${response.metadata.signal}`);
     }
-  }
-
-  /**
-   * Log messages with strategy prefix.
-   */
-  private log(message: string): void {
-    console.log(`[CliStrategy] ${message}`);
   }
 }

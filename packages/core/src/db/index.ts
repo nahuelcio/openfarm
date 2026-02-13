@@ -1,6 +1,9 @@
 import { match, type Result } from "@openfarm/result";
+import { createLogger } from "../utils/logger";
 import { closeDb, createDb } from "./connection";
 import type { InitState } from "./types";
+
+const logger = createLogger("DB");
 
 // Use any type to avoid importing from bun during bundling
 type SQL = any;
@@ -13,14 +16,20 @@ export * from "./chat-messages";
 export * from "./chat-sessions";
 export * from "./enabled-models";
 export * from "./events";
+export * from "./execution-logs";
+export * from "./generated-contexts";
 export * from "./integrations";
 // Re-export all CRUD functions
 export * from "./jobs";
 export * from "./project-context-summaries";
+export * from "./remote-instances";
 export * from "./schema-migrations";
+export * from "./session-checkpoints";
 export * from "./system-configs";
+export * from "./tui-executions";
 export * from "./types";
 export * from "./utils";
+export * from "./warp-chat";
 export * from "./work-items";
 export * from "./workflows/index";
 
@@ -209,11 +218,11 @@ export const resetDb = async (): Promise<void> => {
     try {
       const closeResult = await closeDb(dbInstance);
       if (!closeResult.ok) {
-        console.warn("[DB] Error closing database:", closeResult.error.message);
+        logger.warn("Error closing database:", closeResult.error.message);
       }
     } catch (error) {
       // Ignore errors when closing
-      console.warn("[DB] Error closing database:", error);
+      logger.warn("Error closing database:", error);
     }
   }
   dbInstance = null;

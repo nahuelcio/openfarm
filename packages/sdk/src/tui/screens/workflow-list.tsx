@@ -2,9 +2,11 @@ import { readdir, readFile, unlink } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import type { Workflow } from "@openfarm/core";
 import { addWorkflow, getDb, getWorkflows } from "@openfarm/core/db";
-import { Box, Text, useInput } from "ink";
+import { Box, Text, useInput } from "@openfarm/tui-opentui";
 import YAML from "js-yaml";
 import { useCallback, useEffect, useState } from "react";
+import { HelpOverlay } from "../components";
+import { useNavigationKeys } from "../hooks";
 import { useStore } from "../store";
 
 async function loadWorkflowsFromYaml(): Promise<Workflow[]> {
@@ -74,6 +76,14 @@ export function WorkflowList() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
+  // Use standardized navigation keys
+  const { showingHelp } = useNavigationKeys({
+    screen: "workflows",
+    parentScreen: "dashboard",
+    enableHelp: true,
+    onNavigate: setScreen,
+  });
+
   const loadWorkflows = useCallback(
     async (attempt = 0) => {
       try {
@@ -111,8 +121,8 @@ export function WorkflowList() {
   }, [loadWorkflows]);
 
   useInput((input, key) => {
-    if (key.escape) {
-      setScreen("dashboard");
+    // Don't process if help is showing
+    if (showingHelp) {
       return;
     }
 
@@ -181,8 +191,36 @@ export function WorkflowList() {
     }
   });
 
-  // Validar índice
   const safeIndex = selectedIndex >= workflows.length ? 0 : selectedIndex;
+
+  if (showingHelp) {
+    return (
+      <HelpOverlay
+        content={
+          <>
+            <Box flexDirection="column">
+              <Text bold>Navigation</Text>
+              <Text> ↑/↓ Navigate workflows</Text>
+              <Text> Enter Edit workflow</Text>
+              <Text> Esc Back to Dashboard</Text>
+              <Text> d Go to Dashboard</Text>
+            </Box>
+            <Box flexDirection="column" marginTop={1}>
+              <Text bold>Actions</Text>
+              <Text> R Reload workflows</Text>
+              <Text> I Import from YAML</Text>
+              <Text> X Reset database</Text>
+            </Box>
+            <Box flexDirection="column" marginTop={1}>
+              <Text bold>System</Text>
+              <Text> ? Toggle Help</Text>
+            </Box>
+          </>
+        }
+        title="Workflows Help"
+      />
+    );
+  }
 
   return (
     <Box flexDirection="column" gap={1}>
@@ -251,7 +289,7 @@ export function WorkflowList() {
       <Text color="gray">{"─".repeat(60)}</Text>
       <Text color="gray">
         Navigate: Up/Down • Edit: Enter • Reload: R • Import: I • Reset: X •
-        Back: Esc
+        Back: Esc • Help: ?
       </Text>
     </Box>
   );

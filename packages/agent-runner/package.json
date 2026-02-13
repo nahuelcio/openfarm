@@ -20,6 +20,7 @@
     "clean": "rm -rf dist build .turbo"
   },
   "dependencies": {
+    "@openfarm/agent-system": "workspace:*",
     "@openfarm/core": "workspace:*",
     "@openfarm/config": "workspace:*",
     "@openfarm/result": "workspace:*",

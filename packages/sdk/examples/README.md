@@ -16,17 +16,12 @@ Examples of how to use the OpenFarm SDK with the new provider system.
 
 3. **Install provider packages** (optional):
    ```bash
-   npm install @openfarm/provider-opencode
    npm install @openfarm/provider-aider
    npm install @openfarm/provider-claude
    ```
 
 4. **Configure credentials** (depending on provider):
    ```bash
-   # For OpenCode
-   export ANTHROPIC_API_KEY="your-api-key"
-   export COPILOT_TOKEN="your-token"
-   
    # For Aider
    pip install aider-chat
    
@@ -55,7 +50,7 @@ node packages/sdk/examples/simple-demo.mjs
 Complete example with multiple providers:
 
 ```bash
-npx tsx packages/sdk/examples/opencode-cli-example.ts
+npx tsx packages/sdk/examples/aider-cli-example.ts
 ```
 
 **What it does:**
@@ -94,10 +89,10 @@ const providers = openFarm.getAvailableProviders();
 console.log('Available providers:', providers);
 
 // Switch providers
-openFarm.setProvider('opencode');
+openFarm.setProvider('aider');
 
 // Get provider metadata
-const metadata = openFarm.getProviderMetadata('opencode');
+const metadata = openFarm.getProviderMetadata('aider');
 console.log('Provider capabilities:', metadata.supportedFeatures);
 ```
 
@@ -105,7 +100,7 @@ console.log('Provider capabilities:', metadata.supportedFeatures);
 
 ```typescript
 // Preload providers for better performance
-await openFarm.preloadProvider('opencode');
+await openFarm.preloadProvider('aider');
 
 // Get registry statistics
 const stats = openFarm.getRegistryStats();
@@ -147,23 +142,22 @@ npm test --workspace=@openfarm/sdk
 
 - Check if the provider package is installed:
   ```bash
-  npm list @openfarm/provider-opencode
+  npm list @openfarm/provider-aider
   ```
 - Install missing providers:
   ```bash
-  npm install @openfarm/provider-opencode
+  npm install @openfarm/provider-aider
   ```
 
 ### "Provider 'X' is lazy-loaded and must be created with createProviderAsync()"
 
 - Use the async method for lazy-loaded providers:
   ```typescript
-  const provider = await openFarm.providerRegistry.createProviderAsync('opencode');
+  const provider = await openFarm.providerRegistry.createProviderAsync('aider');
   ```
 
 ### Provider-specific issues
 
-- **OpenCode**: Verify CLI credentials are configured
 - **Aider**: Ensure `aider` command is available (`pip install aider-chat`)
 - **Claude**: Ensure Claude CLI is installed (`npm install -g @anthropic-ai/claude-code`)
 

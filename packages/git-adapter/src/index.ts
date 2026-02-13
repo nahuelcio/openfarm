@@ -20,7 +20,17 @@ export type ExecFunction = (
 // Regex patterns at top level for performance
 const AUTHENTICATED_URL_REGEX = /^https:\/\/([^@/]+)@/;
 const HTTPS_PREFIX_REGEX = /^https:\/\//;
-const WORKTREE_PATH_REGEX = /^(.*)-wt-[^/]+$/;
+
+// Error message patterns
+const WORKTREE_CONFLICT_PATTERNS = [
+  "already used by worktree",
+  "is checked out at",
+];
+const NO_COMMIT_ERRORS = ["nothing to commit", "nothing added to commit"];
+
+// Default git user configuration
+const DEFAULT_GIT_EMAIL = "minions-farm@automated.local";
+const DEFAULT_GIT_NAME = "Minions Farm Agent";
 
 /**
  * Helper function to authenticate Azure DevOps URLs with PAT
@@ -97,69 +107,64 @@ export const authenticateGitHubUrl = (url: string, token?: string): string => {
   }
 };
 
-const buildGitConfigCommands = (
+/**
+ * Check if an error message indicates a worktree conflict
+ */
+export function isWorktreeConflict(error: unknown): boolean {
+  const errorMsg = String(error);
+  return WORKTREE_CONFLICT_PATTERNS.some((pattern) =>
+    errorMsg.includes(pattern)
+  );
+}
+
+/**
+ * Check if an error message indicates no changes to commit
+ */
+export function isNoCommitError(errorMsg: string): boolean {
+  return NO_COMMIT_ERRORS.some((msg) => errorMsg.includes(msg));
+}
+
+/**
+ * Build git config commands for setting user email and name
+ */
+function buildGitConfigCommands(
   repoPath: string,
   gitEmail: string,
   gitName: string
-): string[] => {
+): string[] {
   return [
     `git -C ${repoPath} config user.email "${gitEmail}"`,
     `git -C ${repoPath} config user.name "${gitName}"`,
   ];
-};
+}
 
-export const checkoutBranch = async (
+/**
+ * Verify repository directory exists
+ */
+export function verifyRepository(
   config: GitConfig,
-  branchName: string,
-  defaultBranch = "main",
-  fs: FileSystem = { existsSync: require("node:fs").existsSync },
-  execFn: ExecFunction = require("node:util").promisify(
-    require("node:child_process").exec
-  )
-): Promise<Result<void>> => {
-  // Verify repository directory exists
+  fs: FileSystem
+): Result<void> {
   if (!fs.existsSync(config.repoPath)) {
-    // Try to determine if this is a worktree issue
-    const worktreeMatch = config.repoPath.match(WORKTREE_PATH_REGEX);
-    let diagnosticInfo = "";
-
-    if (worktreeMatch) {
-      const potentialMainRepoPath = worktreeMatch[1];
-      if (potentialMainRepoPath && fs.existsSync(potentialMainRepoPath)) {
-        try {
-          // Check if worktree is still registered
-          const { stdout } = await execFn(
-            `git -C ${potentialMainRepoPath} worktree list --porcelain`
-          );
-          if (stdout.includes(config.repoPath)) {
-            diagnosticInfo = ` Worktree is registered in main repo at ${potentialMainRepoPath} but directory is missing.`;
-          } else {
-            diagnosticInfo = ` Worktree directory missing and not registered in main repo at ${potentialMainRepoPath}.`;
-          }
-        } catch (checkError) {
-          diagnosticInfo = ` Unable to check worktree status from main repo: ${checkError instanceof Error ? checkError.message : String(checkError)}.`;
-        }
-      } else if (potentialMainRepoPath) {
-        diagnosticInfo = ` Main repository path ${potentialMainRepoPath} also does not exist.`;
-      }
-    }
-
     return err(
-      new Error(
-        `Repository directory does not exist: ${config.repoPath}.${diagnosticInfo}`
-      )
+      new Error(`Repository directory does not exist: ${config.repoPath}`)
     );
   }
+  return ok(undefined);
+}
 
-  // Verify it's actually a git repository by checking for .git directory or gitdir
+/**
+ * Verify it's a git repository by checking for .git directory
+ */
+export async function verifyGitRepository(
+  config: GitConfig,
+  execFn: ExecFunction
+): Promise<Result<void>> {
   try {
     await execFn(`git -C ${config.repoPath} rev-parse --git-dir`);
-  } catch (gitCheckError) {
-    const errorMsg =
-      gitCheckError instanceof Error
-        ? gitCheckError.message
-        : String(gitCheckError);
-    // If error mentions "not a git repository", provide better error message
+    return ok(undefined);
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
     if (
       errorMsg.includes("not a git") ||
       errorMsg.includes("No such file or directory")
@@ -171,233 +176,438 @@ export const checkoutBranch = async (
       );
     }
     // For other errors, continue - might be a worktree issue that's OK
+    return ok(undefined);
   }
+}
 
+/**
+ * Handle worktree conflict errors
+ */
+export function handleWorktreeConflict(
+  branchName: string,
+  error: Error
+): Result<void> {
+  if (isWorktreeConflict(error)) {
+    console.warn(
+      `[git-adapter] Branch '${branchName}' is used by another worktree, staying on current branch`
+    );
+    return ok(undefined);
+  }
+  return err(error);
+}
+
+/**
+ * Get the current branch name
+ */
+export async function getCurrentBranch(
+  config: GitConfig,
+  execFn: ExecFunction
+): Promise<string> {
   try {
-    // Ensure Git user is configured
-    const gitEmail = config.gitUserEmail || "minions-farm@automated.local";
-    const gitName = config.gitUserName || "Minions Farm Agent";
-
-    const configCommands = buildGitConfigCommands(
-      config.repoPath,
-      gitEmail,
-      gitName
+    const { stdout } = await execFn(
+      `git -C ${config.repoPath} rev-parse --abbrev-ref HEAD`
     );
-    await Promise.all(
-      configCommands.map((cmd) =>
-        execFn(cmd).catch(() => {
-          // Ignore git config errors - they're not critical
-        })
-      )
+    return stdout.trim();
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * Check if a branch exists locally
+ */
+export async function checkBranchExists(
+  config: GitConfig,
+  branchName: string,
+  execFn: ExecFunction
+): Promise<boolean> {
+  try {
+    const { stdout } = await execFn(
+      `git -C ${config.repoPath} branch --list ${branchName}`
     );
+    return stdout.trim().length > 0;
+  } catch {
+    return false;
+  }
+}
 
-    // Check current branch - if already on target, skip checkout
-    try {
-      const { stdout: currentBranch } = await execFn(
-        `git -C ${config.repoPath} rev-parse --abbrev-ref HEAD`
-      );
-      if (currentBranch.trim() === branchName) {
-        // Already on the target branch, just try to pull latest
-        await execFn(
-          `git -C ${config.repoPath} pull origin ${branchName}`
-        ).catch(() => {
-          // Ignore pull errors when already on target branch
-        });
-        return ok(undefined);
-      }
-    } catch {
-      // Ignore - continue with checkout
+/**
+ * Configure git user email and name
+ */
+export async function configureGitUser(
+  config: GitConfig,
+  execFn: ExecFunction
+): Promise<void> {
+  const gitEmail = config.gitUserEmail || DEFAULT_GIT_EMAIL;
+  const gitName = config.gitUserName || DEFAULT_GIT_NAME;
+
+  const configCommands = buildGitConfigCommands(
+    config.repoPath,
+    gitEmail,
+    gitName
+  );
+  await Promise.all(
+    configCommands.map((cmd) =>
+      execFn(cmd).catch(() => {
+        // Ignore git config errors - they're not critical
+      })
+    )
+  );
+}
+
+/**
+ * Check if branch name is a default branch
+ */
+export function isDefaultBranch(
+  branchName: string,
+  defaultBranch: string
+): boolean {
+  return (
+    branchName === defaultBranch ||
+    branchName === "main" ||
+    branchName === "master"
+  );
+}
+
+/**
+ * Pull latest changes from origin for a branch
+ */
+export async function pullBranch(
+  config: GitConfig,
+  branchName: string,
+  execFn: ExecFunction
+): Promise<void> {
+  await execFn(`git -C ${config.repoPath} pull origin ${branchName}`).catch(
+    () => {
+      // Ignore pull errors
     }
+  );
+}
 
-    // If branchName is the default branch (main/master/dev), just check it out
-    if (
-      branchName === defaultBranch ||
-      branchName === "main" ||
-      branchName === "master"
-    ) {
-      try {
-        await execFn(`git -C ${config.repoPath} checkout ${branchName}`);
-        await execFn(
-          `git -C ${config.repoPath} pull origin ${branchName}`
-        ).catch(() => {
-          // Ignore pull errors after checkout
-        });
-        return ok(undefined);
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
-
-        // Handle worktree conflict: branch is already checked out elsewhere
-        if (
-          errorMsg.includes("already used by worktree") ||
-          errorMsg.includes("is checked out at")
-        ) {
-          // For worktree conflicts, we can still work - just skip the checkout
-          // The worktree was created with its own branch, use that instead
-          console.warn(
-            `[git-adapter] Branch '${branchName}' is used by another worktree, staying on current branch`
-          );
-          return ok(undefined);
-        }
-
-        return err(
-          new Error(`Failed to checkout branch ${branchName}: ${errorMsg}`)
-        );
-      }
-    }
-
-    // For other branches, ensure we're on default branch first (ignore worktree errors)
-    try {
-      await execFn(`git -C ${config.repoPath} checkout ${defaultBranch}`).catch(
-        (checkoutError) => {
-          const errorStr = String(checkoutError);
-          // Ignore worktree conflicts
-          if (
-            errorStr.includes("already used by worktree") ||
-            errorStr.includes("is checked out at")
-          ) {
-            return; // Continue with current branch
-          }
-          // If defaultBranch doesn't exist, try main as fallback
-          return execFn(`git -C ${config.repoPath} checkout main`).catch(
-            (mainError) => {
-              const mainErrorStr = String(mainError);
-              if (
-                mainErrorStr.includes("already used by worktree") ||
-                mainErrorStr.includes("is checked out at")
-              ) {
-                return;
-              }
-              // If main doesn't exist, try master
-              return execFn(`git -C ${config.repoPath} checkout master`).catch(
-                () => {
-                  // Ignore checkout errors for fallback branches
-                }
-              );
-            }
-          );
-        }
-      );
-    } catch {
-      // If all fail, continue with current branch
-    }
-
-    // Fetch latest changes (ignore errors)
-    await execFn(
-      `git -C ${config.repoPath} fetch origin ${defaultBranch}`
-    ).catch(() => {
-      // Ignore fetch errors
-    });
-    await execFn(
-      `git -C ${config.repoPath} pull origin ${defaultBranch}`
-    ).catch(() => {
-      // Try main or master as fallback (ignore all errors)
-      return execFn(`git -C ${config.repoPath} pull origin main`).catch(() => {
-        return execFn(`git -C ${config.repoPath} pull origin master`).catch(
-          () => {
-            // Ignore pull errors for fallback branches
-          }
-        );
-      });
-    });
-
-    // Check if branch already exists locally
-    try {
-      const { stdout } = await execFn(
-        `git -C ${config.repoPath} branch --list ${branchName}`
-      );
-      if (stdout.trim()) {
-        // Branch exists, try to check it out
-        try {
-          await execFn(`git -C ${config.repoPath} checkout ${branchName}`);
-          // Try to pull latest changes from origin
-          await execFn(
-            `git -C ${config.repoPath} pull origin ${branchName}`
-          ).catch(() => {
-            // Ignore pull errors after checkout
-          });
-          return ok(undefined);
-        } catch (checkoutError) {
-          const errorStr = String(checkoutError);
-          // If it's a worktree conflict, that's OK - we're probably already on the right branch
-          if (
-            errorStr.includes("already used by worktree") ||
-            errorStr.includes("is checked out at")
-          ) {
-            return ok(undefined);
-          }
-          throw checkoutError;
-        }
-      }
-    } catch {
-      // Continue to create branch
-    }
-
-    // Now create new branch from current position
-    // Verify directory still exists before creating branch (defensive check)
-    if (!fs.existsSync(config.repoPath)) {
-      return err(
-        new Error(
-          `Repository directory disappeared before creating branch ${branchName}: ${config.repoPath}`
-        )
-      );
-    }
-
-    try {
-      await execFn(`git -C ${config.repoPath} checkout -b ${branchName}`);
-      return ok(undefined);
-    } catch (createError) {
-      // Verify directory still exists after error
-      if (!fs.existsSync(config.repoPath)) {
-        return err(
-          new Error(
-            `Repository directory disappeared during branch creation: ${config.repoPath}. Original error: ${createError instanceof Error ? createError.message : String(createError)}`
-          )
-        );
-      }
-
-      const errorStr = String(createError);
-      // If branch already exists, just check it out
-      if (errorStr.includes("already exists")) {
-        try {
-          await execFn(`git -C ${config.repoPath} checkout ${branchName}`);
-          return ok(undefined);
-        } catch (checkoutError2) {
-          const checkoutErrorStr = String(checkoutError2);
-          if (
-            checkoutErrorStr.includes("already used by worktree") ||
-            checkoutErrorStr.includes("is checked out at")
-          ) {
-            return ok(undefined); // That's fine, we're on some branch
-          }
-          throw checkoutError2;
-        }
-      }
-      throw createError;
-    }
+/**
+ * Checkout a default branch (main/master/dev)
+ */
+export async function checkoutDefaultBranch(
+  config: GitConfig,
+  branchName: string,
+  execFn: ExecFunction
+): Promise<Result<void>> {
+  try {
+    await execFn(`git -C ${config.repoPath} checkout ${branchName}`);
+    await pullBranch(config, branchName, execFn);
+    return ok(undefined);
   } catch (error) {
-    // Final fallback: try checking out existing branch
+    return err(error instanceof Error ? error : new Error(String(error)));
+  }
+}
+
+/**
+ * Switch to default branch with fallback to main/master
+ */
+export async function switchToDefaultBranch(
+  config: GitConfig,
+  defaultBranch: string,
+  execFn: ExecFunction
+): Promise<Result<void>> {
+  const branchesToTry = [defaultBranch, "main", "master"];
+
+  for (const branch of branchesToTry) {
     try {
-      await execFn(`git -C ${config.repoPath} checkout ${branchName}`);
+      await execFn(`git -C ${config.repoPath} checkout ${branch}`);
       return ok(undefined);
-    } catch (e) {
-      const eStr = String(e);
-      // If worktree conflict, return OK
-      if (
-        eStr.includes("already used by worktree") ||
-        eStr.includes("is checked out at")
-      ) {
-        console.warn(
-          `[git-adapter] Branch '${branchName}' is used by another worktree, continuing anyway`
-        );
-        return ok(undefined);
-      }
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      return err(
-        new Error(`Failed to checkout branch ${branchName}: ${errorMsg}`)
-      );
+    } catch {
+      // If it's a worktree conflict, skip to next branch
+      // If branch doesn't exist or other errors, also skip to next branch
     }
   }
-};
+
+  // If all fail, return ok to continue with current branch
+  return ok(undefined);
+}
+
+/**
+ * Fetch and pull from origin
+ */
+export async function fetchAndPull(
+  config: GitConfig,
+  branchName: string,
+  execFn: ExecFunction
+): Promise<void> {
+  // Fetch latest changes (ignore errors)
+  await execFn(`git -C ${config.repoPath} fetch origin ${branchName}`).catch(
+    () => {
+      // Ignore fetch errors
+    }
+  );
+
+  // Pull with fallback branches
+  const branchesToTry = [branchName, "main", "master"];
+  for (const branch of branchesToTry) {
+    try {
+      await execFn(`git -C ${config.repoPath} pull origin ${branch}`);
+      return;
+    } catch {
+      // Try next branch
+    }
+  }
+}
+
+/**
+ * Checkout an existing branch
+ */
+export async function checkoutExistingBranch(
+  config: GitConfig,
+  branchName: string,
+  execFn: ExecFunction
+): Promise<Result<void>> {
+  try {
+    await execFn(`git -C ${config.repoPath} checkout ${branchName}`);
+    await pullBranch(config, branchName, execFn);
+    return ok(undefined);
+  } catch (error) {
+    const errorStr = String(error);
+    if (isWorktreeConflict(errorStr)) {
+      return ok(undefined);
+    }
+    return err(error instanceof Error ? error : new Error(String(error)));
+  }
+}
+
+/**
+ * Create a new branch
+ */
+export async function createNewBranch(
+  config: GitConfig,
+  branchName: string,
+  execFn: ExecFunction
+): Promise<Result<void>> {
+  try {
+    await execFn(`git -C ${config.repoPath} checkout -b ${branchName}`);
+    return ok(undefined);
+  } catch (error) {
+    const errorStr = String(error);
+    // If branch already exists, just check it out
+    if (errorStr.includes("already exists")) {
+      return checkoutExistingBranch(config, branchName, execFn);
+    }
+    if (isWorktreeConflict(errorStr)) {
+      return ok(undefined);
+    }
+    return err(error instanceof Error ? error : new Error(String(error)));
+  }
+}
+
+/**
+ * Checkout a branch with the new options-based signature
+ */
+async function checkoutBranchNew(
+  config: GitConfig,
+  branchName: string,
+  options?: { defaultBranch?: string; skipConfigure?: boolean }
+): Promise<Result<void>> {
+  const fs = require("node:fs") as { existsSync: (path: string) => boolean };
+  const execFn = require("node:util").promisify(
+    require("node:child_process").exec
+  ) as ExecFunction;
+
+  // Step 1: Verify repository
+  const verifyResult = verifyRepository(config, { existsSync: fs.existsSync });
+  if (!verifyResult.ok) {
+    return verifyResult;
+  }
+
+  const gitVerifyResult = await verifyGitRepository(config, execFn);
+  if (!gitVerifyResult.ok) {
+    return gitVerifyResult;
+  }
+
+  // Step 2: Configure git
+  if (!options?.skipConfigure) {
+    await configureGitUser(config, execFn);
+  }
+
+  // Step 3: Check if already on target branch
+  const currentBranch = await getCurrentBranch(config, execFn);
+  if (currentBranch === branchName) {
+    await pullBranch(config, branchName, execFn);
+    return ok(undefined);
+  }
+
+  const defaultBranch = options?.defaultBranch ?? "main";
+
+  // Step 4: Try default branch first
+  if (isDefaultBranch(branchName, defaultBranch)) {
+    const result = await checkoutDefaultBranch(config, branchName, execFn);
+    if (result.ok) {
+      return result;
+    }
+    const conflictResult = handleWorktreeConflict(
+      branchName,
+      result.error as Error
+    );
+    if (conflictResult.ok) {
+      return conflictResult;
+    }
+  }
+
+  // Step 5: Checkout from default branch
+  const switchResult = await switchToDefaultBranch(
+    config,
+    defaultBranch,
+    execFn
+  );
+  if (!switchResult.ok) {
+    const conflictResult = handleWorktreeConflict(
+      defaultBranch,
+      switchResult.error as Error
+    );
+    if (conflictResult.ok) {
+      return conflictResult;
+    }
+  }
+
+  // Step 6: Fetch and pull
+  await fetchAndPull(config, defaultBranch, execFn);
+
+  // Step 7: Create or checkout branch
+  const branchExists = await checkBranchExists(config, branchName, execFn);
+  if (branchExists) {
+    return checkoutExistingBranch(config, branchName, execFn);
+  }
+  return createNewBranch(config, branchName, execFn);
+}
+
+/**
+ * Checkout a branch with backward-compatible signature
+ * @deprecated Use the new signature with options object instead
+ */
+export async function checkoutBranch(
+  config: GitConfig,
+  branchName: string,
+  defaultBranch?: string,
+  fs?: FileSystem,
+  execFn?: ExecFunction
+): Promise<Result<void>>;
+
+/**
+ * Checkout a branch with the new options-based signature
+ */
+export async function checkoutBranch(
+  config: GitConfig,
+  branchName: string,
+  options?: { defaultBranch?: string; skipConfigure?: boolean }
+): Promise<Result<void>>;
+
+/**
+ * Checkout a branch implementation that supports both signatures
+ */
+export async function checkoutBranch(
+  config: GitConfig,
+  branchName: string,
+  arg3?:
+    | string
+    | { defaultBranch?: string; skipConfigure?: boolean }
+    | FileSystem,
+  arg4?: FileSystem | ExecFunction,
+  arg5?: ExecFunction
+): Promise<Result<void>> {
+  // Detect which signature is being used
+  const isLegacySignature =
+    typeof arg3 === "string" ||
+    (arg3 !== undefined && typeof arg3 === "object" && "existsSync" in arg3);
+
+  if (!isLegacySignature) {
+    // New signature with options object
+    const options = arg3 as
+      | { defaultBranch?: string; skipConfigure?: boolean }
+      | undefined;
+    return checkoutBranchNew(config, branchName, options);
+  }
+
+  // Legacy signature handling
+  const legacyDefaultBranch = (
+    typeof arg3 === "string" ? arg3 : "main"
+  ) as string;
+  const legacyFs =
+    arg4 && "existsSync" in arg4
+      ? (arg4 as FileSystem)
+      : { existsSync: require("node:fs").existsSync };
+  const legacyExecFn =
+    (arg4 && !("existsSync" in arg4) ? (arg4 as ExecFunction) : arg5) ||
+    require("node:util").promisify(require("node:child_process").exec);
+
+  // Step 1: Verify repository
+  const verifyResult = verifyRepository(config, legacyFs);
+  if (!verifyResult.ok) {
+    return verifyResult;
+  }
+
+  const gitVerifyResult = await verifyGitRepository(config, legacyExecFn);
+  if (!gitVerifyResult.ok) {
+    return gitVerifyResult;
+  }
+
+  // Step 2: Configure git
+  await configureGitUser(config, legacyExecFn);
+
+  // Step 3: Check if already on target branch
+  const currentBranch = await getCurrentBranch(config, legacyExecFn);
+  if (currentBranch === branchName) {
+    await pullBranch(config, branchName, legacyExecFn);
+    return ok(undefined);
+  }
+
+  const defaultBranch = legacyDefaultBranch ?? "main";
+
+  // Step 4: Try default branch first
+  if (isDefaultBranch(branchName, defaultBranch)) {
+    const result = await checkoutDefaultBranch(
+      config,
+      branchName,
+      legacyExecFn
+    );
+    if (result.ok) {
+      return result;
+    }
+    const conflictResult = handleWorktreeConflict(
+      branchName,
+      result.error as Error
+    );
+    if (conflictResult.ok) {
+      return conflictResult;
+    }
+  }
+
+  // Step 5: Checkout from default branch
+  const switchResult = await switchToDefaultBranch(
+    config,
+    defaultBranch,
+    legacyExecFn
+  );
+  if (!switchResult.ok) {
+    const conflictResult = handleWorktreeConflict(
+      defaultBranch,
+      switchResult.error as Error
+    );
+    if (conflictResult.ok) {
+      return conflictResult;
+    }
+  }
+
+  // Step 6: Fetch and pull
+  await fetchAndPull(config, defaultBranch, legacyExecFn);
+
+  // Step 7: Create or checkout branch
+  const branchExists = await checkBranchExists(
+    config,
+    branchName,
+    legacyExecFn
+  );
+  if (branchExists) {
+    return checkoutExistingBranch(config, branchName, legacyExecFn);
+  }
+  return createNewBranch(config, branchName, legacyExecFn);
+}
 
 export const commitChanges = async (
   config: GitConfig,
@@ -408,29 +618,14 @@ export const commitChanges = async (
   )
 ): Promise<Result<void>> => {
   // Verify repository directory exists
-  if (!fs.existsSync(config.repoPath)) {
-    return err(
-      new Error(`Repository directory does not exist: ${config.repoPath}`)
-    );
+  const verifyResult = verifyRepository(config, fs);
+  if (!verifyResult.ok) {
+    return verifyResult;
   }
 
   try {
     // Ensure Git user is configured
-    const gitEmail = config.gitUserEmail || "minions-farm@automated.local";
-    const gitName = config.gitUserName || "Minions Farm Agent";
-
-    const configCommands = buildGitConfigCommands(
-      config.repoPath,
-      gitEmail,
-      gitName
-    );
-    await Promise.all(
-      configCommands.map((cmd) =>
-        execFn(cmd).catch(() => {
-          // Ignore git config errors - they're not critical
-        })
-      )
-    );
+    await configureGitUser(config, execFn);
 
     // Check if there are any changes to commit
     try {
@@ -481,10 +676,7 @@ export const commitChanges = async (
           : String(commitError);
 
       // Check if error is because there's nothing to commit
-      if (
-        errorMsg.includes("nothing to commit") ||
-        errorMsg.includes("nothing added to commit")
-      ) {
+      if (isNoCommitError(errorMsg)) {
         // Return error to indicate no changes were committed
         return err(
           new Error(
@@ -500,10 +692,7 @@ export const commitChanges = async (
     const errorMsg = error instanceof Error ? error.message : String(error);
 
     // Check if error is because there's nothing to commit
-    if (
-      errorMsg.includes("nothing to commit") ||
-      errorMsg.includes("nothing added to commit")
-    ) {
+    if (isNoCommitError(errorMsg)) {
       return err(
         new Error(
           "Git commit failed: No changes to commit. The repository has no staged changes to commit."
@@ -525,29 +714,14 @@ export const pushBranch = async (
   force = true
 ): Promise<Result<void>> => {
   // Verify repository directory exists
-  if (!fs.existsSync(config.repoPath)) {
-    return err(
-      new Error(`Repository directory does not exist: ${config.repoPath}`)
-    );
+  const verifyResult = verifyRepository(config, fs);
+  if (!verifyResult.ok) {
+    return verifyResult;
   }
 
   try {
     // Ensure Git user is configured
-    const gitEmail = config.gitUserEmail || "minions-farm@automated.local";
-    const gitName = config.gitUserName || "Minions Farm Agent";
-
-    const configCommands = buildGitConfigCommands(
-      config.repoPath,
-      gitEmail,
-      gitName
-    );
-    await Promise.all(
-      configCommands.map((cmd) =>
-        execFn(cmd).catch(() => {
-          // Ignore git config errors - they're not critical
-        })
-      )
-    );
+    await configureGitUser(config, execFn);
 
     // Authenticate remote URL before pushing (for both Azure DevOps and GitHub)
     let authenticatedUrl = config.repoUrl;

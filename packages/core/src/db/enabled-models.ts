@@ -1,7 +1,10 @@
+import { err, ok, type Result } from "@openfarm/result";
+import { createLogger } from "../utils/logger";
+
+const logger = createLogger("DB");
+
 // Use any type to avoid importing from bun during bundling
 type SQL = any;
-
-import { err, ok, type Result } from "@openfarm/result";
 
 export type UseType = "coding" | "server";
 
@@ -58,11 +61,11 @@ async function ensureEnabledModelsUseTypeColumn(db: SQL): Promise<void> {
     const columns = new Set(tableInfo.map((col) => col.name));
 
     if (!columns.has("use_type")) {
-      console.log("[DB] Adding missing use_type column to enabled_models...");
+      logger.debug("Adding missing use_type column to enabled_models...");
       await db`ALTER TABLE enabled_models ADD COLUMN use_type TEXT DEFAULT 'coding'`;
       await db`UPDATE enabled_models SET use_type = 'coding' WHERE use_type IS NULL`;
       await db`CREATE INDEX IF NOT EXISTS idx_enabled_models_use_type ON enabled_models(use_type)`;
-      console.log("[DB] ✓ use_type column added successfully");
+      logger.debug("✓ use_type column added successfully");
     }
 
     useTypeColumnVerified = true;
@@ -73,10 +76,7 @@ async function ensureEnabledModelsUseTypeColumn(db: SQL): Promise<void> {
       useTypeColumnVerified = true;
       return;
     }
-    console.error(
-      "[DB] Failed to ensure enabled_models.use_type column:",
-      error
-    );
+    logger.error("Failed to ensure enabled_models.use_type column:", error);
     throw error;
   }
 }
@@ -106,7 +106,7 @@ export async function getEnabledModels(
       updatedAt: row.updated_at,
     }));
   } catch (error) {
-    console.error("Failed to get enabled models:", error);
+    logger.error("Failed to get enabled models:", error);
     return [];
   }
 }
@@ -150,7 +150,7 @@ export async function isModelEnabled(
 
     return rows[0].enabled === 1;
   } catch (error) {
-    console.error("Failed to check if model is enabled:", error);
+    logger.error("Failed to check if model is enabled:", error);
     return true;
   }
 }

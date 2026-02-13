@@ -7,7 +7,7 @@
  *
  * Prerequisites:
  * 1. Install provider packages (optional):
- *    npm install @openfarm/provider-opencode
+ *    npm install @openfarm/provider-aider
  *    npm install @openfarm/provider-aider
  * 2. Configure credentials as needed for specific providers
  */
@@ -24,17 +24,17 @@ const CONFIG = {
     {
       name: "File Creation",
       task: 'Create a file "greeting.txt" that says "Hello from OpenFarm SDK!"',
-      provider: "opencode",
+      provider: "aider",
     },
     {
       name: "JavaScript Function",
       task: 'Create a file "hello-function.js" with a function called greet(name) that returns "Hello, {name}!"',
-      provider: "opencode",
+      provider: "aider",
     },
     {
       name: "JSON Configuration",
       task: 'Create a file "config.json" with sample app configuration including name, version, and features array',
-      provider: "opencode",
+      provider: "aider",
     },
   ],
 };
@@ -132,7 +132,7 @@ async function demo() {
 
   // Create OpenFarm instance with new provider system
   const openFarm = new OpenFarm({
-    defaultProvider: "opencode",
+    defaultProvider: "aider",
     timeout: CONFIG.timeout,
   });
 
@@ -178,12 +178,12 @@ async function demo() {
   console.log("\n✅ Demo completed successfully!\n");
   console.log("💡 Next steps:");
   console.log(
-    "   • Try the full example: npx tsx packages/sdk/examples/opencode-cli-example.ts"
+    "   • Try the full example: npx tsx packages/sdk/examples/aider-cli-example.ts"
   );
   console.log("   • Check the docs: packages/sdk/examples/README.md");
   console.log('   • Build your own: import { OpenFarm } from "@openfarm/sdk"');
   console.log(
-    "   • Install more providers: npm install @openfarm/provider-opencode"
+    "   • Install more providers: npm install @openfarm/provider-aider"
   );
   console.log("");
 }

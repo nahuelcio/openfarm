@@ -7,3 +7,11 @@
 
 export { DirectApiProviderFactory } from "./direct-api-factory";
 export { type DirectApiConfig, DirectApiProvider } from "./direct-api-provider";
+
+// External Agent Provider (Output Parsing)
+export {
+  createExternalAgentProvider,
+  type ExternalAgentConfig,
+  ExternalAgentProvider,
+  type MessageHandler,
+} from "./external-agent-provider";

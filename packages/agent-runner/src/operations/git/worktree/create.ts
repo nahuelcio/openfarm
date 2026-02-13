@@ -41,6 +41,25 @@ import {
 } from "./validation";
 
 /**
+ * Validates the main repository exists with a contextual error message
+ */
+function validateRepositoryWithMessage(
+  mainRepoPath: string,
+  fs: FileSystem,
+  operation: string
+): Result<void> {
+  const validation = validateMainRepository(mainRepoPath, fs);
+  if (!validation.valid) {
+    return err(
+      new Error(
+        `Main repository does not exist before ${operation}: ${mainRepoPath}. Cannot continue.`
+      )
+    );
+  }
+  return ok(undefined);
+}
+
+/**
  * Ensures the default branch is up to date in the main repository
  */
 async function ensureDefaultBranchUpdated(
@@ -124,9 +143,13 @@ export const createWorktree = async (
     );
 
     // CRITICAL: Verify that the main repository exists before any operations
-    const validation = validateMainRepository(sanitizedMainRepoPath, fs);
-    if (!validation.valid) {
-      return err(validation.error!);
+    const validationResult = validateRepositoryWithMessage(
+      sanitizedMainRepoPath,
+      fs,
+      "any operations"
+    );
+    if (!validationResult.ok) {
+      return validationResult;
     }
 
     // ROBUST CLEANUP: Handle orphaned worktrees
@@ -146,13 +169,13 @@ export const createWorktree = async (
     }
 
     // Additional check: list all worktrees and remove any that point to our path
-    const validation2 = validateMainRepository(sanitizedMainRepoPath, fs);
-    if (!validation2.valid) {
-      return err(
-        new Error(
-          `Main repository does not exist before listing worktrees: ${sanitizedMainRepoPath}. Cannot continue.`
-        )
-      );
+    const validationResult2 = validateRepositoryWithMessage(
+      sanitizedMainRepoPath,
+      fs,
+      "listing worktrees"
+    );
+    if (!validationResult2.ok) {
+      return validationResult2;
     }
     await removeStaleWorktreeReferences(
       sanitizedMainRepoPath,
@@ -161,13 +184,13 @@ export const createWorktree = async (
     );
 
     // Ensure we have latest defaultBranch in main repo
-    const validation3 = validateMainRepository(sanitizedMainRepoPath, fs);
-    if (!validation3.valid) {
-      return err(
-        new Error(
-          `Main repository does not exist before updating default branch: ${sanitizedMainRepoPath}. Cannot continue.`
-        )
-      );
+    const validationResult3 = validateRepositoryWithMessage(
+      sanitizedMainRepoPath,
+      fs,
+      "updating default branch"
+    );
+    if (!validationResult3.ok) {
+      return validationResult3;
     }
     await ensureDefaultBranchUpdated(
       sanitizedMainRepoPath,
@@ -193,13 +216,13 @@ export const createWorktree = async (
 
       try {
         // Verify main repository exists before creating worktree
-        const validation4 = validateMainRepository(sanitizedMainRepoPath, fs);
-        if (!validation4.valid) {
-          return err(
-            new Error(
-              `Main repository does not exist before worktree creation: ${sanitizedMainRepoPath}. Cannot continue.`
-            )
-          );
+        const validationResult4 = validateRepositoryWithMessage(
+          sanitizedMainRepoPath,
+          fs,
+          "worktree creation"
+        );
+        if (!validationResult4.ok) {
+          return validationResult4;
         }
         await log(
           `Creating worktree (attempt ${createAttempt}/${maxAttempts})...`
@@ -305,16 +328,13 @@ export const createWorktree = async (
             await log(
               `Worktree repair failed: ${repairError instanceof Error ? repairError.message : String(repairError)}`
             );
-            const validation5 = validateMainRepository(
+            const validationResult5 = validateRepositoryWithMessage(
               sanitizedMainRepoPath,
-              fs
+              fs,
+              "worktree repair"
             );
-            if (!validation5.valid) {
-              return err(
-                new Error(
-                  `Main repository was deleted during worktree repair: ${sanitizedMainRepoPath}. Cannot continue.`
-                )
-              );
+            if (!validationResult5.ok) {
+              return validationResult5;
             }
           }
         }

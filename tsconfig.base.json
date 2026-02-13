@@ -3,7 +3,7 @@
   "compilerOptions": {
     // Type Checking
     "strict": true,
-    "noImplicitAny": false,
+    "noImplicitAny": true,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
@@ -32,6 +32,7 @@
     "importsNotUsedAsValues": "remove",
 
     // Interop Constraints
+    "composite": false,
     "isolatedModules": true,
     "allowJs": false,
     "forceConsistentCasingInFileNames": true,

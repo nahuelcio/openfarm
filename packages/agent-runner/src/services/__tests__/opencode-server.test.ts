@@ -78,7 +78,6 @@ describe("OpenCode Server Manager", () => {
     });
 
     it("should use default port when OPENCODE_PORT not set", () => {
-      // biome-ignore lint/performance/noDelete: delete is needed to remove env var
       delete process.env.OPENCODE_PORT;
       process.env.OPENCODE_HOST = "127.0.0.1";
 
@@ -87,7 +86,6 @@ describe("OpenCode Server Manager", () => {
     });
 
     it("should use default host when OPENCODE_HOST not set", () => {
-      // biome-ignore lint/performance/noDelete: delete is needed to remove env var
       delete process.env.OPENCODE_HOST;
       process.env.OPENCODE_PORT = "4096";
 

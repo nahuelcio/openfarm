@@ -1,16 +1,43 @@
-import type { Result } from "@openfarm/result";
-import { ok } from "@openfarm/result";
+import { err, ok, type Result } from "@openfarm/result";
 
-/**
- * Validate instruction format and content
- * TODO: Implement full validation logic
- */
-export function validateInstruction(instruction: string): Result<string> {
-  if (!instruction || instruction.trim().length === 0) {
-    return {
-      ok: false,
-      error: "Instruction cannot be empty",
-    } as any;
+const dangerousPatterns = [
+  {
+    pattern: /rm\s+-rf\s+\/(?!tmp|var\/tmp|\.local\/Trash)/i,
+    description: "rm -rf / (excepto /tmp)",
+  },
+  {
+    pattern: />\s*\/dev\/sd/i,
+    description: "escribir a discos directamente",
+  },
+  {
+    pattern: /mkfs\.\w+/i,
+    description: "formatear discos",
+  },
+  {
+    pattern: /dd\s+if=/i,
+    description: "operaciones peligrosas de disco",
+  },
+  {
+    pattern: /:\(\)\{\s*:\s*\|\s*&\s*\}\s*;:/i,
+    description: "fork bomb",
+  },
+  {
+    pattern: /wget\s+.*\|\s*sh/i,
+    description: "descarga y ejecución de script sin verificación",
+  },
+  {
+    pattern: /curl\s+.*\|\s*sh/i,
+    description: "descarga y ejecución de script sin verificación",
+  },
+];
+
+export function validateInstruction(instruction: string): Result<void> {
+  for (const { pattern, description } of dangerousPatterns) {
+    if (pattern.test(instruction)) {
+      return err(
+        new Error(`Potentially dangerous instruction detected: ${description}`)
+      );
+    }
   }
-  return ok(instruction);
+  return ok(undefined);
 }

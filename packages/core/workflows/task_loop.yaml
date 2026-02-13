@@ -1,0 +1,66 @@
+id: task_loop
+name: 🔄 Task Loop
+description: Autonomous task loop - processes work items from database continuously
+abstract: false
+
+parameters:
+  provider:
+    type: string
+    required: false
+    default: "opencode"
+    description: Provider to use for task execution
+  model:
+    type: string
+    required: false
+    description: Model to use (optional, uses provider default if not set)
+  mode:
+    type: string
+    required: false
+    default: "smart"
+    description: Task selection mode (smart, sequential, parallel)
+
+variables:
+  sessionId: ""
+  worktreePath: ""
+
+steps:
+  - id: task-loop-orchestrator
+    name: Task Loop Orchestrator
+    type: code
+    action: task_loop.run
+    config:
+      provider: "${provider}"
+      model: "${model}"
+      mode: "${mode}"
+      autoRepeat: true
+    timeout: 3600000
+    retryCount: 0
+    continueOnError: false
+    prompt: |
+      # Task Loop Mode
+
+      This workflow runs in autonomous task loop mode (inspired by Ralph TUI).
+
+      ## How it works
+
+      1. **SELECT** - Fetches pending work items from the database
+      2. **BUILD** - Constructs optimized prompts for each task
+      3. **EXECUTE** - Runs the agent on each task
+      4. **DETECT** - Monitors completion status
+      5. **REPEAT** - Continues until all tasks are processed
+
+      ## Configuration
+
+      - Mode: ${mode}
+      - Provider: ${provider}
+      - Auto-repeat: Enabled
+
+      ## Features
+
+      - Processes work items from local database
+      - Real-time logging with Rich Log View
+      - Progress tracking (completed/failed/skipped)
+      - Pause/resume capability
+      - Session persistence
+
+      Press Enter to start the autonomous task loop.

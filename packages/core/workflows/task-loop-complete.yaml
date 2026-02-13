@@ -1,0 +1,237 @@
+id: task-loop-complete
+name: 🔄 Task Loop (Complete)
+description: Autonomous task loop with full YAML-defined logic
+
+parameters:
+  provider:
+    type: string
+    required: false
+    default: "opencode"
+  
+  model:
+    type: string
+    required: false
+  
+  maxIterations:
+    type: number
+    required: false
+    default: 1000
+  
+  stopOnFailure:
+    type: boolean
+    required: false
+    default: false
+  
+  maxRetries:
+    type: number
+    required: false
+    default: 3
+  
+  selectionStrategy:
+    type: string
+    required: false
+    default: "priority"
+  
+  promptTemplate:
+    type: string
+    required: false
+    default: "default"
+
+variables:
+  session: null
+  tasks: []
+  currentTask: null
+  completedCount: 0
+  failedCount: 0
+  worktreePath: ""
+
+steps:
+  # 1. CREATE SESSION
+  - id: create-session
+    type: session
+    action: session.create
+    config: {}
+  
+  # 2. LOAD TASKS
+  - id: load-tasks
+    type: task
+    action: task.load
+    config: {}
+  
+  # 3. FILTER TASKS (only pending/new/assigned)
+  - id: filter-tasks
+    type: task
+    action: task.filter
+    config:
+      status: ["new", "assigned", "fixing"]
+  
+  # 4. MAIN LOOP
+  - id: main-loop
+    type: loop
+    loopType: "while"
+    condition: "true"
+    maxIterations: "${maxIterations}"
+    onError: "continue"
+    steps:
+      # 4.1. SELECT NEXT TASK
+      - id: select-task
+        type: task
+        action: task.select
+        config:
+          strategy: "${selectionStrategy}"
+      
+      # 4.2. CHECK IF TASK EXISTS
+      - id: check-task
+        type: conditional
+        condition: "${variables.currentTask !== null}"
+        if:
+          # 4.3. UPDATE TASK STATUS TO RUNNING
+          - id: mark-running
+            type: task
+            action: task.update_status
+            config:
+              taskId: "${variables.currentTask.id}"
+              status: "running"
+          
+          # 4.4. CREATE GIT BRANCH
+          - id: create-branch
+            type: git
+            action: git.branch
+            config:
+              pattern: "task-${Date.now()}"
+          
+          # 4.5. CREATE WORKTREE
+          - id: create-worktree
+            type: git
+            action: git.worktree
+            config:
+              operation: "create"
+          
+          # 4.6. BUILD PROMPT
+          - id: build-prompt
+            type: prompt
+            action: prompt.build
+            config:
+              template: "${promptTemplate}"
+          
+          # 4.7. EXECUTE TASK WITH RETRY
+          - id: execute-with-retry
+            type: loop
+            loopType: "retry"
+            maxIterations: "${maxRetries}"
+            onError: "continue"
+            steps:
+              - id: execute-task
+                type: code
+                action: agent.implement
+                config:
+                  provider: "${provider}"
+                  model: "${model}"
+                  maxIterations: 5
+                prompt: "${variables.builtPrompt}"
+          
+          # 4.8. DETECT COMPLETION
+          - id: detect-completion
+            type: detection
+            action: detection.check_completion
+            config:
+              output: "${variables.executionOutput}"
+              error: "${variables.executionError}"
+              success: "${variables.executionSuccess}"
+              strategy: "heuristic"
+          
+          # 4.9. HANDLE RESULT
+          - id: handle-result
+            type: conditional
+            condition: "${variables.completionResult.completed}"
+            if:
+              # SUCCESS PATH
+              - id: commit-changes
+                type: git
+                action: git.commit
+                config:
+                  message: "${variables.currentTask.title}"
+              
+              - id: push-changes
+                type: git
+                action: git.push
+                config: {}
+              
+              - id: mark-completed
+                type: task
+                action: task.update_status
+                config:
+                  taskId: "${variables.currentTask.id}"
+                  status: "completed"
+              
+              - id: increment-completed
+                type: session
+                action: session.update
+                config:
+                  completedTasks: "${variables.completedCount + 1}"
+              
+              - id: log-success
+                type: session
+                action: session.log
+                config:
+                  message: "Task completed: ${variables.currentTask.title}"
+            
+            else:
+              # FAILURE PATH
+              - id: mark-failed
+                type: task
+                action: task.update_status
+                config:
+                  taskId: "${variables.currentTask.id}"
+                  status: "failed"
+              
+              - id: increment-failed
+                type: session
+                action: session.update
+                config:
+                  failedTasks: "${variables.failedCount + 1}"
+              
+              - id: log-failure
+                type: session
+                action: session.log
+                config:
+                  message: "Task failed: ${variables.currentTask.title}"
+              
+              # STOP ON FAILURE IF CONFIGURED
+              - id: check-stop-on-failure
+                type: conditional
+                condition: "${stopOnFailure}"
+                if:
+                  - id: break-loop
+                    type: command
+                    action: command.exec
+                    config:
+                      command: "exit 1"
+          
+          # 4.10. CLEANUP WORKTREE
+          - id: cleanup-worktree
+            type: git
+            action: git.worktree
+            config:
+              operation: "remove"
+        
+        else:
+          # NO MORE TASKS - BREAK LOOP
+          - id: log-no-tasks
+            type: session
+            action: session.log
+            config:
+              message: "No more pending tasks"
+          
+          - id: break-loop-no-tasks
+            type: command
+            action: command.exec
+            config:
+              command: "exit 0"
+  
+  # 5. FINALIZE SESSION
+  - id: finalize-session
+    type: session
+    action: session.update
+    config:
+      status: "completed"

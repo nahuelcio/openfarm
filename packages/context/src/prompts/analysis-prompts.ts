@@ -1,3 +1,5 @@
+import type { ExplorationResult, GeneratedContext } from "../types/index";
+
 // ============================================================================
 // System Prompts - Inspirado en Primer pero adaptado para OpenFarm
 // ============================================================================
@@ -181,38 +183,6 @@ Update and extend the documentation to incorporate the new information while kee
 
 Output ONLY the updated markdown content.`,
 };
-
-// ============================================================================
-// Types de Resultado
-// ============================================================================
-
-export interface ExplorationResult {
-  fileStructure: string;
-  packageJson?: string;
-  existingInstructions?: string;
-  techStack?: string[];
-  architecture?: string;
-}
-
-export interface GeneratedContext {
-  agentsMd: string;
-  summary: string;
-  techStack: string[];
-  conventions: string[];
-  metadata: {
-    analyzedAt: string;
-    provider: string;
-    filesExplored: number;
-  };
-}
-
-export interface AgentAnalysisOptions {
-  provider?: keyof typeof AGENT_CONFIGS;
-  model?: string;
-  customSystemPrompt?: string;
-  explorationDepth?: "quick" | "normal" | "thorough";
-  includeGitHistory?: boolean;
-}
 
 // ============================================================================
 // Utils para formateo

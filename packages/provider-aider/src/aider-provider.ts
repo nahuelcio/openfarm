@@ -8,6 +8,10 @@ import type {
   ProviderMetadata,
   StreamResponseParser,
 } from "@openfarm/sdk";
+import {
+  AIDER_DEFAULT_TIMEOUT,
+  createAiderMetadata,
+} from "./provider-definition";
 
 /**
  * Aider provider implementation
@@ -32,42 +36,13 @@ export class AiderProvider implements Provider {
     this.configManager = configManager;
 
     this.config = {
-      timeout: 600_000,
+      timeout: AIDER_DEFAULT_TIMEOUT,
       ...config,
     };
   }
 
   getMetadata(): ProviderMetadata {
-    return {
-      type: "aider",
-      name: "Aider",
-      version: "1.0.0",
-      description:
-        "Aider AI pair programming assistant - works directly with your codebase",
-      packageName: "@openfarm/provider-aider",
-      supportedFeatures: [
-        "code-generation",
-        "code-editing",
-        "refactoring",
-        "debugging",
-        "git-integration",
-        "streaming",
-      ],
-      configSchema: {
-        type: "object",
-        properties: {
-          timeout: {
-            type: "number",
-            default: 600_000,
-            minimum: 1000,
-            description: "Timeout in milliseconds",
-          },
-        },
-        required: [],
-        additionalProperties: false,
-      },
-      requiresExternal: true,
-    };
+    return createAiderMetadata();
   }
 
   async execute(options: ExecutionOptions): Promise<ExecutionResult> {
@@ -90,7 +65,6 @@ export class AiderProvider implements Provider {
         throw new Error("Workspace path is required for Aider");
       }
 
-      log("🔍 Checking Aider installation...");
       const isAvailable = await this.testConnection();
       if (!isAvailable) {
         const error = "Aider not found. Install: pip install aider-chat";
@@ -102,23 +76,16 @@ export class AiderProvider implements Provider {
           error,
         };
       }
-      log("✅ Aider found");
-      log("");
 
       const args = this.buildCliArgs(options);
-
       log(
-        `🚀 Starting: aider ${args.map((a) => (a.includes(" ") ? `"${a}"` : a)).join(" ")}`
+        `🚀 aider ${args.map((a) => (a.includes(" ") ? `"${a}"` : a)).join(" ")}`
       );
-      log("");
 
       const request: CommunicationRequest = {
         args,
-        options: {
-          workingDirectory: options.workspace || process.cwd(),
-          env: process.env as Record<string, string>,
-          timeout: this.config.timeout,
-        },
+        workingDirectory: options.workspace || process.cwd(),
+        timeout: this.config.timeout,
       };
 
       const response = await this.communicationStrategy.execute(request);
@@ -132,11 +99,20 @@ export class AiderProvider implements Provider {
         };
       }
 
-      // Parse the response
-      const parsed = await this.responseParser.parse(response);
-      const formatted = this.parseAiderOutput(
-        typeof parsed === "string" ? parsed : response.body
-      );
+      let output = response.body;
+      try {
+        const parsed = await this.responseParser.parse(response);
+        output = typeof parsed === "string" ? parsed : response.body;
+      } catch (error) {
+        if (!output.trim()) {
+          output = "Aider command completed successfully";
+        }
+        log(
+          `⚠️ Parser failed, using fallback output: ${error instanceof Error ? error.message : "Unknown error"}`
+        );
+      }
+
+      const formatted = this.parseAiderOutput(output);
 
       return {
         success: true,
@@ -159,9 +135,7 @@ export class AiderProvider implements Provider {
     try {
       const request: CommunicationRequest = {
         args: ["--version"],
-        options: {
-          timeout: 5000,
-        },
+        timeout: 5000,
       };
 
       const response = await this.communicationStrategy.execute(request);

@@ -3,40 +3,49 @@ import { generateText, type LanguageModel } from "ai";
 
 function createOpenRouterModel(
   apiKey: string,
+  modelId: string,
   baseUrl?: string
 ): LanguageModel {
   // OpenRouter is OpenAI-compatible, use dynamic import to avoid issues
-  const { OpenAI } = require("@ai-sdk/openai");
+  const { createOpenAI } = require("@ai-sdk/openai");
   const base = baseUrl || "https://openrouter.ai/api/v1";
-  return new OpenAI({
+  return createOpenAI({
     apiKey,
     baseURL: base,
-  })("openrouter");
+  })(modelId);
 }
 
-function createAnthropicModel(apiKey: string): LanguageModel {
-  const { Anthropic } = require("@ai-sdk/anthropic");
-  return new Anthropic({ apiKey })("claude-sonnet-4-20250514");
+function createAnthropicModel(apiKey: string, modelId: string): LanguageModel {
+  const { createAnthropic } = require("@ai-sdk/anthropic");
+  return createAnthropic({ apiKey })(modelId);
 }
 
-function createOpenAIModel(apiKey: string, baseUrl?: string): LanguageModel {
-  const { OpenAI } = require("@ai-sdk/openai");
-  return new OpenAI({ apiKey, baseURL: baseUrl })("gpt-4o-mini");
+function createOpenAIModel(
+  apiKey: string,
+  modelId: string,
+  baseUrl?: string
+): LanguageModel {
+  const { createOpenAI } = require("@ai-sdk/openai");
+  return createOpenAI({ apiKey, baseURL: baseUrl })(modelId);
 }
 
-function createZaiModel(apiKey: string): LanguageModel {
-  const { OpenAI } = require("@ai-sdk/openai");
-  return new OpenAI({
+function createZaiModel(apiKey: string, modelId: string): LanguageModel {
+  const { createOpenAI } = require("@ai-sdk/openai");
+  return createOpenAI({
     apiKey,
     baseURL: "https://api.z.ai/api/paas/v4",
-  })("zai");
+  })(modelId);
 }
 
-function createCopilotModel(apiKey: string, apiBase?: string): LanguageModel {
-  const { OpenAI } = require("@ai-sdk/openai");
+function createCopilotModel(
+  apiKey: string,
+  modelId: string,
+  apiBase?: string
+): LanguageModel {
+  const { createOpenAI } = require("@ai-sdk/openai");
   const base =
     apiBase || process.env.OPENCODE_API_BASE || "http://127.0.0.1:4096/v1";
-  return new OpenAI({ apiKey, baseURL: base })("copilot");
+  return createOpenAI({ apiKey, baseURL: base })(modelId);
 }
 
 /**
@@ -51,37 +60,42 @@ function getModel(config: {
   const { provider, model, apiKey, apiBase } = config;
 
   // Map model names to the correct model IDs for each provider
-  const _resolvedModel = MODEL_ALIASES[model] || model;
+  const resolvedModel = MODEL_ALIASES[model] || model;
 
   switch (provider) {
     case "anthropic": {
       if (!apiKey) {
         throw new Error("Anthropic API key is required");
       }
-      return createAnthropicModel(apiKey);
+      const modelId = resolvedModel || "claude-sonnet-4-20250514";
+      return createAnthropicModel(apiKey, modelId);
     }
     case "openrouter": {
       if (!apiKey) {
         throw new Error("OpenRouter API key is required");
       }
-      return createOpenRouterModel(apiKey, apiBase);
+      const modelId = resolvedModel || "openai/gpt-4o-mini";
+      return createOpenRouterModel(apiKey, modelId, apiBase);
     }
     case "openai": {
       if (!apiKey) {
         throw new Error("OpenAI API key is required");
       }
-      return createOpenAIModel(apiKey, apiBase);
+      const modelId = resolvedModel || "gpt-4o-mini";
+      return createOpenAIModel(apiKey, modelId, apiBase);
     }
     case "zai": {
       if (!apiKey) {
         throw new Error("Zai API key is required");
       }
-      return createZaiModel(apiKey);
+      const modelId = resolvedModel || "zai";
+      return createZaiModel(apiKey, modelId);
     }
     case "copilot":
     case "opencode": {
       // Copilot uses OpenCode local server, apiKey may not be needed if token is in env
-      return createCopilotModel(apiKey || "", apiBase);
+      const modelId = resolvedModel || "copilot";
+      return createCopilotModel(apiKey || "", modelId, apiBase);
     }
     default: {
       throw new Error(

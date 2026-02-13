@@ -7,7 +7,7 @@ OpenFarm is a modular SDK for AI-powered code automation. It separates concerns 
 ```
 @openfarm/sdk          Main entry point
   └── @openfarm/agent-runner   Execute agents
-      ├── @openfarm/coding-engines  Claude Code, OpenCode
+      ├── @openfarm/agent-system    Claude Code, OpenCode
       ├── @openfarm/core          Types, utilities
       └── @openfarm/adapters      Git, GitHub, Azure, etc.
 ```
@@ -32,11 +32,11 @@ Shared types and utilities.
 - Database utilities
 - Common functions
 
-### `@openfarm/coding-engines`
-Different AI coding providers.
-- Claude Code integration
-- OpenCode integration
-- Engine abstraction
+### `@openfarm/agent-system`
+Unified agent layer.
+- Agent plugins (Claude Code, OpenCode)
+- Execution runtimes (local, docker, k8s, worktree)
+- CodingEngine compatibility adapter
 
 ### `@openfarm/adapters`
 Platform integrations.
@@ -84,7 +84,7 @@ sdk → agent-runner → core, engines, adapters
 Want to extend OpenFarm?
 
 1. **Add new adapter**: Implement `PlatformAdapter` interface
-2. **Add new engine**: Implement `CodingEngine` interface
+2. **Add new agent**: Implement `AgentPlugin` (or use `GenericCliAgent`)
 3. **Custom workflows**: Use `Workflow` DSL
 
 ## Performance Considerations

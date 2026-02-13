@@ -1,3 +1,7 @@
+import { createLogger } from "../../utils/logger";
+
+const logger = createLogger("DB");
+
 // Use any type to avoid importing from bun during bundling
 type SQL = any;
 
@@ -11,9 +15,7 @@ export async function addColumnSafely(
   columnName: string,
   columnDefinition: string
 ): Promise<void> {
-  console.log(
-    `[DB Migration] Adding missing column '${columnName}' to ${tableName} table`
-  );
+  logger.debug(`Adding missing column '${columnName}' to ${tableName} table`);
 
   try {
     const sql = `ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${columnDefinition}`;
@@ -32,21 +34,19 @@ export async function addColumnSafely(
       );
     }
 
-    console.log(
-      `[DB Migration] ✓ Successfully added column '${columnName}' to ${tableName}`
-    );
+    logger.debug(`✓ Successfully added column '${columnName}' to ${tableName}`);
   } catch (error) {
     if (
       error instanceof Error &&
       (error.message.includes("duplicate column name") ||
         error.message.includes("duplicate column"))
     ) {
-      console.log(
-        `[DB Migration] Column '${columnName}' already exists in ${tableName}, skipping`
+      logger.debug(
+        `Column '${columnName}' already exists in ${tableName}, skipping`
       );
     } else {
-      console.error(
-        `[DB Migration] Failed to add column '${columnName}' to ${tableName}:`,
+      logger.error(
+        `Failed to add column '${columnName}' to ${tableName}:`,
         error
       );
       throw error;
