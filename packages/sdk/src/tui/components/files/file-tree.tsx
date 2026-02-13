@@ -50,8 +50,8 @@ export function FileTree({
   useEffect(() => {
     const buildTree = async () => {
       try {
-        const fs = await import("fs");
-        const path = await import("path");
+        const fs = await import("node:fs");
+        const path = await import("node:path");
 
         const buildNode = (dirPath: string): FileNode => {
           const stats = fs.statSync(dirPath);

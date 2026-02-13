@@ -23,7 +23,6 @@ export interface TerminalBlockData {
 export interface TerminalBlockProps {
   block: TerminalBlockData;
   onRerun?: () => void;
-  onCopy?: () => void;
   onDelete?: () => void;
 }
 
@@ -49,46 +48,6 @@ export function TerminalBlock({
   const displayOutput = newOutput !== null ? newOutput : block.output;
   const displayStatus = newStatus !== null ? newStatus : block.status;
 
-  const handleRerun = async () => {
-    if (isRerunning) return;
-    setIsRerunning(true);
-    onRerun?.();
-    const result = await executeCommand(block.command);
-    setNewOutput(result.output);
-    setNewStatus("running");
-    setIsRerunning(false);
-    const endTime = Date.now();
-    setNewOutput((prev) => ({
-      ...prev,
-      output: result.output,
-      status: "success",
-      duration: endTime - block.timestamp.getTime(),
-      timestamp: endTime,
-    }));
-  };
-
-  const handleCopy = () => {
-    copy(block.output);
-  };
-
-  const handleDelete = () => {
-    onDelete?.();
-  };
-
-  useInput((input, key) => {
-    if (!isExpanded) return;
-
-    if (input === "r" || input === "R") {
-      handleRerun();
-    } else if (input === "c" || input === "C") {
-      handleCopy();
-    } else if (input === "d" || input === "D") {
-      handleDelete();
-    } else if (input === " " || key.return) {
-      setIsExpanded((prev) => !prev);
-    }
-  });
-
   const statusConfig = {
     pending: { icon: "○", color: colors.muted },
     running: { icon: "⟳", color: colors.info },
@@ -97,112 +56,6 @@ export function TerminalBlock({
   };
 
   const status = statusConfig[displayStatus] || statusConfig.pending;
-
-  return (
-    <Box
-      borderColor={status.color}
-      borderStyle="single"
-      flexDirection="column"
-      marginY={1}
-      paddingX={1}
-      paddingY={1}
-    >
-      {/* Command header */}
-      <Box flexDirection="row" gap={1} justifyContent="space-between">
-        <Text color={status.color}>{status.icon}</Text>
-        <Text bold>{block.command}</Text>
-        {block.duration > 0 && (
-          <Text color={colors.muted} dimColor>
-            {formatDuration(block.duration)}
-          </Text>
-        )}
-      </Box>
-
-      {/* Actions */}
-      <Box flexDirection="row" gap={2} marginTop={1}>
-        <Text color={colors.primary}>[R]erun</Text>
-        <Text color={copied ? colors.success : colors.info}>
-          {copied ? "✓ Copied!" : "[C]opy"}
-        </Text>
-        <Text color={colors.warning}>[D]elete</Text>
-        <Text color={colors.muted}>[Space] Toggle</Text>
-      </Box>
-
-      {/* Output */}
-      {isExpanded && (
-        <Box
-          borderColor={colors.border}
-          borderStyle="single"
-          flexDirection="column"
-          marginTop={1}
-          paddingX={1}
-          paddingY={1}
-        >
-          {block.output.split("\n").map((line, i) => (
-            <Text
-              color={colors.foreground}
-              dimColor
-              key={i}
-              wrap="truncate-end"
-            >
-              {line}
-            </Text>
-          ))}
-        </Box>
-      )}
-
-      {/* Exit code for errors */}
-      {displayStatus === "error" && (
-        <Text color={colors.error} dimColor marginTop={1}>
-          Exit code: {block.exitCode}
-        </Text>
-      )}
-
-      {/* Editing hint */}
-      {isRerunning && (
-        <Text color={colors.warning} marginTop={1}>
-          Rerunning... Enter to save, Esc to cancel
-        </Text>
-      )}
-    </Box>
-  );
-}
-
-export interface TerminalBlockProps {
-  block: TerminalBlockData;
-  onRerun?: () => void;
-  onCopy?: () => void;
-  onDelete?: () => void;
-}
-
-/**
- * Displays a terminal command block with output
- */
-export function TerminalBlock({
-  block,
-  onRerun,
-  onDelete,
-}: TerminalBlockProps) {
-  const colors = useThemeColors();
-  const [isExpanded, setIsExpanded] = useState(true);
-  const [isRerunning, setIsRerunning] = useState(false);
-  const [newOutput, setNewOutput] = useState<string | null>(null);
-  const [newStatus, setNewStatus] = useState<
-    TerminalBlockData["status"] | null
-  >(null);
-  const { copy, copied } = useClipboard();
-
-  const displayOutput = newOutput !== null ? newOutput : block.output;
-  const displayStatus = newStatus !== null ? newStatus : block.status;
-
-  const statusConfig = {
-    pending: { icon: "○", color: colors.muted },
-    running: { icon: "⟳", color: colors.info },
-    success: { icon: "✓", color: colors.success },
-    error: { icon: "✗", color: colors.error },
-  };
-
-  const status = statusConfig[displayStatus];
 
   const handleRerun = async () => {
     if (isRerunning) return;

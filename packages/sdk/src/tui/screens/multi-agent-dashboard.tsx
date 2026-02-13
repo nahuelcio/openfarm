@@ -24,6 +24,10 @@ export function MultiAgentDashboard() {
       if (key.escape) {
         setMode("list");
         setInputValue("");
+      } else if (input === "j" || key.downArrow) {
+        setNumAgents((prev) => Math.max(1, prev - 1));
+      } else if (input === "k" || key.upArrow) {
+        setNumAgents((prev) => Math.min(8, prev + 1));
       } else if (key.return && inputValue.trim()) {
         spawnAgents(inputValue);
       } else if (key.backspace) {

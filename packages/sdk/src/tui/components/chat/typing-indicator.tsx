@@ -8,6 +8,8 @@ import { Box, Text } from "@openfarm/tui-opentui";
 import { useEffect, useState } from "react";
 import { useThemeColors } from "../../theme/hooks";
 
+const TYPING_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+
 export interface TypingIndicatorProps {
   /** Optional custom text */
   text?: string;
@@ -22,11 +24,9 @@ export function TypingIndicator({
   const colors = useThemeColors();
   const [frame, setFrame] = useState(0);
 
-  const frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
-
   useEffect(() => {
     const interval = setInterval(() => {
-      setFrame((prev) => (prev + 1) % frames.length);
+      setFrame((prev) => (prev + 1) % TYPING_FRAMES.length);
     }, 80);
 
     return () => clearInterval(interval);
@@ -34,7 +34,7 @@ export function TypingIndicator({
 
   return (
     <Box flexDirection="row" gap={1} paddingX={1}>
-      <Text color={colors.info}>{frames[frame]}</Text>
+      <Text color={colors.info}>{TYPING_FRAMES[frame]}</Text>
       <Text color={colors.muted} dimColor>
         {text}
       </Text>

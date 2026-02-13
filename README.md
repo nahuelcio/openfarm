@@ -41,22 +41,23 @@ const result = await client.execute({
 console.log(result.diff)
 ```
 
-## 🖥️ Terminal UI (TUI)
+## 🖥️ Terminal UI (TUI) - Legacy
 
-OpenFarm includes an interactive Terminal UI for local development and testing. The TUI is built with [Ink](https://github.com/vadimdemedes/ink) (React for terminals).
+The TUI is now in legacy mode and receives only critical fixes. For new workflows, use OpenFarm Desktop (`openfarm-desktop/`).
+Migration timeline: `docs/desktop-migration-window.md`.
 
-### Running the TUI
+### Running the Legacy TUI
 
 From the project root (after `bun install`):
 
 ```bash
-bun run tui
+OPENFARM_ENABLE_LEGACY_TUI=1 bun run tui
 ```
 
 Or using npx without installation:
 
 ```bash
-npx @openfarm/sdk tui
+npx @openfarm/sdk tui --legacy-tui
 ```
 
 Or run directly:

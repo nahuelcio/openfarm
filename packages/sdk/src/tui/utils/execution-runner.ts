@@ -242,9 +242,26 @@ async function executeWorkflowWithEngine(
               }
 
               case "git.worktree": {
-                const { createWorktree } = await import(
+                const importAtRuntime = new Function(
+                  "modulePath",
+                  "return import(modulePath);"
+                ) as (modulePath: string) => Promise<Record<string, unknown>>;
+                const { createWorktree } = (await importAtRuntime(
                   "@openfarm/git-worktree"
-                );
+                )) as {
+                  createWorktree: (
+                    repoPath: string,
+                    options: {
+                      path: string;
+                      branch: string;
+                      createBranch: boolean;
+                    }
+                  ) => Promise<{
+                    ok: boolean;
+                    value: { path: string };
+                    error: Error;
+                  }>;
+                };
                 const { join } = await import("node:path");
                 const { tmpdir } = await import("node:os");
                 const { mkdirSync, existsSync } = await import("node:fs");
@@ -349,7 +366,19 @@ async function executeWorkflowWithEngine(
     try {
       const { execSync } = await import("node:child_process");
       const { rmSync } = await import("node:fs");
-      const { removeWorktree } = await import("@openfarm/git-worktree");
+      const importAtRuntime = new Function(
+        "modulePath",
+        "return import(modulePath);"
+      ) as (modulePath: string) => Promise<Record<string, unknown>>;
+      const { removeWorktree } = (await importAtRuntime(
+        "@openfarm/git-worktree"
+      )) as {
+        removeWorktree: (
+          repoPath: string,
+          worktreePath: string,
+          force: boolean
+        ) => Promise<void>;
+      };
 
       const branchName = context.branchName;
       const originalBranch = (context as any).originalBranch || "main";

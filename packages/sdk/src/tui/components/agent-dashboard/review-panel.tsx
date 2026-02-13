@@ -1,6 +1,6 @@
 import { Box, Text, useInput } from "@openfarm/tui-opentui";
 import { useEffect, useState } from "react";
-import { type Agent, useAgentPoolStore } from "../../utils/agent-pool";
+import type { Agent } from "../../utils/agent-pool";
 import {
   approveAgent,
   type DiffResult,
@@ -20,18 +20,23 @@ export function ReviewPanel({ agent, onClose }: ReviewPanelProps) {
   const [approving, setApproving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const poolStore = useAgentPoolStore.getState();
 
   useEffect(() => {
-    loadDiff();
+    let cancelled = false;
+    const run = async () => {
+      setLoading(true);
+      const diff = await getAgentDiff(agent.id);
+      if (cancelled) {
+        return;
+      }
+      setDiffResult(diff);
+      setLoading(false);
+    };
+    run();
+    return () => {
+      cancelled = true;
+    };
   }, [agent.id]);
-
-  async function loadDiff() {
-    setLoading(true);
-    const diff = await getAgentDiff(agent.id);
-    setDiffResult(diff);
-    setLoading(false);
-  }
 
   async function handleApprove() {
     setApproving(true);

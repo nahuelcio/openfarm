@@ -4,9 +4,9 @@
  * Detects smart context for AI conversations.
  */
 
-import { execSync } from "child_process";
-import { statSync } from "fs";
-import { join } from "path";
+import { execSync } from "node:child_process";
+import { statSync } from "node:fs";
+import { join } from "node:path";
 
 export interface SmartContext {
   recentFiles: string[];

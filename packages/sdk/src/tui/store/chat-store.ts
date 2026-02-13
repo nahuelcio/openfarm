@@ -16,7 +16,6 @@ import {
   type WarpMessage,
 } from "@openfarm/core/db";
 import {
-  AIService,
   createAIServiceFromEnv,
   MockAIService,
 } from "../services/ai-service";
@@ -31,9 +30,6 @@ function generateId(): string {
 }
 
 import { create } from "zustand";
-
-// Use any type to avoid importing from bun during bundling
-type SQL = any;
 
 // ============================================================================
 // TYPES
@@ -242,7 +238,6 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     const {
       currentConversationId,
       createConversation,
-      currentProvider,
       messages,
       contextFiles,
     } = get();
@@ -360,7 +355,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   },
 
   async *streamResponse(conversationId: string) {
-    const { messages, contextFiles, currentProvider } = get();
+    const { messages, contextFiles } = get();
 
     // Create abort controller for this stream
     currentAbortController = new AbortController();
@@ -475,7 +470,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   // ==========================================================================
 
   addContextFile: async (filePath: string, contentSnapshot?: string) => {
-    const { currentConversationId, contextFiles } = get();
+    const { currentConversationId } = get();
 
     if (!currentConversationId) {
       return;

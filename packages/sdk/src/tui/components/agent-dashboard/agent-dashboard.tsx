@@ -1,4 +1,4 @@
-import { Box, Text, useApp } from "@openfarm/tui-opentui";
+import { Box, Text } from "@openfarm/tui-opentui";
 import { useState } from "react";
 import { getAgentStats, useAgentPoolStore } from "../../utils/agent-pool";
 import { AgentCard } from "./agent-card";
@@ -8,8 +8,6 @@ export function AgentDashboard() {
   const agents = useAgentPoolStore((state) => state.agents);
   const stats = getAgentStats(agents);
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
-  const { exit } = useApp();
-
   const selectedAgent = selectedAgentId
     ? agents.find((a) => a.id === selectedAgentId)
     : null;

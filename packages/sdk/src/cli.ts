@@ -10,5 +10,19 @@ const config: OpenFarmConfig = {
   defaultModel: process.env.OPENFARM_MODEL,
 };
 
-// Run TUI
-runTUIApp(process.argv.slice(2), config);
+const args = process.argv.slice(2);
+const wantsLegacyFlag = args.includes("--legacy-tui");
+const wantsLegacyEnv = process.env.OPENFARM_ENABLE_LEGACY_TUI === "1";
+
+if (!wantsLegacyFlag && !wantsLegacyEnv) {
+  console.error(
+    "[openfarm] TUI disabled by default. Use OpenFarm Desktop. To force legacy TUI for migration only, run with --legacy-tui or OPENFARM_ENABLE_LEGACY_TUI=1."
+  );
+  process.exit(1);
+}
+
+console.warn(
+  "[openfarm] Legacy TUI mode enabled (deprecated). Migration target: OpenFarm Desktop."
+);
+
+runTUIApp(args.filter((arg) => arg !== "--legacy-tui"), config);

@@ -237,6 +237,17 @@ describe("useStore", () => {
       setWorkspace("/another/path");
       expect(useStore.getState().workspace).toBe("/another/path");
     });
+
+    it("should preserve workspace while toggling running flow screens", () => {
+      const { setWorkspace, setScreen } = useStore.getState();
+
+      setWorkspace("/tmp/openfarm-repo");
+      setScreen("running");
+      setScreen("execution-detail");
+      setScreen("dashboard");
+
+      expect(useStore.getState().workspace).toBe("/tmp/openfarm-repo");
+    });
   });
 
   describe("External Agent Configuration", () => {

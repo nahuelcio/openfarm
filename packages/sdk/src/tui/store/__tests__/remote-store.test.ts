@@ -11,24 +11,24 @@ import type { IRemoteClient, RemoteInstance } from "../../types/remote";
 // Mock modules BEFORE importing the store
 // Note: The remote-store.ts imports from @openfarm/core (which is incorrect),
 // so we need to mock the missing exports there
-vi.mock("@openfarm/core", () => ({
+vi.mock("@openfarm/core/db", () => ({
   getDb: vi.fn().mockResolvedValue({}),
   getRemoteInstances: vi.fn().mockResolvedValue([]),
   saveRemoteInstances: vi.fn().mockResolvedValue({ ok: true }),
 }));
 
 vi.mock("@openfarm/remote-server", () => ({
-  RemoteClient: vi.fn().mockImplementation(() => ({
-    connect: vi.fn().mockResolvedValue(undefined),
-    disconnect: vi.fn(),
-    startTaskLoop: vi.fn(),
-    pause: vi.fn(),
-    resume: vi.fn(),
-    cancel: vi.fn(),
-    getStatus: vi.fn(),
-    getState: vi.fn().mockReturnValue({ status: "connected" }),
-    isConnected: vi.fn().mockReturnValue(true),
-  })),
+  RemoteClient: class {
+    connect = vi.fn().mockResolvedValue(undefined);
+    disconnect = vi.fn();
+    startTaskLoop = vi.fn();
+    pause = vi.fn();
+    resume = vi.fn();
+    cancel = vi.fn();
+    getStatus = vi.fn();
+    getState = vi.fn().mockReturnValue({ status: "connected" });
+    isConnected = vi.fn().mockReturnValue(true);
+  },
 }));
 
 // Import the store AFTER mocks are set up

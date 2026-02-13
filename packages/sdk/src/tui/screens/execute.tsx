@@ -1,11 +1,9 @@
 import { Box, Text, useInput } from "@openfarm/tui-opentui";
 import { useState } from "react";
 import { useStore } from "../store";
-import { useThemeColors } from "../theme/hooks";
 
 export function ExecuteScreen() {
-  const { setScreen, provider, setProvider, task, setTask } = useStore();
-  const colors = useThemeColors();
+  const { setScreen, provider, task, setTask } = useStore();
   const [mode, setMode] = useState<"input" | "provider">("input");
   const [inputValue, setInputValue] = useState("");
 

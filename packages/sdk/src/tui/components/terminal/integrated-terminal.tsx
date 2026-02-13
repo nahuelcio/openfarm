@@ -187,11 +187,17 @@ export function IntegratedTerminal({
  * Simple ANSI sequence processor
  */
 function processAnsiData(data: string): string[] {
+  // biome-ignore lint/complexity/useRegexLiterals: building from strings avoids control-character regex lint conflicts
+  const ansiColorRegex = new RegExp("\\u001B\\[[0-9;]*m", "g");
+  // biome-ignore lint/complexity/useRegexLiterals: building from strings avoids control-character regex lint conflicts
+  const ansiCursorRegex = new RegExp("\\u001B\\[[0-9;]*[A-Za-z]", "g");
+  // biome-ignore lint/complexity/useRegexLiterals: building from strings avoids control-character regex lint conflicts
+  const ansiCursorToggleRegex = new RegExp("\\u001B\\[\\?25[hl]", "g");
   // Remove common ANSI sequences
   const cleaned = data
-    .replace(/\x1b\[[0-9;]*m/g, "") // Color codes
-    .replace(/\x1b\[[0-9;]*[A-Za-z]/g, "") // Cursor movement
-    .replace(/\x1b\[\?25[hl]/g, "") // Cursor show/hide
+    .replace(ansiColorRegex, "") // Color codes
+    .replace(ansiCursorRegex, "") // Cursor movement
+    .replace(ansiCursorToggleRegex, "") // Cursor show/hide
     .replace(/\r\n/g, "\n") // Normalize newlines
     .replace(/\r/g, "\n");
 
@@ -229,7 +235,7 @@ export async function executeCommand(
             pty.kill();
           }
           resolve({
-            output: output + "\n[Timed out after 30s]",
+            output: `${output}\n[Timed out after 30s]`,
             exitCode: -1,
             duration: Date.now() - startTime,
           });

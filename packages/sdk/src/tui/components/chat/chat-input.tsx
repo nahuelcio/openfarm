@@ -4,7 +4,7 @@
  * Multi-line input with slash command suggestions and file mention support.
  */
 
-import { Box, Text, useInput, useStdin } from "@openfarm/tui-opentui";
+import { Box, Text, useInput } from "@openfarm/tui-opentui";
 import { useCallback, useEffect, useState } from "react";
 import { useThemeColors } from "../../theme/hooks";
 import { parseSlashCommand, SLASH_COMMANDS } from "./utils";
@@ -37,8 +37,6 @@ export function ChatInput({
   const [cursorPosition, setCursorPosition] = useState(0);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedSuggestion, setSelectedSuggestion] = useState(0);
-  const { isRawModeSupported } = useStdin();
-
   // Parse current slash command
   const { command } = parseSlashCommand(content);
   const isCommandMode =

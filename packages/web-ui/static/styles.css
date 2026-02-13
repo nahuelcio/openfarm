@@ -89,5 +89,5 @@ body {
   height: 100%;
 }
 .xterm-viewport {
-  overflow-y: auto !important;
+  overflow-y: auto;
 }

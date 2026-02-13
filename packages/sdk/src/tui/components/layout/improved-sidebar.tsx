@@ -9,6 +9,16 @@ interface ImprovedSidebarProps {
   activeSection: SectionId;
   onSectionChange: (section: SectionId) => void;
 }
+const SIDEBAR_SECTIONS: Array<{
+  id: SectionId;
+  label: string;
+  shortcut: string;
+}> = [
+  { id: "dashboard", label: "🏠 Home", shortcut: "1" },
+  { id: "execute", label: "⚡ Execute", shortcut: "2" },
+  { id: "multi-agents", label: "🤖 Agents", shortcut: "3" },
+  { id: "history", label: "📜 History", shortcut: "4" },
+];
 
 interface NavItemProps {
   id: SectionId;
@@ -95,16 +105,9 @@ export function ImprovedSidebar({
     return sections.indexOf(activeSection);
   });
 
-  const sections: Array<{ id: SectionId; label: string; shortcut: string }> = [
-    { id: "dashboard", label: "🏠 Home", shortcut: "1" },
-    { id: "execute", label: "⚡ Execute", shortcut: "2" },
-    { id: "multi-agents", label: "🤖 Agents", shortcut: "3" },
-    { id: "history", label: "📜 History", shortcut: "4" },
-  ];
-
   // Sync focused index when active section changes externally (e.g., via [ ] shortcuts)
   useEffect(() => {
-    const newIndex = sections.findIndex((s) => s.id === activeSection);
+    const newIndex = SIDEBAR_SECTIONS.findIndex((s) => s.id === activeSection);
     if (newIndex !== -1) {
       setFocusedIndex(newIndex);
     }
@@ -116,7 +119,7 @@ export function ImprovedSidebar({
     // BUT only when NOT typing in an input field
     const num = Number.parseInt(input, 10);
     if (!(isTyping || Number.isNaN(num)) && num >= 1 && num <= 4) {
-      const section = sections[num - 1];
+      const section = SIDEBAR_SECTIONS[num - 1];
       if (section) {
         setFocusedIndex(num - 1);
         onSectionChange(section.id);
@@ -142,7 +145,7 @@ export function ImprovedSidebar({
       {/* Main Navigation */}
       <Box flexDirection="column" flexGrow={1}>
         <SectionHeader title="Navigation" />
-        {sections.map((section, index) => (
+        {SIDEBAR_SECTIONS.map((section, index) => (
           <NavItem
             id={section.id}
             isActive={activeSection === section.id}

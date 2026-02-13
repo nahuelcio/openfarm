@@ -8,8 +8,8 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
-    "lint": "ultracite check",
-    "lint:fix": "ultracite check --fix",
+    "lint": "bunx @biomejs/biome check . && bun run --cwd openfarm-desktop lint",
+    "lint:fix": "bunx @biomejs/biome check . --write && bun run --cwd openfarm-desktop lint",
     "type-check": "turbo run type-check",
     "test": "turbo run test",
     "tui": "bun run packages/sdk/src/cli.ts",

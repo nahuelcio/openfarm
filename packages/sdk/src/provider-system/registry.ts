@@ -522,9 +522,13 @@ export class ProviderRegistry implements IProviderRegistry {
           "streaming",
         ],
         loader: async () => {
+          const importAtRuntime = new Function(
+            "modulePath",
+            "return import(modulePath);"
+          ) as (modulePath: string) => Promise<Record<string, unknown>>;
           try {
-            const mod = await import("@openfarm/provider-aider");
-            return mod.AiderProviderFactory;
+            const mod = await importAtRuntime("@openfarm/provider-aider");
+            return mod.AiderProviderFactory as new () => ProviderFactory;
           } catch (e) {
             throw new Error(
               `@openfarm/provider-aider not installed or not built: ${e instanceof Error ? e.message : "Unknown error"}`
@@ -549,9 +553,13 @@ export class ProviderRegistry implements IProviderRegistry {
           "web-search",
         ],
         loader: async () => {
+          const importAtRuntime = new Function(
+            "modulePath",
+            "return import(modulePath);"
+          ) as (modulePath: string) => Promise<Record<string, unknown>>;
           try {
-            const mod = await import("@openfarm/provider-claude");
-            return mod.ClaudeProviderFactory;
+            const mod = await importAtRuntime("@openfarm/provider-claude");
+            return mod.ClaudeProviderFactory as new () => ProviderFactory;
           } catch (e) {
             throw new Error(
               `@openfarm/provider-claude not installed: ${e instanceof Error ? e.message : "Unknown error"}`

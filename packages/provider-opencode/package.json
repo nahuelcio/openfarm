@@ -18,8 +18,8 @@
     "build": "tsup",
     "test": "vitest --run --passWithNoTests",
     "test:run": "vitest --run --passWithNoTests",
-    "lint": "biome check .",
-    "lint:fix": "biome check . --fix"
+    "lint": "bunx biome check .",
+    "lint:fix": "bunx biome check . --fix"
   },
   "keywords": [
     "openfarm",

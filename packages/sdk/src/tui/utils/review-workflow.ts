@@ -44,7 +44,7 @@ export async function getAgentDiff(
   const poolStore = useAgentPoolStore.getState();
   const agent = poolStore.getAgent(agentId);
 
-  if (!(agent && agent.worktreePath)) {
+  if (!agent?.worktreePath) {
     console.error("[ReviewWorkflow] Agent or worktree not found");
     return null;
   }
@@ -88,7 +88,6 @@ function parseDiffStat(output: string): DiffResult {
     const match = line.match(/\s+(.+?)\s+\|\s+(\d+)/);
     if (match) {
       const file = match[1].trim();
-      const changes = Number.parseInt(match[2], 10);
       files.push(file);
 
       const addMatch = line.match(/\+(\d+)/);
@@ -120,7 +119,7 @@ export async function approveAgent(agentId: string): Promise<MergeResult> {
   const poolStore = useAgentPoolStore.getState();
   const agent = poolStore.getAgent(agentId);
 
-  if (!(agent && agent.worktreePath && agent.branchName)) {
+  if (!(agent?.worktreePath && agent.branchName)) {
     return { success: false, error: "Agent or workspace not found" };
   }
 
@@ -225,7 +224,7 @@ export async function cleanupAfterMerge(
   const poolStore = useAgentPoolStore.getState();
   const agent = poolStore.getAgent(agentId);
 
-  if (!(agent && agent.branchName)) {
+  if (!agent?.branchName) {
     return { success: false, error: "Agent not found" };
   }
 

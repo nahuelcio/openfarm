@@ -45,7 +45,7 @@ export function FilePreview({
 
     const loadFile = async () => {
       try {
-        const fs = await import("fs");
+        const fs = await import("node:fs");
         const data = fs.readFileSync(path, "utf-8");
         setContent(data);
         setError(null);
@@ -108,8 +108,7 @@ export function FilePreview({
     ];
 
     // Very basic tokenization
-    let remaining = line;
-    let key = 0;
+    const remaining = line;
 
     // Comments
     if (remaining.trim().startsWith("//")) {
@@ -123,12 +122,11 @@ export function FilePreview({
     // String literals
     const stringRegex = /["']([^"']*)["']/g;
     const matches: Array<{ start: number; end: number; text: string }> = [];
-    let match: RegExpExecArray | null;
-
-    while ((match = stringRegex.exec(line)) !== null) {
+    for (const match of line.matchAll(stringRegex)) {
+      const start = match.index ?? 0;
       matches.push({
-        start: match.index,
-        end: match.index + match[0].length,
+        start,
+        end: start + match[0].length,
         text: match[0],
       });
     }

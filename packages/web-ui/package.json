@@ -27,7 +27,7 @@
     "build:frontend": "cp node_modules/xterm/css/xterm.css static/xterm.css 2>/dev/null || cp ../../node_modules/xterm/css/xterm.css static/xterm.css && bun build static/terminal.ts --outfile=static/bundle.js --bundle --minify",
     "dev": "tsup --watch",
     "type-check": "tsc --noEmit",
-    "lint": "biome check .",
+    "lint": "bunx biome check .",
     "clean": "rm -rf dist node_modules",
     "test": "vitest run --passWithNoTests"
   },

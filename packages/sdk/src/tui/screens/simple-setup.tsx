@@ -136,10 +136,11 @@ export function SimpleSetup() {
     );
   }, [availableModels, modelFilter]);
 
-  // Resetear índice cuando cambia filtro
   useEffect(() => {
-    setModelIndex(0);
-  }, [modelFilter, availableModels]);
+    setModelIndex((current) =>
+      filteredModels.length === 0 ? 0 : Math.min(current, filteredModels.length - 1)
+    );
+  }, [filteredModels]);
 
   useInput((char, key) => {
     // Volver atrás
