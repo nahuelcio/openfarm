@@ -52,18 +52,25 @@ export function MultiAgentDashboard() {
   if (mode === "spawn") {
     return (
       <Box flexDirection="column" padding={3} gap={2}>
-        <Text bold fontSize={18}>Spawn Agents</Text>
-        
+        <Text bold fontSize={18}>
+          Spawn Agents
+        </Text>
+
         <Box flexDirection="column" gap={1}>
           <Text>Task description:</Text>
-          <Text color="cyan">{" > "}{inputValue}</Text>
+          <Text color="cyan">
+            {" > "}
+            {inputValue}
+          </Text>
         </Box>
-        
+
         <Box flexDirection="column" gap={1} marginTop={2}>
           <Text>Number of agents: {numAgents}</Text>
-          <Text color="gray" dim>Press j/k to adjust (1-8)</Text>
+          <Text color="gray" dim>
+            Press j/k to adjust (1-8)
+          </Text>
         </Box>
-        
+
         <Text color="gray" marginTop={2}>
           Enter to spawn | Esc to cancel
         </Text>
@@ -80,17 +87,19 @@ export function MultiAgentDashboard() {
 
   return (
     <Box flexDirection="column" padding={3} gap={2}>
-      <Text bold fontSize={18}>Multi-Agent Dashboard</Text>
-      
+      <Text bold fontSize={18}>
+        Multi-Agent Dashboard
+      </Text>
+
       <Box flexDirection="row" gap={4}>
         <Text>Total: {stats.total}</Text>
         <Text color="cyan">Running: {stats.running}</Text>
         <Text color="green">Done: {stats.completed}</Text>
         <Text color="red">Failed: {stats.failed}</Text>
       </Box>
-      
+
       <Text color="gray">{"─".repeat(40)}</Text>
-      
+
       {agents.length === 0 ? (
         <Box flexDirection="column" gap={1}>
           <Text color="gray">No agents running.</Text>
@@ -101,18 +110,20 @@ export function MultiAgentDashboard() {
           {agents.map((agent) => (
             <Box key={agent.id} flexDirection="row" gap={2}>
               <Text>
-                {agent.status === "running" ? "🔄" : 
-                 agent.status === "completed" ? "✅" : 
-                 agent.status === "failed" ? "❌" : "⏳"}
+                {agent.status === "running"
+                  ? "🔄"
+                  : agent.status === "completed"
+                    ? "✅"
+                    : agent.status === "failed"
+                      ? "❌"
+                      : "⏳"}
               </Text>
-              <Text numberOfLines={1}>
-                {agent.config.task.slice(0, 40)}
-              </Text>
+              <Text numberOfLines={1}>{agent.config.task.slice(0, 40)}</Text>
             </Box>
           ))}
         </Box>
       )}
-      
+
       <Text color="gray">{"─".repeat(40)}</Text>
       <Text color="gray">n: new agent | q: back to home</Text>
     </Box>

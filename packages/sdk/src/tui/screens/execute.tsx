@@ -32,9 +32,11 @@ export function ExecuteScreen() {
   if (mode === "provider") {
     return (
       <Box flexDirection="column" padding={3} gap={2}>
-        <Text bold fontSize={18}>Select Provider</Text>
+        <Text bold fontSize={18}>
+          Select Provider
+        </Text>
         <Text color="gray">Task: {task}</Text>
-        
+
         <Box flexDirection="column" gap={1} marginTop={2}>
           {providers.map((p, i) => (
             <Text key={p.id}>
@@ -42,7 +44,7 @@ export function ExecuteScreen() {
             </Text>
           ))}
         </Box>
-        
+
         <Text color="gray" marginTop={2}>
           Press number to select | Esc to go back
         </Text>
@@ -52,21 +54,26 @@ export function ExecuteScreen() {
 
   return (
     <Box flexDirection="column" padding={3} gap={2}>
-      <Text bold fontSize={18}>Execute Task</Text>
+      <Text bold fontSize={18}>
+        Execute Task
+      </Text>
       <Text color="gray">Provider: {provider}</Text>
-      
+
       <Box flexDirection="column" gap={1} marginTop={2}>
         <Text>Enter your task:</Text>
-        <Text color="cyan">{" > "}{inputValue}</Text>
+        <Text color="cyan">
+          {" > "}
+          {inputValue}
+        </Text>
       </Box>
-      
+
       <Box flexDirection="column" gap={1} marginTop={2}>
         <Text bold>Examples:</Text>
         <Text color="gray">- Add tests to src/</Text>
         <Text color="gray">- Fix bug in utils.ts</Text>
         <Text color="gray">- Refactor component X</Text>
       </Box>
-      
+
       <Text color="gray" marginTop={2}>
         Enter to continue | Esc to go back
       </Text>

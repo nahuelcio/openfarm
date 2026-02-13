@@ -49,7 +49,8 @@ export function Dashboard() {
           <Text color={colors.primary}>1</Text> - ⚡ Execute (Run a task)
         </Text>
         <Text>
-          <Text color={colors.primary}>2</Text> - 🤖 Agents (Multi-Agent Dashboard)
+          <Text color={colors.primary}>2</Text> - 🤖 Agents (Multi-Agent
+          Dashboard)
         </Text>
         <Text>
           <Text color={colors.primary}>3</Text> - 📜 History
