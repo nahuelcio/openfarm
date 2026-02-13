@@ -5,9 +5,10 @@
  * Like Warp's command blocks but for OpenFarm.
  */
 
-import { Box, Text, useClipboard, useInput } from "@openfarm/tui-opentui";
+import { Box, Text, useInput } from "@openfarm/tui-opentui";
 import { useState } from "react";
 import { useThemeColors } from "../../theme/hooks";
+import { copyToClipboard } from "../../utils/clipboard";
 import { executeCommand } from "./integrated-terminal";
 
 export interface TerminalBlockData {
@@ -43,7 +44,7 @@ export function TerminalBlock({
     TerminalBlockData["status"] | null
   >(null);
 
-  const { copy, copied } = useClipboard();
+  const [copied, setCopied] = useState(false);
 
   const displayOutput = newOutput !== null ? newOutput : block.output;
   const displayStatus = newStatus !== null ? newStatus : block.status;
@@ -76,10 +77,10 @@ export function TerminalBlock({
       handleRerun();
     } else if (input === "c" || input === "C") {
       // Copy command to clipboard
-      copy(block.command);
+      setCopied(copyToClipboard(block.command));
     } else if (input === "y" || input === "Y") {
       // Copy output to clipboard (yank)
-      copy(displayOutput);
+      setCopied(copyToClipboard(displayOutput));
     } else if (input === "d" || input === "D") {
       onDelete?.();
     } else if (input === " " || key.return) {

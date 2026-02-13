@@ -148,8 +148,8 @@ export function ChatInput({
           // Navigate lines
           const lines = content.slice(0, cursorPosition).split("\n");
           if (lines.length > 1) {
-            const currentLineLength = lines.at(-1).length;
-            const previousLineLength = lines.at(-2).length;
+            const currentLineLength = lines.at(-1)?.length ?? 0;
+            const previousLineLength = lines.at(-2)?.length ?? 0;
             const newPosition =
               cursorPosition - currentLineLength - previousLineLength - 1;
             setCursorPosition(Math.max(0, newPosition));
@@ -164,7 +164,7 @@ export function ChatInput({
           const linesBefore = beforeCursor.split("\n");
           const linesAfter = afterCursor.split("\n");
           if (linesAfter.length > 1) {
-            const currentLineLength = linesBefore.at(-1).length;
+            const currentLineLength = linesBefore.at(-1)?.length ?? 0;
             const nextLineLength = linesAfter[0].length;
             const newPosition =
               cursorPosition + (nextLineLength - currentLineLength) + 1;

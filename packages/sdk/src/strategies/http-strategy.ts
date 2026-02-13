@@ -256,7 +256,10 @@ export class HttpCommunicationStrategy implements CommunicationStrategy {
       const response = await fetch(url, fetchOptions);
 
       const responseBody = await response.text();
-      const responseHeaders = Object.fromEntries(response.headers.entries());
+      const responseHeaders: Record<string, string> = {};
+      response.headers.forEach((value, key) => {
+        responseHeaders[key] = value;
+      });
 
       return {
         status: response.status,

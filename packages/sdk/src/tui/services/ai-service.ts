@@ -6,9 +6,8 @@
  */
 
 import { DirectApiProvider } from "../../providers/direct-api-provider";
-import type { WarpMessage } from "@openfarm/core/db";
-
 export type AIProvider = "openai" | "anthropic" | "openrouter" | "local";
+type ChatMessage = { role: "user" | "assistant" | "system"; content: string };
 
 export interface AIServiceConfig {
   provider: AIProvider;
@@ -161,7 +160,7 @@ export class AIService {
    * Convert WarpMessages to AI format and stream
    */
   async *streamFromMessages(
-    messages: WarpMessage[],
+    messages: ChatMessage[],
     systemPrompt?: string,
     onChunk?: (chunk: string) => void
   ): AsyncGenerator<string, void, unknown> {
@@ -238,6 +237,17 @@ export class MockAIService {
 
   async chatComplete(): Promise<string> {
     return "This is a mock response. Set AI_API_KEY environment variable to use real AI.";
+  }
+
+  async *streamFromMessages(
+    _messages: ChatMessage[],
+    _systemPrompt?: string,
+    onChunk?: (chunk: string) => void
+  ): AsyncGenerator<string, void, unknown> {
+    for await (const chunk of this.streamChatCompletion()) {
+      onChunk?.(chunk);
+      yield chunk;
+    }
   }
 
   async testConnection(): Promise<boolean> {

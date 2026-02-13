@@ -1467,11 +1467,11 @@ function App() {
 												setWorkspaceScripts((prev) => ({
 													...prev,
 													[workspace.id]: {
+														...prev[workspace.id],
 														workspace_id: workspace.id,
 														run_mode:
 															prev[workspace.id]?.run_mode || "concurrent",
 														updated_at: prev[workspace.id]?.updated_at || "",
-														...prev[workspace.id],
 														setup_script: e.target.value,
 													},
 												}))
@@ -1490,11 +1490,11 @@ function App() {
 												setWorkspaceScripts((prev) => ({
 													...prev,
 													[workspace.id]: {
+														...prev[workspace.id],
 														workspace_id: workspace.id,
 														run_mode:
 															prev[workspace.id]?.run_mode || "concurrent",
 														updated_at: prev[workspace.id]?.updated_at || "",
-														...prev[workspace.id],
 														run_script: e.target.value,
 													},
 												}))
@@ -1515,11 +1515,11 @@ function App() {
 												setWorkspaceScripts((prev) => ({
 													...prev,
 													[workspace.id]: {
+														...prev[workspace.id],
 														workspace_id: workspace.id,
 														run_mode:
 															prev[workspace.id]?.run_mode || "concurrent",
 														updated_at: prev[workspace.id]?.updated_at || "",
-														...prev[workspace.id],
 														archive_script: e.target.value,
 													},
 												}))
@@ -1998,35 +1998,20 @@ function App() {
 							</option>
 						))}
 					</select>
-					<button
-						className={`icon-btn ${view === "projects" ? "active" : ""}`}
-						onClick={() => setView("projects")}
-					>
+					<button className="icon-btn" onClick={() => setView("projects")}>
 						Projects
 					</button>
-					<button
-						className={`icon-btn ${view === "workspaces" ? "active" : ""}`}
-						onClick={() => setView("workspaces")}
-					>
+					<button className="icon-btn" onClick={() => setView("workspaces")}>
 						Workspaces
 					</button>
-					<button
-						className={`icon-btn ${view === "runs" ? "active" : ""}`}
-						onClick={() => setView("runs")}
-					>
+					<button className="icon-btn" onClick={() => setView("runs")}>
 						Runs
 					</button>
-					<button
-						className={`icon-btn ${view === "mcp" ? "active" : ""}`}
-						onClick={() => setView("mcp")}
-					>
+					<button className="icon-btn" onClick={() => setView("mcp")}>
 						MCP
 					</button>
 					{selectedProject && (
-						<button
-							className={`icon-btn ${view === "sessions" ? "active" : ""}`}
-							onClick={() => setView("sessions")}
-						>
+						<button className="icon-btn" onClick={() => setView("sessions")}>
 							Sessions
 						</button>
 					)}

@@ -80,7 +80,7 @@ export function DiffViewer({ files, onClose, onFileSelect }: DiffViewerProps) {
           borderColor="gray"
           borderRight="single"
           borderStyle="bold"
-          overflow="auto"
+          overflow="visible"
           width={30}
         >
           <Box paddingX={1} paddingY={0}>
@@ -106,7 +106,7 @@ export function DiffViewer({ files, onClose, onFileSelect }: DiffViewerProps) {
           ))}
         </Box>
 
-        <Box flex={1} flexDirection="column" overflow="auto">
+        <Box flex={1} flexDirection="column" overflow="visible">
           <Box
             borderBottom="single"
             borderStyle="bold"

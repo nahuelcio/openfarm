@@ -397,7 +397,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       const stream = service.streamFromMessages(
         aiMessages,
         undefined,
-        (chunk) => {
+        (_chunk: string) => {
           if (signal.aborted) {
             throw new Error("AbortError");
           }
@@ -478,8 +478,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
     try {
       // Read file content if not provided
-      let content = contentSnapshot;
-      if (content === undefined) {
+      let content: string | null = contentSnapshot ?? null;
+      if (contentSnapshot === undefined) {
         try {
           const { readFileSync } = await import("node:fs");
           content = readFileSync(filePath, "utf-8");

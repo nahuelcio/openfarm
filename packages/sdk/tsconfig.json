@@ -4,7 +4,8 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
-    "lib": ["ES2022"],
+    "lib": ["ES2022", "DOM"],
+    "types": ["node"],
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -15,9 +16,15 @@
     "noEmit": true,
     "jsx": "react-jsx",
     "jsxImportSource": "react",
-    "rootDir": "./src",
     "baseUrl": ".",
     "paths": {
+      "@openfarm/context/agent-analyzer": [
+        "../context/src/agents/agent-analyzer.ts"
+      ],
+      "@openfarm/core/*": ["../core/src/*"],
+      "@openfarm/git-worktree": ["../git-worktree/src/index.ts"],
+      "@openfarm/operations/*": ["../operations/src/*"],
+      "@openfarm/web-ui": ["../web-ui/src/index.ts"],
       "@openfarm/tui-opentui": ["./src/tui/opentui/index.ts"],
       "@openfarm/tui-opentui/spinner": ["./src/tui/opentui/spinner.tsx"],
       "@openfarm/tui-opentui/text-input": ["./src/tui/opentui/text-input.tsx"]
