@@ -50,3 +50,8 @@ tmp
 *.db-*
 *.sqlite
 *.sqlite3
+
+
+/planning 
+.kiro/ 
+TUI_WARP_PLAN.md

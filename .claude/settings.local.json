@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(done)",
+      "mcp__zread__get_repo_structure",
+      "Bash(npm run build:*)",
+      "Bash(npx tsc:*)",
+      "Bash(node_modules/.bin/tsc:*)",
+      "Bash(node_modules/.bin/tsc.exe:*)",
+      "Bash(bun run typecheck:*)",
+      "Bash(bun run type-check:*)",
+      "Bash(timeout 5 bun run:*)",
+      "Bash(npx turbo build:*)",
+      "mcp__zread__read_file",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "mcp__zread__search_doc",
+      "Bash(ls:*)",
+      "Bash(npx vitest run)",
+      "Bash(bun install:*)",
+      "Bash(npx tsup:*)",
+      "Bash(bun build:*)",
+      "Bash(bun -e:*)",
+      "Bash(bun run:*)",
+      "Bash(script -q /dev/null bun run tui:*)",
+      "Bash(timeout 3 script -q /dev/null bun:*)",
+      "Bash(bun add:*)",
+      "Bash(lsof:*)",
+      "Bash(xargs kill:*)",
+      "Bash(node -e:*)",
+      "Bash(timeout 5 node:*)",
+      "Bash(curl:*)"
+    ]
+  }
+}

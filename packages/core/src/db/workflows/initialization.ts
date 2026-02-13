@@ -1,10 +1,14 @@
+import { err, ok, type Result } from "@openfarm/result";
+import { createLogger } from "../../utils/logger";
+
+const logger = createLogger("DB");
+
 // Use any type to avoid importing from bun during bundling
 type SQL = any;
 
 // Regex patterns at top level for performance
 const PATH_SEPARATOR_REGEX = /[/\\]/;
 
-import { err, ok, type Result } from "@openfarm/result";
 import type { Workflow } from "../../types";
 import { addWorkflow, getWorkflow, getWorkflows, updateWorkflow } from "./crud";
 
@@ -121,7 +125,7 @@ async function buildPossiblePaths(fileSystem: FileSystem): Promise<string[]> {
       currentPath = parentPath;
     }
   } catch (searchError) {
-    console.warn("[DB] Error during directory search:", searchError);
+    logger.warn("Error during directory search:", searchError);
   }
 
   return possiblePaths;
@@ -134,15 +138,15 @@ function findWorkflowsDirectory(
   possiblePaths: string[],
   fileSystem: FileSystem
 ): string | null {
-  console.log(`[DB] Current working directory: ${fileSystem.cwd()}`);
-  console.log(
-    `[DB] Searching for workflows directory in ${possiblePaths.length} possible locations...`
+  logger.debug(`Current working directory: ${fileSystem.cwd()}`);
+  logger.debug(
+    `Searching for workflows directory in ${possiblePaths.length} possible locations...`
   );
 
   for (const testPath of possiblePaths) {
-    console.log(`[DB] Checking: ${testPath}`);
+    logger.debug(`Checking: ${testPath}`);
     if (fileSystem.existsSync(testPath)) {
-      console.log(`[DB] ✓ Found workflows directory at: ${testPath}`);
+      logger.debug(`✓ Found workflows directory at: ${testPath}`);
       return testPath;
     }
   }
@@ -204,8 +208,8 @@ async function loadWorkflowFromFile(
         );
         workflow = await convertYAMLToWorkflow(fileContent);
       } catch (yamlError) {
-        console.error(
-          `[DB] ✗ Failed to parse YAML workflow file ${fileName}:`,
+        logger.error(
+          `✗ Failed to parse YAML workflow file ${fileName}:`,
           yamlError
         );
         return null;
@@ -216,8 +220,8 @@ async function loadWorkflowFromFile(
         const workflowData = JSON.parse(fileContent);
 
         if (!validateWorkflowData(workflowData)) {
-          console.warn(
-            `[DB] Skipping invalid workflow file ${fileName}: missing required fields or invalid steps`
+          logger.warn(
+            `Skipping invalid workflow file ${fileName}: missing required fields or invalid steps`
           );
           return null;
         }
@@ -228,8 +232,8 @@ async function loadWorkflowFromFile(
         );
         workflow = convertJSONToWorkflow(workflowData);
       } catch (jsonError) {
-        console.error(
-          `[DB] ✗ Failed to parse JSON workflow file ${fileName}:`,
+        logger.error(
+          `✗ Failed to parse JSON workflow file ${fileName}:`,
           jsonError
         );
         return null;
@@ -251,10 +255,7 @@ async function loadWorkflowFromFile(
     return workflow;
   } catch (parseError) {
     const fileName = filePath.split(PATH_SEPARATOR_REGEX).pop() || filePath;
-    console.error(
-      `[DB] ✗ Failed to load workflow file ${fileName}:`,
-      parseError
-    );
+    logger.error(`✗ Failed to load workflow file ${fileName}:`, parseError);
     return null;
   }
 }
@@ -270,10 +271,10 @@ async function saveWorkflowsToDatabase(
     const existing = await getWorkflow(db, workflow.id);
     if (existing) {
       await updateWorkflow(db, workflow.id, () => workflow);
-      console.log(`[DB] Updated workflow: ${workflow.id} from JSON file`);
+      logger.debug(`Updated workflow: ${workflow.id} from JSON file`);
     } else {
       await addWorkflow(db, workflow);
-      console.log(`[DB] Added workflow: ${workflow.id}`);
+      logger.debug(`Added workflow: ${workflow.id}`);
     }
   }
 }
@@ -307,7 +308,7 @@ export async function initializePredefinedWorkflows(
 
     if (!workflowsDir) {
       const errorMsg = `Workflows directory not found. Tried paths:\n${possiblePaths.map((p) => `  - ${p}`).join("\n")}\nCurrent working directory: ${fileSystem.cwd()}\n\nPlease ensure the workflows JSON files exist in packages/core/workflows/`;
-      console.error(`[DB] ${errorMsg}`);
+      logger.error(`${errorMsg}`);
       return err(
         new Error(
           `Workflows directory not found. Checked ${possiblePaths.length} locations. Current working directory: ${fileSystem.cwd()}`
@@ -326,15 +327,11 @@ export async function initializePredefinedWorkflows(
       .map((file: string) => join(workflowsDir, file));
 
     if (workflowFiles.length === 0) {
-      console.warn(
-        "[DB] No workflow files (JSON/YAML) found in workflows directory"
-      );
+      logger.warn("No workflow files (JSON/YAML) found in workflows directory");
       return err(new Error(`No workflow files found in ${workflowsDir}`));
     }
 
-    console.log(
-      `[DB] Found ${workflowFiles.length} workflow file(s) (JSON/YAML)`
-    );
+    logger.debug(`Found ${workflowFiles.length} workflow file(s) (JSON/YAML)`);
 
     // First pass: Load all workflows (including those with extends)
     const workflowsToAdd: Workflow[] = [];
@@ -344,22 +341,22 @@ export async function initializePredefinedWorkflows(
       if (workflow) {
         workflowsToAdd.push(workflow);
         const fileName = filePath.split(PATH_SEPARATOR_REGEX).pop() || filePath;
-        console.log(`[DB] ✓ Loaded workflow: ${workflow.id} from ${fileName}`);
+        logger.debug(`✓ Loaded workflow: ${workflow.id} from ${fileName}`);
       } else {
         const fileName = filePath.split(PATH_SEPARATOR_REGEX).pop() || filePath;
         failedFiles.push(fileName);
-        console.warn(`[DB] ✗ Failed to load workflow from ${fileName}`);
+        logger.warn(`✗ Failed to load workflow from ${fileName}`);
       }
     }
 
     if (failedFiles.length > 0) {
-      console.warn(
-        `[DB] Failed to load ${failedFiles.length} workflow file(s): ${failedFiles.join(", ")}`
+      logger.warn(
+        `Failed to load ${failedFiles.length} workflow file(s): ${failedFiles.join(", ")}`
       );
     }
 
     if (workflowsToAdd.length === 0) {
-      console.warn("[DB] No valid workflows loaded from JSON files");
+      logger.warn("No valid workflows loaded from JSON files");
       return err(
         new Error(`No valid workflows could be loaded from ${workflowsDir}`)
       );
@@ -390,12 +387,12 @@ export async function initializePredefinedWorkflows(
             }
           );
           resolvedWorkflows.push(resolved);
-          console.log(
-            `[DB] ✓ Resolved inheritance for workflow: ${workflow.id} (extends: ${workflow.extends})`
+          logger.debug(
+            `✓ Resolved inheritance for workflow: ${workflow.id} (extends: ${workflow.extends})`
           );
         } catch (error) {
-          console.error(
-            `[DB] ✗ Failed to resolve inheritance for workflow ${workflow.id}:`,
+          logger.error(
+            `✗ Failed to resolve inheritance for workflow ${workflow.id}:`,
             error
           );
           // Still add the workflow without resolving (will fail at runtime if executed)
@@ -407,8 +404,8 @@ export async function initializePredefinedWorkflows(
       }
     }
 
-    console.log(
-      `[DB] Preparing to add/update ${resolvedWorkflows.length} workflow(s) (${workflowsToAdd.filter((w) => w.extends).length} with inheritance resolved)`
+    logger.debug(
+      `Preparing to add/update ${resolvedWorkflows.length} workflow(s) (${workflowsToAdd.filter((w) => w.extends).length} with inheritance resolved)`
     );
 
     await saveWorkflowsToDatabase(db, resolvedWorkflows);
@@ -419,13 +416,13 @@ export async function initializePredefinedWorkflows(
       predefinedIds.includes(w.id)
     ).length;
 
-    console.log(
-      `[DB] Verification: Total workflows: ${verifyWorkflows.length}, Predefined workflows: ${addedCount}`
+    logger.debug(
+      `Verification: Total workflows: ${verifyWorkflows.length}, Predefined workflows: ${addedCount}`
     );
 
     return ok(undefined);
   } catch (error) {
-    console.error("[DB] Error initializing predefined workflows:", error);
+    logger.error("Error initializing predefined workflows:", error);
     return err(error instanceof Error ? error : new Error(String(error)));
   }
 }

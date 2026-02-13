@@ -9,7 +9,7 @@ export default defineConfig({
   clean: true,
   bundle: true,
   minify: false,
-  external: ["@openfarm/sdk", "@openfarm/core"],
+  external: ["@openfarm/sdk"],
   outDir: "dist",
   target: "node18",
 });

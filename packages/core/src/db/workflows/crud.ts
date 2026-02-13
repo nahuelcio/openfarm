@@ -251,3 +251,37 @@ export async function deleteAllWorkflows(db: SQL): Promise<Result<number>> {
     return err(error instanceof Error ? error : new Error(String(error)));
   }
 }
+
+/**
+ * Syncs workflows from YAML files to the database.
+ * This allows instant access to workflows without filesystem operations.
+ * Non-blocking - doesn't affect UI responsiveness.
+ *
+ * @param db - The SQL database instance
+ * @param workflowsToSync - Array of workflows to sync to database
+ * @returns Result indicating success or failure
+ */
+export async function syncWorkflowsToDatabase(
+  db: SQL,
+  workflowsToSync: Workflow[]
+): Promise<Result<void>> {
+  try {
+    // Clear existing workflows
+    await deleteAllWorkflows(db);
+
+    // Add all workflows in parallel
+    const results = await Promise.all(
+      workflowsToSync.map((workflow) => addWorkflow(db, workflow))
+    );
+
+    // Check if any failed
+    const failed = results.find((r) => !r.ok);
+    if (failed) {
+      return failed as Result<void>;
+    }
+
+    return ok(undefined);
+  } catch (error) {
+    return err(error instanceof Error ? error : new Error(String(error)));
+  }
+}

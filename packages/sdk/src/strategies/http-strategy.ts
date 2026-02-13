@@ -10,7 +10,10 @@ import type {
   CommunicationResponse,
   CommunicationStrategy,
 } from "../provider-system/types";
+import { createLogger } from "../utils/logger";
 import type { HttpRequestOptions } from "./types";
+
+const logger = createLogger("HttpStrategy");
 
 /**
  * HTTP authentication configuration.
@@ -498,6 +501,6 @@ export class HttpCommunicationStrategy implements CommunicationStrategy {
    * Log messages with strategy prefix.
    */
   private log(message: string): void {
-    console.log(`[HttpStrategy] ${message}`);
+    logger.debug(message);
   }
 }

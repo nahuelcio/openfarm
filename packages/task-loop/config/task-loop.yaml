@@ -1,0 +1,168 @@
+# Task Loop Configuration
+# Single unified configuration file for task-loop behavior
+
+# Task Selection Configuration
+selection:
+  strategies:
+    priority:
+      enabled: true
+      description: "Select tasks by priority (critical > high > medium > low)"
+    fifo:
+      enabled: true
+      description: "First in, first out"
+    lifo:
+      enabled: true
+      description: "Last in, first out"
+    random:
+      enabled: true
+      description: "Random selection"
+  
+  priorityScores:
+    critical: 4
+    high: 3
+    medium: 2
+    low: 1
+  
+  defaultStrategy: "priority"
+
+# Prompt Template Configuration
+prompts:
+  defaultTemplate: "default"
+  
+  templates:
+    default:
+      name: "Default Template"
+      description: "Standard prompt with all sections"
+      content: |
+        {title}
+
+        ## Description
+        {description}
+
+        ## Acceptance Criteria
+        {acceptanceCriteria}
+
+        ## Instructions
+        You are an AI coding assistant working autonomously. Please implement the requirements above.
+        Make reasonable assumptions if information is missing. Do not ask clarifying questions.
+
+        {preInstructions}
+      variables:
+        - title
+        - description
+        - acceptanceCriteria
+        - preInstructions
+
+    simple:
+      name: "Simple Template"
+      description: "Minimal prompt for quick tasks"
+      content: |
+        {title}
+
+        {description}
+
+        Acceptance Criteria:
+        {acceptanceCriteria}
+      variables:
+        - title
+        - description
+        - acceptanceCriteria
+
+    detailed:
+      name: "Detailed Template"
+      description: "Comprehensive prompt with full context"
+      content: |
+        # Task: {title}
+
+        ## Overview
+        {description}
+
+        ## Success Criteria
+        {acceptanceCriteria}
+
+        ## Context
+        - Type: {workItemType}
+        - ID: {id}
+        - Project: {project}
+        - Priority: {priority}
+
+        ## Additional Instructions
+        {preInstructions}
+
+        ## Guidelines
+        1. Implement the requirements completely
+        2. Follow existing code patterns and conventions
+        3. Add tests if appropriate
+        4. Update documentation as needed
+        5. Ensure the code passes any existing linting/type checks
+
+        You are running in an automated environment. Do not ask questions. Proceed with implementation.
+      variables:
+        - title
+        - description
+        - acceptanceCriteria
+        - workItemType
+        - id
+        - project
+        - priority
+        - preInstructions
+
+# Completion Detection Configuration
+completion:
+  strategies:
+    heuristic:
+      enabled: true
+      description: "Detect completion based on output markers"
+      completionMarkers:
+        - "task completed"
+        - "done"
+        - "finished"
+        - "completed successfully"
+        - "changes applied"
+        - "implemented"
+        - "✓"
+        - "✅"
+        - "success"
+        - "all requirements met"
+      failureMarkers:
+        - "failed"
+        - "error"
+        - "unable to"
+        - "cannot"
+        - "unable to complete"
+        - "task failed"
+        - "❌"
+        - "✗"
+        - "not possible"
+        - "insufficient information"
+      fatalErrorPatterns:
+        - "permission denied"
+        - "not found"
+        - "does not exist"
+        - "invalid"
+        - "unauthorized"
+        - "authentication failed"
+        - "repository not found"
+
+    gitChanges:
+      enabled: true
+      description: "Detect completion based on git changes"
+      minChanges: 1
+
+    llmJudge:
+      enabled: false
+      description: "Use LLM to evaluate completion (future)"
+  
+  defaultStrategy: "heuristic"
+
+# Workflow Configuration
+workflows:
+  defaultWorkflow: "oneshot_with_git"
+  taskExecutionWorkflow: "oneshot_with_git"
+  gitSetupWorkflow: "oneshot_with_git"
+  
+  # Workflow overrides per task type
+  workflowOverrides:
+    bug: "oneshot_with_git"
+    feature: "oneshot_with_git"
+    refactor: "oneshot_with_git"

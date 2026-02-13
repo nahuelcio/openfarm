@@ -284,6 +284,51 @@ export async function createSchema(db: SQL): Promise<void> {
   await db`CREATE INDEX IF NOT EXISTS idx_workflow_events_timestamp ON workflow_events(timestamp)`;
   await db`CREATE INDEX IF NOT EXISTS idx_workflow_events_execution_sequence ON workflow_events(execution_id, sequence_number)`;
 
+  // Create tui_executions table for TUI execution history
+  await db`
+    CREATE TABLE IF NOT EXISTS tui_executions (
+      id TEXT PRIMARY KEY,
+      task TEXT NOT NULL,
+      provider TEXT NOT NULL,
+      model TEXT,
+      workspace TEXT NOT NULL,
+      workflow_id TEXT,
+      status TEXT NOT NULL CHECK(status IN ('pending', 'running', 'completed', 'failed')),
+      started_at TEXT NOT NULL,
+      completed_at TEXT,
+      duration INTEGER,
+      output TEXT,
+      error TEXT,
+      tokens_used INTEGER,
+      files_modified TEXT,
+      diff TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+  `;
+  await db`CREATE INDEX IF NOT EXISTS idx_tui_executions_status ON tui_executions(status)`;
+  await db`CREATE INDEX IF NOT EXISTS idx_tui_executions_started_at ON tui_executions(started_at DESC)`;
+
+  // Create generated_contexts table for storing AI-generated repository contexts
+  await db`
+    CREATE TABLE IF NOT EXISTS generated_contexts (
+      id TEXT PRIMARY KEY,
+      workspace TEXT NOT NULL,
+      provider TEXT NOT NULL,
+      model TEXT,
+      content TEXT NOT NULL,
+      git_hash TEXT,
+      files_analyzed INTEGER,
+      duration INTEGER,
+      size_bytes INTEGER,
+      metadata TEXT,
+      created_at TEXT NOT NULL
+    )
+  `;
+  await db`CREATE INDEX IF NOT EXISTS idx_generated_contexts_workspace ON generated_contexts(workspace)`;
+  await db`CREATE INDEX IF NOT EXISTS idx_generated_contexts_git_hash ON generated_contexts(git_hash)`;
+  await db`CREATE INDEX IF NOT EXISTS idx_generated_contexts_created_at ON generated_contexts(created_at DESC)`;
+
   // Create system_configurations table for storing system-wide configurations
   await db`
     CREATE TABLE IF NOT EXISTS system_configurations (
@@ -423,4 +468,118 @@ export async function createSchema(db: SQL): Promise<void> {
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
   `;
+
+  // Create task_loop_sessions table for task loop persistence
+  await db`
+    CREATE TABLE IF NOT EXISTS task_loop_sessions (
+      id TEXT PRIMARY KEY,
+      status TEXT NOT NULL CHECK(status IN ('idle', 'running', 'paused', 'completed', 'failed', 'resuming')),
+      config TEXT NOT NULL,
+      tasks TEXT NOT NULL,
+      current_task_index INTEGER NOT NULL DEFAULT 0,
+      completed_tasks INTEGER NOT NULL DEFAULT 0,
+      failed_tasks INTEGER NOT NULL DEFAULT 0,
+      skipped_tasks INTEGER NOT NULL DEFAULT 0,
+      started_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      completed_at TEXT,
+      logs TEXT NOT NULL DEFAULT '[]',
+      metadata TEXT
+    )
+  `;
+  await db`CREATE INDEX IF NOT EXISTS idx_task_loop_sessions_status ON task_loop_sessions(status)`;
+  await db`CREATE INDEX IF NOT EXISTS idx_task_loop_sessions_updated_at ON task_loop_sessions(updated_at DESC)`;
+
+  // Create session_checkpoints table for resumable sessions quick lookup
+  await db`
+    CREATE TABLE IF NOT EXISTS session_checkpoints (
+      session_id TEXT PRIMARY KEY,
+      session_type TEXT NOT NULL CHECK(session_type IN ('task-loop')),
+      status TEXT NOT NULL CHECK(status IN ('idle', 'running', 'paused', 'completed', 'failed', 'resuming')),
+      current_task_id TEXT,
+      current_task_title TEXT,
+      completed_tasks INTEGER NOT NULL DEFAULT 0,
+      failed_tasks INTEGER NOT NULL DEFAULT 0,
+      total_tasks INTEGER NOT NULL DEFAULT 0,
+      started_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      resumed_from_id TEXT,
+      metadata TEXT,
+      FOREIGN KEY (session_id) REFERENCES task_loop_sessions(id) ON DELETE CASCADE
+    )
+  `;
+  await db`CREATE INDEX IF NOT EXISTS idx_session_checkpoints_status ON session_checkpoints(status)`;
+  await db`CREATE INDEX IF NOT EXISTS idx_session_checkpoints_updated_at ON session_checkpoints(updated_at DESC)`;
+
+  // Create execution_logs table for persisted task loop logs
+  await db`
+    CREATE TABLE IF NOT EXISTS execution_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      session_id TEXT NOT NULL,
+      timestamp TEXT NOT NULL,
+      level TEXT NOT NULL CHECK(level IN ('debug', 'info', 'warn', 'error')),
+      component TEXT NOT NULL,
+      message TEXT NOT NULL,
+      metadata TEXT,
+      FOREIGN KEY (session_id) REFERENCES task_loop_sessions(id) ON DELETE CASCADE
+    )
+  `;
+  await db`CREATE INDEX IF NOT EXISTS idx_execution_logs_session_id ON execution_logs(session_id)`;
+  await db`CREATE INDEX IF NOT EXISTS idx_execution_logs_timestamp ON execution_logs(timestamp DESC)`;
+
+  // Create remote_instances table for TUI remote instance persistence
+  await db`
+    CREATE TABLE IF NOT EXISTS remote_instances (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      url TEXT NOT NULL,
+      token TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+  `;
+  await db`CREATE INDEX IF NOT EXISTS idx_remote_instances_name ON remote_instances(name)`;
+
+  // Create warp_conversations table for TUI Warp Terminal chat
+  await db`
+    CREATE TABLE IF NOT EXISTS warp_conversations (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      provider TEXT NOT NULL,
+      model TEXT,
+      workspace_path TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+  `;
+  await db`CREATE INDEX IF NOT EXISTS idx_warp_conversations_updated_at ON warp_conversations(updated_at DESC)`;
+
+  // Create warp_messages table for TUI Warp Terminal chat messages
+  await db`
+    CREATE TABLE IF NOT EXISTS warp_messages (
+      id TEXT PRIMARY KEY,
+      conversation_id TEXT NOT NULL,
+      role TEXT NOT NULL CHECK(role IN ('user', 'assistant', 'system')),
+      content TEXT NOT NULL,
+      status TEXT NOT NULL CHECK(status IN ('sending', 'streaming', 'complete', 'error')),
+      blocks TEXT,
+      tokens_used INTEGER,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (conversation_id) REFERENCES warp_conversations(id) ON DELETE CASCADE
+    )
+  `;
+  await db`CREATE INDEX IF NOT EXISTS idx_warp_messages_conversation_id ON warp_messages(conversation_id)`;
+  await db`CREATE INDEX IF NOT EXISTS idx_warp_messages_created_at ON warp_messages(created_at ASC)`;
+
+  // Create warp_context_files table for files mentioned in chat
+  await db`
+    CREATE TABLE IF NOT EXISTS warp_context_files (
+      conversation_id TEXT NOT NULL,
+      file_path TEXT NOT NULL,
+      content_snapshot TEXT,
+      PRIMARY KEY (conversation_id, file_path),
+      FOREIGN KEY (conversation_id) REFERENCES warp_conversations(id) ON DELETE CASCADE
+    )
+  `;
+  await db`CREATE INDEX IF NOT EXISTS idx_warp_context_files_conversation_id ON warp_context_files(conversation_id)`;
 }

@@ -1,7 +1,10 @@
 import { err, ok, type Result } from "@openfarm/result";
+import { createLogger } from "../utils/logger";
 import { runMigrationIfNeeded } from "./migrations";
 import { createSchema } from "./schema";
 import { migrateSchema } from "./schema-migrations";
+
+const logger = createLogger("DB");
 
 // Use any type to avoid importing from bun during bundling
 type SQL = any;
@@ -53,19 +56,19 @@ export type { DbFileSystem } from "../types/runtime";
 function _isRunningInBun(): boolean {
   // Check multiple ways Bun might be available
   if (typeof (globalThis as any).Bun !== "undefined") {
-    console.log("[DB] Detected Bun via globalThis.Bun");
+    logger.debug("Detected Bun via globalThis.Bun");
     return true;
   }
   // Also check process.versions.bun
   if (typeof process !== "undefined" && (process as any).versions?.bun) {
-    console.log("[DB] Detected Bun via process.versions.bun");
+    logger.debug("Detected Bun via process.versions.bun");
     return true;
   }
   // Check if Bun is available via require
   try {
     const bun = require("bun");
     if (bun) {
-      console.log("[DB] Detected Bun via require('bun')");
+      logger.debug("Detected Bun via require('bun')");
       return true;
     }
   } catch (_e) {
@@ -78,13 +81,13 @@ function _isRunningInBun(): boolean {
     process.execPath &&
     (process.execPath.includes("bun") || process.execPath.endsWith("bun"))
   ) {
-    console.log("[DB] Detected Bun via process.execPath:", process.execPath);
+    logger.debug("Detected Bun via process.execPath:", process.execPath);
     return true;
   }
 
-  console.log("[DB] Bun not detected, using Node.js fallback");
-  console.log("[DB] process.execPath:", process.execPath);
-  console.log("[DB] process.versions:", process.versions);
+  logger.debug("Bun not detected, using Node.js fallback");
+  logger.debug("process.execPath:", process.execPath);
+  logger.debug("process.versions:", process.versions);
   return false;
 }
 
@@ -107,24 +110,22 @@ function getSQLiteAdapter(absolutePath: string): SQL {
     // Bun SQLite accepts file paths with sqlite:// protocol
     // Format: sqlite:///absolute/path or sqlite://relative/path
     const dbUrl = `sqlite://${absolutePath}`;
-    console.log(`[DB] Using Bun SQL. Connecting with URL: ${dbUrl}`);
+    logger.debug(`Using Bun SQL. Connecting with URL: ${dbUrl}`);
 
     try {
       const db = new SQLClass(dbUrl, { adapter: "sqlite" });
-      console.log(
-        "[DB] Database connection established successfully with Bun SQL"
-      );
+      logger.debug("Database connection established successfully with Bun SQL");
       return db;
     } catch (error) {
-      console.error("[DB] Failed to connect with sqlite:// protocol:", error);
+      logger.error("Failed to connect with sqlite:// protocol:", error);
       // Try alternative format
       try {
-        console.log(`[DB] Trying alternative format: ${absolutePath}`);
+        logger.debug(`Trying alternative format: ${absolutePath}`);
         const db = new SQLClass(absolutePath, { adapter: "sqlite" });
-        console.log("[DB] Database connection established with direct path");
+        logger.debug("Database connection established with direct path");
         return db;
       } catch (error2) {
-        console.error("[DB] Failed to connect with direct path:", error2);
+        logger.error("Failed to connect with direct path:", error2);
         throw error2;
       }
     }
@@ -169,24 +170,24 @@ export async function createDb(config: DbConfig): Promise<Result<any>> {
     // Ensure directory exists - import path dynamically
     const { dirname } = await import("node:path");
     const dbDir = dirname(dbPath);
-    if (!fileSystem.existsSync(dbDir)) {
-      console.log(`[DB] Creating directory: ${dbDir}`);
+    if (dbDir && dbDir !== "." && !fileSystem.existsSync(dbDir)) {
+      logger.debug(`Creating directory: ${dbDir}`);
       fileSystem.mkdirSync(dbDir, { recursive: true });
     }
 
-    console.log(`[DB] Initializing SQLite database at: ${dbPath}`);
+    logger.debug(`Initializing SQLite database at: ${dbPath}`);
     // Use absolute path for SQLite
     const { resolve } = await import("node:path");
     const absolutePath = resolve(dbPath);
-    console.log(`[DB] Absolute path: ${absolutePath}`);
+    logger.debug(`Absolute path: ${absolutePath}`);
 
     // Get appropriate SQLite adapter for the runtime
     let db: SQL;
     try {
       db = getSQLiteAdapter(absolutePath);
-      console.log("[DB] Database connection established successfully");
+      logger.debug("Database connection established successfully");
     } catch (error) {
-      console.error("[DB] Failed to initialize database:", error);
+      logger.error("Failed to initialize database:", error);
       return err(
         new Error(
           `Failed to initialize SQLite database: ${error instanceof Error ? error.message : String(error)}`

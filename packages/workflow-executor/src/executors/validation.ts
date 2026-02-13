@@ -38,6 +38,14 @@ export const AgentCodeSchema = z.object({
   previewMode: z.boolean().optional(),
   readOnly: z.boolean().optional(), // Alias for previewMode
   chatOnly: z.boolean().optional(), // If true, ignores diffs and returns only text summary
+  runtimeType: z.enum(["local", "docker", "kubernetes", "worktree"]).optional(),
+  worktreePath: z.string().optional(),
+  baseBranch: z.string().optional(),
+  containerName: z.string().optional(),
+  podName: z.string().optional(),
+  namespace: z.string().optional(),
+  imageName: z.string().optional(),
+  ephemeral: z.boolean().optional(),
 
   // OpenCode specific fields
   agent: z.string().optional(),

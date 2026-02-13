@@ -12,7 +12,7 @@ import type { ExecutionOptions, ExecutionResult } from "../types";
  * Defines the essential contract for code execution providers.
  */
 export interface Provider {
-  /** Unique identifier for the provider type (e.g., 'opencode', 'aider') */
+  /** Unique identifier for the provider type (e.g., 'external-agent', 'aider') */
   readonly type: string;
 
   /** Human-readable name for the provider */
@@ -119,6 +119,12 @@ export interface CommunicationRequest {
 
   /** Additional strategy-specific options */
   options?: Record<string, unknown>;
+
+  /** Optional callback for stdout streaming (CLI strategies) */
+  onStdout?: (line: string) => void;
+
+  /** Optional callback for stderr streaming (CLI strategies) */
+  onStderr?: (line: string) => void;
 }
 
 /**

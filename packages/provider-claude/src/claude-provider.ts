@@ -8,6 +8,10 @@ import type {
   ProviderMetadata,
   StreamResponseParser,
 } from "@openfarm/sdk";
+import {
+  CLAUDE_DEFAULT_TIMEOUT,
+  createClaudeMetadata,
+} from "./provider-definition";
 
 /**
  * Claude provider implementation
@@ -32,44 +36,13 @@ export class ClaudeProvider implements Provider {
     this.configManager = configManager;
 
     this.config = {
-      timeout: 600_000,
+      timeout: CLAUDE_DEFAULT_TIMEOUT,
       ...config,
     };
   }
 
   getMetadata(): ProviderMetadata {
-    return {
-      type: "claude",
-      name: "Claude Code",
-      version: "1.0.0",
-      description:
-        "Claude Code AI assistant with advanced code understanding and editing capabilities",
-      packageName: "@openfarm/provider-claude",
-      supportedFeatures: [
-        "code-generation",
-        "code-editing",
-        "refactoring",
-        "debugging",
-        "code-analysis",
-        "file-operations",
-        "bash-execution",
-        "web-search",
-      ],
-      configSchema: {
-        type: "object",
-        properties: {
-          timeout: {
-            type: "number",
-            default: 600_000,
-            minimum: 1000,
-            description: "Timeout in milliseconds",
-          },
-        },
-        required: [],
-        additionalProperties: false,
-      },
-      requiresExternal: true,
-    };
+    return createClaudeMetadata();
   }
 
   async execute(options: ExecutionOptions): Promise<ExecutionResult> {
@@ -88,7 +61,6 @@ export class ClaudeProvider implements Provider {
         throw new Error("Task is required and cannot be empty");
       }
 
-      log("🔍 Checking Claude Code...");
       const isAvailable = await this.testConnection();
       if (!isAvailable) {
         const error =
@@ -101,26 +73,19 @@ export class ClaudeProvider implements Provider {
           error,
         };
       }
-      log("✅ Claude Code found");
-      log("");
 
       const args = this.buildCliArgs(options);
-
       log(
-        `🚀 Running: claude ${args.map((a) => (a.includes(" ") ? `"${a}"` : a)).join(" ")}`
+        `🚀 claude ${args.map((a) => (a.includes(" ") ? `"${a}"` : a)).join(" ")}`
       );
-      log("");
 
       const request: CommunicationRequest = {
         args,
-        options: {
-          workingDirectory: options.workspace || process.cwd(),
-          env: {
-            ...process.env,
-            CLAUDE_CODE_DISABLE_PROMPTS: "1",
-          },
-          timeout: this.config.timeout,
+        workingDirectory: options.workspace || process.cwd(),
+        env: {
+          CLAUDE_CODE_DISABLE_PROMPTS: "1",
         },
+        timeout: this.config.timeout,
       };
 
       const response = await this.communicationStrategy.execute(request);
@@ -134,12 +99,22 @@ export class ClaudeProvider implements Provider {
         };
       }
 
-      // Parse the response (though Claude outputs raw text we want to preserve)
-      const parsed = await this.responseParser.parse(response);
+      let output = response.body;
+      try {
+        const parsed = await this.responseParser.parse(response);
+        output = typeof parsed === "string" ? parsed : response.body;
+      } catch (error) {
+        if (!output.trim()) {
+          output = "Claude command completed successfully";
+        }
+        log(
+          `⚠️ Parser failed, using fallback output: ${error instanceof Error ? error.message : "Unknown error"}`
+        );
+      }
 
       return {
         success: true,
-        output: typeof parsed === "string" ? parsed : response.body,
+        output,
         duration: Date.now() - startTime,
       };
     } catch (error) {
@@ -158,9 +133,7 @@ export class ClaudeProvider implements Provider {
     try {
       const request: CommunicationRequest = {
         args: ["--version"],
-        options: {
-          timeout: 5000,
-        },
+        timeout: 5000,
       };
 
       const response = await this.communicationStrategy.execute(request);

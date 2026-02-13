@@ -1,8 +1,8 @@
 import type { Workflow, WorkflowStep } from "@openfarm/core";
 import { StepType } from "@openfarm/core";
 import { getDb, updateWorkflow } from "@openfarm/core/db";
-import { Box, Text, useInput } from "ink";
-import TextInput from "ink-text-input";
+import { Box, Text, useInput } from "@openfarm/tui-opentui";
+import TextInput from "@openfarm/tui-opentui/text-input";
 import { useState } from "react";
 import { useStore } from "../store";
 
