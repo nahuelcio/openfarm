@@ -8,6 +8,11 @@ export function DashboardScreen({ vm }: DashboardScreenProps) {
 	const activeWorkspaces = vm.workspaces.filter(
 		(workspace) => workspace.status !== "archived",
 	);
+	const availableSessions = vm.selectedProject
+		? vm.sessions.filter(
+				(session) => session.projectId === vm.selectedProject?.id,
+			)
+		: vm.sessions;
 	const selectedWorkspace = vm.workspaces.find(
 		(workspace) => workspace.id === vm.selectedWorkspaceId,
 	);
@@ -100,6 +105,42 @@ export function DashboardScreen({ vm }: DashboardScreenProps) {
 											? `Workspace activo: ${selectedWorkspace.name}`
 											: "Seleccioná un workspace para arrancar"}
 									</p>
+									<div className="list-item-actions">
+										<select
+											onChange={(event) => {
+												const nextProjectId = event.target.value;
+												const project = vm.projects.find(
+													(item) => item.id === nextProjectId,
+												);
+												vm.setSelectedProject(project || null);
+											}}
+											value={vm.selectedProject?.id || ""}
+										>
+											<option value="">All projects</option>
+											{vm.projects.map((project) => (
+												<option key={project.id} value={project.id}>
+													{project.name}
+												</option>
+											))}
+										</select>
+										<select
+											onChange={(event) => {
+												const nextSessionId = event.target.value;
+												const session = availableSessions.find(
+													(item) => item.id === nextSessionId,
+												);
+												vm.setSelectedSession(session || null);
+											}}
+											value={vm.selectedSession?.id || ""}
+										>
+											<option value="">All sessions</option>
+											{availableSessions.map((session) => (
+												<option key={session.id} value={session.id}>
+													{session.name}
+												</option>
+											))}
+										</select>
+									</div>
 								</div>
 								<div className="list-item-actions">
 									<button
@@ -179,6 +220,62 @@ export function DashboardScreen({ vm }: DashboardScreenProps) {
 											))}
 										</div>
 									)}
+								</div>
+								<div className="context-block">
+									<div className="context-block-header">
+										<h3>Quick compose</h3>
+									</div>
+									<select
+										onChange={(event) => {
+											const nextId = event.target.value;
+											vm.setSelectedWorkspaceId(nextId);
+											const workspace = activeWorkspaces.find(
+												(item) => item.id === nextId,
+											);
+											vm.setWorkspaceInput(workspace?.repoPath || "");
+										}}
+										value={vm.selectedWorkspaceId}
+									>
+										<option value="">Select workspace</option>
+										{activeWorkspaces.map((workspace) => (
+											<option key={workspace.id} value={workspace.id}>
+												{workspace.name} · {workspace.branchName || "main"}
+											</option>
+										))}
+									</select>
+									<textarea
+										onChange={(event) => vm.setTaskInput(event.target.value)}
+										placeholder="Describe the task for the agent..."
+										rows={4}
+										value={vm.taskInput}
+									/>
+									<select
+										onChange={(event) => vm.setProvider(event.target.value)}
+										value={vm.provider}
+									>
+										<option value="external-agent">External Agent (CLI)</option>
+										<option value="aider">Aider</option>
+										<option value="claude">Claude Code</option>
+										<option value="opencode">OpenCode</option>
+										<option value="codex">Codex</option>
+									</select>
+									<div className="list-item-actions">
+										<button
+											className="btn-primary"
+											disabled={!vm.taskInput.trim() || vm.loading}
+											onClick={vm.spawnAgent}
+											type="button"
+										>
+											{vm.loading ? "Running..." : "Run Agent"}
+										</button>
+										<button
+											className="btn-secondary"
+											onClick={() => vm.setView("spawn")}
+											type="button"
+										>
+											Open full composer
+										</button>
+									</div>
 								</div>
 								<div className="context-block">
 									<div className="context-block-header">
