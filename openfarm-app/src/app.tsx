@@ -364,6 +364,39 @@ export default function App() {
 		[dispatchMessageToAgent, enqueueInstruction, selectedAgent],
 	);
 
+	const handleDeployNewAgent = useCallback(
+		async (payload: MessagePayload) => {
+			if (!selectedAgent) {
+				return;
+			}
+			const existingAgentIds = new Set(
+				workspaces.flatMap((workspace) =>
+					workspace.agents.map((agent) => agent.id),
+				),
+			);
+			try {
+				const next = await createAgent({
+					prompt: payload.message,
+					repo: selectedAgent.repo,
+					provider: payload.provider || selectedAgent.provider,
+					model: payload.model || selectedAgent.model || settings.defaultModel,
+				});
+				const createdAgentId =
+					next.workspaces
+						.flatMap((workspace) => workspace.agents)
+						.find((agent) => !existingAgentIds.has(agent.id))?.id || null;
+				syncState(next, createdAgentId);
+			} catch (error) {
+				const message =
+					error instanceof Error ? error.message : "Failed to deploy agent";
+				if (typeof window !== "undefined") {
+					window.alert(message);
+				}
+			}
+		},
+		[selectedAgent, settings.defaultModel, syncState, workspaces],
+	);
+
 	const handleRemoveQueuedInstruction = useCallback(
 		(queueItemId: string) => {
 			if (!selectedAgent) {
@@ -597,6 +630,7 @@ export default function App() {
 						<AgentPanel
 							agent={selectedAgent}
 							onSendMessage={handleSendMessage}
+							onDeployNewAgent={handleDeployNewAgent}
 							providers={settings.providers}
 							workspaceId={selectedWorkspaceId}
 							workspaceAgents={selectedWorkspaceAgents}

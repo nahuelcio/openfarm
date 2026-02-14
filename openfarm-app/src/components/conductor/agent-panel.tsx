@@ -32,6 +32,13 @@ interface AgentPanelProps {
 		model?: string;
 		agentMode?: AgentMode;
 	}) => void;
+	onDeployNewAgent: (payload: {
+		message: string;
+		attachments?: Attachment[];
+		provider?: AgentProvider;
+		model?: string;
+		agentMode?: AgentMode;
+	}) => void;
 	onRemoveQueuedInstruction: (queueItemId: string) => void;
 	onStopAgent: () => void;
 	stoppingAgent: boolean;
@@ -47,6 +54,7 @@ export function AgentPanel({
 	agentEvents,
 	logsLoading,
 	onSendMessage,
+	onDeployNewAgent,
 	onRemoveQueuedInstruction,
 	onStopAgent,
 	stoppingAgent,
@@ -129,7 +137,7 @@ export function AgentPanel({
 			)}
 			<PromptInput
 				onSend={onSendMessage}
-				disabled={agent.status === "error"}
+				onDeployAsNew={onDeployNewAgent}
 				provider={agent.provider}
 				model={agent.model}
 				mode={agent.mode}
@@ -139,7 +147,7 @@ export function AgentPanel({
 				workspaceAgents={workspaceAgents}
 				placeholder={
 					agent.status === "error"
-						? "Agent encountered an error. Fix the issue and retry."
+						? "Agent failed. Retry here or deploy as a new agent."
 						: "Ask the agent anything..."
 				}
 			/>

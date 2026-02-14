@@ -10,6 +10,7 @@ import {
 	FileText,
 	Hash,
 	Paperclip,
+	Plus,
 	Slash,
 	X,
 } from "lucide-react";
@@ -135,6 +136,13 @@ interface PromptInputProps {
 		model?: string;
 		agentMode?: AgentMode;
 	}) => void;
+	onDeployAsNew?: (payload: {
+		message: string;
+		attachments?: Attachment[];
+		provider?: AgentProvider;
+		model?: string;
+		agentMode?: AgentMode;
+	}) => void;
 	disabled?: boolean;
 	placeholder?: string;
 	provider?: AgentProvider;
@@ -148,6 +156,7 @@ interface PromptInputProps {
 
 export function PromptInput({
 	onSend,
+	onDeployAsNew,
 	disabled,
 	placeholder = "Ask the agent anything...",
 	provider = "claude-code",
@@ -409,9 +418,9 @@ export function PromptInput({
 		[activeToken, value],
 	);
 
-	const handleSubmit = async () => {
+	const buildOutgoingPayload = async () => {
 		if (!(value.trim() || attachments.length > 0) || disabled) {
-			return;
+			return null;
 		}
 		let message = value.trim();
 		if (workspaceId && message.startsWith("/")) {
@@ -419,16 +428,40 @@ export function PromptInput({
 				() => message,
 			);
 		}
-		onSend({
+		return {
 			message,
 			attachments: attachments.length > 0 ? attachments : undefined,
 			provider: selectedProvider,
 			model: selectedModel || undefined,
 			agentMode: selectedMode || undefined,
-		});
+		};
+	};
+
+	const clearComposer = () => {
 		setValue("");
 		setAttachments([]);
 		setActiveToken(null);
+	};
+
+	const handleSubmit = async () => {
+		const payload = await buildOutgoingPayload();
+		if (!payload) {
+			return;
+		}
+		onSend(payload);
+		clearComposer();
+	};
+
+	const handleDeployAsNew = async () => {
+		if (!onDeployAsNew) {
+			return;
+		}
+		const payload = await buildOutgoingPayload();
+		if (!payload) {
+			return;
+		}
+		onDeployAsNew(payload);
+		clearComposer();
 	};
 
 	const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -675,21 +708,39 @@ export function PromptInput({
 					/>
 
 					{/* Send button */}
-					<Button
-						size="icon"
-						className={cn(
-							"h-7 w-7 rounded-lg shrink-0 mb-0.5 transition-all",
-							value.trim() || attachments.length > 0
-								? "bg-primary text-primary-foreground hover:bg-primary/90"
-								: "bg-secondary text-muted-foreground cursor-not-allowed",
-						)}
-						disabled={(!value.trim() && attachments.length === 0) || disabled}
-						onClick={() => void handleSubmit()}
-						type="button"
-					>
-						<ArrowUp className="h-4 w-4" />
-						<span className="sr-only">Send message</span>
-					</Button>
+					<div className="mb-0.5 flex items-center gap-1">
+						<Button
+							size="icon"
+							variant="ghost"
+							className={cn(
+								"h-7 w-7 rounded-lg transition-all",
+								onDeployAsNew
+									? "text-muted-foreground hover:bg-accent hover:text-foreground"
+									: "hidden",
+							)}
+							disabled={(!value.trim() && attachments.length === 0) || disabled}
+							onClick={() => void handleDeployAsNew()}
+							type="button"
+						>
+							<Plus className="h-4 w-4" />
+							<span className="sr-only">Deploy as new agent</span>
+						</Button>
+						<Button
+							size="icon"
+							className={cn(
+								"h-7 w-7 rounded-lg shrink-0 transition-all",
+								value.trim() || attachments.length > 0
+									? "bg-primary text-primary-foreground hover:bg-primary/90"
+									: "bg-secondary text-muted-foreground cursor-not-allowed",
+							)}
+							disabled={(!value.trim() && attachments.length === 0) || disabled}
+							onClick={() => void handleSubmit()}
+							type="button"
+						>
+							<ArrowUp className="h-4 w-4" />
+							<span className="sr-only">Send message</span>
+						</Button>
+					</div>
 				</div>
 
 				<div className="flex flex-wrap items-center gap-2 border-t border-border/50 pt-2">
