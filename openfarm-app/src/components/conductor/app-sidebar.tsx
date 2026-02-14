@@ -18,6 +18,122 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Agent, AgentProvider, AgentStatus, Workspace } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
+interface AgentSubthread {
+	id: string;
+	name: string;
+	status: AgentStatus;
+	lastUpdate: string;
+	preview: string;
+}
+
+const SUBAGENT_PATTERNS = [
+	/background_output\s+([a-zA-Z][a-zA-Z0-9_-]*)/gi,
+	/\bsubagente\s+`?([a-zA-Z][a-zA-Z0-9_-]*)`?/gi,
+	/\bsubagent\s+`?([a-zA-Z][a-zA-Z0-9_-]*)`?/gi,
+	/\bagente\s+`([a-zA-Z][a-zA-Z0-9_-]*)`/gi,
+	/\bagent\s+`([a-zA-Z][a-zA-Z0-9_-]*)`/gi,
+	/@([a-zA-Z][a-zA-Z0-9_-]*)/g,
+];
+
+function normalizeSubagentName(value: string): string | null {
+	const clean = value.trim().toLowerCase();
+	if (!clean) {
+		return null;
+	}
+	const blocked = new Set([
+		"agent",
+		"agente",
+		"subagent",
+		"subagente",
+		"workspace",
+		"repo",
+	]);
+	if (blocked.has(clean)) {
+		return null;
+	}
+	return clean;
+}
+
+function extractSubagentNames(content: string): string[] {
+	const names = new Set<string>();
+	for (const pattern of SUBAGENT_PATTERNS) {
+		const regex = new RegExp(pattern.source, pattern.flags);
+		for (const match of content.matchAll(regex)) {
+			const raw = match[1];
+			if (!raw) {
+				continue;
+			}
+			const normalized = normalizeSubagentName(raw);
+			if (!normalized) {
+				continue;
+			}
+			names.add(normalized);
+		}
+	}
+	return [...names];
+}
+
+function inferSubthreadStatus(content: string): AgentStatus {
+	const normalized = content.toLowerCase();
+	if (
+		normalized.includes("(completed)") ||
+		normalized.includes("completed") ||
+		normalized.includes("done") ||
+		normalized.includes("finalizado") ||
+		normalized.includes("completado")
+	) {
+		return "completed";
+	}
+	if (
+		normalized.includes("failed") ||
+		normalized.includes("error") ||
+		normalized.includes("fallo")
+	) {
+		return "error";
+	}
+	if (
+		normalized.includes("working") ||
+		normalized.includes("running") ||
+		normalized.includes("thinking") ||
+		normalized.includes("trabajando")
+	) {
+		return "running";
+	}
+	return "idle";
+}
+
+function extractSubthreads(agent: Agent): AgentSubthread[] {
+	const byName = new Map<string, AgentSubthread>();
+	for (const message of agent.messages) {
+		const names = extractSubagentNames(message.content || "");
+		if (names.length === 0) {
+			continue;
+		}
+		const statusFromMessage = inferSubthreadStatus(message.content || "");
+		for (const name of names) {
+			const existing = byName.get(name);
+			if (!existing) {
+				byName.set(name, {
+					id: `${agent.id}::${name}`,
+					name,
+					status: statusFromMessage,
+					lastUpdate: message.timestamp,
+					preview: message.content,
+				});
+				continue;
+			}
+			existing.status = statusFromMessage;
+			existing.lastUpdate = message.timestamp;
+			existing.preview = message.content;
+		}
+	}
+	if (byName.size === 0) {
+		return [];
+	}
+
+	return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
 function StatusIcon({ status }: { status: AgentStatus }) {
 	switch (status) {
 		case "running":
@@ -63,6 +179,21 @@ function StatusLabel({ status }: { status: AgentStatus }) {
 			{labels[status]}
 		</span>
 	);
+}
+
+function SubthreadStatusDot({ status }: { status: AgentStatus }) {
+	if (status === "running") {
+		return (
+			<span className="h-1.5 w-1.5 rounded-full bg-agent-active animate-pulse" />
+		);
+	}
+	if (status === "completed") {
+		return <span className="h-1.5 w-1.5 rounded-full bg-agent-active" />;
+	}
+	if (status === "error") {
+		return <span className="h-1.5 w-1.5 rounded-full bg-agent-error" />;
+	}
+	return <span className="h-1.5 w-1.5 rounded-full bg-agent-idle" />;
 }
 
 const PROVIDER_BADGE: Record<
@@ -213,44 +344,68 @@ export function AppSidebar({
 								{/* Agent list */}
 								{isExpanded && (
 									<div className="pb-1">
-										{workspace.agents.map((agent) => (
-											<button
-												key={agent.id}
-												className={cn(
-													"flex w-full items-start gap-2.5 px-4 pl-9 py-2 text-left transition-colors group",
-													selectedAgentId === agent.id
-														? "bg-sidebar-accent"
-														: "hover:bg-sidebar-accent/50",
-												)}
-												onClick={() => onSelectAgent(agent)}
-											>
-												<StatusIcon status={agent.status} />
-												<div className="flex-1 min-w-0">
-													<div className="flex items-center gap-2">
-														<span
-															className={cn(
-																"text-[13px] truncate block",
-																selectedAgentId === agent.id
-																	? "text-sidebar-accent-foreground font-medium"
-																	: "text-sidebar-foreground",
-															)}
-														>
-															{agent.name}
-														</span>
-													</div>
-													<div className="flex items-center gap-2 mt-0.5">
-														<div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-															<GitBranch className="h-3 w-3" />
-															<span className="truncate max-w-[120px]">
-																{agent.branch}
-															</span>
+										{workspace.agents.map((agent) => {
+											const subthreads = extractSubthreads(agent);
+											return (
+												<div key={agent.id}>
+													<button
+														className={cn(
+															"flex w-full items-start gap-2.5 px-4 pl-9 py-2 text-left transition-colors group",
+															selectedAgentId === agent.id
+																? "bg-sidebar-accent"
+																: "hover:bg-sidebar-accent/50",
+														)}
+														onClick={() => onSelectAgent(agent)}
+													>
+														<StatusIcon status={agent.status} />
+														<div className="flex-1 min-w-0">
+															<div className="flex items-center gap-2">
+																<span
+																	className={cn(
+																		"text-[13px] truncate block",
+																		selectedAgentId === agent.id
+																			? "text-sidebar-accent-foreground font-medium"
+																			: "text-sidebar-foreground",
+																	)}
+																>
+																	{agent.name}
+																</span>
+															</div>
+															<div className="flex items-center gap-2 mt-0.5">
+																<div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+																	<GitBranch className="h-3 w-3" />
+																	<span className="truncate max-w-[120px]">
+																		{agent.branch}
+																	</span>
+																</div>
+																<ProviderBadge provider={agent.provider} />
+															</div>
 														</div>
-														<ProviderBadge provider={agent.provider} />
-													</div>
+														<StatusLabel status={agent.status} />
+													</button>
+													{subthreads.length > 0 && (
+														<div className="ml-12 mr-2 mb-1 rounded border border-border/60 bg-sidebar-accent/20">
+															{subthreads.map((thread) => (
+																<button
+																	key={thread.id}
+																	className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left hover:bg-sidebar-accent/50 transition-colors"
+																	onClick={() => onSelectAgent(agent)}
+																	type="button"
+																>
+																	<SubthreadStatusDot status={thread.status} />
+																	<span className="text-[11px] font-medium text-sidebar-foreground truncate">
+																		@{thread.name}
+																	</span>
+																	<span className="ml-auto text-[10px] text-muted-foreground uppercase">
+																		{thread.status}
+																	</span>
+																</button>
+															))}
+														</div>
+													)}
 												</div>
-												<StatusLabel status={agent.status} />
-											</button>
-										))}
+											);
+										})}
 									</div>
 								)}
 							</div>
