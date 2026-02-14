@@ -749,7 +749,7 @@ export default function App() {
 				<div
 					className={cn(
 						"shrink-0 overflow-hidden border-r border-border transition-all duration-200",
-						sidebarOpen ? "w-64 xl:w-72" : "w-0",
+						sidebarOpen ? "w-72 xl:w-80" : "w-0",
 					)}
 				>
 					<AppSidebar

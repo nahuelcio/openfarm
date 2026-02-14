@@ -196,6 +196,33 @@ function SubthreadStatusDot({ status }: { status: AgentStatus }) {
 	return <span className="h-1.5 w-1.5 rounded-full bg-agent-idle" />;
 }
 
+function SubthreadStatusLabel({ status }: { status: AgentStatus }) {
+	const labels: Record<AgentStatus, string> = {
+		running: "RUN",
+		idle: "IDLE",
+		completed: "DONE",
+		error: "ERR",
+		reviewing: "REVIEW",
+	};
+	const colors: Record<AgentStatus, string> = {
+		running: "text-agent-active",
+		idle: "text-agent-idle",
+		completed: "text-agent-active",
+		error: "text-agent-error",
+		reviewing: "text-primary",
+	};
+	return (
+		<span
+			className={cn(
+				"shrink-0 text-[10px] font-medium uppercase tracking-wider",
+				colors[status],
+			)}
+		>
+			{labels[status]}
+		</span>
+	);
+}
+
 const PROVIDER_BADGE: Record<
 	AgentProvider,
 	{ bg: string; text: string; label: string }
@@ -372,6 +399,9 @@ export function AppSidebar({
 																</span>
 															</div>
 															<div className="flex items-center gap-2 mt-0.5">
+																<span className="rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+																	Principal
+																</span>
 																<div className="flex items-center gap-1 text-[11px] text-muted-foreground">
 																	<GitBranch className="h-3 w-3" />
 																	<span className="truncate max-w-[120px]">
@@ -384,21 +414,25 @@ export function AppSidebar({
 														<StatusLabel status={agent.status} />
 													</button>
 													{subthreads.length > 0 && (
-														<div className="ml-12 mr-2 mb-1 rounded border border-border/60 bg-sidebar-accent/20">
+														<div className="ml-12 mr-2 mb-1 rounded border border-border/60 bg-sidebar-accent/20 px-1.5 py-1">
+															<div className="px-1 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+																Subagentes
+															</div>
 															{subthreads.map((thread) => (
 																<button
 																	key={thread.id}
-																	className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left hover:bg-sidebar-accent/50 transition-colors"
+																	className="flex w-full min-w-0 items-center gap-2 rounded px-1.5 py-1.5 text-left hover:bg-sidebar-accent/50 transition-colors"
 																	onClick={() => onSelectAgent(agent)}
+																	title={`${thread.lastUpdate} ${thread.preview ? `• ${thread.preview}` : ""}`}
 																	type="button"
 																>
 																	<SubthreadStatusDot status={thread.status} />
-																	<span className="text-[11px] font-medium text-sidebar-foreground truncate">
+																	<span className="min-w-0 flex-1 truncate text-[11px] font-medium text-sidebar-foreground">
 																		@{thread.name}
 																	</span>
-																	<span className="ml-auto text-[10px] text-muted-foreground uppercase">
-																		{thread.status}
-																	</span>
+																	<SubthreadStatusLabel
+																		status={thread.status}
+																	/>
 																</button>
 															))}
 														</div>
