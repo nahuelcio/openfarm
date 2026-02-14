@@ -420,6 +420,68 @@ export default function App() {
 		[selectedAgent],
 	);
 
+	const handleForceSendQueuedInstruction = useCallback(
+		async (queueItemId: string) => {
+			if (!selectedAgent) {
+				return;
+			}
+			const agentId = selectedAgent.id;
+			if (queueDispatchingRef.current.has(agentId)) {
+				return;
+			}
+
+			let queuedItem: QueuedInstruction | undefined;
+			setQueuedInstructionsByAgent((prev) => {
+				const current = prev[agentId] || [];
+				queuedItem = current.find((item) => item.id === queueItemId);
+				if (!queuedItem) {
+					return prev;
+				}
+				const nextQueue = current.filter((item) => item.id !== queueItemId);
+				const next = { ...prev };
+				if (nextQueue.length === 0) {
+					delete next[agentId];
+				} else {
+					next[agentId] = nextQueue;
+				}
+				return next;
+			});
+
+			if (!queuedItem) {
+				return;
+			}
+
+			queueDispatchingRef.current.add(agentId);
+			try {
+				await dispatchMessageToAgent(agentId, {
+					message: queuedItem.message,
+					attachments: queuedItem.attachments,
+					provider: queuedItem.provider,
+					model: queuedItem.model,
+					agentMode: queuedItem.agentMode,
+				});
+			} catch (error) {
+				const message =
+					error instanceof Error
+						? error.message
+						: "Failed to force send queued instruction";
+				if (typeof window !== "undefined") {
+					window.alert(message);
+				}
+				setQueuedInstructionsByAgent((prev) => ({
+					...prev,
+					[agentId]: [
+						queuedItem as QueuedInstruction,
+						...(prev[agentId] || []),
+					],
+				}));
+			} finally {
+				queueDispatchingRef.current.delete(agentId);
+			}
+		},
+		[dispatchMessageToAgent, selectedAgent],
+	);
+
 	const handleStopAgent = useCallback(async () => {
 		if (!selectedAgent || selectedAgent.status !== "running") {
 			return;
@@ -670,6 +732,7 @@ export default function App() {
 							workspaceAgents={selectedWorkspaceAgents}
 							queuedInstructions={selectedQueuedInstructions}
 							onRemoveQueuedInstruction={handleRemoveQueuedInstruction}
+							onForceSendQueuedInstruction={handleForceSendQueuedInstruction}
 							onStopAgent={handleStopAgent}
 							stoppingAgent={stoppingAgentId === selectedAgent.id}
 							agentEvents={selectedAgentEvents}

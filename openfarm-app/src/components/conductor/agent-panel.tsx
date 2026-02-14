@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock3, Trash2 } from "lucide-react";
+import { Clock3, SendHorizontal, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import type {
@@ -40,6 +40,7 @@ interface AgentPanelProps {
 		agentMode?: AgentMode;
 	}) => void;
 	onRemoveQueuedInstruction: (queueItemId: string) => void;
+	onForceSendQueuedInstruction: (queueItemId: string) => void;
 	onStopAgent: () => void;
 	stoppingAgent: boolean;
 	onLoadAgentEvents: () => void;
@@ -56,6 +57,7 @@ export function AgentPanel({
 	onSendMessage,
 	onDeployNewAgent,
 	onRemoveQueuedInstruction,
+	onForceSendQueuedInstruction,
 	onStopAgent,
 	stoppingAgent,
 	onLoadAgentEvents,
@@ -120,6 +122,16 @@ export function AgentPanel({
 										{item.createdAt}
 									</p>
 								</div>
+								<Button
+									variant="ghost"
+									size="icon"
+									className="h-6 w-6 shrink-0 text-muted-foreground hover:text-primary"
+									onClick={() => onForceSendQueuedInstruction(item.id)}
+									type="button"
+								>
+									<SendHorizontal className="h-3.5 w-3.5" />
+									<span className="sr-only">Force send queued instruction</span>
+								</Button>
 								<Button
 									variant="ghost"
 									size="icon"
