@@ -4222,6 +4222,100 @@ fn load_agent_base_branch(pool: &AgentPool, agent_id: &str) -> Option<String> {
         .map(|value| value.to_string())
 }
 
+fn build_contextual_task(pool: &AgentPool, agent: &Agent, latest_message: &str) -> String {
+    let clean_latest = latest_message.trim();
+    if clean_latest.is_empty() {
+        return latest_message.to_string();
+    }
+
+    let mut transcript: Vec<(String, String)> = Vec::new();
+    if !agent.task.trim().is_empty() {
+        transcript.push(("user".to_string(), agent.task.trim().to_string()));
+    }
+
+    if let Ok(events) = pool.db.load_agent_events(&agent.id) {
+        for event in events {
+            match event.event_type.as_str() {
+                "agent:user-message" => {
+                    let content = event
+                        .data
+                        .get("content")
+                        .and_then(|value| value.as_str())
+                        .unwrap_or_default()
+                        .trim()
+                        .to_string();
+                    if !content.is_empty() {
+                        transcript.push(("user".to_string(), content));
+                    }
+                }
+                "agent:assistant-message" => {
+                    let content = event
+                        .data
+                        .get("content")
+                        .and_then(|value| value.as_str())
+                        .unwrap_or_default()
+                        .trim()
+                        .to_string();
+                    if content.is_empty() || content.starts_with("Step:") {
+                        continue;
+                    }
+                    transcript.push(("assistant".to_string(), content));
+                }
+                _ => {}
+            }
+        }
+    }
+
+    while transcript
+        .last()
+        .map(|(role, content)| role == "user" && content == clean_latest)
+        .unwrap_or(false)
+    {
+        transcript.pop();
+    }
+
+    if transcript.is_empty() {
+        return clean_latest.to_string();
+    }
+
+    const MAX_HISTORY_MESSAGES: usize = 14;
+    const MAX_HISTORY_CHARS: usize = 12000;
+    let mut selected_rev: Vec<(String, String)> = Vec::new();
+    let mut used_chars = 0usize;
+
+    for (role, content) in transcript.into_iter().rev() {
+        if selected_rev.len() >= MAX_HISTORY_MESSAGES {
+            break;
+        }
+        let next_len = content.chars().count();
+        if used_chars + next_len > MAX_HISTORY_CHARS {
+            break;
+        }
+        used_chars += next_len;
+        selected_rev.push((role, content));
+    }
+    selected_rev.reverse();
+
+    if selected_rev.is_empty() {
+        return clean_latest.to_string();
+    }
+
+    let mut contextual_task = String::from(
+        "Continue this conversation using the history below.\nRespond to the final user message while preserving prior context.\n\nConversation history:\n",
+    );
+    for (role, content) in selected_rev {
+        let role_label = if role == "assistant" {
+            "Assistant"
+        } else {
+            "User"
+        };
+        contextual_task.push_str(&format!("- {role_label}: {content}\n"));
+    }
+    contextual_task.push_str("\nFinal user message:\n");
+    contextual_task.push_str(clean_latest);
+    contextual_task
+}
+
 fn load_agent_messages(pool: &AgentPool, agent: &Agent) -> Vec<UiMessage> {
     let push_message = |messages: &mut Vec<UiMessage>, next: UiMessage| {
         if let Some(last) = messages.last() {
@@ -4887,6 +4981,7 @@ fn send_agent_message(
     let selected_mode = mode_override
         .clone()
         .or_else(|| load_agent_mode(&pool, &agent_id));
+    let contextual_task = build_contextual_task(&pool, &snapshot, &message);
 
     let _ = pool.db.save_agent_event(
         &agent_id,
@@ -4938,13 +5033,14 @@ fn send_agent_message(
 
     let app_clone = app.clone();
     let agent_id_clone = agent_id.clone();
+    let contextual_task_clone = contextual_task.clone();
     let provider_clone = provider_override.unwrap_or(snapshot.provider.clone());
     let model_clone = model_override.or_else(|| load_agent_model(&pool, &agent_id));
     let mode_clone = mode_override.or_else(|| load_agent_mode(&pool, &agent_id));
     std::thread::spawn(move || {
         let result = run_agent(
             &agent_id_clone,
-            &message,
+            &contextual_task_clone,
             &provider_clone,
             model_clone.as_deref(),
             mode_clone.as_deref(),
