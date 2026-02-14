@@ -1099,6 +1099,90 @@ fn sanitize_stream_line(input: &str) -> String {
         .to_string()
 }
 
+fn parse_structured_agent_event(line: &str) -> Option<String> {
+    let value = serde_json::from_str::<serde_json::Value>(line).ok()?;
+    let event_type = value.get("type").and_then(|item| item.as_str())?;
+
+    if event_type == "text" {
+        return value
+            .get("part")
+            .and_then(|part| part.get("text"))
+            .and_then(|item| item.as_str())
+            .map(|text| text.trim().to_string())
+            .filter(|text| !text.is_empty());
+    }
+
+    if event_type == "tool_use" {
+        let tool = value
+            .get("part")
+            .and_then(|part| part.get("tool"))
+            .and_then(|item| item.as_str())
+            .unwrap_or("tool");
+        let status = value
+            .get("part")
+            .and_then(|part| part.get("state"))
+            .and_then(|state| state.get("status"))
+            .and_then(|item| item.as_str())
+            .unwrap_or("completed");
+        let title = value
+            .get("part")
+            .and_then(|part| part.get("state"))
+            .and_then(|state| state.get("title"))
+            .and_then(|item| item.as_str())
+            .or_else(|| {
+                value
+                    .get("part")
+                    .and_then(|part| part.get("state"))
+                    .and_then(|state| state.get("input"))
+                    .and_then(|input| input.get("filePath"))
+                    .and_then(|item| item.as_str())
+                    .and_then(|path| {
+                        std::path::Path::new(path)
+                            .file_name()
+                            .and_then(|item| item.to_str())
+                    })
+            })
+            .unwrap_or("");
+        let summary = if title.is_empty() {
+            format!("Step: {tool} ({status})")
+        } else {
+            format!("Step: {tool} {title} ({status})")
+        };
+        return Some(summary);
+    }
+
+    if event_type == "error" {
+        let message = value
+            .get("error")
+            .and_then(|item| item.as_str())
+            .or_else(|| value.get("message").and_then(|item| item.as_str()))
+            .unwrap_or("Unknown error");
+        return Some(format!("Error: {message}"));
+    }
+
+    if event_type == "item.completed" {
+        return value
+            .get("item")
+            .and_then(|item| item.get("text"))
+            .and_then(|item| item.as_str())
+            .map(|text| text.trim().to_string())
+            .filter(|text| !text.is_empty());
+    }
+
+    None
+}
+
+fn normalize_agent_stream_line(raw_line: &str) -> Option<String> {
+    let clean = sanitize_stream_line(raw_line);
+    if clean.is_empty() {
+        return None;
+    }
+    if clean.starts_with('{') && clean.ends_with('}') {
+        return parse_structured_agent_event(&clean);
+    }
+    Some(clean)
+}
+
 fn emit_and_store_event(
     app: &AppHandle,
     pool: &AgentPool,
@@ -1640,10 +1724,9 @@ fn stream_and_emit(
     std::thread::spawn(move || {
         let reader = BufReader::new(stdout);
         for line in reader.lines().map_while(Result::ok) {
-            let clean = sanitize_stream_line(&line);
-            if clean.is_empty() {
+            let Some(clean) = normalize_agent_stream_line(&line) else {
                 continue;
-            }
+            };
             let _ = tx_out.send(format!("{clean}\n"));
         }
     });
@@ -1652,17 +1735,21 @@ fn stream_and_emit(
     std::thread::spawn(move || {
         let reader = BufReader::new(stderr);
         for line in reader.lines().map_while(Result::ok) {
-            let clean = sanitize_stream_line(&line);
-            if clean.is_empty() {
+            let Some(clean) = normalize_agent_stream_line(&line) else {
                 continue;
-            }
+            };
             let _ = tx_err.send(format!("{clean}\n"));
         }
     });
     drop(tx);
 
     let mut combined = String::new();
+    let mut last_chunk = String::new();
     for chunk in rx {
+        if chunk == last_chunk {
+            continue;
+        }
+        last_chunk = chunk.clone();
         combined.push_str(&chunk);
         let state = app.state::<AgentPool>();
         emit_and_store_event(
@@ -4542,7 +4629,7 @@ fn get_provider_catalog() -> Result<serde_json::Value, String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{extract_pr_number, workspace_root_from_worktree};
+    use super::{extract_pr_number, parse_structured_agent_event, workspace_root_from_worktree};
 
     #[test]
     fn extracts_pr_number_from_github_url() {
@@ -4560,6 +4647,20 @@ mod tests {
     fn returns_workspace_parent_for_worktree_path() {
         let root = workspace_root_from_worktree("/tmp/repo/.openfarm/workspaces/ws-1");
         assert_eq!(root, "/tmp/repo/.openfarm");
+    }
+
+    #[test]
+    fn parses_opencode_text_event() {
+        let line = r#"{"type":"text","part":{"text":"hola"}} "#;
+        let value = parse_structured_agent_event(line);
+        assert_eq!(value, Some("hola".to_string()));
+    }
+
+    #[test]
+    fn parses_opencode_tool_use_event() {
+        let line = r#"{"type":"tool_use","part":{"tool":"write","state":{"status":"completed","title":"cuento.md"}}}"#;
+        let value = parse_structured_agent_event(line);
+        assert_eq!(value, Some("Step: write cuento.md (completed)".to_string()));
     }
 }
 
