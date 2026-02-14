@@ -16,6 +16,9 @@ export function DashboardScreen({ vm }: DashboardScreenProps) {
 	const selectedWorkspace = vm.workspaces.find(
 		(workspace) => workspace.id === vm.selectedWorkspaceId,
 	);
+	const selectedWorkspaceScript = selectedWorkspace
+		? vm.workspaceScripts[selectedWorkspace.id]
+		: undefined;
 	const recentAgents = vm.agents.slice(0, 6);
 	const recentSessions = availableSessions.slice(
 		0,
@@ -223,6 +226,85 @@ export function DashboardScreen({ vm }: DashboardScreenProps) {
 													</div>
 												</button>
 											))}
+										</div>
+									)}
+									{selectedWorkspace && (
+										<div className="diff-viewer">
+											<h3>Workspace Actions</h3>
+											<p className="list-item-subtitle">
+												{selectedWorkspace.name} ·{" "}
+												{selectedWorkspace.repoPath || "(no repo path)"}
+											</p>
+											<p className="list-item-subtitle">
+												Run script:{" "}
+												{selectedWorkspaceScript?.run_script ||
+													"(not configured)"}
+											</p>
+											<div className="list-item-actions">
+												<button
+													className="btn-secondary"
+													onClick={() =>
+														vm.openWorkspaceInIde(selectedWorkspace.id)
+													}
+													type="button"
+												>
+													Open IDE
+												</button>
+												<button
+													className="btn-secondary"
+													disabled={selectedWorkspace.status === "archived"}
+													onClick={() =>
+														vm.runWorkspaceScript(selectedWorkspace.id, "setup")
+													}
+													type="button"
+												>
+													Run Setup
+												</button>
+												<button
+													className="btn-primary"
+													disabled={selectedWorkspace.status === "archived"}
+													onClick={() =>
+														vm.runWorkspaceScript(selectedWorkspace.id, "run")
+													}
+													type="button"
+												>
+													Run
+												</button>
+												<button
+													className="btn-secondary"
+													disabled={
+														!vm.workspaceScriptRunning[selectedWorkspace.id]
+													}
+													onClick={() =>
+														vm.stopWorkspaceScript(selectedWorkspace.id)
+													}
+													type="button"
+												>
+													Stop
+												</button>
+												{selectedWorkspace.spotlightEnabled ? (
+													<button
+														className="btn-secondary"
+														onClick={() =>
+															vm.disableWorkspaceSpotlight(selectedWorkspace.id)
+														}
+														type="button"
+													>
+														Disable Spotlight
+													</button>
+												) : (
+													<button
+														className="btn-secondary"
+														disabled={selectedWorkspace.status === "archived"}
+														onClick={() =>
+															vm.enableWorkspaceSpotlight(selectedWorkspace.id)
+														}
+														type="button"
+													>
+														Enable Spotlight
+													</button>
+												)}
+											</div>
 										</div>
 									)}
 								</div>
