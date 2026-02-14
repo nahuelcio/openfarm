@@ -20,7 +20,7 @@ use tauri::{
 use crate::agent_command::resolve_agent_command;
 use crate::agent_config::{
     apply_agent_config_patch, detect_agent_configs, import_agent_config, list_agent_backups,
-    preview_agent_config_patch, rollback_config_patch,
+    preview_agent_config_patch, rollback_config_patch, AgentProfileId,
 };
 
 pub struct Database {
@@ -2061,6 +2061,70 @@ fn load_provider_catalog_via_bridge() -> Result<serde_json::Value, String> {
     } else {
         Err(stderr)
     }
+}
+
+fn provider_agents_from_local_configs() -> HashMap<String, Vec<String>> {
+    let mut by_provider = HashMap::new();
+    let profiles = [
+        ("codex", AgentProfileId::Codex),
+        ("claude-code", AgentProfileId::ClaudeCode),
+        ("opencode", AgentProfileId::Opencode),
+    ];
+
+    for (provider, profile) in profiles {
+        if let Ok(imported) = import_agent_config(profile) {
+            let mut agents = imported
+                .config
+                .agents
+                .into_iter()
+                .map(|value| value.trim().to_string())
+                .filter(|value| !value.is_empty())
+                .collect::<Vec<_>>();
+            agents.sort();
+            agents.dedup();
+            by_provider.insert(provider.to_string(), agents);
+        }
+    }
+
+    by_provider
+}
+
+fn merge_provider_agents_into_catalog(
+    catalog: serde_json::Value,
+    by_provider: HashMap<String, Vec<String>>,
+) -> serde_json::Value {
+    let mut providers = catalog.as_array().cloned().unwrap_or_default();
+    for provider in &mut providers {
+        let Some(object) = provider.as_object_mut() else {
+            continue;
+        };
+        let provider_id = object
+            .get("id")
+            .and_then(|value| value.as_str())
+            .unwrap_or_default()
+            .to_string();
+        let agents = by_provider.get(&provider_id).cloned().unwrap_or_default();
+        let serialized = agents
+            .iter()
+            .map(|agent| {
+                serde_json::json!({
+                    "id": agent,
+                    "name": agent,
+                    "description": "Agent loaded from local CLI config"
+                })
+            })
+            .collect::<Vec<_>>();
+        object.insert("agents".to_string(), serde_json::Value::Array(serialized));
+        object.insert(
+            "defaultAgent".to_string(),
+            agents
+                .first()
+                .cloned()
+                .map(serde_json::Value::String)
+                .unwrap_or(serde_json::Value::String(String::new())),
+        );
+    }
+    serde_json::Value::Array(providers)
 }
 
 fn default_branch_for_repo(repo_path: &str) -> String {
@@ -4723,7 +4787,9 @@ fn save_settings(
 
 #[tauri::command]
 fn get_provider_catalog() -> Result<serde_json::Value, String> {
-    load_provider_catalog_via_bridge()
+    let catalog = load_provider_catalog_via_bridge()?;
+    let agents = provider_agents_from_local_configs();
+    Ok(merge_provider_agents_into_catalog(catalog, agents))
 }
 
 #[cfg(test)]

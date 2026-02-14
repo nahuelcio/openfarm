@@ -6,7 +6,13 @@ export type AgentStatus =
 	| "reviewing";
 
 export type AgentProvider = "claude-code" | "codex" | "opencode";
-export type AgentMode = "general" | "plan";
+export type AgentMode = string;
+
+export interface AgentOption {
+	id: string;
+	name: string;
+	description: string;
+}
 
 export interface Attachment {
 	id: string;
@@ -87,6 +93,8 @@ export interface ProviderConfig {
 	apiKey: string;
 	models: ModelOption[];
 	defaultModel: string;
+	agents?: AgentOption[];
+	defaultAgent?: string;
 }
 
 export interface AppSettings {
@@ -127,6 +135,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
 				},
 			],
 			defaultModel: "claude-sonnet-4-20250514",
+			agents: [],
+			defaultAgent: "",
 		},
 		{
 			id: "codex",
@@ -148,6 +158,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
 				},
 			],
 			defaultModel: "codex-mini-latest",
+			agents: [],
+			defaultAgent: "",
 		},
 		{
 			id: "opencode",
@@ -169,6 +181,19 @@ export const DEFAULT_SETTINGS: AppSettings = {
 				},
 			],
 			defaultModel: "gpt-4.1",
+			agents: [
+				{
+					id: "general",
+					name: "general",
+					description: "Default OpenCode agent",
+				},
+				{
+					id: "plan",
+					name: "plan",
+					description: "Planning-focused OpenCode agent",
+				},
+			],
+			defaultAgent: "general",
 		},
 	],
 	defaultProvider: "claude-code",

@@ -71,11 +71,6 @@ const PROVIDER_LABELS: Record<AgentProvider, { label: string; color: string }> =
 		opencode: { label: "opencode", color: "text-[#06b6d4]" },
 	};
 
-const OPENCODE_AGENT_MODES: Array<{ id: AgentMode; label: string }> = [
-	{ id: "general", label: "general mode" },
-	{ id: "plan", label: "plan mode" },
-];
-
 function getOpenCodeGroup(modelId: string, description: string): string {
 	if (modelId.startsWith("openrouter/")) return "OpenRouter";
 	if (modelId.startsWith("github-copilot/")) return "GitHub Copilot";
@@ -131,6 +126,7 @@ export function PromptInput({
 		availableProviders.find((candidate) => candidate.id === selectedProvider) ||
 		availableProviders[0];
 	const currentModels = selectedProviderConfig?.models || [];
+	const availableAgents = selectedProviderConfig?.agents || [];
 	const openCodeGroups = useMemo(() => {
 		if (selectedProvider !== "opencode") {
 			return [];
@@ -153,7 +149,12 @@ export function PromptInput({
 	const [selectedModel, setSelectedModel] = useState(
 		model || selectedProviderConfig?.defaultModel || "",
 	);
-	const [selectedMode, setSelectedMode] = useState<AgentMode>(mode);
+	const [selectedMode, setSelectedMode] = useState<AgentMode>(
+		mode ||
+			selectedProviderConfig?.defaultAgent ||
+			availableAgents[0]?.id ||
+			"",
+	);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	useEffect(() => {
@@ -176,8 +177,15 @@ export function PromptInput({
 	}, [availableProviders, model, provider]);
 
 	useEffect(() => {
-		setSelectedMode(mode);
-	}, [mode]);
+		const nextAgent =
+			mode ||
+			availableProviders.find((candidate) => candidate.id === provider)
+				?.defaultAgent ||
+			availableProviders.find((candidate) => candidate.id === provider)
+				?.agents?.[0]?.id ||
+			"";
+		setSelectedMode(nextAgent);
+	}, [availableProviders, mode, provider]);
 
 	useEffect(() => {
 		if (selectedProvider !== "opencode") {
@@ -199,6 +207,19 @@ export function PromptInput({
 		setSelectedModel(availableModels[0]?.id || "");
 	}, [availableModels, selectedModel]);
 
+	useEffect(() => {
+		if (!availableAgents || availableAgents.length === 0) {
+			setSelectedMode("");
+			return;
+		}
+		if (availableAgents.some((candidate) => candidate.id === selectedMode)) {
+			return;
+		}
+		setSelectedMode(
+			selectedProviderConfig?.defaultAgent || availableAgents[0]?.id || "",
+		);
+	}, [availableAgents, selectedMode, selectedProviderConfig?.defaultAgent]);
+
 	const handleSubmit = () => {
 		if ((value.trim() || attachments.length > 0) && !disabled) {
 			onSend({
@@ -206,7 +227,7 @@ export function PromptInput({
 				attachments: attachments.length > 0 ? attachments : undefined,
 				provider: selectedProvider,
 				model: selectedModel || undefined,
-				agentMode: selectedProvider === "opencode" ? selectedMode : undefined,
+				agentMode: selectedMode || undefined,
 			});
 			setValue("");
 			setAttachments([]);
@@ -243,70 +264,6 @@ export function PromptInput({
 
 	return (
 		<div className="border-t border-border bg-card px-4 py-3">
-			<div className="mb-2 flex flex-wrap items-center gap-2 px-1">
-				<select
-					value={selectedProvider}
-					onChange={(event) => {
-						const nextProvider = event.target.value as AgentProvider;
-						setSelectedProvider(nextProvider);
-						const nextConfig = availableProviders.find(
-							(candidate) => candidate.id === nextProvider,
-						);
-						setSelectedModel(nextConfig?.defaultModel || "");
-						if (nextProvider !== "opencode") {
-							setSelectedMode("general");
-						}
-					}}
-					className="h-7 min-w-[120px] rounded border border-border bg-background px-2 text-xs text-foreground focus:border-primary/40 focus:outline-none"
-				>
-					{availableProviders.map((candidate) => (
-						<option key={candidate.id} value={candidate.id}>
-							{candidate.name}
-						</option>
-					))}
-				</select>
-				{selectedProvider === "opencode" && openCodeGroups.length > 0 && (
-					<select
-						value={selectedOpenCodeGroup}
-						onChange={(event) => setSelectedOpenCodeGroup(event.target.value)}
-						className="h-7 min-w-[140px] rounded border border-border bg-background px-2 text-xs text-foreground focus:border-primary/40 focus:outline-none"
-					>
-						<option value="all">all providers</option>
-						{openCodeGroups.map((group) => (
-							<option key={group} value={group}>
-								{group}
-							</option>
-						))}
-					</select>
-				)}
-				<select
-					value={selectedModel}
-					onChange={(event) => setSelectedModel(event.target.value)}
-					className="h-7 min-w-[180px] max-w-full flex-1 rounded border border-border bg-background px-2 text-xs text-foreground focus:border-primary/40 focus:outline-none"
-				>
-					{availableModels.map((candidate) => (
-						<option key={candidate.id} value={candidate.id}>
-							{candidate.name}
-						</option>
-					))}
-				</select>
-				{selectedProvider === "opencode" && (
-					<select
-						value={selectedMode}
-						onChange={(event) =>
-							setSelectedMode(event.target.value as AgentMode)
-						}
-						className="h-7 min-w-[130px] rounded border border-border bg-background px-2 text-xs text-foreground focus:border-primary/40 focus:outline-none"
-					>
-						{OPENCODE_AGENT_MODES.map((candidate) => (
-							<option key={candidate.id} value={candidate.id}>
-								{candidate.label}
-							</option>
-						))}
-					</select>
-				)}
-			</div>
-
 			{/* Hidden file input */}
 			<input
 				ref={fileInputRef}
@@ -344,81 +301,150 @@ export function PromptInput({
 
 			<div
 				className={cn(
-					"flex items-end gap-2 rounded-xl border border-border bg-background px-3 py-2 transition-colors",
+					"flex flex-col gap-2 rounded-xl border border-border bg-background px-3 py-2 transition-colors",
 					"focus-within:border-primary/40 focus-within:ring-1 focus-within:ring-primary/20",
 				)}
 			>
-				{/* Action buttons */}
-				<div className="flex items-center gap-0.5 pb-0.5">
+				<div className="flex items-end gap-2">
+					{/* Action buttons */}
+					<div className="flex items-center gap-0.5 pb-0.5">
+						<Button
+							variant="ghost"
+							size="icon"
+							className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-accent"
+							onClick={() => fileInputRef.current?.click()}
+							type="button"
+						>
+							<Paperclip className="h-4 w-4" />
+							<span className="sr-only">Attach file</span>
+						</Button>
+						<Button
+							variant="ghost"
+							size="icon"
+							className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-accent"
+							type="button"
+						>
+							<AtSign className="h-4 w-4" />
+							<span className="sr-only">Mention</span>
+						</Button>
+						<Button
+							variant="ghost"
+							size="icon"
+							className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-accent"
+							type="button"
+						>
+							<Slash className="h-4 w-4" />
+							<span className="sr-only">Commands</span>
+						</Button>
+					</div>
+
+					{/* Text area */}
+					<textarea
+						value={value}
+						onChange={(e) => setValue(e.target.value)}
+						onKeyDown={handleKeyDown}
+						placeholder={placeholder}
+						disabled={disabled}
+						rows={1}
+						className={cn(
+							"flex-1 resize-none bg-transparent text-sm text-foreground placeholder:text-muted-foreground",
+							"focus:outline-none min-h-[32px] max-h-[120px] py-1.5 leading-relaxed",
+						)}
+						style={{
+							height: "auto",
+							overflow: "hidden",
+						}}
+						onInput={(e) => {
+							const target = e.target as HTMLTextAreaElement;
+							target.style.height = "auto";
+							target.style.height = Math.min(target.scrollHeight, 120) + "px";
+						}}
+					/>
+
+					{/* Send button */}
 					<Button
-						variant="ghost"
 						size="icon"
-						className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-accent"
-						onClick={() => fileInputRef.current?.click()}
+						className={cn(
+							"h-7 w-7 rounded-lg shrink-0 mb-0.5 transition-all",
+							value.trim() || attachments.length > 0
+								? "bg-primary text-primary-foreground hover:bg-primary/90"
+								: "bg-secondary text-muted-foreground cursor-not-allowed",
+						)}
+						disabled={(!value.trim() && attachments.length === 0) || disabled}
+						onClick={handleSubmit}
 						type="button"
 					>
-						<Paperclip className="h-4 w-4" />
-						<span className="sr-only">Attach file</span>
-					</Button>
-					<Button
-						variant="ghost"
-						size="icon"
-						className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-accent"
-						type="button"
-					>
-						<AtSign className="h-4 w-4" />
-						<span className="sr-only">Mention</span>
-					</Button>
-					<Button
-						variant="ghost"
-						size="icon"
-						className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-accent"
-						type="button"
-					>
-						<Slash className="h-4 w-4" />
-						<span className="sr-only">Commands</span>
+						<ArrowUp className="h-4 w-4" />
+						<span className="sr-only">Send message</span>
 					</Button>
 				</div>
 
-				{/* Text area */}
-				<textarea
-					value={value}
-					onChange={(e) => setValue(e.target.value)}
-					onKeyDown={handleKeyDown}
-					placeholder={placeholder}
-					disabled={disabled}
-					rows={1}
-					className={cn(
-						"flex-1 resize-none bg-transparent text-sm text-foreground placeholder:text-muted-foreground",
-						"focus:outline-none min-h-[32px] max-h-[120px] py-1.5 leading-relaxed",
-					)}
-					style={{
-						height: "auto",
-						overflow: "hidden",
-					}}
-					onInput={(e) => {
-						const target = e.target as HTMLTextAreaElement;
-						target.style.height = "auto";
-						target.style.height = Math.min(target.scrollHeight, 120) + "px";
-					}}
-				/>
+				<div className="flex flex-wrap items-center gap-2 border-t border-border/50 pt-2">
+					<select
+						value={selectedProvider}
+						onChange={(event) => {
+							const nextProvider = event.target.value as AgentProvider;
+							setSelectedProvider(nextProvider);
+							const nextConfig = availableProviders.find(
+								(candidate) => candidate.id === nextProvider,
+							);
+							setSelectedModel(nextConfig?.defaultModel || "");
+							setSelectedMode(
+								nextConfig?.defaultAgent || nextConfig?.agents?.[0]?.id || "",
+							);
+						}}
+						className="h-8 min-w-[120px] rounded-xl border border-border bg-secondary px-3 text-xs font-medium text-foreground focus:border-primary/40 focus:outline-none"
+					>
+						{availableProviders.map((candidate) => (
+							<option key={candidate.id} value={candidate.id}>
+								{candidate.name}
+							</option>
+						))}
+					</select>
 
-				{/* Send button */}
-				<Button
-					size="icon"
-					className={cn(
-						"h-7 w-7 rounded-lg shrink-0 mb-0.5 transition-all",
-						value.trim() || attachments.length > 0
-							? "bg-primary text-primary-foreground hover:bg-primary/90"
-							: "bg-secondary text-muted-foreground cursor-not-allowed",
+					{availableAgents.length > 0 && (
+						<select
+							value={selectedMode}
+							onChange={(event) =>
+								setSelectedMode(event.target.value as AgentMode)
+							}
+							className="h-8 min-w-[110px] rounded-xl border border-border bg-secondary px-3 text-xs font-medium text-foreground focus:border-primary/40 focus:outline-none"
+						>
+							{availableAgents.map((candidate) => (
+								<option key={candidate.id} value={candidate.id}>
+									{candidate.name}
+								</option>
+							))}
+						</select>
 					)}
-					disabled={(!value.trim() && attachments.length === 0) || disabled}
-					onClick={handleSubmit}
-					type="button"
-				>
-					<ArrowUp className="h-4 w-4" />
-					<span className="sr-only">Send message</span>
-				</Button>
+
+					{selectedProvider === "opencode" && openCodeGroups.length > 0 && (
+						<select
+							value={selectedOpenCodeGroup}
+							onChange={(event) => setSelectedOpenCodeGroup(event.target.value)}
+							className="h-8 min-w-[130px] rounded-xl border border-border bg-secondary px-3 text-xs font-medium text-foreground focus:border-primary/40 focus:outline-none"
+						>
+							<option value="all">all providers</option>
+							{openCodeGroups.map((group) => (
+								<option key={group} value={group}>
+									{group}
+								</option>
+							))}
+						</select>
+					)}
+
+					<select
+						value={selectedModel}
+						onChange={(event) => setSelectedModel(event.target.value)}
+						className="h-8 min-w-[170px] flex-1 rounded-xl border border-border bg-secondary px-3 text-xs font-medium text-foreground focus:border-primary/40 focus:outline-none"
+					>
+						{availableModels.map((candidate) => (
+							<option key={candidate.id} value={candidate.id}>
+								{candidate.name}
+							</option>
+						))}
+					</select>
+				</div>
 			</div>
 
 			{/* Hint */}
@@ -444,7 +470,7 @@ export function PromptInput({
 							/ {selectedModel}
 						</span>
 					)}
-					{selectedProvider === "opencode" && selectedMode !== "general" && (
+					{selectedMode && (
 						<span className="text-muted-foreground ml-1">/ {selectedMode}</span>
 					)}
 				</span>

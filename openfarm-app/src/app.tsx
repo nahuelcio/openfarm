@@ -92,15 +92,21 @@ function mergeSettingsWithCatalog(
 	const providers = catalog.map((provider) => {
 		const existing = existingById.get(provider.id);
 		const modelIds = new Set(provider.models.map((model) => model.id));
+		const agentIds = new Set((provider.agents || []).map((agent) => agent.id));
 		const defaultModel =
 			existing?.defaultModel && modelIds.has(existing.defaultModel)
 				? existing.defaultModel
 				: provider.defaultModel;
+		const defaultAgent =
+			existing?.defaultAgent && agentIds.has(existing.defaultAgent)
+				? existing.defaultAgent
+				: provider.defaultAgent || provider.agents?.[0]?.id || "";
 		return {
 			...provider,
 			connected: existing?.connected ?? provider.connected,
 			apiKey: existing?.apiKey ?? "",
 			defaultModel,
+			defaultAgent,
 		};
 	});
 
