@@ -53,6 +53,22 @@ export interface AgentMessage {
 	attachments?: Attachment[];
 }
 
+export interface AgentExecutionEvent {
+	eventType: string;
+	agentId: string;
+	data: Record<string, unknown>;
+}
+
+export interface QueuedInstruction {
+	id: string;
+	message: string;
+	createdAt: string;
+	attachments?: Attachment[];
+	provider?: AgentProvider;
+	model?: string;
+	agentMode?: AgentMode;
+}
+
 export interface Agent {
 	id: string;
 	name: string;

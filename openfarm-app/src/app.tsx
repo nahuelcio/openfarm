@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AgentPanel } from "@/components/conductor/agent-panel";
 import { AppSidebar } from "@/components/conductor/app-sidebar";
 import { EmptyState } from "@/components/conductor/empty-state";
@@ -9,8 +9,10 @@ import {
 	addLocalWorkspace,
 	bootstrapAppState,
 	createAgent,
+	getAgentEvents,
 	getProviderCatalog,
 	getSettings,
+	killAgent,
 	listRepositoryBranches,
 	loadAgentDiffs,
 	pickRepositoryDirectory,
@@ -20,6 +22,7 @@ import {
 } from "@/lib/backend";
 import type {
 	Agent,
+	AgentExecutionEvent,
 	AgentMode,
 	AgentProvider,
 	AgentStatus,
@@ -27,6 +30,7 @@ import type {
 	Attachment,
 	BootstrapState,
 	ProviderConfig,
+	QueuedInstruction,
 	Workspace,
 } from "@/lib/store";
 import { DEFAULT_SETTINGS } from "@/lib/store";
@@ -35,6 +39,14 @@ import { cn } from "@/lib/utils";
 interface SelectedAgentContext {
 	agent: Agent;
 	workspace: Workspace;
+}
+
+interface MessagePayload {
+	message: string;
+	attachments?: Attachment[];
+	provider?: AgentProvider;
+	model?: string;
+	agentMode?: AgentMode;
 }
 
 function findAgentContext(
@@ -162,6 +174,17 @@ export default function App() {
 	const [newAgentOpen, setNewAgentOpen] = useState(false);
 	const [settingsOpen, setSettingsOpen] = useState(false);
 	const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
+	const [queuedInstructionsByAgent, setQueuedInstructionsByAgent] = useState<
+		Record<string, QueuedInstruction[]>
+	>({});
+	const [agentEventsByAgent, setAgentEventsByAgent] = useState<
+		Record<string, AgentExecutionEvent[]>
+	>({});
+	const [logsLoadingByAgent, setLogsLoadingByAgent] = useState<
+		Record<string, boolean>
+	>({});
+	const [stoppingAgentId, setStoppingAgentId] = useState<string | null>(null);
+	const queueDispatchingRef = useRef<Set<string>>(new Set());
 	const selectedAgentContext = useMemo(
 		() => findAgentContext(workspaces, selectedAgentId),
 		[workspaces, selectedAgentId],
@@ -169,6 +192,15 @@ export default function App() {
 	const selectedAgent = selectedAgentContext?.agent || null;
 	const selectedWorkspaceId = selectedAgentContext?.workspace.id;
 	const selectedWorkspaceAgents = selectedAgentContext?.workspace.agents || [];
+	const selectedQueuedInstructions = selectedAgent
+		? queuedInstructionsByAgent[selectedAgent.id] || []
+		: [];
+	const selectedAgentEvents = selectedAgent
+		? agentEventsByAgent[selectedAgent.id] || []
+		: [];
+	const selectedLogsLoading = selectedAgent
+		? Boolean(logsLoadingByAgent[selectedAgent.id])
+		: false;
 	const repos = useMemo(
 		() =>
 			workspaces.map((workspace) => ({
@@ -281,19 +313,10 @@ export default function App() {
 		setSelectedAgentId(agent.id);
 	}, []);
 
-	const handleSendMessage = useCallback(
-		async (payload: {
-			message: string;
-			attachments?: Attachment[];
-			provider?: AgentProvider;
-			model?: string;
-			agentMode?: AgentMode;
-		}) => {
-			if (!selectedAgentId) {
-				return;
-			}
+	const dispatchMessageToAgent = useCallback(
+		async (agentId: string, payload: MessagePayload) => {
 			const next = await sendAgentMessage({
-				agentId: selectedAgentId,
+				agentId,
 				message: payload.message,
 				attachments: payload.attachments,
 				provider: payload.provider,
@@ -304,6 +327,92 @@ export default function App() {
 		},
 		[selectedAgentId, syncState],
 	);
+
+	const enqueueInstruction = useCallback(
+		(agentId: string, payload: MessagePayload) => {
+			const item: QueuedInstruction = {
+				id: `queue-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+				message: payload.message,
+				createdAt: new Date().toLocaleTimeString([], {
+					hour: "2-digit",
+					minute: "2-digit",
+				}),
+				attachments: payload.attachments,
+				provider: payload.provider,
+				model: payload.model,
+				agentMode: payload.agentMode,
+			};
+			setQueuedInstructionsByAgent((prev) => ({
+				...prev,
+				[agentId]: [...(prev[agentId] || []), item],
+			}));
+		},
+		[],
+	);
+
+	const handleSendMessage = useCallback(
+		async (payload: MessagePayload) => {
+			if (!selectedAgent) {
+				return;
+			}
+			if (selectedAgent.status === "running") {
+				enqueueInstruction(selectedAgent.id, payload);
+				return;
+			}
+			await dispatchMessageToAgent(selectedAgent.id, payload);
+		},
+		[dispatchMessageToAgent, enqueueInstruction, selectedAgent],
+	);
+
+	const handleRemoveQueuedInstruction = useCallback(
+		(queueItemId: string) => {
+			if (!selectedAgent) {
+				return;
+			}
+			setQueuedInstructionsByAgent((prev) => {
+				const current = prev[selectedAgent.id] || [];
+				const nextQueue = current.filter((item) => item.id !== queueItemId);
+				if (nextQueue.length === current.length) {
+					return prev;
+				}
+				const next = { ...prev };
+				if (nextQueue.length === 0) {
+					delete next[selectedAgent.id];
+				} else {
+					next[selectedAgent.id] = nextQueue;
+				}
+				return next;
+			});
+		},
+		[selectedAgent],
+	);
+
+	const handleStopAgent = useCallback(async () => {
+		if (!selectedAgent || selectedAgent.status !== "running") {
+			return;
+		}
+		setStoppingAgentId(selectedAgent.id);
+		try {
+			await killAgent(selectedAgent.id);
+			await refreshState(selectedAgent.id);
+		} finally {
+			setStoppingAgentId(null);
+		}
+	}, [refreshState, selectedAgent]);
+
+	const handleLoadAgentEvents = useCallback(async () => {
+		if (!selectedAgent) {
+			return;
+		}
+		const agentId = selectedAgent.id;
+		setLogsLoadingByAgent((prev) => ({ ...prev, [agentId]: true }));
+		try {
+			const events = await getAgentEvents(agentId);
+			setAgentEventsByAgent((prev) => ({ ...prev, [agentId]: events }));
+		} finally {
+			setLogsLoadingByAgent((prev) => ({ ...prev, [agentId]: false }));
+		}
+	}, [selectedAgent]);
 
 	const handleNewAgent = useCallback(
 		async (data: {
@@ -352,6 +461,113 @@ export default function App() {
 		[],
 	);
 
+	useEffect(() => {
+		const validAgentIds = new Set(
+			workspaces.flatMap((workspace) =>
+				workspace.agents.map((agent) => agent.id),
+			),
+		);
+		setQueuedInstructionsByAgent((prev) => {
+			let changed = false;
+			const next: Record<string, QueuedInstruction[]> = {};
+			for (const [agentId, queue] of Object.entries(prev)) {
+				if (!validAgentIds.has(agentId)) {
+					changed = true;
+					continue;
+				}
+				next[agentId] = queue;
+			}
+			return changed ? next : prev;
+		});
+		setAgentEventsByAgent((prev) => {
+			let changed = false;
+			const next: Record<string, AgentExecutionEvent[]> = {};
+			for (const [agentId, events] of Object.entries(prev)) {
+				if (!validAgentIds.has(agentId)) {
+					changed = true;
+					continue;
+				}
+				next[agentId] = events;
+			}
+			return changed ? next : prev;
+		});
+		setLogsLoadingByAgent((prev) => {
+			let changed = false;
+			const next: Record<string, boolean> = {};
+			for (const [agentId, loading] of Object.entries(prev)) {
+				if (!validAgentIds.has(agentId)) {
+					changed = true;
+					continue;
+				}
+				next[agentId] = loading;
+			}
+			return changed ? next : prev;
+		});
+	}, [workspaces]);
+
+	useEffect(() => {
+		const statuses = new Map<string, AgentStatus>();
+		for (const workspace of workspaces) {
+			for (const agent of workspace.agents) {
+				statuses.set(agent.id, agent.status);
+			}
+		}
+
+		for (const [agentId, queue] of Object.entries(queuedInstructionsByAgent)) {
+			if (queue.length === 0) {
+				continue;
+			}
+			const status = statuses.get(agentId);
+			if (status === "running" || status === "error" || !status) {
+				continue;
+			}
+			if (queueDispatchingRef.current.has(agentId)) {
+				continue;
+			}
+			const nextItem = queue[0];
+			if (!nextItem) {
+				continue;
+			}
+
+			queueDispatchingRef.current.add(agentId);
+			void (async () => {
+				try {
+					await dispatchMessageToAgent(agentId, {
+						message: nextItem.message,
+						attachments: nextItem.attachments,
+						provider: nextItem.provider,
+						model: nextItem.model,
+						agentMode: nextItem.agentMode,
+					});
+				} catch (error) {
+					const message =
+						error instanceof Error
+							? error.message
+							: "Failed to process queued instruction";
+					if (typeof window !== "undefined") {
+						window.alert(message);
+					}
+				} finally {
+					setQueuedInstructionsByAgent((prev) => {
+						const current = prev[agentId] || [];
+						if (current.length === 0 || current[0]?.id !== nextItem.id) {
+							return prev;
+						}
+						const rest = current.slice(1);
+						const next = { ...prev };
+						if (rest.length === 0) {
+							delete next[agentId];
+						} else {
+							next[agentId] = rest;
+						}
+						return next;
+					});
+					queueDispatchingRef.current.delete(agentId);
+				}
+			})();
+		}
+	}, [dispatchMessageToAgent, queuedInstructionsByAgent, workspaces]);
+
 	return (
 		<div className="flex h-screen flex-col overflow-hidden">
 			<Titlebar
@@ -384,6 +600,13 @@ export default function App() {
 							providers={settings.providers}
 							workspaceId={selectedWorkspaceId}
 							workspaceAgents={selectedWorkspaceAgents}
+							queuedInstructions={selectedQueuedInstructions}
+							onRemoveQueuedInstruction={handleRemoveQueuedInstruction}
+							onStopAgent={handleStopAgent}
+							stoppingAgent={stoppingAgentId === selectedAgent.id}
+							agentEvents={selectedAgentEvents}
+							logsLoading={selectedLogsLoading}
+							onLoadAgentEvents={handleLoadAgentEvents}
 						/>
 					) : (
 						<EmptyState onNewAgent={() => setNewAgentOpen(true)} />

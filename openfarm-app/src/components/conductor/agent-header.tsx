@@ -1,5 +1,7 @@
 "use client";
 
+import { openUrl } from "@tauri-apps/plugin-opener";
+import { Command } from "@tauri-apps/plugin-shell";
 import {
 	AlertCircle,
 	CheckCircle2,
@@ -11,8 +13,10 @@ import {
 	FolderOpen,
 	GitBranch,
 	GitPullRequest,
+	ListTree,
 	Loader2,
 	MoreHorizontal,
+	Square,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,6 +28,55 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { Agent, AgentProvider, AgentStatus } from "@/lib/store";
 import { cn } from "@/lib/utils";
+
+async function openInEditor(repoPath: string) {
+	try {
+		const result = await Command.create("code", [repoPath]).execute();
+		if (result.code === 0) return;
+	} catch {}
+
+	try {
+		await Command.create("open", [repoPath]).execute();
+	} catch (error) {
+		console.error("Failed to open folder:", error);
+	}
+}
+
+async function getGitHubUrl(repoPath: string): Promise<string | null> {
+	try {
+		const output = await Command.create("git", [
+			"remote",
+			"get-url",
+			"origin",
+		]).execute();
+		if (output.code !== 0) {
+			return null;
+		}
+		let remoteUrl = output.stdout.trim();
+		remoteUrl = remoteUrl.replace("git@github.com:", "https://github.com/");
+		remoteUrl = remoteUrl.replace(/\.git$/, "");
+		return remoteUrl;
+	} catch (error) {
+		console.error("Failed to get GitHub URL:", error);
+		return null;
+	}
+}
+
+async function viewOnGitHub(repoPath: string) {
+	const githubUrl = await getGitHubUrl(repoPath);
+	if (githubUrl) {
+		await openUrl(githubUrl);
+	}
+}
+
+async function createPullRequest(repoPath: string, branch: string) {
+	const baseBranch = "main";
+	const githubUrl = await getGitHubUrl(repoPath);
+	if (githubUrl) {
+		const prUrl = `${githubUrl}/compare/${baseBranch}...${branch}?expand=1`;
+		await openUrl(prUrl);
+	}
+}
 
 function StatusDot({ status }: { status: AgentStatus }) {
 	const colors: Record<AgentStatus, string> = {
@@ -140,9 +193,20 @@ function ProviderTag({
 interface AgentHeaderProps {
 	agent: Agent;
 	onViewChanges?: () => void;
+	onStopAgent?: () => void;
+	stopping?: boolean;
+	onToggleLogs?: () => void;
+	logsOpen?: boolean;
 }
 
-export function AgentHeader({ agent, onViewChanges }: AgentHeaderProps) {
+export function AgentHeader({
+	agent,
+	onViewChanges,
+	onStopAgent,
+	stopping = false,
+	onToggleLogs,
+	logsOpen = false,
+}: AgentHeaderProps) {
 	return (
 		<div className="flex flex-col gap-3 border-b border-border bg-card px-3 py-3 sm:px-4 lg:flex-row lg:items-center lg:justify-between">
 			<div className="flex min-w-0 flex-1 items-start gap-2.5 sm:items-center">
@@ -195,11 +259,46 @@ export function AgentHeader({ agent, onViewChanges }: AgentHeaderProps) {
 						</Button>
 					)}
 
+					<Button
+						variant="ghost"
+						size="sm"
+						className={cn(
+							"h-7 gap-1.5 px-2 text-xs sm:px-2.5",
+							logsOpen
+								? "bg-accent text-foreground"
+								: "text-foreground hover:bg-accent",
+						)}
+						onClick={onToggleLogs}
+					>
+						<ListTree className="h-3.5 w-3.5" />
+						<span className="hidden md:inline">Logs</span>
+					</Button>
+
+					{agent.status === "running" && (
+						<Button
+							variant="ghost"
+							size="sm"
+							className="h-7 gap-1.5 px-2 text-xs text-agent-error hover:bg-agent-error/10 hover:text-agent-error sm:px-2.5"
+							onClick={onStopAgent}
+							disabled={stopping}
+						>
+							{stopping ? (
+								<Loader2 className="h-3.5 w-3.5 animate-spin" />
+							) : (
+								<Square className="h-3.5 w-3.5" />
+							)}
+							<span className="hidden md:inline">
+								{stopping ? "Stopping..." : "Stop"}
+							</span>
+						</Button>
+					)}
+
 					{(agent.status === "completed" || agent.status === "reviewing") && (
 						<Button
 							variant="ghost"
 							size="sm"
 							className="h-7 gap-1.5 px-2 text-xs text-primary hover:bg-primary/10 hover:text-primary sm:px-2.5"
+							onClick={() => createPullRequest(agent.repo, agent.branch)}
 						>
 							<GitPullRequest className="h-3.5 w-3.5" />
 							<span className="hidden md:inline">Create PR</span>
@@ -218,20 +317,26 @@ export function AgentHeader({ agent, onViewChanges }: AgentHeaderProps) {
 							</Button>
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="end" className="w-48">
-							<DropdownMenuItem>
+							<DropdownMenuItem onClick={() => openInEditor(agent.repo)}>
 								<FolderOpen className="h-4 w-4 mr-2" />
 								Open in Editor
 							</DropdownMenuItem>
-							<DropdownMenuItem>
+							<DropdownMenuItem onClick={() => viewOnGitHub(agent.repo)}>
 								<ExternalLink className="h-4 w-4 mr-2" />
 								View on GitHub
 							</DropdownMenuItem>
-							<DropdownMenuItem>
+							<DropdownMenuItem
+								onClick={() => createPullRequest(agent.repo, agent.branch)}
+							>
 								<GitPullRequest className="h-4 w-4 mr-2" />
 								Create Pull Request
 							</DropdownMenuItem>
 							<DropdownMenuSeparator />
-							<DropdownMenuItem className="text-agent-error">
+							<DropdownMenuItem
+								className="text-agent-error"
+								disabled={agent.status !== "running" || stopping}
+								onClick={onStopAgent}
+							>
 								Stop Agent
 							</DropdownMenuItem>
 						</DropdownMenuContent>

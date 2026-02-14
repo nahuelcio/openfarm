@@ -2,6 +2,7 @@ import { invoke as tauriInvoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type {
 	Agent,
+	AgentExecutionEvent,
 	AgentMode,
 	AgentProvider,
 	AppSettings,
@@ -231,6 +232,21 @@ async function webInvoke<T>(
 			writeWebDb(db);
 			return { workspaces: db.workspaces, settings: db.settings } as T;
 		}
+		case "kill_agent": {
+			const agentId = String(payload.agentId || "");
+			for (const workspace of db.workspaces) {
+				const agent = workspace.agents.find((item) => item.id === agentId);
+				if (!agent) {
+					continue;
+				}
+				agent.status = "error";
+				break;
+			}
+			writeWebDb(db);
+			return undefined as T;
+		}
+		case "get_agent_events":
+			return [] as T;
 		case "list_workspace_files":
 			return [] as T;
 		case "list_workspace_slash_commands":
@@ -297,6 +313,10 @@ export async function sendAgentMessage(input: {
 	return invoke<BootstrapState>("send_agent_message", input);
 }
 
+export async function killAgent(agentId: string): Promise<void> {
+	return invoke<void>("kill_agent", { agentId });
+}
+
 export async function loadAgentDiffs(agentId: string): Promise<FileDiff[]> {
 	return invoke<FileDiff[]>("load_agent_diffs", { agentId });
 }
@@ -313,6 +333,23 @@ export async function saveSettings(
 
 export async function getProviderCatalog(): Promise<ProviderConfig[]> {
 	return invoke<ProviderConfig[]>("get_provider_catalog");
+}
+
+interface RawAgentEvent {
+	event_type: string;
+	agent_id: string;
+	data: Record<string, unknown>;
+}
+
+export async function getAgentEvents(
+	agentId: string,
+): Promise<AgentExecutionEvent[]> {
+	const events = await invoke<RawAgentEvent[]>("get_agent_events", { agentId });
+	return events.map((event) => ({
+		eventType: event.event_type,
+		agentId: event.agent_id,
+		data: event.data || {},
+	}));
 }
 
 export async function listWorkspaceFiles(
