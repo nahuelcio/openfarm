@@ -11,6 +11,7 @@ use std::path::PathBuf;
 use std::process::{Command, Output, Stdio};
 use std::sync::mpsc;
 use std::sync::Mutex;
+use std::time::Duration;
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
@@ -2160,31 +2161,64 @@ fn default_branch_for_repo(repo_path: &str) -> String {
     }
 }
 
+fn is_process_alive(process_id: u32) -> bool {
+    Command::new("kill")
+        .args(["-0", &process_id.to_string()])
+        .status()
+        .map(|status| status.success())
+        .unwrap_or(false)
+}
+
+fn terminate_process_tree(process_id: u32) {
+    let pid_value = process_id.to_string();
+    let _ = Command::new("pkill")
+        .args(["-TERM", "-P", &pid_value])
+        .output();
+    let _ = Command::new("kill").args(["-TERM", &pid_value]).output();
+
+    std::thread::sleep(Duration::from_millis(250));
+    if is_process_alive(process_id) {
+        let _ = Command::new("pkill")
+            .args(["-KILL", "-P", &pid_value])
+            .output();
+        let _ = Command::new("kill").args(["-KILL", &pid_value]).output();
+    }
+}
+
 #[tauri::command]
 fn kill_agent(agent_id: String, pool: State<AgentPool>, app: AppHandle) -> Result<(), String> {
     let pid = {
-        let pids = pool.pids.lock().unwrap();
-        pids.get(&agent_id).copied()
+        let mut pids = pool.pids.lock().unwrap();
+        pids.remove(&agent_id)
     };
     if let Some(process_id) = pid {
-        let _ = Command::new("kill")
-            .args(["-TERM", &process_id.to_string()])
-            .output();
+        terminate_process_tree(process_id);
     }
 
-    let mut agents = pool.agents.lock().unwrap();
-    if let Some(agent) = agents.get_mut(&agent_id) {
-        agent.status = "killed".to_string();
-        if let Err(e) = pool.db.save_agent(agent) {
-            log::warn!("Failed to persist killed agent: {}", e);
+    {
+        let mut agents = pool.agents.lock().unwrap();
+        if let Some(agent) = agents.get_mut(&agent_id) {
+            agent.status = "killed".to_string();
+            if let Err(e) = pool.db.save_agent(agent) {
+                log::warn!("Failed to persist killed agent: {}", e);
+            }
         }
     }
+    let _ = pool.db.save_agent_event(
+        &agent_id,
+        "agent:assistant-message",
+        &serde_json::json!({
+            "content": "Execution stopped by user.",
+            "timestamp": chrono::Utc::now().to_rfc3339()
+        }),
+    );
     emit_and_store_event(
         &app,
         &pool,
         "agent:failed",
         serde_json::json!({
             "agent_id": agent_id,
+            "error": "Execution stopped by user.",
             "timestamp": chrono::Utc::now().to_rfc3339()
         }),
     );

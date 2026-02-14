@@ -424,10 +424,44 @@ export default function App() {
 		if (!selectedAgent || selectedAgent.status !== "running") {
 			return;
 		}
-		setStoppingAgentId(selectedAgent.id);
+		const agentId = selectedAgent.id;
+		setStoppingAgentId(agentId);
+		setWorkspaces((prev) =>
+			prev.map((workspace) => ({
+				...workspace,
+				agents: workspace.agents.map((agent) => {
+					if (agent.id !== agentId) {
+						return agent;
+					}
+					return {
+						...agent,
+						status: "error",
+						messages: [
+							...agent.messages,
+							{
+								id: `m-${Date.now()}-stop`,
+								role: "system",
+								content: "Stop requested. Terminating execution...",
+								timestamp: new Date().toLocaleTimeString([], {
+									hour: "2-digit",
+									minute: "2-digit",
+								}),
+							},
+						],
+					};
+				}),
+			})),
+		);
 		try {
-			await killAgent(selectedAgent.id);
-			await refreshState(selectedAgent.id);
+			await killAgent(agentId);
+			await refreshState(agentId);
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : "Failed to stop agent";
+			if (typeof window !== "undefined") {
+				window.alert(message);
+			}
+			await refreshState(agentId).catch(() => {});
 		} finally {
 			setStoppingAgentId(null);
 		}
