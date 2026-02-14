@@ -6,6 +6,7 @@ import { spawnSync } from "node:child_process";
 interface BridgeRequest {
 	kind?: "execute" | "catalog";
 	task?: string;
+	context?: string;
 	workspace?: string;
 	provider?: string;
 	model?: string;
@@ -201,6 +202,7 @@ async function main(): Promise<void> {
 
 	const result = await client.execute({
 		task: request.task || "",
+		context: request.context,
 		workspace: request.workspace || "",
 		provider: request.provider,
 		model: request.model,

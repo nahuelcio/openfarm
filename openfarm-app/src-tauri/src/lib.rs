@@ -1552,6 +1552,7 @@ fn spawn_agent_internal(
         let output = run_agent(
             &agent_id_clone,
             &task_clone,
+            None,
             &provider_clone,
             model_clone.as_deref(),
             mode_clone.as_deref(),
@@ -1641,6 +1642,7 @@ fn spawn_agent_internal(
 #[derive(Debug, Serialize, Deserialize)]
 struct BridgeRequest {
     task: String,
+    context: Option<String>,
     workspace: String,
     provider: String,
     model: Option<String>,
@@ -1883,6 +1885,7 @@ fn stream_and_emit(
 fn run_agent_via_bridge(
     agent_id: &str,
     task: &str,
+    context: Option<&str>,
     provider: &str,
     model: Option<&str>,
     agent_mode: Option<&str>,
@@ -1892,6 +1895,10 @@ fn run_agent_via_bridge(
     let (mapped_provider, cli, args) = normalize_provider_for_bridge(provider);
     let request = BridgeRequest {
         task: task.to_string(),
+        context: context
+            .map(|value| value.trim())
+            .filter(|value| !value.is_empty())
+            .map(|value| value.to_string()),
         workspace: workspace.to_string(),
         provider: mapped_provider,
         model: model.map(|value| value.to_string()),
@@ -2114,13 +2121,19 @@ fn run_agent_via_bridge(
 fn run_agent_via_cli(
     agent_id: &str,
     task: &str,
+    context: Option<&str>,
     provider: &str,
     model: Option<&str>,
     agent_mode: Option<&str>,
     workspace: &str,
     app: &AppHandle,
 ) -> Result<String, String> {
-    let resolved = resolve_agent_command(provider, task, model, agent_mode)?;
+    let resolved_task = context
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(|value| format!("{value}\n\n{task}"))
+        .unwrap_or_else(|| task.to_string());
+    let resolved = resolve_agent_command(provider, &resolved_task, model, agent_mode)?;
     let child = Command::new(&resolved.program)
         .args(&resolved.args)
         .current_dir(workspace)
@@ -2134,20 +2147,30 @@ fn run_agent_via_cli(
 fn run_agent(
     agent_id: &str,
     task: &str,
+    context: Option<&str>,
     provider: &str,
     model: Option<&str>,
     agent_mode: Option<&str>,
     workspace: &str,
     app: &AppHandle,
 ) -> Result<String, String> {
-    match run_agent_via_bridge(agent_id, task, provider, model, agent_mode, workspace, app) {
+    match run_agent_via_bridge(
+        agent_id,
+        task,
+        context,
+        provider,
+        model,
+        agent_mode,
+        workspace,
+        app,
+    ) {
         Ok(output) => Ok(output),
         Err(bridge_err) => {
             log::warn!(
                 "Bridge execution failed, falling back to CLI: {}",
                 bridge_err
             );
-            run_agent_via_cli(agent_id, task, provider, model, agent_mode, workspace, app)
+            run_agent_via_cli(agent_id, task, context, provider, model, agent_mode, workspace, app)
         }
     }
 }
@@ -4222,10 +4245,23 @@ fn load_agent_base_branch(pool: &AgentPool, agent_id: &str) -> Option<String> {
         .map(|value| value.to_string())
 }
 
-fn build_contextual_task(pool: &AgentPool, agent: &Agent, latest_message: &str) -> String {
+fn sanitize_assistant_context(content: &str) -> String {
+    let lines: Vec<String> = content
+        .lines()
+        .map(|line| line.trim())
+        .filter(|line| !line.is_empty())
+        .filter(|line| !line.starts_with("Step:"))
+        .filter(|line| !line.eq_ignore_ascii_case("Run started"))
+        .filter(|line| !line.eq_ignore_ascii_case("Run completed"))
+        .map(|line| line.to_string())
+        .collect();
+    lines.join("\n").trim().to_string()
+}
+
+fn build_execution_context(pool: &AgentPool, agent: &Agent, latest_message: &str) -> Option<String> {
     let clean_latest = latest_message.trim();
     if clean_latest.is_empty() {
-        return latest_message.to_string();
+        return None;
     }
 
     let mut transcript: Vec<(String, String)> = Vec::new();
@@ -4253,29 +4289,20 @@ fn build_contextual_task(pool: &AgentPool, agent: &Agent, latest_message: &str) 
                         .data
                         .get("content")
                         .and_then(|value| value.as_str())
-                        .unwrap_or_default()
-                        .trim()
-                        .to_string();
-                    if content.is_empty() || content.starts_with("Step:") {
+                        .unwrap_or_default();
+                    let sanitized = sanitize_assistant_context(content);
+                    if sanitized.is_empty() {
                         continue;
                     }
-                    transcript.push(("assistant".to_string(), content));
+                    transcript.push(("assistant".to_string(), sanitized));
                 }
                 _ => {}
             }
         }
     }
 
-    while transcript
-        .last()
-        .map(|(role, content)| role == "user" && content == clean_latest)
-        .unwrap_or(false)
-    {
-        transcript.pop();
-    }
-
     if transcript.is_empty() {
-        return clean_latest.to_string();
+        return None;
     }
 
     const MAX_HISTORY_MESSAGES: usize = 14;
@@ -4297,23 +4324,25 @@ fn build_contextual_task(pool: &AgentPool, agent: &Agent, latest_message: &str) 
     selected_rev.reverse();
 
     if selected_rev.is_empty() {
-        return clean_latest.to_string();
+        return None;
     }
 
-    let mut contextual_task = String::from(
-        "Continue this conversation using the history below.\nRespond to the final user message while preserving prior context.\n\nConversation history:\n",
-    );
+    let mut context = String::from("Conversation history:\n");
     for (role, content) in selected_rev {
         let role_label = if role == "assistant" {
             "Assistant"
         } else {
             "User"
         };
-        contextual_task.push_str(&format!("- {role_label}: {content}\n"));
+        context.push_str(&format!("{role_label}: {content}\n"));
     }
-    contextual_task.push_str("\nFinal user message:\n");
-    contextual_task.push_str(clean_latest);
-    contextual_task
+
+    let trimmed = context.trim().to_string();
+    if trimmed.is_empty() {
+        None
+    } else {
+        Some(trimmed)
+    }
 }
 
 fn load_agent_messages(pool: &AgentPool, agent: &Agent) -> Vec<UiMessage> {
@@ -4981,7 +5010,7 @@ fn send_agent_message(
     let selected_mode = mode_override
         .clone()
         .or_else(|| load_agent_mode(&pool, &agent_id));
-    let contextual_task = build_contextual_task(&pool, &snapshot, &message);
+    let execution_context = build_execution_context(&pool, &snapshot, &message);
 
     let _ = pool.db.save_agent_event(
         &agent_id,
@@ -5033,14 +5062,16 @@ fn send_agent_message(
 
     let app_clone = app.clone();
     let agent_id_clone = agent_id.clone();
-    let contextual_task_clone = contextual_task.clone();
+    let message_clone = message.clone();
+    let context_for_run = execution_context.clone();
     let provider_clone = provider_override.unwrap_or(snapshot.provider.clone());
     let model_clone = model_override.or_else(|| load_agent_model(&pool, &agent_id));
     let mode_clone = mode_override.or_else(|| load_agent_mode(&pool, &agent_id));
     std::thread::spawn(move || {
         let result = run_agent(
             &agent_id_clone,
-            &contextual_task_clone,
+            &message_clone,
+            context_for_run.as_deref(),
             &provider_clone,
             model_clone.as_deref(),
             mode_clone.as_deref(),
