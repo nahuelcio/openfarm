@@ -167,6 +167,65 @@ async function webInvoke<T>(
 			writeWebDb(db);
 			return { workspaces: db.workspaces, settings: db.settings } as T;
 		}
+		case "create_agent_in_workspace": {
+			const prompt = String(payload.prompt || "");
+			const workspaceId = String(payload.workspaceId || "");
+			const provider = String(payload.provider || "claude-code");
+			const model = String(payload.model || "");
+			const baseBranch = String(payload.baseBranch || "").trim();
+			const workspace = db.workspaces.find((item) => item.id === workspaceId);
+			if (!workspace) {
+				throw new Error("Workspace not found");
+			}
+			const agentId = `agent-${Math.random().toString(36).slice(2, 8)}`;
+			const agent: Agent = {
+				id: agentId,
+				name: prompt.slice(0, 40) || "New agent",
+				repo: workspace.repo,
+				branch:
+					baseBranch ||
+					`feat/${prompt
+						.slice(0, 20)
+						.toLowerCase()
+						.replace(/[^a-z0-9]+/g, "-")}`,
+				status: "running",
+				provider: provider as Agent["provider"],
+				model,
+				prompt,
+				filesChanged: 0,
+				linesAdded: 0,
+				linesRemoved: 0,
+				startedAt: "just now",
+				diffs: [],
+				messages: [
+					{
+						id: `m-${Date.now()}-u`,
+						role: "user",
+						content: prompt,
+						timestamp: nowTimeLabel(),
+					},
+					{
+						id: `m-${Date.now()}-a`,
+						role: "agent",
+						content: "Starting task in web fallback mode.",
+						timestamp: nowTimeLabel(),
+						thinking: true,
+					},
+				],
+			};
+			workspace.agents.push(agent);
+			writeWebDb(db);
+			return { workspaces: db.workspaces, settings: db.settings } as T;
+		}
+		case "archive_agent_conversation": {
+			const agentId = String(payload.agentId || "");
+			db.workspaces = db.workspaces.map((workspace) => ({
+				...workspace,
+				agents: workspace.agents.filter((agent) => agent.id !== agentId),
+			}));
+			writeWebDb(db);
+			return { workspaces: db.workspaces, settings: db.settings } as T;
+		}
 		case "list_repository_branches":
 			return ["main", "master"] as T;
 		case "add_local_workspace": {
@@ -286,7 +345,17 @@ export async function createAgent(input: {
 	provider: string;
 	model: string;
 	baseBranch?: string;
+	workspaceId?: string;
 }): Promise<BootstrapState> {
+	if (input.workspaceId?.trim()) {
+		return invoke<BootstrapState>("create_agent_in_workspace", {
+			prompt: input.prompt,
+			workspaceId: input.workspaceId,
+			provider: input.provider,
+			model: input.model,
+			baseBranch: input.baseBranch,
+		});
+	}
 	return invoke<BootstrapState>("create_agent", input);
 }
 
@@ -315,6 +384,12 @@ export async function sendAgentMessage(input: {
 
 export async function killAgent(agentId: string): Promise<void> {
 	return invoke<void>("kill_agent", { agentId });
+}
+
+export async function archiveAgentConversation(
+	agentId: string,
+): Promise<BootstrapState> {
+	return invoke<BootstrapState>("archive_agent_conversation", { agentId });
 }
 
 export async function loadAgentDiffs(agentId: string): Promise<FileDiff[]> {

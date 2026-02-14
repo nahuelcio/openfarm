@@ -42,6 +42,7 @@ interface AgentPanelProps {
 	onRemoveQueuedInstruction: (queueItemId: string) => void;
 	onForceSendQueuedInstruction: (queueItemId: string) => void;
 	onStopAgent: () => void;
+	onArchiveConversation: () => void;
 	stoppingAgent: boolean;
 	onLoadAgentEvents: () => void;
 	providers: ProviderConfig[];
@@ -59,6 +60,7 @@ export function AgentPanel({
 	onRemoveQueuedInstruction,
 	onForceSendQueuedInstruction,
 	onStopAgent,
+	onArchiveConversation,
 	stoppingAgent,
 	onLoadAgentEvents,
 	providers,
@@ -93,6 +95,7 @@ export function AgentPanel({
 				agent={agent}
 				onViewChanges={handleViewChanges}
 				onStopAgent={onStopAgent}
+				onArchiveConversation={onArchiveConversation}
 				stopping={stoppingAgent}
 				onToggleLogs={handleToggleLogs}
 				logsOpen={logsOpen}

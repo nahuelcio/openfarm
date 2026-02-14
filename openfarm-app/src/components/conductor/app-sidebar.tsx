@@ -102,6 +102,7 @@ interface AppSidebarProps {
 	selectedAgentId: string | null;
 	onSelectAgent: (agent: Agent) => void;
 	onAddWorkspace: () => void;
+	onSpawnAgentInWorkspace: (workspace: Workspace) => void;
 }
 
 export function AppSidebar({
@@ -109,6 +110,7 @@ export function AppSidebar({
 	selectedAgentId,
 	onSelectAgent,
 	onAddWorkspace,
+	onSpawnAgentInWorkspace,
 }: AppSidebarProps) {
 	const [expandedWorkspaces, setExpandedWorkspaces] = useState<Set<string>>(
 		new Set(workspaces.map((w) => w.id)),
@@ -180,6 +182,25 @@ export function AppSidebar({
 									<FolderGit2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
 									<span className="text-[13px] font-medium text-sidebar-foreground truncate">
 										{workspace.name}
+									</span>
+									<span
+										className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+										onClick={(event) => {
+											event.stopPropagation();
+											onSpawnAgentInWorkspace(workspace);
+										}}
+										onKeyDown={(event) => {
+											if (event.key === "Enter" || event.key === " ") {
+												event.preventDefault();
+												event.stopPropagation();
+												onSpawnAgentInWorkspace(workspace);
+											}
+										}}
+										role="button"
+										tabIndex={0}
+									>
+										<Plus className="h-3 w-3" />
+										<span className="sr-only">Spawn agent in workspace</span>
 									</span>
 									<span className="ml-auto text-[10px] text-muted-foreground">
 										{workspace.agents.length}

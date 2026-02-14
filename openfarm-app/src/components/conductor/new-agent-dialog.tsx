@@ -23,9 +23,12 @@ interface NewAgentDialogProps {
 		provider: string;
 		model: string;
 		baseBranch?: string;
+		workspaceId?: string;
 	}) => void;
 	settings: AppSettings;
-	repos?: { name: string; label: string }[];
+	repos?: { id?: string; name: string; label: string }[];
+	initialRepo?: string;
+	initialWorkspaceId?: string;
 }
 
 const DEFAULT_REPOS = [
@@ -75,6 +78,8 @@ export function NewAgentDialog({
 	onSubmit,
 	settings,
 	repos,
+	initialRepo,
+	initialWorkspaceId,
 }: NewAgentDialogProps) {
 	const repoOptions = repos && repos.length > 0 ? repos : DEFAULT_REPOS;
 	const [prompt, setPrompt] = useState("");
@@ -123,11 +128,39 @@ export function NewAgentDialog({
 	}, [currentModels, selectedOpenCodeGroup, selectedProvider]);
 
 	useEffect(() => {
-		if (!repoOptions.some((option) => option.name === selectedRepo?.name)) {
-			setSelectedRepo(repoOptions[0]);
-			setRepoPath(repoOptions[0]?.name ?? "");
+		if (!open) {
+			return;
 		}
-	}, [repoOptions, selectedRepo]);
+		const workspaceId = initialWorkspaceId?.trim();
+		if (workspaceId) {
+			const byWorkspace = repoOptions.find(
+				(option) => option.id === workspaceId,
+			);
+			if (byWorkspace) {
+				setSelectedRepo(byWorkspace);
+				setRepoPath(byWorkspace.name);
+				return;
+			}
+		}
+
+		const targetRepo = initialRepo?.trim();
+		if (targetRepo) {
+			const byRepo = repoOptions.find((option) => option.name === targetRepo);
+			if (byRepo) {
+				setSelectedRepo(byRepo);
+			} else {
+				setSelectedRepo({ name: targetRepo, label: targetRepo });
+			}
+			setRepoPath(targetRepo);
+			return;
+		}
+
+		const fallback = repoOptions[0];
+		if (fallback) {
+			setSelectedRepo(fallback);
+			setRepoPath(fallback.name);
+		}
+	}, [initialRepo, initialWorkspaceId, open, repoOptions]);
 
 	useEffect(() => {
 		if (selectedProvider !== "opencode") {
@@ -198,13 +231,18 @@ export function NewAgentDialog({
 	};
 
 	const handleSubmit = () => {
-		if (prompt.trim() && repoPath.trim()) {
+		const normalizedRepoPath = repoPath.trim();
+		if (prompt.trim() && normalizedRepoPath) {
+			const selectedWorkspaceId = repoOptions.find(
+				(repo) => repo.name === normalizedRepoPath,
+			)?.id;
 			onSubmit({
 				prompt: prompt.trim(),
-				repo: repoPath,
+				repo: normalizedRepoPath,
 				provider: selectedProvider,
 				model: selectedModel,
 				baseBranch: selectedBaseBranch.trim() || undefined,
+				workspaceId: selectedWorkspaceId,
 			});
 			setPrompt("");
 			onClose();

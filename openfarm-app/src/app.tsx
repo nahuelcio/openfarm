@@ -7,6 +7,7 @@ import { SettingsPanel } from "@/components/conductor/settings-panel";
 import { Titlebar } from "@/components/conductor/titlebar";
 import {
 	addLocalWorkspace,
+	archiveAgentConversation,
 	bootstrapAppState,
 	createAgent,
 	getAgentEvents,
@@ -172,6 +173,12 @@ export default function App() {
 	const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
 	const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
 	const [newAgentOpen, setNewAgentOpen] = useState(false);
+	const [newAgentInitialRepo, setNewAgentInitialRepo] = useState<
+		string | undefined
+	>(undefined);
+	const [newAgentInitialWorkspaceId, setNewAgentInitialWorkspaceId] = useState<
+		string | undefined
+	>(undefined);
 	const [settingsOpen, setSettingsOpen] = useState(false);
 	const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
 	const [queuedInstructionsByAgent, setQueuedInstructionsByAgent] = useState<
@@ -204,6 +211,7 @@ export default function App() {
 	const repos = useMemo(
 		() =>
 			workspaces.map((workspace) => ({
+				id: workspace.id,
 				name: workspace.repo,
 				label: workspace.name,
 			})),
@@ -550,6 +558,7 @@ export default function App() {
 			provider: string;
 			model: string;
 			baseBranch?: string;
+			workspaceId?: string;
 		}) => {
 			const next = await createAgent(data);
 			const workspace = next.workspaces.find(
@@ -560,9 +569,35 @@ export default function App() {
 					? workspace.agents[workspace.agents.length - 1]?.id || null
 					: null;
 			syncState(next, created);
+			setNewAgentInitialRepo(undefined);
+			setNewAgentInitialWorkspaceId(undefined);
 		},
 		[syncState],
 	);
+
+	const handleArchiveConversation = useCallback(async () => {
+		if (!selectedAgent) {
+			return;
+		}
+		try {
+			const next = await archiveAgentConversation(selectedAgent.id);
+			syncState(next, null);
+		} catch (error) {
+			const message =
+				error instanceof Error
+					? error.message
+					: "Failed to archive conversation";
+			if (typeof window !== "undefined") {
+				window.alert(message);
+			}
+		}
+	}, [selectedAgent, syncState]);
+
+	const handleSpawnAgentInWorkspace = useCallback((workspace: Workspace) => {
+		setNewAgentInitialRepo(workspace.repo);
+		setNewAgentInitialWorkspaceId(workspace.id);
+		setNewAgentOpen(true);
+	}, []);
 
 	const handleAddWorkspace = useCallback(async () => {
 		const selectedPath = await pickRepositoryDirectory();
@@ -700,7 +735,11 @@ export default function App() {
 	return (
 		<div className="flex h-screen flex-col overflow-hidden">
 			<Titlebar
-				onNewAgent={() => setNewAgentOpen(true)}
+				onNewAgent={() => {
+					setNewAgentInitialRepo(undefined);
+					setNewAgentInitialWorkspaceId(undefined);
+					setNewAgentOpen(true);
+				}}
 				onOpenSettings={() => setSettingsOpen(true)}
 				onToggleSidebar={() => setSidebarOpen((value) => !value)}
 				sidebarOpen={sidebarOpen}
@@ -716,6 +755,7 @@ export default function App() {
 					<AppSidebar
 						onAddWorkspace={handleAddWorkspace}
 						onSelectAgent={handleSelectAgent}
+						onSpawnAgentInWorkspace={handleSpawnAgentInWorkspace}
 						selectedAgentId={selectedAgentId}
 						workspaces={workspaces}
 					/>
@@ -734,6 +774,7 @@ export default function App() {
 							onRemoveQueuedInstruction={handleRemoveQueuedInstruction}
 							onForceSendQueuedInstruction={handleForceSendQueuedInstruction}
 							onStopAgent={handleStopAgent}
+							onArchiveConversation={handleArchiveConversation}
 							stoppingAgent={stoppingAgentId === selectedAgent.id}
 							agentEvents={selectedAgentEvents}
 							logsLoading={selectedLogsLoading}
@@ -747,12 +788,18 @@ export default function App() {
 
 			<NewAgentDialog
 				onBrowseRepo={pickRepositoryDirectory}
-				onClose={() => setNewAgentOpen(false)}
+				onClose={() => {
+					setNewAgentOpen(false);
+					setNewAgentInitialRepo(undefined);
+					setNewAgentInitialWorkspaceId(undefined);
+				}}
 				onListBranches={listRepositoryBranches}
 				onSubmit={handleNewAgent}
 				open={newAgentOpen}
 				repos={repos}
 				settings={settings}
+				initialRepo={newAgentInitialRepo}
+				initialWorkspaceId={newAgentInitialWorkspaceId}
 			/>
 
 			<SettingsPanel

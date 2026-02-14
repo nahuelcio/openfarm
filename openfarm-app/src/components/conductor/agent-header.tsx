@@ -4,6 +4,7 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { Command } from "@tauri-apps/plugin-shell";
 import {
 	AlertCircle,
+	Archive,
 	CheckCircle2,
 	Circle,
 	ExternalLink,
@@ -194,6 +195,7 @@ interface AgentHeaderProps {
 	agent: Agent;
 	onViewChanges?: () => void;
 	onStopAgent?: () => void;
+	onArchiveConversation?: () => void;
 	stopping?: boolean;
 	onToggleLogs?: () => void;
 	logsOpen?: boolean;
@@ -203,6 +205,7 @@ export function AgentHeader({
 	agent,
 	onViewChanges,
 	onStopAgent,
+	onArchiveConversation,
 	stopping = false,
 	onToggleLogs,
 	logsOpen = false,
@@ -332,6 +335,17 @@ export function AgentHeader({
 								Create Pull Request
 							</DropdownMenuItem>
 							<DropdownMenuSeparator />
+							<DropdownMenuItem
+								disabled={
+									!onArchiveConversation ||
+									agent.status === "running" ||
+									stopping
+								}
+								onClick={onArchiveConversation}
+							>
+								<Archive className="h-4 w-4 mr-2" />
+								Archive Conversation
+							</DropdownMenuItem>
 							<DropdownMenuItem
 								className="text-agent-error"
 								disabled={agent.status !== "running" || stopping}

@@ -4763,6 +4763,9 @@ fn to_ui_bootstrap(pool: &AgentPool) -> Result<UiBootstrapState, String> {
         agents.values().cloned().collect()
     };
     for agent in agents_snapshot {
+        if agent.status == "archived" {
+            continue;
+        }
         let repo = agent.repo_path.clone().unwrap_or_else(|| ".".to_string());
         let diffs = load_agent_diff_files(pool, &agent.id).unwrap_or_default();
         let lines_added = diffs.iter().map(|diff| diff.lines_added).sum();
@@ -4952,6 +4955,50 @@ fn create_agent(
         base_branch,
         None,
         None,
+        pool.clone(),
+        app,
+        true,
+    )?;
+    to_ui_bootstrap(&pool)
+}
+
+#[tauri::command]
+fn create_agent_in_workspace(
+    prompt: String,
+    workspace_id: String,
+    provider: String,
+    model: Option<String>,
+    base_branch: Option<String>,
+    pool: State<AgentPool>,
+    app: AppHandle,
+) -> Result<UiBootstrapState, String> {
+    let workspace = {
+        let workspaces = pool.workspaces.lock().unwrap();
+        workspaces
+            .get(&workspace_id)
+            .cloned()
+            .ok_or("Workspace not found".to_string())?
+    };
+    if workspace.status == "archived" {
+        return Err("Cannot spawn agent in archived workspace".to_string());
+    }
+
+    let resolved_base_branch = base_branch
+        .as_ref()
+        .map(|value| value.trim())
+        .filter(|value| !value.is_empty())
+        .map(|value| value.to_string())
+        .unwrap_or_else(|| workspace.branch_name.clone());
+
+    let _agent_id = spawn_agent_internal(
+        prompt,
+        provider,
+        workspace.repo_path.clone(),
+        model,
+        None,
+        Some(resolved_base_branch),
+        workspace.project_id.clone(),
+        workspace.session_id.clone(),
         pool.clone(),
         app,
         true,
@@ -5151,6 +5198,36 @@ fn send_agent_message(
 }
 
 #[tauri::command]
+fn archive_agent_conversation(
+    agent_id: String,
+    pool: State<AgentPool>,
+) -> Result<UiBootstrapState, String> {
+    {
+        let mut agents = pool.agents.lock().unwrap();
+        let agent = agents
+            .get_mut(&agent_id)
+            .ok_or("Agent not found".to_string())?;
+        if agent.status == "running" {
+            return Err("Cannot archive a running conversation. Stop it first.".to_string());
+        }
+        if agent.status != "archived" {
+            agent.status = "archived".to_string();
+            pool.db.save_agent(agent).map_err(|e| e.to_string())?;
+        }
+    }
+
+    let _ = pool.db.save_agent_event(
+        &agent_id,
+        "agent:archived",
+        &serde_json::json!({
+            "timestamp": chrono::Utc::now().to_rfc3339()
+        }),
+    );
+
+    to_ui_bootstrap(&pool)
+}
+
+#[tauri::command]
 fn load_agent_diffs(agent_id: String, pool: State<AgentPool>) -> Result<Vec<UiFileDiff>, String> {
     load_agent_diff_files(&pool, &agent_id)
 }
@@ -5324,7 +5401,9 @@ pub fn run() {
             add_local_workspace,
             list_repository_branches,
             create_agent,
+            create_agent_in_workspace,
             send_agent_message,
+            archive_agent_conversation,
             load_agent_diffs,
             get_settings,
             save_settings,
