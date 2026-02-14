@@ -311,6 +311,24 @@ pre {
 	overflow: hidden;
 }
 
+.review-decision-grid {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 10px;
+	margin: 10px 0;
+}
+
+.review-decision-card {
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-sm);
+	background: rgba(15, 22, 34, 0.92);
+	padding: 10px;
+}
+
+.review-decision-card h3 {
+	margin-bottom: 6px;
+}
+
 .diff-line {
 	display: grid;
 	grid-template-columns: 1fr 1fr;
@@ -409,5 +427,11 @@ pre {
 	to {
 		opacity: 1;
 		transform: translateY(0);
+	}
+}
+
+@media (max-width: 1080px) {
+	.review-decision-grid {
+		grid-template-columns: 1fr;
 	}
 }

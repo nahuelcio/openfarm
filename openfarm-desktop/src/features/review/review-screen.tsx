@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { AppViewModel } from "../../state/use-app-view-model";
 import { PageShell } from "../../ui/layout/page-shell";
 
@@ -45,7 +46,31 @@ function riskBadgeClass(level: RiskLevel): string {
 	return "completed";
 }
 
+function statusLabel(status: string): string {
+	if (status === "completed") {
+		return "Listo para revisar";
+	}
+	if (status === "running") {
+		return "Trabajando";
+	}
+	if (status === "failed") {
+		return "Falló";
+	}
+	if (status === "pending") {
+		return "En cola";
+	}
+	if (status === "approved") {
+		return "Aprobado";
+	}
+	if (status === "rejected") {
+		return "Con ajustes pedidos";
+	}
+	return status;
+}
+
 export function ReviewScreen({ vm }: ReviewScreenProps) {
+	const [showTechnical, setShowTechnical] = useState(false);
+
 	if (!vm.selectedAgent) {
 		return null;
 	}
@@ -68,7 +93,7 @@ export function ReviewScreen({ vm }: ReviewScreenProps) {
 				<div className="review-header">
 					<h2>Tarea: {vm.selectedAgent.id.slice(0, 8)}</h2>
 					<span className={`status-badge ${vm.selectedAgent.status}`}>
-						{vm.selectedAgent.status}
+						{statusLabel(vm.selectedAgent.status)}
 					</span>
 				</div>
 				<div className="review-task">
@@ -100,35 +125,53 @@ export function ReviewScreen({ vm }: ReviewScreenProps) {
 				<span className={`status-badge ${riskBadgeClass(riskLevel)}`}>
 					{riskLabel(riskLevel)}
 				</span>
-				<div className="review-actions">
-					<button
-						className="btn-primary"
-						disabled={vm.selectedAgent.status !== "completed"}
-						onClick={() => vm.approveAgent(vm.selectedAgent?.id || "")}
-						type="button"
-					>
-						Confirmar Cambios
-					</button>
-					<button
-						className="btn-secondary"
-						disabled={vm.selectedAgent.status !== "completed"}
-						onClick={() =>
-							vm.rejectAgent(
-								vm.selectedAgent?.id || "",
-								vm.reviewRejectReason.trim() || "Rejected from review",
-							)
-						}
-						type="button"
-					>
-						Pedir Ajustes
-					</button>
-					<button
-						className="btn-secondary"
-						onClick={() => vm.getAgentDiff(vm.selectedAgent?.id || "")}
-						type="button"
-					>
-						Ver Cambios
-					</button>
+				<div className="review-decision-grid">
+					<div className="review-decision-card">
+						<h3>Aprobar</h3>
+						<p className="list-item-subtitle">
+							Usalo cuando el resultado está correcto.
+						</p>
+						<button
+							className="btn-primary"
+							disabled={vm.selectedAgent.status !== "completed"}
+							onClick={() => vm.approveAgent(vm.selectedAgent?.id || "")}
+							type="button"
+						>
+							Confirmar Cambios
+						</button>
+					</div>
+					<div className="review-decision-card">
+						<h3>Pedir ajustes</h3>
+						<p className="list-item-subtitle">
+							Usalo si hay algo que mejorar o corregir.
+						</p>
+						<button
+							className="btn-secondary"
+							disabled={vm.selectedAgent.status !== "completed"}
+							onClick={() =>
+								vm.rejectAgent(
+									vm.selectedAgent?.id || "",
+									vm.reviewRejectReason.trim() || "Necesita ajustes",
+								)
+							}
+							type="button"
+						>
+							Pedir Ajustes
+						</button>
+					</div>
+					<div className="review-decision-card">
+						<h3>Ver evidencia</h3>
+						<p className="list-item-subtitle">
+							Revisá archivos cambiados antes de decidir.
+						</p>
+						<button
+							className="btn-secondary"
+							onClick={() => vm.getAgentDiff(vm.selectedAgent?.id || "")}
+							type="button"
+						>
+							Ver Cambios
+						</button>
+					</div>
 				</div>
 				<div className="review-task">
 					<h3>Motivo (si pedís ajustes)</h3>
@@ -139,19 +182,28 @@ export function ReviewScreen({ vm }: ReviewScreenProps) {
 						value={vm.reviewRejectReason}
 					/>
 				</div>
+				<button
+					className="btn-secondary"
+					onClick={() => setShowTechnical((prev) => !prev)}
+					type="button"
+				>
+					{showTechnical
+						? "Ocultar detalles técnicos"
+						: "Mostrar detalles técnicos"}
+				</button>
 				{vm.reviewError && (
 					<div className="diff-viewer">
 						<h3>Error al confirmar</h3>
 						<pre>{vm.reviewError}</pre>
 					</div>
 				)}
-				{vm.diff && (
+				{showTechnical && vm.diff && (
 					<div className="diff-viewer">
 						<h3>Resumen de Cambios</h3>
 						<pre>{vm.diff}</pre>
 					</div>
 				)}
-				{vm.diffFiles.length > 0 && (
+				{showTechnical && vm.diffFiles.length > 0 && (
 					<div className="diff-viewer">
 						<h3>Archivos Modificados</h3>
 						<input
@@ -197,14 +249,16 @@ export function ReviewScreen({ vm }: ReviewScreenProps) {
 						)}
 					</div>
 				)}
-				<div className="diff-viewer">
-					<h3>Detalle de Ejecución</h3>
-					<pre>
-						{vm.agentOutput[vm.selectedAgent.id] ||
-							vm.selectedAgent.output ||
-							"Sin salida todavía"}
-					</pre>
-				</div>
+				{showTechnical && (
+					<div className="diff-viewer">
+						<h3>Detalle de Ejecución</h3>
+						<pre>
+							{vm.agentOutput[vm.selectedAgent.id] ||
+								vm.selectedAgent.output ||
+								"Sin salida todavía"}
+						</pre>
+					</div>
+				)}
 			</div>
 		</PageShell>
 	);
