@@ -2,6 +2,8 @@ import { invoke as tauriInvoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type {
 	Agent,
+	AgentMode,
+	AgentProvider,
 	AppSettings,
 	Attachment,
 	BootstrapState,
@@ -191,10 +193,22 @@ async function webInvoke<T>(
 			const message = String(payload.message || "");
 			const attachments =
 				(payload.attachments as Attachment[] | undefined) || [];
+			const provider = String(payload.provider || "").trim();
+			const model = String(payload.model || "").trim();
+			const agentMode = String(payload.agentMode || "").trim();
 			for (const workspace of db.workspaces) {
 				const agent = workspace.agents.find((item) => item.id === agentId);
 				if (!agent) {
 					continue;
+				}
+				if (provider) {
+					agent.provider = provider as AgentProvider;
+				}
+				if (model) {
+					agent.model = model;
+				}
+				if (agentMode) {
+					agent.mode = agentMode as AgentMode;
 				}
 				agent.messages.push({
 					id: `m-${Date.now()}-u`,
@@ -268,6 +282,9 @@ export async function sendAgentMessage(input: {
 	agentId: string;
 	message: string;
 	attachments?: Attachment[];
+	provider?: AgentProvider;
+	model?: string;
+	agentMode?: AgentMode;
 }): Promise<BootstrapState> {
 	return invoke<BootstrapState>("send_agent_message", input);
 }

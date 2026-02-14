@@ -6,6 +6,7 @@ export type AgentStatus =
 	| "reviewing";
 
 export type AgentProvider = "claude-code" | "codex" | "opencode";
+export type AgentMode = "general" | "plan";
 
 export interface Attachment {
 	id: string;
@@ -54,6 +55,7 @@ export interface Agent {
 	status: AgentStatus;
 	provider: AgentProvider;
 	model?: string;
+	mode?: AgentMode;
 	prompt: string;
 	filesChanged: number;
 	linesAdded: number;

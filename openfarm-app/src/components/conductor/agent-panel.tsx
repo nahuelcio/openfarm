@@ -1,7 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import type { Agent, Attachment } from "@/lib/store";
+import type {
+	Agent,
+	AgentMode,
+	AgentProvider,
+	Attachment,
+	ProviderConfig,
+} from "@/lib/store";
 import { AgentHeader } from "./agent-header";
 import { ChatMessages } from "./chat-messages";
 import { DiffViewer } from "./diff-viewer";
@@ -9,10 +15,21 @@ import { PromptInput } from "./prompt-input";
 
 interface AgentPanelProps {
 	agent: Agent;
-	onSendMessage: (message: string, attachments?: Attachment[]) => void;
+	onSendMessage: (payload: {
+		message: string;
+		attachments?: Attachment[];
+		provider?: AgentProvider;
+		model?: string;
+		agentMode?: AgentMode;
+	}) => void;
+	providers: ProviderConfig[];
 }
 
-export function AgentPanel({ agent, onSendMessage }: AgentPanelProps) {
+export function AgentPanel({
+	agent,
+	onSendMessage,
+	providers,
+}: AgentPanelProps) {
 	const [diffOpen, setDiffOpen] = useState(false);
 	const [diffInitialFile, setDiffInitialFile] = useState<string | undefined>();
 
@@ -41,6 +58,8 @@ export function AgentPanel({ agent, onSendMessage }: AgentPanelProps) {
 				disabled={agent.status === "error"}
 				provider={agent.provider}
 				model={agent.model}
+				mode={agent.mode}
+				providers={providers}
 				placeholder={
 					agent.status === "error"
 						? "Agent encountered an error. Fix the issue and retry."

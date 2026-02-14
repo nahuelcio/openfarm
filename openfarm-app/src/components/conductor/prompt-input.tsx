@@ -11,9 +11,14 @@ import {
 	Slash,
 	X,
 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import type { AgentProvider, Attachment } from "@/lib/store";
+import type {
+	AgentMode,
+	AgentProvider,
+	Attachment,
+	ProviderConfig,
+} from "@/lib/store";
 import { cn } from "@/lib/utils";
 
 function fileTypeFromName(name: string): Attachment["type"] {
@@ -66,12 +71,37 @@ const PROVIDER_LABELS: Record<AgentProvider, { label: string; color: string }> =
 		opencode: { label: "opencode", color: "text-[#06b6d4]" },
 	};
 
+const OPENCODE_AGENT_MODES: Array<{ id: AgentMode; label: string }> = [
+	{ id: "general", label: "general mode" },
+	{ id: "plan", label: "plan mode" },
+];
+
+function getOpenCodeGroup(modelId: string, description: string): string {
+	if (modelId.startsWith("openrouter/")) return "OpenRouter";
+	if (modelId.startsWith("github-copilot/")) return "GitHub Copilot";
+	if (modelId.startsWith("zai-coding-plan/")) return "ZAI Coding Plan";
+	if (modelId.startsWith("zai/")) return "ZAI";
+	if (modelId.startsWith("opencode/")) return "OpenCode";
+	if (description.includes("OpenRouter")) return "OpenRouter";
+	if (description.includes("GitHub Copilot")) return "GitHub Copilot";
+	if (description.includes("ZAI")) return "ZAI";
+	return "OpenCode";
+}
+
 interface PromptInputProps {
-	onSend: (message: string, attachments?: Attachment[]) => void;
+	onSend: (payload: {
+		message: string;
+		attachments?: Attachment[];
+		provider?: AgentProvider;
+		model?: string;
+		agentMode?: AgentMode;
+	}) => void;
 	disabled?: boolean;
 	placeholder?: string;
 	provider?: AgentProvider;
 	model?: string;
+	mode?: AgentMode;
+	providers?: ProviderConfig[];
 }
 
 export function PromptInput({
@@ -80,14 +110,104 @@ export function PromptInput({
 	placeholder = "Ask the agent anything...",
 	provider = "claude-code",
 	model,
+	mode = "general",
+	providers = [],
 }: PromptInputProps) {
 	const [value, setValue] = useState("");
 	const [attachments, setAttachments] = useState<Attachment[]>([]);
+	const connectedProviders = providers.filter(
+		(candidate) => candidate.connected,
+	);
+	const availableProviders =
+		connectedProviders.length > 0 ? connectedProviders : providers;
+	const fallbackProvider =
+		availableProviders.find((candidate) => candidate.id === provider)?.id ||
+		availableProviders[0]?.id ||
+		provider;
+	const [selectedProvider, setSelectedProvider] =
+		useState<AgentProvider>(fallbackProvider);
+	const [selectedOpenCodeGroup, setSelectedOpenCodeGroup] = useState("all");
+	const selectedProviderConfig =
+		availableProviders.find((candidate) => candidate.id === selectedProvider) ||
+		availableProviders[0];
+	const currentModels = selectedProviderConfig?.models || [];
+	const openCodeGroups = useMemo(() => {
+		if (selectedProvider !== "opencode") {
+			return [];
+		}
+		const values = currentModels.map((candidate) =>
+			getOpenCodeGroup(candidate.id, candidate.description),
+		);
+		return [...new Set(values)];
+	}, [currentModels, selectedProvider]);
+	const availableModels = useMemo(() => {
+		if (selectedProvider !== "opencode" || selectedOpenCodeGroup === "all") {
+			return currentModels;
+		}
+		return currentModels.filter(
+			(candidate) =>
+				getOpenCodeGroup(candidate.id, candidate.description) ===
+				selectedOpenCodeGroup,
+		);
+	}, [currentModels, selectedOpenCodeGroup, selectedProvider]);
+	const [selectedModel, setSelectedModel] = useState(
+		model || selectedProviderConfig?.defaultModel || "",
+	);
+	const [selectedMode, setSelectedMode] = useState<AgentMode>(mode);
 	const fileInputRef = useRef<HTMLInputElement>(null);
+
+	useEffect(() => {
+		const canUseProvider = availableProviders.some(
+			(candidate) => candidate.id === provider,
+		);
+		if (canUseProvider) {
+			setSelectedProvider(provider);
+		}
+	}, [availableProviders, provider]);
+
+	useEffect(() => {
+		const nextModel =
+			model ||
+			availableProviders.find((candidate) => candidate.id === provider)
+				?.defaultModel ||
+			availableProviders[0]?.defaultModel ||
+			"";
+		setSelectedModel(nextModel);
+	}, [availableProviders, model, provider]);
+
+	useEffect(() => {
+		setSelectedMode(mode);
+	}, [mode]);
+
+	useEffect(() => {
+		if (selectedProvider !== "opencode") {
+			setSelectedOpenCodeGroup("all");
+			return;
+		}
+		if (
+			selectedOpenCodeGroup !== "all" &&
+			!openCodeGroups.includes(selectedOpenCodeGroup)
+		) {
+			setSelectedOpenCodeGroup("all");
+		}
+	}, [openCodeGroups, selectedOpenCodeGroup, selectedProvider]);
+
+	useEffect(() => {
+		if (availableModels.some((candidate) => candidate.id === selectedModel)) {
+			return;
+		}
+		setSelectedModel(availableModels[0]?.id || "");
+	}, [availableModels, selectedModel]);
 
 	const handleSubmit = () => {
 		if ((value.trim() || attachments.length > 0) && !disabled) {
-			onSend(value.trim(), attachments.length > 0 ? attachments : undefined);
+			onSend({
+				message: value.trim(),
+				attachments: attachments.length > 0 ? attachments : undefined,
+				provider: selectedProvider,
+				model: selectedModel || undefined,
+				agentMode: selectedProvider === "opencode" ? selectedMode : undefined,
+			});
 			setValue("");
 			setAttachments([]);
 		}
@@ -118,10 +238,75 @@ export function PromptInput({
 		setAttachments((prev) => prev.filter((a) => a.id !== id));
 	};
 
-	const providerInfo = PROVIDER_LABELS[provider];
+	const providerInfo =
+		PROVIDER_LABELS[selectedProvider] || PROVIDER_LABELS["claude-code"];
 
 	return (
 		<div className="border-t border-border bg-card px-4 py-3">
+			<div className="mb-2 flex flex-wrap items-center gap-2 px-1">
+				<select
+					value={selectedProvider}
+					onChange={(event) => {
+						const nextProvider = event.target.value as AgentProvider;
+						setSelectedProvider(nextProvider);
+						const nextConfig = availableProviders.find(
+							(candidate) => candidate.id === nextProvider,
+						);
+						setSelectedModel(nextConfig?.defaultModel || "");
+						if (nextProvider !== "opencode") {
+							setSelectedMode("general");
+						}
+					}}
+					className="h-7 min-w-[120px] rounded border border-border bg-background px-2 text-xs text-foreground focus:border-primary/40 focus:outline-none"
+				>
+					{availableProviders.map((candidate) => (
+						<option key={candidate.id} value={candidate.id}>
+							{candidate.name}
+						</option>
+					))}
+				</select>
+				{selectedProvider === "opencode" && openCodeGroups.length > 0 && (
+					<select
+						value={selectedOpenCodeGroup}
+						onChange={(event) => setSelectedOpenCodeGroup(event.target.value)}
+						className="h-7 min-w-[140px] rounded border border-border bg-background px-2 text-xs text-foreground focus:border-primary/40 focus:outline-none"
+					>
+						<option value="all">all providers</option>
+						{openCodeGroups.map((group) => (
+							<option key={group} value={group}>
+								{group}
+							</option>
+						))}
+					</select>
+				)}
+				<select
+					value={selectedModel}
+					onChange={(event) => setSelectedModel(event.target.value)}
+					className="h-7 min-w-[180px] max-w-full flex-1 rounded border border-border bg-background px-2 text-xs text-foreground focus:border-primary/40 focus:outline-none"
+				>
+					{availableModels.map((candidate) => (
+						<option key={candidate.id} value={candidate.id}>
+							{candidate.name}
+						</option>
+					))}
+				</select>
+				{selectedProvider === "opencode" && (
+					<select
+						value={selectedMode}
+						onChange={(event) =>
+							setSelectedMode(event.target.value as AgentMode)
+						}
+						className="h-7 min-w-[130px] rounded border border-border bg-background px-2 text-xs text-foreground focus:border-primary/40 focus:outline-none"
+					>
+						{OPENCODE_AGENT_MODES.map((candidate) => (
+							<option key={candidate.id} value={candidate.id}>
+								{candidate.label}
+							</option>
+						))}
+					</select>
+				)}
+			</div>
+
 			{/* Hidden file input */}
 			<input
 				ref={fileInputRef}
@@ -253,11 +438,14 @@ export function PromptInput({
 					</span>
 				</div>
 				<span className={cn("text-[10px] font-mono", providerInfo.color)}>
-					{providerInfo.label}
-					{model && (
+					{PROVIDER_LABELS[selectedProvider]?.label || providerInfo.label}
+					{selectedModel && (
 						<span className="text-muted-foreground ml-1">
-							/ {model.split("-").slice(0, 2).join("-")}
+							/ {selectedModel}
 						</span>
+					)}
+					{selectedProvider === "opencode" && selectedMode !== "general" && (
+						<span className="text-muted-foreground ml-1">/ {selectedMode}</span>
 					)}
 				</span>
 			</div>

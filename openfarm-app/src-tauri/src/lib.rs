@@ -1368,6 +1368,7 @@ fn spawn_agent(
         resolved_workspace,
         None,
         None,
+        None,
         resolved_project_id,
         resolved_session_id,
         pool,
@@ -1381,6 +1382,7 @@ fn spawn_agent_internal(
     provider: String,
     workspace: String,
     model: Option<String>,
+    agent_mode: Option<String>,
     base_branch: Option<String>,
     project_id: Option<String>,
     session_id: Option<String>,
@@ -1397,7 +1399,7 @@ fn spawn_agent_internal(
     if !git_status(&workspace, &["rev-parse", "--is-inside-work-tree"])? {
         return Err("Workspace is not a valid git repository".to_string());
     }
-    let _ = resolve_agent_command(&provider, &task)?;
+    let _ = resolve_agent_command(&provider, &task, model.as_deref(), agent_mode.as_deref())?;
 
     // Check max agents limit
     if enforce_limit {
@@ -1475,6 +1477,17 @@ fn spawn_agent_internal(
             &serde_json::json!({ "model": model_value }),
         );
     }
+    if let Some(mode_value) = agent_mode
+        .as_ref()
+        .map(|value| value.trim())
+        .filter(|value| !value.is_empty())
+    {
+        let _ = pool.db.save_agent_event(
+            &agent_id,
+            "agent:mode",
+            &serde_json::json!({ "mode": mode_value }),
+        );
+    }
     let _ = pool.db.save_agent_event(
         &agent_id,
         "agent:base-branch",
@@ -1530,6 +1543,7 @@ fn spawn_agent_internal(
     let task_clone = task;
     let provider_clone = provider;
     let model_clone = model;
+    let mode_clone = agent_mode;
     let agent_id_clone = agent_id.clone();
     let app_clone = app.clone();
 
@@ -1539,6 +1553,7 @@ fn spawn_agent_internal(
             &task_clone,
             &provider_clone,
             model_clone.as_deref(),
+            mode_clone.as_deref(),
             &execution_workspace,
             &app_clone,
         );
@@ -1612,6 +1627,7 @@ struct BridgeRequest {
     workspace: String,
     provider: String,
     model: Option<String>,
+    agent: Option<String>,
     cli: Option<String>,
     args: Option<Vec<String>>,
 }
@@ -1787,6 +1803,7 @@ fn run_agent_via_bridge(
     task: &str,
     provider: &str,
     model: Option<&str>,
+    agent_mode: Option<&str>,
     workspace: &str,
     app: &AppHandle,
 ) -> Result<String, String> {
@@ -1796,6 +1813,10 @@ fn run_agent_via_bridge(
         workspace: workspace.to_string(),
         provider: mapped_provider,
         model: model.map(|value| value.to_string()),
+        agent: agent_mode
+            .map(|value| value.trim())
+            .filter(|value| !value.is_empty())
+            .map(|value| value.to_string()),
         cli,
         args,
     };
@@ -1950,11 +1971,12 @@ fn run_agent_via_cli(
     agent_id: &str,
     task: &str,
     provider: &str,
-    _model: Option<&str>,
+    model: Option<&str>,
+    agent_mode: Option<&str>,
     workspace: &str,
     app: &AppHandle,
 ) -> Result<String, String> {
-    let resolved = resolve_agent_command(provider, task)?;
+    let resolved = resolve_agent_command(provider, task, model, agent_mode)?;
     let child = Command::new(&resolved.program)
         .args(&resolved.args)
         .current_dir(workspace)
@@ -1970,17 +1992,18 @@ fn run_agent(
     task: &str,
     provider: &str,
     model: Option<&str>,
+    agent_mode: Option<&str>,
     workspace: &str,
     app: &AppHandle,
 ) -> Result<String, String> {
-    match run_agent_via_bridge(agent_id, task, provider, model, workspace, app) {
+    match run_agent_via_bridge(agent_id, task, provider, model, agent_mode, workspace, app) {
         Ok(output) => Ok(output),
         Err(bridge_err) => {
             log::warn!(
                 "Bridge execution failed, falling back to CLI: {}",
                 bridge_err
             );
-            run_agent_via_cli(agent_id, task, provider, model, workspace, app)
+            run_agent_via_cli(agent_id, task, provider, model, agent_mode, workspace, app)
         }
     }
 }
@@ -2364,6 +2387,7 @@ fn retry_agent(agent_id: String, pool: State<AgentPool>, app: AppHandle) -> Resu
         agent.provider,
         workspace,
         load_agent_model(&pool, &agent_id),
+        load_agent_mode(&pool, &agent_id),
         load_agent_base_branch(&pool, &agent_id),
         agent.project_id,
         agent.session_id,
@@ -3784,6 +3808,7 @@ struct UiAgent {
     status: String,
     provider: String,
     model: Option<String>,
+    mode: Option<String>,
     prompt: String,
     files_changed: u32,
     lines_added: u32,
@@ -3938,6 +3963,17 @@ fn load_agent_model(pool: &AgentPool, agent_id: &str) -> Option<String> {
         .rev()
         .find(|event| event.event_type == "agent:model")
         .and_then(|event| event.data.get("model"))
+        .and_then(|value| value.as_str())
+        .map(|value| value.to_string())
+}
+
+fn load_agent_mode(pool: &AgentPool, agent_id: &str) -> Option<String> {
+    let events = pool.db.load_agent_events(agent_id).ok()?;
+    events
+        .iter()
+        .rev()
+        .find(|event| event.event_type == "agent:mode")
+        .and_then(|event| event.data.get("mode"))
         .and_then(|value| value.as_str())
         .map(|value| value.to_string())
 }
@@ -4165,7 +4201,11 @@ fn collect_changed_paths(workspace_path: &str, base_branch: &str) -> Result<Vec<
             format!("{base_branch}...HEAD"),
             "--name-only".to_string(),
         ],
-        vec!["diff".to_string(), "--cached".to_string(), "--name-only".to_string()],
+        vec![
+            "diff".to_string(),
+            "--cached".to_string(),
+            "--name-only".to_string(),
+        ],
         vec!["diff".to_string(), "--name-only".to_string()],
         vec![
             "ls-files".to_string(),
@@ -4191,7 +4231,11 @@ fn collect_changed_paths(workspace_path: &str, base_branch: &str) -> Result<Vec<
     Ok(paths.into_iter().collect())
 }
 
-fn load_patch_for_path(workspace_path: &str, base_branch: &str, path: &str) -> Result<String, String> {
+fn load_patch_for_path(
+    workspace_path: &str,
+    base_branch: &str,
+    path: &str,
+) -> Result<String, String> {
     let mut patch = String::new();
 
     let committed = git_output(
@@ -4231,8 +4275,8 @@ fn load_agent_diff_files(pool: &AgentPool, agent_id: &str) -> Result<Vec<UiFileD
         .worktree_path
         .clone()
         .unwrap_or_else(|| main_repo.clone());
-    let base_branch =
-        load_agent_base_branch(pool, agent_id).unwrap_or_else(|| default_branch_for_repo(&main_repo));
+    let base_branch = load_agent_base_branch(pool, agent_id)
+        .unwrap_or_else(|| default_branch_for_repo(&main_repo));
 
     let paths = collect_changed_paths(&workspace_path, &base_branch)?;
     let mut result = Vec::new();
@@ -4291,6 +4335,7 @@ fn to_ui_bootstrap(pool: &AgentPool) -> Result<UiBootstrapState, String> {
             status: ui_status(&agent.status),
             provider: ui_provider(&agent.provider),
             model: load_agent_model(pool, &agent.id),
+            mode: load_agent_mode(pool, &agent.id),
             prompt: agent.task.clone(),
             files_changed: diffs.len() as u32,
             lines_added,
@@ -4329,7 +4374,10 @@ fn bootstrap_app_state(pool: State<AgentPool>) -> Result<UiBootstrapState, Strin
 }
 
 #[tauri::command]
-fn add_local_workspace(repo_path: String, pool: State<AgentPool>) -> Result<UiBootstrapState, String> {
+fn add_local_workspace(
+    repo_path: String,
+    pool: State<AgentPool>,
+) -> Result<UiBootstrapState, String> {
     let trimmed = repo_path.trim();
     if trimmed.is_empty() {
         return Err("Repository path is required".to_string());
@@ -4348,10 +4396,9 @@ fn add_local_workspace(repo_path: String, pool: State<AgentPool>) -> Result<UiBo
 
     {
         let workspaces = pool.workspaces.lock().unwrap();
-        if workspaces
-            .values()
-            .any(|workspace| workspace.repo_path == normalized_repo && workspace.status != "archived")
-        {
+        if workspaces.values().any(|workspace| {
+            workspace.repo_path == normalized_repo && workspace.status != "archived"
+        }) {
             return to_ui_bootstrap(&pool);
         }
     }
@@ -4384,7 +4431,9 @@ fn add_local_workspace(repo_path: String, pool: State<AgentPool>) -> Result<UiBo
         spotlight_synced_at: None,
     };
 
-    pool.db.save_workspace(&workspace).map_err(|e| e.to_string())?;
+    pool.db
+        .save_workspace(&workspace)
+        .map_err(|e| e.to_string())?;
     {
         let mut workspaces = pool.workspaces.lock().unwrap();
         workspaces.insert(workspace.id.clone(), workspace);
@@ -4456,6 +4505,7 @@ fn create_agent(
         provider,
         repo.clone(),
         model,
+        None,
         base_branch,
         None,
         None,
@@ -4471,6 +4521,9 @@ fn send_agent_message(
     agent_id: String,
     message: String,
     _attachments: Option<serde_json::Value>,
+    provider: Option<String>,
+    model: Option<String>,
+    agent_mode: Option<String>,
     pool: State<AgentPool>,
     app: AppHandle,
 ) -> Result<UiBootstrapState, String> {
@@ -4490,19 +4543,63 @@ fn send_agent_message(
             .clone()
             .unwrap_or_else(|| ".".to_string())
     });
+    let provider_override = provider
+        .as_ref()
+        .map(|value| value.trim())
+        .filter(|value| !value.is_empty())
+        .map(|value| value.to_string());
+    let model_override = model
+        .as_ref()
+        .map(|value| value.trim())
+        .filter(|value| !value.is_empty())
+        .map(|value| value.to_string());
+    let mode_override = agent_mode
+        .as_ref()
+        .map(|value| value.trim())
+        .filter(|value| !value.is_empty())
+        .map(|value| value.to_string());
+    let selected_provider = provider_override
+        .clone()
+        .unwrap_or_else(|| snapshot.provider.clone());
+    let selected_model = model_override
+        .clone()
+        .or_else(|| load_agent_model(&pool, &agent_id));
+    let selected_mode = mode_override
+        .clone()
+        .or_else(|| load_agent_mode(&pool, &agent_id));
 
     let _ = pool.db.save_agent_event(
         &agent_id,
         "agent:user-message",
         &serde_json::json!({
             "content": message.clone(),
+            "provider": selected_provider,
+            "model": selected_model,
+            "mode": selected_mode,
             "timestamp": chrono::Utc::now().to_rfc3339()
         }),
     );
+    if let Some(value) = model_override.as_ref() {
+        let _ = pool.db.save_agent_event(
+            &agent_id,
+            "agent:model",
+            &serde_json::json!({ "model": value }),
+        );
+    }
+    if let Some(value) = mode_override.as_ref() {
+        let _ = pool.db.save_agent_event(
+            &agent_id,
+            "agent:mode",
+            &serde_json::json!({ "mode": value }),
+        );
+    }
 
     {
         let mut agents = pool.agents.lock().unwrap();
         if let Some(agent) = agents.get_mut(&agent_id) {
+            if let Some(value) = provider_override.as_ref() {
+                agent.provider = value.to_string();
+            }
             agent.status = "running".to_string();
             agent.output = None;
             let _ = pool.db.save_agent(agent);
@@ -4521,14 +4618,16 @@ fn send_agent_message(
 
     let app_clone = app.clone();
     let agent_id_clone = agent_id.clone();
-    let provider_clone = snapshot.provider.clone();
-    let model_clone = load_agent_model(&pool, &agent_id);
+    let provider_clone = provider_override.unwrap_or(snapshot.provider.clone());
+    let model_clone = model_override.or_else(|| load_agent_model(&pool, &agent_id));
+    let mode_clone = mode_override.or_else(|| load_agent_mode(&pool, &agent_id));
     std::thread::spawn(move || {
         let result = run_agent(
             &agent_id_clone,
             &message,
             &provider_clone,
             model_clone.as_deref(),
+            mode_clone.as_deref(),
             &workspace,
             &app_clone,
         );
@@ -4671,6 +4770,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_shell::init())
         .manage(AgentPool::new())
         .setup(|app| {
             let show_item = MenuItem::with_id(app, "show", "Show Window", true, None::<&str>)?;

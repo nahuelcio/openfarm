@@ -20,6 +20,8 @@ import {
 } from "@/lib/backend";
 import type {
 	Agent,
+	AgentMode,
+	AgentProvider,
 	AgentStatus,
 	AppSettings,
 	Attachment,
@@ -246,14 +248,23 @@ export default function App() {
 	}, []);
 
 	const handleSendMessage = useCallback(
-		async (message: string, attachments?: Attachment[]) => {
+		async (payload: {
+			message: string;
+			attachments?: Attachment[];
+			provider?: AgentProvider;
+			model?: string;
+			agentMode?: AgentMode;
+		}) => {
 			if (!selectedAgentId) {
 				return;
 			}
 			const next = await sendAgentMessage({
 				agentId: selectedAgentId,
-				message,
-				attachments,
+				message: payload.message,
+				attachments: payload.attachments,
+				provider: payload.provider,
+				model: payload.model,
+				agentMode: payload.agentMode,
 			});
 			syncState(next, selectedAgentId);
 		},
@@ -336,6 +347,7 @@ export default function App() {
 						<AgentPanel
 							agent={selectedAgent}
 							onSendMessage={handleSendMessage}
+							providers={settings.providers}
 						/>
 					) : (
 						<EmptyState onNewAgent={() => setNewAgentOpen(true)} />

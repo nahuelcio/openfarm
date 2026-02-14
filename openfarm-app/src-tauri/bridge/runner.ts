@@ -9,6 +9,7 @@ interface BridgeRequest {
 	workspace?: string;
 	provider?: string;
 	model?: string;
+	agent?: string;
 	cli?: string;
 	args?: string[];
 }
@@ -189,12 +190,21 @@ async function main(): Promise<void> {
 		defaultProvider: request.provider || "opencode",
 		defaultModel: request.model,
 	});
+	const selectedAgent = request.agent?.trim();
+	if ((request.provider || "opencode") === "opencode") {
+		if (selectedAgent && selectedAgent !== "general") {
+			process.env.OPENCODE_AGENT = selectedAgent;
+		} else {
+			delete process.env.OPENCODE_AGENT;
+		}
+	}
 
 	const result = await client.execute({
 		task: request.task || "",
 		workspace: request.workspace || "",
 		provider: request.provider,
 		model: request.model,
+		agentName: selectedAgent,
 		cli: request.cli,
 		args: request.args,
 		onLog: (chunk) => emit({ type: "log", chunk }),
