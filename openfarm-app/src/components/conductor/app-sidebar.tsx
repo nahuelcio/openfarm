@@ -101,14 +101,14 @@ interface AppSidebarProps {
 	workspaces: Workspace[];
 	selectedAgentId: string | null;
 	onSelectAgent: (agent: Agent) => void;
-	onNewAgent: () => void;
+	onAddWorkspace: () => void;
 }
 
 export function AppSidebar({
 	workspaces,
 	selectedAgentId,
 	onSelectAgent,
-	onNewAgent,
+	onAddWorkspace,
 }: AppSidebarProps) {
 	const [expandedWorkspaces, setExpandedWorkspaces] = useState<Set<string>>(
 		new Set(workspaces.map((w) => w.id)),
@@ -150,10 +150,10 @@ export function AppSidebar({
 					variant="ghost"
 					size="icon"
 					className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent"
-					onClick={onNewAgent}
+					onClick={onAddWorkspace}
 				>
 					<Plus className="h-3.5 w-3.5" />
-					<span className="sr-only">New workspace</span>
+					<span className="sr-only">Add workspace</span>
 				</Button>
 			</div>
 

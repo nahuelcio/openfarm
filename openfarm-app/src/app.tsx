@@ -6,6 +6,7 @@ import { NewAgentDialog } from "@/components/conductor/new-agent-dialog";
 import { SettingsPanel } from "@/components/conductor/settings-panel";
 import { Titlebar } from "@/components/conductor/titlebar";
 import {
+	addLocalWorkspace,
 	bootstrapAppState,
 	createAgent,
 	getProviderCatalog,
@@ -278,6 +279,23 @@ export default function App() {
 		[syncState],
 	);
 
+	const handleAddWorkspace = useCallback(async () => {
+		const selectedPath = await pickRepositoryDirectory();
+		if (!selectedPath) {
+			return;
+		}
+		try {
+			const next = await addLocalWorkspace(selectedPath);
+			syncState(next, selectedAgentId);
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : "Failed to add workspace";
+			if (typeof window !== "undefined") {
+				window.alert(message);
+			}
+		}
+	}, [selectedAgentId, syncState]);
+
 	const handleSettingsChange = useCallback(
 		async (nextSettings: AppSettings) => {
 			setSettings(nextSettings);
@@ -304,7 +322,7 @@ export default function App() {
 					)}
 				>
 					<AppSidebar
-						onNewAgent={() => setNewAgentOpen(true)}
+						onAddWorkspace={handleAddWorkspace}
 						onSelectAgent={handleSelectAgent}
 						selectedAgentId={selectedAgentId}
 						workspaces={workspaces}

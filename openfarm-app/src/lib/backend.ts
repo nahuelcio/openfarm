@@ -159,6 +159,28 @@ async function webInvoke<T>(
 			writeWebDb(db);
 			return { workspaces: db.workspaces, settings: db.settings } as T;
 		}
+		case "add_local_workspace": {
+			const repoPath = String(payload.repoPath || "").trim();
+			if (!repoPath) {
+				throw new Error("Repository path is required");
+			}
+			const existing = db.workspaces.find(
+				(workspace) => workspace.repo === repoPath,
+			);
+			if (!existing) {
+				const segments = repoPath.split("/");
+				const workspaceName =
+					segments[segments.length - 1] || repoPath || "workspace";
+				db.workspaces.push({
+					id: `ws-${Math.random().toString(36).slice(2, 8)}`,
+					name: workspaceName,
+					repo: repoPath,
+					agents: [],
+				});
+				writeWebDb(db);
+			}
+			return { workspaces: db.workspaces, settings: db.settings } as T;
+		}
 		case "send_agent_message": {
 			const agentId = String(payload.agentId || "");
 			const message = String(payload.message || "");
@@ -222,6 +244,12 @@ export async function createAgent(input: {
 	model: string;
 }): Promise<BootstrapState> {
 	return invoke<BootstrapState>("create_agent", input);
+}
+
+export async function addLocalWorkspace(
+	repoPath: string,
+): Promise<BootstrapState> {
+	return invoke<BootstrapState>("add_local_workspace", { repoPath });
 }
 
 export async function sendAgentMessage(input: {

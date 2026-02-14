@@ -3967,54 +3967,73 @@ fn load_agent_diff_files(pool: &AgentPool, agent_id: &str) -> Result<Vec<UiFileD
 
 fn to_ui_bootstrap(pool: &AgentPool) -> Result<UiBootstrapState, String> {
     let settings = load_ui_settings(pool)?;
-    let mut grouped: HashMap<String, Vec<Agent>> = HashMap::new();
+    let mut by_repo: HashMap<String, UiWorkspace> = HashMap::new();
     {
-        let agents = pool.agents.lock().unwrap();
-        for agent in agents.values() {
-            let repo = agent.repo_path.clone().unwrap_or_else(|| ".".to_string());
-            grouped.entry(repo).or_default().push(agent.clone());
+        let workspaces = pool.workspaces.lock().unwrap();
+        for workspace in workspaces.values() {
+            if workspace.status == "archived" {
+                continue;
+            }
+            let workspace_name = if workspace.name.trim().is_empty() {
+                repo_basename(&workspace.repo_path)
+            } else {
+                workspace.name.clone()
+            };
+            by_repo
+                .entry(workspace.repo_path.clone())
+                .or_insert(UiWorkspace {
+                    id: workspace.id.clone(),
+                    name: workspace_name,
+                    repo: workspace.repo_path.clone(),
+                    agents: Vec::new(),
+                });
         }
     }
 
-    let mut workspaces: Vec<UiWorkspace> = grouped
-        .into_iter()
-        .map(|(repo, mut agents)| {
-            agents.sort_by(|a, b| b.created_at.cmp(&a.created_at));
-            let ui_agents: Vec<UiAgent> = agents
-                .into_iter()
-                .map(|agent| {
-                    let diffs = load_agent_diff_files(pool, &agent.id).unwrap_or_default();
-                    let lines_added = diffs.iter().map(|diff| diff.lines_added).sum();
-                    let lines_removed = diffs.iter().map(|diff| diff.lines_removed).sum();
-                    UiAgent {
-                        id: agent.id.clone(),
-                        name: agent.task.chars().take(40).collect(),
-                        repo: repo.clone(),
-                        branch: agent
-                            .branch_name
-                            .clone()
-                            .unwrap_or_else(|| "feat/unknown".to_string()),
-                        status: ui_status(&agent.status),
-                        provider: ui_provider(&agent.provider),
-                        model: load_agent_model(pool, &agent.id),
-                        prompt: agent.task.clone(),
-                        files_changed: diffs.len() as u32,
-                        lines_added,
-                        lines_removed,
-                        started_at: agent.created_at.clone(),
-                        messages: load_agent_messages(pool, &agent),
-                        diffs,
-                    }
-                })
-                .collect();
-            UiWorkspace {
-                id: format!("ws-{}", repo.replace('/', "-")),
-                name: repo_basename(&repo),
-                repo,
-                agents: ui_agents,
-            }
-        })
-        .collect();
+    let agents_snapshot: Vec<Agent> = {
+        let agents = pool.agents.lock().unwrap();
+        agents.values().cloned().collect()
+    };
+    for agent in agents_snapshot {
+        let repo = agent.repo_path.clone().unwrap_or_else(|| ".".to_string());
+        let diffs = load_agent_diff_files(pool, &agent.id).unwrap_or_default();
+        let lines_added = diffs.iter().map(|diff| diff.lines_added).sum();
+        let lines_removed = diffs.iter().map(|diff| diff.lines_removed).sum();
+        let ui_agent = UiAgent {
+            id: agent.id.clone(),
+            name: agent.task.chars().take(40).collect(),
+            repo: repo.clone(),
+            branch: agent
+                .branch_name
+                .clone()
+                .unwrap_or_else(|| "feat/unknown".to_string()),
+            status: ui_status(&agent.status),
+            provider: ui_provider(&agent.provider),
+            model: load_agent_model(pool, &agent.id),
+            prompt: agent.task.clone(),
+            files_changed: diffs.len() as u32,
+            lines_added,
+            lines_removed,
+            started_at: agent.created_at.clone(),
+            messages: load_agent_messages(pool, &agent),
+            diffs,
+        };
+
+        let workspace = by_repo.entry(repo.clone()).or_insert(UiWorkspace {
+            id: format!("ws-{}", repo.replace('/', "-")),
+            name: repo_basename(&repo),
+            repo,
+            agents: Vec::new(),
+        });
+        workspace.agents.push(ui_agent);
+    }
+
+    let mut workspaces: Vec<UiWorkspace> = by_repo.into_values().collect();
+    for workspace in &mut workspaces {
+        workspace
+            .agents
+            .sort_by(|a, b| b.started_at.cmp(&a.started_at));
+    }
 
     workspaces.sort_by(|a, b| a.name.cmp(&b.name));
     Ok(UiBootstrapState {
@@ -4025,6 +4044,71 @@ fn to_ui_bootstrap(pool: &AgentPool) -> Result<UiBootstrapState, String> {
 
 #[tauri::command]
 fn bootstrap_app_state(pool: State<AgentPool>) -> Result<UiBootstrapState, String> {
+    to_ui_bootstrap(&pool)
+}
+
+#[tauri::command]
+fn add_local_workspace(repo_path: String, pool: State<AgentPool>) -> Result<UiBootstrapState, String> {
+    let trimmed = repo_path.trim();
+    if trimmed.is_empty() {
+        return Err("Repository path is required".to_string());
+    }
+    if !std::path::Path::new(trimmed).exists() {
+        return Err("Repository path does not exist".to_string());
+    }
+    if !git_status(trimmed, &["rev-parse", "--is-inside-work-tree"])? {
+        return Err("Repository path is not a git repository".to_string());
+    }
+
+    let normalized_repo = std::fs::canonicalize(trimmed)
+        .unwrap_or_else(|_| std::path::PathBuf::from(trimmed))
+        .to_string_lossy()
+        .to_string();
+
+    {
+        let workspaces = pool.workspaces.lock().unwrap();
+        if workspaces
+            .values()
+            .any(|workspace| workspace.repo_path == normalized_repo && workspace.status != "archived")
+        {
+            return to_ui_bootstrap(&pool);
+        }
+    }
+
+    let mut branch_name = git_stdout(&normalized_repo, &["rev-parse", "--abbrev-ref", "HEAD"])
+        .unwrap_or_else(|_| "main".to_string())
+        .trim()
+        .to_string();
+    if branch_name.is_empty() {
+        branch_name = "main".to_string();
+    }
+
+    let now = chrono::Utc::now().to_rfc3339();
+    let workspace = Workspace {
+        id: format!("workspace-{}", uuid::Uuid::new_v4()),
+        name: repo_basename(&normalized_repo),
+        repo_path: normalized_repo.clone(),
+        branch_name,
+        source_type: "branch".to_string(),
+        source_ref: None,
+        worktree_path: None,
+        status: "active".to_string(),
+        project_id: None,
+        session_id: None,
+        created_at: now.clone(),
+        updated_at: now,
+        archived_at: None,
+        spotlight_enabled: false,
+        spotlight_base_ref: None,
+        spotlight_synced_at: None,
+    };
+
+    pool.db.save_workspace(&workspace).map_err(|e| e.to_string())?;
+    {
+        let mut workspaces = pool.workspaces.lock().unwrap();
+        workspaces.insert(workspace.id.clone(), workspace);
+    }
+
     to_ui_bootstrap(&pool)
 }
 
@@ -4343,6 +4427,7 @@ pub fn run() {
             retry_agent,
             get_agent_stats,
             bootstrap_app_state,
+            add_local_workspace,
             create_agent,
             send_agent_message,
             load_agent_diffs,
