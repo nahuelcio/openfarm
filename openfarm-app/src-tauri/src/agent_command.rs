@@ -10,7 +10,7 @@ pub fn resolve_agent_command(provider: &str, task: &str) -> Result<AgentCommand,
         // Keep compatibility with current UI default.
         "external-agent" | "opencode" => AgentCommand {
             program: "opencode".to_string(),
-            args: vec![task.to_string()],
+            args: vec!["run".to_string(), "--format".to_string(), "json".to_string(), task.to_string()],
         },
         "aider" => AgentCommand {
             program: "aider".to_string(),
@@ -43,7 +43,15 @@ mod tests {
     fn resolves_external_agent_as_opencode() {
         let resolved = resolve_agent_command("external-agent", "fix test").unwrap();
         assert_eq!(resolved.program, "opencode");
-        assert_eq!(resolved.args, vec!["fix test"]);
+        assert_eq!(
+            resolved.args,
+            vec![
+                "run".to_string(),
+                "--format".to_string(),
+                "json".to_string(),
+                "fix test".to_string()
+            ]
+        );
     }
 
     #[test]
