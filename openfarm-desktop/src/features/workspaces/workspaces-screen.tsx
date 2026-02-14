@@ -8,6 +8,7 @@ interface WorkspacesScreenProps {
 
 export function WorkspacesScreen({ vm }: WorkspacesScreenProps) {
 	const [showAdvanced, setShowAdvanced] = useState(false);
+	const [createStep, setCreateStep] = useState<1 | 2 | 3>(1);
 
 	const filteredWorkspaces = vm.workspaces.filter((workspace) => {
 		const repoPath = workspace.repoPath || "";
@@ -22,6 +23,13 @@ export function WorkspacesScreen({ vm }: WorkspacesScreenProps) {
 
 	const canCreateWorkspace =
 		vm.newWorkspaceName.trim() && vm.newWorkspaceRepoPath.trim();
+	const canContinueStepOne = vm.newWorkspaceName.trim().length > 0;
+	const canContinueStepTwo = vm.newWorkspaceRepoPath.trim().length > 0;
+
+	async function handleCreateWorkspace() {
+		await vm.addWorkspace();
+		setCreateStep(1);
+	}
 
 	return (
 		<PageShell
@@ -42,37 +50,90 @@ export function WorkspacesScreen({ vm }: WorkspacesScreenProps) {
 						? "Ocultar opciones técnicas"
 						: "Mostrar opciones técnicas"}
 				</button>
-				<div className="field-row">
-					<input
-						onChange={(event) => vm.setNewWorkspaceName(event.target.value)}
-						placeholder="Nombre (ej: Tienda Web)"
-						type="text"
-						value={vm.newWorkspaceName}
-					/>
-					<input
-						onChange={(event) => vm.setNewWorkspaceRepoPath(event.target.value)}
-						placeholder="Ruta de la carpeta del proyecto"
-						type="text"
-						value={vm.newWorkspaceRepoPath}
-					/>
-				</div>
-				<div className="field-row">
-					<input
-						onChange={(event) =>
-							vm.setNewWorkspaceBranchName(event.target.value)
-						}
-						placeholder="Rama (opcional, por defecto: main)"
-						type="text"
-						value={vm.newWorkspaceBranchName}
-					/>
-					<button
-						disabled={!canCreateWorkspace}
-						onClick={vm.addWorkspace}
-						type="button"
-					>
-						Crear Espacio
-					</button>
-				</div>
+				<p className="list-item-subtitle">
+					Paso {createStep} de 3
+					{createStep === 1 && " · Elegí un nombre fácil de entender"}
+					{createStep === 2 && " · Indicá la carpeta del proyecto"}
+					{createStep === 3 && " · Revisá y creá el espacio"}
+				</p>
+				{createStep === 1 && (
+					<>
+						<input
+							onChange={(event) => vm.setNewWorkspaceName(event.target.value)}
+							placeholder="Nombre (ej: Tienda Web)"
+							type="text"
+							value={vm.newWorkspaceName}
+						/>
+						<div className="list-item-actions">
+							<button
+								className="btn-primary"
+								disabled={!canContinueStepOne}
+								onClick={() => setCreateStep(2)}
+								type="button"
+							>
+								Continuar
+							</button>
+						</div>
+					</>
+				)}
+				{createStep === 2 && (
+					<>
+						<input
+							onChange={(event) =>
+								vm.setNewWorkspaceRepoPath(event.target.value)
+							}
+							placeholder="Ruta de la carpeta del proyecto"
+							type="text"
+							value={vm.newWorkspaceRepoPath}
+						/>
+						<div className="list-item-actions">
+							<button
+								className="btn-secondary"
+								onClick={() => setCreateStep(1)}
+								type="button"
+							>
+								Atrás
+							</button>
+							<button
+								className="btn-primary"
+								disabled={!canContinueStepTwo}
+								onClick={() => setCreateStep(3)}
+								type="button"
+							>
+								Continuar
+							</button>
+						</div>
+					</>
+				)}
+				{createStep === 3 && (
+					<>
+						<input
+							onChange={(event) =>
+								vm.setNewWorkspaceBranchName(event.target.value)
+							}
+							placeholder="Rama (opcional, por defecto: main)"
+							type="text"
+							value={vm.newWorkspaceBranchName}
+						/>
+						<div className="list-item-actions">
+							<button
+								className="btn-secondary"
+								onClick={() => setCreateStep(2)}
+								type="button"
+							>
+								Atrás
+							</button>
+							<button
+								className="btn-primary"
+								disabled={!canCreateWorkspace}
+								onClick={handleCreateWorkspace}
+								type="button"
+							>
+								Crear Espacio
+							</button>
+						</div>
+					</>
+				)}
 			</div>
 			<div className="list-card">
 				<h3>Espacios Guardados</h3>
