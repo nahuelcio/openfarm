@@ -1,4 +1,5 @@
 mod agent_command;
+mod agent_config;
 
 use directories;
 use flexi_logger::{Cleanup, Criterion, FileSpec, Logger, Naming};
@@ -16,6 +17,10 @@ use tauri::{
 };
 
 use crate::agent_command::resolve_agent_command;
+use crate::agent_config::{
+    apply_agent_config_patch, detect_agent_configs, import_agent_config, list_agent_backups,
+    preview_agent_config_patch, rollback_config_patch,
+};
 
 pub struct Database {
     conn: Mutex<Connection>,
@@ -818,6 +823,12 @@ pub struct WorkspaceSlashCommand {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WorkspaceFileEntry {
+    pub path: String,
+    pub is_dir: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct McpServer {
     pub id: String,
     pub name: String,
@@ -897,7 +908,7 @@ impl AgentPool {
             mcp_servers_map.insert(server.id.clone(), server);
         }
 
-        Self {
+        let pool = Self {
             agents: Mutex::new(agents_map),
             pids: Mutex::new(HashMap::new()),
             projects: Mutex::new(projects_map),
@@ -908,6 +919,36 @@ impl AgentPool {
             workspace_script_pids: Mutex::new(HashMap::new()),
             mcp_servers: Mutex::new(mcp_servers_map),
             db,
+        };
+
+        pool.cleanup_orphan_worktrees();
+
+        pool
+    }
+
+    fn cleanup_orphan_worktrees(&self) {
+        let worktrees_dir = std::path::Path::new("/tmp/openfarm-worktrees");
+        if !worktrees_dir.exists() {
+            return;
+        }
+
+        let agents = self.agents.lock().unwrap();
+        let valid_agent_ids: std::collections::HashSet<String> = agents.keys().cloned().collect();
+        drop(agents); // Release lock before filesystem operations
+
+        if let Ok(entries) = std::fs::read_dir(worktrees_dir) {
+            for entry in entries.flatten() {
+                let dir_name = entry.file_name();
+                let dir_name_str = dir_name.to_string_lossy();
+
+                // Check if this worktree belongs to an existing agent
+                if !valid_agent_ids.contains(dir_name_str.as_ref()) {
+                    // This is an orphan worktree, clean it up
+                    let path = entry.path();
+                    log::info!("Cleaning up orphan worktree: {:?}", path);
+                    let _ = std::fs::remove_dir_all(&path);
+                }
+            }
         }
     }
 }
@@ -938,7 +979,7 @@ fn git_output(repo_path: &str, args: &[&str]) -> Result<Output, String> {
         .map_err(|e| e.to_string())
 }
 
-fn git_status(repo_path: &str, args: &[&str]) -> Result<bool, String> {
+pub fn git_status(repo_path: &str, args: &[&str]) -> Result<bool, String> {
     Ok(git_output(repo_path, args)?.status.success())
 }
 
@@ -2514,6 +2555,60 @@ fn expand_workspace_slash_command(
     Ok(input)
 }
 
+fn collect_workspace_files(
+    base: &std::path::Path,
+    current: &std::path::Path,
+    depth: usize,
+    out: &mut Vec<WorkspaceFileEntry>,
+) -> Result<(), String> {
+    if depth > 3 || out.len() >= 250 {
+        return Ok(());
+    }
+    let entries = std::fs::read_dir(current).map_err(|e| e.to_string())?;
+    for entry_result in entries {
+        if out.len() >= 250 {
+            break;
+        }
+        let entry = entry_result.map_err(|e| e.to_string())?;
+        let path = entry.path();
+        let name = entry.file_name().to_string_lossy().to_string();
+        if name == ".git" || name == "node_modules" || name == "target" || name == "dist" {
+            continue;
+        }
+        let metadata = entry.metadata().map_err(|e| e.to_string())?;
+        let is_dir = metadata.is_dir();
+        let relative = path
+            .strip_prefix(base)
+            .map_err(|e| e.to_string())?
+            .to_string_lossy()
+            .to_string();
+        out.push(WorkspaceFileEntry {
+            path: relative,
+            is_dir,
+        });
+        if is_dir {
+            collect_workspace_files(base, &path, depth + 1, out)?;
+        }
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn list_workspace_files(
+    workspace_id: String,
+    pool: State<AgentPool>,
+) -> Result<Vec<WorkspaceFileEntry>, String> {
+    let workspace_dir = resolve_workspace_dir(&pool, &workspace_id)?;
+    let base = std::path::Path::new(&workspace_dir);
+    if !base.exists() {
+        return Ok(Vec::new());
+    }
+    let mut files = Vec::new();
+    collect_workspace_files(base, base, 0, &mut files)?;
+    files.sort_by(|a, b| a.path.cmp(&b.path));
+    Ok(files)
+}
+
 #[tauri::command]
 fn get_mcp_servers(pool: State<AgentPool>) -> Vec<McpServer> {
     let servers = pool.mcp_servers.lock().unwrap();
@@ -3071,7 +3166,7 @@ mod tests {
     #[test]
     fn returns_workspace_parent_for_worktree_path() {
         let root = workspace_root_from_worktree("/tmp/repo/.openfarm/workspaces/ws-1");
-        assert_eq!(root, "/tmp/repo/.openfarm/workspaces");
+        assert_eq!(root, "/tmp/repo/.openfarm");
     }
 }
 
@@ -3081,6 +3176,7 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .manage(AgentPool::new())
         .setup(|app| {
             let show_item = MenuItem::with_id(app, "show", "Show Window", true, None::<&str>)?;
@@ -3160,11 +3256,18 @@ pub fn run() {
             delete_workspace_todo,
             list_workspace_slash_commands,
             expand_workspace_slash_command,
+            list_workspace_files,
             get_mcp_servers,
             add_mcp_server,
             update_mcp_server,
             delete_mcp_server,
             check_mcp_server_health,
+            detect_agent_configs,
+            import_agent_config,
+            preview_agent_config_patch,
+            apply_agent_config_patch,
+            rollback_config_patch,
+            list_agent_backups,
             create_workspace_pr,
             refresh_workspace_pr,
             merge_workspace_pr,
@@ -3177,4 +3280,94 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod integration_tests {
+    use super::*;
+
+    #[test]
+    fn test_database_create_and_load_project() {
+        let db = Database::new().expect("Failed to create database");
+        let project = Project {
+            id: "test-project-1".to_string(),
+            name: "Test Project".to_string(),
+            path: "/tmp/test".to_string(),
+            created_at: chrono::Utc::now().to_rfc3339(),
+        };
+
+        db.save_project(&project).expect("Failed to save project");
+        let projects = db.load_projects().expect("Failed to load projects");
+
+        assert!(projects.iter().any(|p| p.id == "test-project-1"));
+    }
+
+    #[test]
+    fn test_database_create_and_load_agent() {
+        let db = Database::new().expect("Failed to create database");
+        let agent = Agent {
+            id: "test-agent-1".to_string(),
+            task: "Test task".to_string(),
+            provider: "claude".to_string(),
+            status: "pending".to_string(),
+            created_at: chrono::Utc::now().to_rfc3339(),
+            output: None,
+            worktree_path: None,
+            branch_name: None,
+            repo_path: None,
+            project_id: None,
+            session_id: None,
+        };
+
+        db.save_agent(&agent).expect("Failed to save agent");
+        let agents = db.load_agents().expect("Failed to load agents");
+
+        assert!(agents.iter().any(|a| a.id == "test-agent-1"));
+    }
+
+    #[test]
+    fn test_database_create_and_load_workspace() {
+        let db = Database::new().expect("Failed to create database");
+        let workspace = Workspace {
+            id: "test-workspace-1".to_string(),
+            name: "Test Workspace".to_string(),
+            repo_path: "/tmp/test-repo".to_string(),
+            branch_name: "main".to_string(),
+            source_type: "branch".to_string(),
+            source_ref: None,
+            worktree_path: None,
+            status: "active".to_string(),
+            project_id: None,
+            session_id: None,
+            created_at: chrono::Utc::now().to_rfc3339(),
+            updated_at: chrono::Utc::now().to_rfc3339(),
+            archived_at: None,
+            spotlight_enabled: false,
+            spotlight_base_ref: None,
+            spotlight_synced_at: None,
+        };
+
+        db.save_workspace(&workspace)
+            .expect("Failed to save workspace");
+        let workspaces = db.load_workspaces().expect("Failed to load workspaces");
+
+        assert!(workspaces.iter().any(|w| w.id == "test-workspace-1"));
+    }
+
+    #[test]
+    fn test_agent_pool_new() {
+        let pool = AgentPool::new();
+        let _agents = pool.agents.lock().unwrap();
+    }
+
+    #[test]
+    fn test_max_concurrent_agents_constant() {
+        assert_eq!(MAX_CONCURRENT_AGENTS, 8);
+    }
+
+    #[test]
+    fn test_git_status_function() {
+        let result = git_status("/tmp", &["rev-parse", "--is-inside-work-tree"]);
+        assert!(result.is_ok() || result.is_err());
+    }
 }

@@ -54,3 +54,29 @@ The desktop app was implemented as a Tauri v2 application with React frontend in
 
 - Test the app functionality
 - Consider any additional features
+
+---
+
+## 2026-02-13 - Context Manager Panel Simplified
+
+**Task**: Simplify ContextManagerPanel from 4-step guided flow to 1-2 step simple flow (Conductor-style)
+
+**Change Summary**:
+- Removed "Guided Setup" with 4 steps (Project → Thread → Workspace → Agent)
+- Created simple flow with:
+  - "New Workspace" button in header
+  - Empty state for no workspaces
+  - Grid of workspace cards (max 4 visible)
+  - "Open Composer" button prominent
+
+**Files Changed**:
+- `openfarm-desktop/src/features/dashboard/context-manager-panel.tsx` - Complete rewrite
+- `openfarm-desktop/src/ui/theme/screens.css` - Added styles for simplified design
+
+**Key Design Decisions**:
+1. Used `<button>` elements for workspace cards (better accessibility than div+role)
+2. Status icons: ● (running), ✓ (done), ✕ (error), ○ (pending)
+3. Gradient button for "Open Composer" - primary action
+4. Max 4 workspaces in grid, "View all" link for more
+
+**Verification**: ✅ Lint passes, Build passes

@@ -38,56 +38,59 @@ export function DashboardScreen({ vm }: DashboardScreenProps) {
 						<span className="dot dot-green" />
 					</div>
 					<div className="sidebar-heading">
-						<h1>OpenFarm Desktop</h1>
+						<h1>OpenFarm</h1>
+						<p className="list-item-subtitle">Modo simple</p>
 					</div>
+					<p className="list-item-subtitle">Acciones principales</p>
 					<button
 						className="icon-btn"
 						onClick={() => vm.setView("spawn")}
 						type="button"
 					>
-						Spawn Agent
+						Nueva tarea
 					</button>
 					<button
 						className="icon-btn"
 						onClick={() => vm.setView("workspaces")}
 						type="button"
 					>
-						Workspaces
+						Mis espacios
 					</button>
 					<button
 						className="icon-btn"
 						onClick={() => vm.setView("runs")}
 						type="button"
 					>
-						Runs
+						Ejecuciones
 					</button>
+					<p className="list-item-subtitle">Gestión</p>
 					<button
 						className="icon-btn"
 						onClick={() => vm.setView("projects")}
 						type="button"
 					>
-						Projects
+						Proyectos
 					</button>
 					<button
 						className="icon-btn"
 						onClick={() => vm.setView("sessions")}
 						type="button"
 					>
-						Sessions
+						Tareas guardadas
 					</button>
 					<button
 						className="icon-btn"
 						onClick={() => vm.setView("mcp")}
 						type="button"
 					>
-						MCP
+						Conexiones
 					</button>
 					<button
 						className="icon-btn"
 						onClick={() => vm.setView("settings")}
 						type="button"
 					>
-						Settings
+						Ajustes
 					</button>
 				</aside>
 
@@ -107,11 +110,11 @@ export function DashboardScreen({ vm }: DashboardScreenProps) {
 						<section className="workspace-center workspaces-dashboard">
 							<div className="workspaces-header">
 								<div>
-									<h1>Control Room</h1>
+									<h1>Inicio</h1>
 									<p className="list-item-subtitle">
 										{selectedWorkspace
-											? `Workspace activo: ${selectedWorkspace.name}`
-											: "Seleccioná un workspace para arrancar"}
+											? `Espacio activo: ${selectedWorkspace.name}`
+											: "Elegí un espacio para empezar"}
 									</p>
 									<div className="list-item-actions">
 										<select
@@ -124,7 +127,7 @@ export function DashboardScreen({ vm }: DashboardScreenProps) {
 											}}
 											value={vm.selectedProject?.id || ""}
 										>
-											<option value="">All projects</option>
+											<option value="">Todos los proyectos</option>
 											{vm.projects.map((project) => (
 												<option key={project.id} value={project.id}>
 													{project.name}
@@ -142,7 +145,7 @@ export function DashboardScreen({ vm }: DashboardScreenProps) {
 											}}
 											value={vm.selectedSession?.id || ""}
 										>
-											<option value="">All sessions</option>
+											<option value="">Todas las tareas guardadas</option>
 											{availableSessions.map((session) => (
 												<option key={session.id} value={session.id}>
 													{session.name}
@@ -157,33 +160,33 @@ export function DashboardScreen({ vm }: DashboardScreenProps) {
 										onClick={() => vm.setView("spawn")}
 										type="button"
 									>
-										Nuevo run
+										Nueva tarea
 									</button>
 									<button
 										className="btn-secondary"
 										onClick={() => vm.setView("workspaces")}
 										type="button"
 									>
-										Gestionar workspaces
+										Ver espacios
 									</button>
 								</div>
 							</div>
 							<div className="stats">
 								<div className="stat">
 									<span className="stat-value">{vm.stats.total}</span>
-									<span className="stat-label">Total agents</span>
+									<span className="stat-label">Total de tareas</span>
 								</div>
 								<div className="stat">
 									<span className="stat-value cyan">{vm.stats.running}</span>
-									<span className="stat-label">Running</span>
+									<span className="stat-label">En curso</span>
 								</div>
 								<div className="stat">
 									<span className="stat-value green">{vm.stats.completed}</span>
-									<span className="stat-label">Completed</span>
+									<span className="stat-label">Terminadas</span>
 								</div>
 								<div className="stat">
 									<span className="stat-value red">{vm.stats.failed}</span>
-									<span className="stat-label">Failed</span>
+									<span className="stat-label">Con error</span>
 								</div>
 							</div>
 							{isFirstRun && (
@@ -274,10 +277,10 @@ export function DashboardScreen({ vm }: DashboardScreenProps) {
 								</div>
 								<div className="context-block">
 									<div className="context-block-header">
-										<h3>Workspaces activos</h3>
+										<h3>Espacios activos</h3>
 									</div>
 									{activeWorkspaces.length === 0 ? (
-										<p className="empty">No hay workspaces activos.</p>
+										<p className="empty">No hay espacios activos.</p>
 									) : (
 										<div className="workspace-grid">
 											{activeWorkspaces.slice(0, 8).map((workspace) => (
@@ -316,15 +319,15 @@ export function DashboardScreen({ vm }: DashboardScreenProps) {
 									)}
 									{selectedWorkspace && (
 										<div className="diff-viewer">
-											<h3>Workspace Actions</h3>
+											<h3>Acciones del espacio</h3>
 											<p className="list-item-subtitle">
 												{selectedWorkspace.name} ·{" "}
 												{selectedWorkspace.repoPath || "(no repo path)"}
 											</p>
 											<p className="list-item-subtitle">
-												Run script:{" "}
+												Comando principal:{" "}
 												{selectedWorkspaceScript?.run_script ||
-													"(not configured)"}
+													"(sin configurar)"}
 											</p>
 											<div className="list-item-actions">
 												<button
@@ -334,7 +337,7 @@ export function DashboardScreen({ vm }: DashboardScreenProps) {
 													}
 													type="button"
 												>
-													Open IDE
+													Abrir carpeta
 												</button>
 												<button
 													className="btn-secondary"
@@ -344,7 +347,7 @@ export function DashboardScreen({ vm }: DashboardScreenProps) {
 													}
 													type="button"
 												>
-													Run Setup
+													Ejecutar preparación
 												</button>
 												<button
 													className="btn-primary"
@@ -354,7 +357,7 @@ export function DashboardScreen({ vm }: DashboardScreenProps) {
 													}
 													type="button"
 												>
-													Run
+													Ejecutar
 												</button>
 												<button
 													className="btn-secondary"
@@ -366,7 +369,7 @@ export function DashboardScreen({ vm }: DashboardScreenProps) {
 													}
 													type="button"
 												>
-													Stop
+													Detener
 												</button>
 												{selectedWorkspace.spotlightEnabled ? (
 													<button
@@ -376,7 +379,7 @@ export function DashboardScreen({ vm }: DashboardScreenProps) {
 														}
 														type="button"
 													>
-														Disable Spotlight
+														Desactivar Spotlight
 													</button>
 												) : (
 													<button
@@ -387,7 +390,7 @@ export function DashboardScreen({ vm }: DashboardScreenProps) {
 														}
 														type="button"
 													>
-														Enable Spotlight
+														Activar Spotlight
 													</button>
 												)}
 											</div>
@@ -396,7 +399,7 @@ export function DashboardScreen({ vm }: DashboardScreenProps) {
 								</div>
 								<div className="context-block">
 									<div className="context-block-header">
-										<h3>Threads</h3>
+										<h3>Tareas guardadas</h3>
 									</div>
 									{!vm.selectedProject ? (
 										<>
@@ -408,7 +411,7 @@ export function DashboardScreen({ vm }: DashboardScreenProps) {
 												onClick={() => vm.setView("projects")}
 												type="button"
 											>
-												Ir a Projects
+												Ir a Proyectos
 											</button>
 										</>
 									) : (
@@ -417,7 +420,7 @@ export function DashboardScreen({ vm }: DashboardScreenProps) {
 												onChange={(event) =>
 													vm.setNewSessionName(event.target.value)
 												}
-												placeholder="Thread name"
+												placeholder="Nombre de la tarea guardada"
 												type="text"
 												value={vm.newSessionName}
 											/>
@@ -428,19 +431,19 @@ export function DashboardScreen({ vm }: DashboardScreenProps) {
 													onClick={vm.createSession}
 													type="button"
 												>
-													Create thread
+													Guardar tarea
 												</button>
 												<button
 													className="btn-secondary"
 													onClick={() => vm.setView("sessions")}
 													type="button"
 												>
-													Open sessions
+													Ver tareas guardadas
 												</button>
 											</div>
 											{recentSessions.length === 0 ? (
 												<p className="empty">
-													No hay threads para este proyecto.
+													No hay tareas guardadas en este proyecto.
 												</p>
 											) : (
 												<div className="thread-list">
@@ -460,7 +463,7 @@ export function DashboardScreen({ vm }: DashboardScreenProps) {
 														>
 															<span>{session.name}</span>
 															<small>
-																{session.agents?.length ?? 0} agents
+																{session.agents?.length ?? 0} ejecuciones
 															</small>
 														</button>
 													))}
@@ -471,7 +474,7 @@ export function DashboardScreen({ vm }: DashboardScreenProps) {
 								</div>
 								<div className="context-block">
 									<div className="context-block-header">
-										<h3>Quick compose</h3>
+										<h3>Crear tarea rápida</h3>
 									</div>
 									<select
 										onChange={(event) => {
@@ -484,7 +487,7 @@ export function DashboardScreen({ vm }: DashboardScreenProps) {
 										}}
 										value={vm.selectedWorkspaceId}
 									>
-										<option value="">Select workspace</option>
+										<option value="">Elegí un espacio</option>
 										{activeWorkspaces.map((workspace) => (
 											<option key={workspace.id} value={workspace.id}>
 												{workspace.name} · {workspace.branchName || "main"}
@@ -493,7 +496,7 @@ export function DashboardScreen({ vm }: DashboardScreenProps) {
 									</select>
 									<textarea
 										onChange={(event) => vm.setTaskInput(event.target.value)}
-										placeholder="Describe the task for the agent..."
+										placeholder="Escribí con palabras simples lo que necesitás"
 										rows={4}
 										value={vm.taskInput}
 									/>
@@ -501,7 +504,9 @@ export function DashboardScreen({ vm }: DashboardScreenProps) {
 										onChange={(event) => vm.setProvider(event.target.value)}
 										value={vm.provider}
 									>
-										<option value="external-agent">External Agent (CLI)</option>
+										<option value="external-agent">
+											Automático (recomendado)
+										</option>
 										<option value="aider">Aider</option>
 										<option value="claude">Claude Code</option>
 										<option value="opencode">OpenCode</option>
@@ -514,14 +519,14 @@ export function DashboardScreen({ vm }: DashboardScreenProps) {
 											onClick={vm.spawnAgent}
 											type="button"
 										>
-											{vm.loading ? "Running..." : "Run Agent"}
+											{vm.loading ? "Iniciando..." : "Iniciar tarea"}
 										</button>
 										<button
 											className="btn-secondary"
 											onClick={() => vm.setView("spawn")}
 											type="button"
 										>
-											Open full composer
+											Abrir formulario completo
 										</button>
 									</div>
 								</div>

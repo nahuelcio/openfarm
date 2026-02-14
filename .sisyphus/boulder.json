@@ -1,6 +1,9 @@
 {
   "active_plan": "/Users/nahuelcioffi/Proyectos/openfarm/.sisyphus/plans/tui-multi-agent.md",
   "started_at": "2026-02-12T23:30:00.000Z",
-  "session_ids": ["ses_3ab404791ffe1yJb1oXsKl4y8A"],
+  "session_ids": [
+    "ses_3ab404791ffe1yJb1oXsKl4y8A",
+    "ses_3a6ae9292ffejZC6gt39C8Bs7i"
+  ],
   "plan_name": "tui-multi-agent"
 }

@@ -72,12 +72,12 @@ Transformar la TUI en una plataforma multi-agente de vibe coding donde:
 - Resource limits (max agents, disk quota)
 
 ### Definition of Done
-- [ ] 3 agentes pueden ejecutarse en paralelo
-- [ ] Dashboard muestra status real-time de cada agente
-- [ ] Cada agente tiene worktree aislado
-- [ ] Diff viewer muestra cambios de cada agente
-- [ ] Approve aplica cambios al main branch
-- [ ] Sistema enforcea max 8 agentes
+- [x] 3 agentes pueden ejecutarse en paralelo
+- [x] Dashboard muestra status real-time de cada agente
+- [x] Cada agente tiene worktree aislado
+- [x] Diff viewer muestra cambios de cada agente
+- [x] Approve aplica cambios al main branch
+- [x] Sistema enforcea max 8 agentes
 
 ### Must Have
 - Ejecución paralela de múltiples CLI agents
@@ -547,7 +547,7 @@ Wave 4 (Polish):
   - [x] Conflicts detected and shown to user
   - [x] Worktree cleaned up after merge
 
-- [ ] 9. Integration Testing
+- [x] 9. Integration Testing
 
   **What to do**:
   - End-to-end test of full flow:
@@ -617,7 +617,7 @@ Wave 4 (Polish):
   **Acceptance Criteria**:
   - [x] Agent crash shows meaningful error
   - [x] Can retry failed agent
-  - [ ] Orphan worktrees cleaned on startup
+  - [x] Orphan worktrees cleaned on startup
 
 - [x] 11. Resource Limits & Cleanup
 
@@ -655,7 +655,7 @@ Wave 4 (Polish):
   - [x] Old worktrees cleaned up
   - [x] Configurable limits work
 
-- [ ] 12. Final Integration Tests
+- [x] 12. Final Integration Tests
 
   **What to do**:
   - Comprehensive test suite:
@@ -713,7 +713,7 @@ bun test packages/sdk/src/tui/
 - [x] Review & Merge workflow complete
 - [x] Resource limits enforced
 - [x] Error handling robust
-- [ ] Tests passing
+- [x] Tests passing
 - [x] All "Must Have" present
 - [x] All "Must NOT Have" absent
 

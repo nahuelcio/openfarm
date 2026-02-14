@@ -11,12 +11,11 @@ export * from "./providers";
 // Repo
 export { RepoManager } from "./repo";
 export * from "./strategies";
-export { runTUIApp } from "./tui-cli";
 
 // Types
 export type {
-  ExecutionOptions,
-  ExecutionResult,
-  OpenFarmConfig,
-  ProviderInfo,
+	ExecutionOptions,
+	ExecutionResult,
+	OpenFarmConfig,
+	ProviderInfo,
 } from "./types";
