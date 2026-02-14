@@ -72,7 +72,36 @@ export function ReviewScreen({ vm }: ReviewScreenProps) {
 	const [showTechnical, setShowTechnical] = useState(false);
 
 	if (!vm.selectedAgent) {
-		return null;
+		return (
+			<PageShell
+				onBack={() => vm.setView("dashboard")}
+				title="Revisar Resultado"
+			>
+				<div className="review-panel">
+					<h3>No hay una tarea seleccionada</h3>
+					<p className="list-item-subtitle">
+						Primero ejecutá una tarea y luego abrí su revisión desde el
+						dashboard.
+					</p>
+					<div className="review-actions">
+						<button
+							className="btn-primary"
+							onClick={() => vm.setView("runs")}
+							type="button"
+						>
+							Ir a Ejecuciones
+						</button>
+						<button
+							className="btn-secondary"
+							onClick={() => vm.setView("dashboard")}
+							type="button"
+						>
+							Volver al Inicio
+						</button>
+					</div>
+				</div>
+			</PageShell>
+		);
 	}
 
 	const filteredDiffFiles = vm.diffFiles.filter((file) =>
