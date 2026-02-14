@@ -11,7 +11,7 @@ use std::path::PathBuf;
 use std::process::{Command, Output, Stdio};
 use std::sync::mpsc;
 use std::sync::Mutex;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
@@ -1716,6 +1716,23 @@ fn resolve_bridge_binary() -> PathBuf {
     PathBuf::from("openfarm-bridge")
 }
 
+fn timeout_from_env(name: &str, default_secs: u64) -> Duration {
+    let value = std::env::var(name)
+        .ok()
+        .and_then(|raw| raw.parse::<u64>().ok())
+        .filter(|v| *v > 0)
+        .unwrap_or(default_secs);
+    Duration::from_secs(value)
+}
+
+fn agent_total_timeout() -> Duration {
+    timeout_from_env("OPENFARM_AGENT_TOTAL_TIMEOUT_SECS", 1800)
+}
+
+fn agent_idle_timeout() -> Duration {
+    timeout_from_env("OPENFARM_AGENT_IDLE_TIMEOUT_SECS", 180)
+}
+
 fn stream_and_emit(
     agent_id: &str,
     app: &AppHandle,
@@ -1760,27 +1777,75 @@ fn stream_and_emit(
     });
     drop(tx);
 
+    let total_timeout = agent_total_timeout();
+    let idle_timeout = agent_idle_timeout();
+    let started_at = Instant::now();
+    let mut last_activity_at = started_at;
     let mut combined = String::new();
     let mut last_chunk = String::new();
-    for chunk in rx {
-        if chunk == last_chunk {
-            continue;
+    let mut exit_status: Option<std::process::ExitStatus> = None;
+    loop {
+        match rx.recv_timeout(Duration::from_millis(500)) {
+            Ok(chunk) => {
+                last_activity_at = Instant::now();
+                if chunk == last_chunk {
+                    continue;
+                }
+                last_chunk = chunk.clone();
+                combined.push_str(&chunk);
+                let state = app.state::<AgentPool>();
+                emit_and_store_event(
+                    app,
+                    &state,
+                    "agent:output",
+                    serde_json::json!({
+                        "agent_id": agent_id,
+                        "chunk": chunk
+                    }),
+                );
+            }
+            Err(mpsc::RecvTimeoutError::Timeout) => {
+                if let Some(status) = child.try_wait().map_err(|e| e.to_string())? {
+                    exit_status = Some(status);
+                    break;
+                }
+                let now = Instant::now();
+                if now.duration_since(started_at) >= total_timeout {
+                    terminate_process_tree(child.id());
+                    let _ = child.wait();
+                    {
+                        let state = app.state::<AgentPool>();
+                        let mut pids = state.pids.lock().unwrap();
+                        pids.remove(agent_id);
+                    }
+                    return Err(format!(
+                        "Agent timed out after {}s",
+                        total_timeout.as_secs()
+                    ));
+                }
+                if now.duration_since(last_activity_at) >= idle_timeout {
+                    terminate_process_tree(child.id());
+                    let _ = child.wait();
+                    {
+                        let state = app.state::<AgentPool>();
+                        let mut pids = state.pids.lock().unwrap();
+                        pids.remove(agent_id);
+                    }
+                    return Err(format!(
+                        "Agent produced no output for {}s and was stopped",
+                        idle_timeout.as_secs()
+                    ));
+                }
+            }
+            Err(mpsc::RecvTimeoutError::Disconnected) => break,
         }
-        last_chunk = chunk.clone();
-        combined.push_str(&chunk);
-        let state = app.state::<AgentPool>();
-        emit_and_store_event(
-            app,
-            &state,
-            "agent:output",
-            serde_json::json!({
-                "agent_id": agent_id,
-                "chunk": chunk
-            }),
-        );
     }
 
-    let status = child.wait().map_err(|e| e.to_string())?;
+    let status = if let Some(value) = exit_status {
+        value
+    } else {
+        child.wait().map_err(|e| e.to_string())?
+    };
     {
         let state = app.state::<AgentPool>();
         let mut pids = state.pids.lock().unwrap();
@@ -1869,88 +1934,150 @@ fn run_agent_via_bridge(
     });
     drop(tx);
 
+    let total_timeout = agent_total_timeout();
+    let idle_timeout = agent_idle_timeout();
+    let started_at = Instant::now();
+    let mut last_activity_at = started_at;
     let mut combined = String::new();
     let mut bridge_error = String::new();
     let mut final_result: Option<Result<String, String>> = None;
-    for (is_stderr, line) in rx {
-        if is_stderr {
-            bridge_error.push_str(&line);
-            bridge_error.push('\n');
-            continue;
-        }
-        let value = serde_json::from_str::<serde_json::Value>(&line)
-            .unwrap_or_else(|_| serde_json::json!({}));
-        let kind = value.get("type").and_then(|v| v.as_str()).unwrap_or("log");
-        if kind == "log" {
-            let chunk = value
-                .get("chunk")
-                .and_then(|v| v.as_str())
-                .unwrap_or_default()
-                .to_string();
-            if !chunk.is_empty() {
-                let with_newline = format!("{chunk}\n");
-                combined.push_str(&with_newline);
-                let state = app.state::<AgentPool>();
-                emit_and_store_event(
-                    app,
-                    &state,
-                    "agent:output",
-                    serde_json::json!({
-                        "agent_id": agent_id,
-                        "chunk": with_newline
-                    }),
-                );
+    let mut exit_status: Option<std::process::ExitStatus> = None;
+    loop {
+        match rx.recv_timeout(Duration::from_millis(500)) {
+            Ok((is_stderr, line)) => {
+                last_activity_at = Instant::now();
+                if is_stderr {
+                    bridge_error.push_str(&line);
+                    bridge_error.push('\n');
+                    continue;
+                }
+                let value = serde_json::from_str::<serde_json::Value>(&line)
+                    .unwrap_or_else(|_| serde_json::json!({}));
+                let kind = value.get("type").and_then(|v| v.as_str()).unwrap_or("log");
+                if kind == "log" {
+                    let chunk = value
+                        .get("chunk")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or_default()
+                        .to_string();
+                    if !chunk.is_empty() {
+                        let with_newline = format!("{chunk}\n");
+                        combined.push_str(&with_newline);
+                        let state = app.state::<AgentPool>();
+                        emit_and_store_event(
+                            app,
+                            &state,
+                            "agent:output",
+                            serde_json::json!({
+                                "agent_id": agent_id,
+                                "chunk": with_newline
+                            }),
+                        );
+                    }
+                    continue;
+                }
+                if kind == "result" {
+                    let success = value
+                        .get("success")
+                        .and_then(|v| v.as_bool())
+                        .unwrap_or(false);
+                    let output_text = value
+                        .get("output")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or_default()
+                        .to_string();
+                    if !output_text.is_empty() {
+                        combined.push_str(&output_text);
+                    }
+                    if success {
+                        final_result = Some(Ok(combined.clone()));
+                        break;
+                    }
+                    let error = value
+                        .get("error")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("Bridge execution failed")
+                        .to_string();
+                    final_result = Some(Err(if combined.is_empty() {
+                        error
+                    } else {
+                        format!("{combined}\n{error}")
+                    }));
+                    break;
+                }
+                if kind == "error" {
+                    let error = value
+                        .get("message")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("Bridge error")
+                        .to_string();
+                    final_result = Some(Err(error));
+                    break;
+                }
             }
-            continue;
-        }
-        if kind == "result" {
-            let success = value
-                .get("success")
-                .and_then(|v| v.as_bool())
-                .unwrap_or(false);
-            let output_text = value
-                .get("output")
-                .and_then(|v| v.as_str())
-                .unwrap_or_default()
-                .to_string();
-            if !output_text.is_empty() {
-                combined.push_str(&output_text);
+            Err(mpsc::RecvTimeoutError::Timeout) => {
+                if let Some(status) = child.try_wait().map_err(|e| e.to_string())? {
+                    exit_status = Some(status);
+                    break;
+                }
+                let now = Instant::now();
+                if now.duration_since(started_at) >= total_timeout {
+                    terminate_process_tree(child.id());
+                    let _ = child.wait();
+                    {
+                        let state = app.state::<AgentPool>();
+                        let mut pids = state.pids.lock().unwrap();
+                        pids.remove(agent_id);
+                    }
+                    return Err(format!(
+                        "Agent timed out after {}s",
+                        total_timeout.as_secs()
+                    ));
+                }
+                if now.duration_since(last_activity_at) >= idle_timeout {
+                    terminate_process_tree(child.id());
+                    let _ = child.wait();
+                    {
+                        let state = app.state::<AgentPool>();
+                        let mut pids = state.pids.lock().unwrap();
+                        pids.remove(agent_id);
+                    }
+                    return Err(format!(
+                        "Agent produced no output for {}s and was stopped",
+                        idle_timeout.as_secs()
+                    ));
+                }
             }
-            if success {
-                final_result = Some(Ok(combined.clone()));
-                break;
-            }
-            let error = value
-                .get("error")
-                .and_then(|v| v.as_str())
-                .unwrap_or("Bridge execution failed")
-                .to_string();
-            final_result = Some(Err(if combined.is_empty() {
-                error
-            } else {
-                format!("{combined}\n{error}")
-            }));
-            break;
-        }
-        if kind == "error" {
-            let error = value
-                .get("message")
-                .and_then(|v| v.as_str())
-                .unwrap_or("Bridge error")
-                .to_string();
-            final_result = Some(Err(error));
-            break;
+            Err(mpsc::RecvTimeoutError::Disconnected) => break,
         }
     }
 
-    let status = child.wait().map_err(|e| e.to_string())?;
+    if let Some(result) = final_result {
+        if child
+            .try_wait()
+            .map_err(|e| e.to_string())?
+            .is_none()
+        {
+            terminate_process_tree(child.id());
+            let _ = child.wait();
+        }
+        {
+            let state = app.state::<AgentPool>();
+            let mut pids = state.pids.lock().unwrap();
+            pids.remove(agent_id);
+        }
+        return result;
+    }
+
+    let status = if let Some(value) = exit_status {
+        value
+    } else {
+        child.wait().map_err(|e| e.to_string())?
+    };
     {
         let state = app.state::<AgentPool>();
         let mut pids = state.pids.lock().unwrap();
         pids.remove(agent_id);
-    }
-    if let Some(result) = final_result {
-        return result;
     }
     if !status.success() {
         let message = if bridge_error.trim().is_empty() {
