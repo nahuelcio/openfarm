@@ -43,7 +43,7 @@ console.log(result.diff)
 
 ## 🖥️ Terminal UI (TUI) - Legacy
 
-The TUI is now in legacy mode and receives only critical fixes. For new workflows, use OpenFarm Desktop (`openfarm-desktop/`).
+The TUI is now in legacy mode and receives only critical fixes. For new workflows, use OpenFarm Desktop (`openfarm-app/`).
 Migration timeline: `docs/desktop-migration-window.md`.
 
 ### Running the Legacy TUI

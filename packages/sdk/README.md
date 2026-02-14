@@ -6,7 +6,7 @@ The OpenFarm SDK provides a unified interface for AI-powered code execution acro
 
 The terminal interface is now in legacy maintenance mode.
 
-- New feature development is focused on OpenFarm Desktop (`openfarm-desktop/`)
+- New feature development is focused on OpenFarm Desktop (`openfarm-app/`)
 - TUI receives critical fixes only
 - Existing TUI commands are opt-in during the migration window: pass `--legacy-tui` or set `OPENFARM_ENABLE_LEGACY_TUI=1`
 - Migration timeline: `docs/desktop-migration-window.md`

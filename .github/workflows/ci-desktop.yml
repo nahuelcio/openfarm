@@ -1,15 +1,15 @@
-name: CI - OpenFarm Desktop
+name: CI - OpenFarm App
 
 on:
   push:
     branches: [main, develop]
     paths:
-      - "openfarm-desktop/**"
+      - "openfarm-app/**"
       - ".github/workflows/ci-desktop.yml"
   pull_request:
     branches: [main, develop]
     paths:
-      - "openfarm-desktop/**"
+      - "openfarm-app/**"
       - ".github/workflows/ci-desktop.yml"
 
 concurrency:
@@ -43,7 +43,7 @@ jobs:
         run: bun install --frozen
 
       - name: Lint desktop frontend
-        working-directory: openfarm-desktop
+        working-directory: openfarm-app
         run: bun run lint
 
   desktop-backend:
@@ -59,9 +59,9 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Cargo fmt check
-        working-directory: openfarm-desktop/src-tauri
+        working-directory: openfarm-app/src-tauri
         run: cargo fmt --check
 
       - name: Cargo tests
-        working-directory: openfarm-desktop/src-tauri
+        working-directory: openfarm-app/src-tauri
         run: cargo test

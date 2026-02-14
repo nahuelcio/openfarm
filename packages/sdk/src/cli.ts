@@ -5,6 +5,6 @@ console.error(
 	"[openfarm] The TUI has been removed. Please use OpenFarm Desktop instead.",
 );
 console.error(
-	"[openfarm] Download from: https://github.com/openfarm/openfarm-desktop",
+	"[openfarm] Download from: https://github.com/openfarm/openfarm-app",
 );
 process.exit(1);
