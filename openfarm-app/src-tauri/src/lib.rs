@@ -3232,44 +3232,6 @@ fn expand_workspace_slash_command(
     Ok(input)
 }
 
-fn collect_workspace_files(
-    base: &std::path::Path,
-    current: &std::path::Path,
-    depth: usize,
-    out: &mut Vec<WorkspaceFileEntry>,
-) -> Result<(), String> {
-    if depth > 3 || out.len() >= 250 {
-        return Ok(());
-    }
-    let entries = std::fs::read_dir(current).map_err(|e| e.to_string())?;
-    for entry_result in entries {
-        if out.len() >= 250 {
-            break;
-        }
-        let entry = entry_result.map_err(|e| e.to_string())?;
-        let path = entry.path();
-        let name = entry.file_name().to_string_lossy().to_string();
-        if name == ".git" || name == "node_modules" || name == "target" || name == "dist" {
-            continue;
-        }
-        let metadata = entry.metadata().map_err(|e| e.to_string())?;
-        let is_dir = metadata.is_dir();
-        let relative = path
-            .strip_prefix(base)
-            .map_err(|e| e.to_string())?
-            .to_string_lossy()
-            .to_string();
-        out.push(WorkspaceFileEntry {
-            path: relative,
-            is_dir,
-        });
-        if is_dir {
-            collect_workspace_files(base, &path, depth + 1, out)?;
-        }
-    }
-    Ok(())
-}
-
 #[tauri::command]
 fn list_workspace_files(
     workspace_id: String,
@@ -3280,10 +3242,40 @@ fn list_workspace_files(
     if !base.exists() {
         return Ok(Vec::new());
     }
-    let mut files = Vec::new();
-    collect_workspace_files(base, base, 0, &mut files)?;
-    files.sort_by(|a, b| a.path.cmp(&b.path));
-    Ok(files)
+
+    let output = git_output(
+        &workspace_dir,
+        &["ls-files", "--cached", "--others", "--exclude-standard"],
+    )?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        return if stderr.is_empty() {
+            Err("Failed to list workspace files".to_string())
+        } else {
+            Err(stderr)
+        };
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let mut unique_paths: BTreeSet<String> = BTreeSet::new();
+    for line in stdout.lines() {
+        let clean = line.trim();
+        if clean.is_empty() || clean.starts_with(".git/") {
+            continue;
+        }
+        unique_paths.insert(clean.to_string());
+        if unique_paths.len() >= 1500 {
+            break;
+        }
+    }
+
+    Ok(unique_paths
+        .into_iter()
+        .map(|path| WorkspaceFileEntry {
+            path,
+            is_dir: false,
+        })
+        .collect())
 }
 
 #[tauri::command]
