@@ -85,7 +85,7 @@ function MessageBubble({
 						</div>
 					)}
 				</div>
-				<span className="text-[10px] text-muted-foreground shrink-0 mt-1">
+				<span className="mt-1 hidden shrink-0 text-[10px] text-muted-foreground lg:block">
 					{message.timestamp}
 				</span>
 			</div>
@@ -110,7 +110,7 @@ function MessageBubble({
 						</div>
 					)}
 				</div>
-				<span className="text-[10px] text-muted-foreground shrink-0 mt-1">
+				<span className="mt-1 hidden shrink-0 text-[10px] text-muted-foreground lg:block">
 					{message.timestamp}
 				</span>
 			</div>
@@ -157,7 +157,7 @@ function MessageBubble({
 					</div>
 				)}
 			</div>
-			<span className="text-[10px] text-muted-foreground shrink-0 mt-1">
+			<span className="mt-1 hidden shrink-0 text-[10px] text-muted-foreground lg:block">
 				{message.timestamp}
 			</span>
 		</div>

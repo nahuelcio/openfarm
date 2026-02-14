@@ -52,6 +52,13 @@ function StatusBadge({ status }: { status: AgentStatus }) {
 		error: "Error",
 		reviewing: "Needs Review",
 	};
+	const compactLabels: Record<AgentStatus, string> = {
+		running: "Run",
+		idle: "Idle",
+		completed: "Done",
+		error: "Err",
+		reviewing: "Review",
+	};
 	const icons: Record<AgentStatus, React.ReactNode> = {
 		running: <Loader2 className="h-3 w-3 animate-spin" />,
 		idle: <Circle className="h-3 w-3" />,
@@ -75,7 +82,8 @@ function StatusBadge({ status }: { status: AgentStatus }) {
 			)}
 		>
 			{icons[status]}
-			{labels[status]}
+			<span className="sm:hidden">{compactLabels[status]}</span>
+			<span className="hidden sm:inline">{labels[status]}</span>
 		</span>
 	);
 }
@@ -121,7 +129,7 @@ function ProviderTag({
 			/>
 			{p.label}
 			{model && (
-				<span className="opacity-60">
+				<span className="hidden md:inline opacity-60 max-w-[140px] truncate">
 					/ {model.split("-").slice(0, 2).join("-")}
 				</span>
 			)}
@@ -136,33 +144,35 @@ interface AgentHeaderProps {
 
 export function AgentHeader({ agent, onViewChanges }: AgentHeaderProps) {
 	return (
-		<div className="flex items-center justify-between border-b border-border bg-card px-5 py-3">
-			<div className="flex items-center gap-3 min-w-0">
+		<div className="flex flex-col gap-3 border-b border-border bg-card px-3 py-3 sm:px-4 lg:flex-row lg:items-center lg:justify-between">
+			<div className="flex min-w-0 flex-1 items-start gap-2.5 sm:items-center">
 				<StatusDot status={agent.status} />
 				<div className="min-w-0">
-					<div className="flex items-center gap-2">
-						<h1 className="text-sm font-semibold text-foreground truncate">
+					<div className="flex min-w-0 flex-wrap items-center gap-2">
+						<h1 className="max-w-[260px] truncate text-sm font-semibold text-foreground sm:max-w-[380px]">
 							{agent.name}
 						</h1>
 						<ProviderTag provider={agent.provider} model={agent.model} />
 					</div>
-					<div className="flex items-center gap-3 mt-0.5">
+					<div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1">
 						<div className="flex items-center gap-1 text-xs text-muted-foreground">
 							<GitBranch className="h-3 w-3" />
-							<span className="font-mono">{agent.branch}</span>
+							<span className="max-w-[220px] truncate font-mono sm:max-w-[300px]">
+								{agent.branch}
+							</span>
 						</div>
-						<span className="text-[10px] text-muted-foreground">
+						<span className="hidden text-[10px] text-muted-foreground lg:inline">
 							{agent.startedAt}
 						</span>
 					</div>
 				</div>
 			</div>
 
-			<div className="flex items-center gap-2">
+			<div className="flex flex-wrap items-center gap-2 lg:justify-end">
 				<StatusBadge status={agent.status} />
 
 				{/* Stats */}
-				<div className="hidden sm:flex items-center gap-3 px-3 py-1 rounded-md bg-secondary text-xs text-muted-foreground">
+				<div className="hidden xl:flex items-center gap-3 rounded-md bg-secondary px-3 py-1 text-xs text-muted-foreground">
 					<span className="flex items-center gap-1">
 						<FileCode2 className="h-3 w-3" />
 						{agent.filesChanged} files
@@ -177,11 +187,11 @@ export function AgentHeader({ agent, onViewChanges }: AgentHeaderProps) {
 						<Button
 							variant="ghost"
 							size="sm"
-							className="h-7 gap-1.5 text-xs text-foreground hover:text-foreground hover:bg-accent"
+							className="h-7 gap-1.5 px-2 text-xs text-foreground hover:bg-accent hover:text-foreground sm:px-2.5"
 							onClick={onViewChanges}
 						>
 							<FileDiff className="h-3.5 w-3.5" />
-							View Changes
+							<span className="hidden md:inline">View Changes</span>
 						</Button>
 					)}
 
@@ -189,10 +199,10 @@ export function AgentHeader({ agent, onViewChanges }: AgentHeaderProps) {
 						<Button
 							variant="ghost"
 							size="sm"
-							className="h-7 gap-1.5 text-xs text-primary hover:text-primary hover:bg-primary/10"
+							className="h-7 gap-1.5 px-2 text-xs text-primary hover:bg-primary/10 hover:text-primary sm:px-2.5"
 						>
 							<GitPullRequest className="h-3.5 w-3.5" />
-							Create PR
+							<span className="hidden md:inline">Create PR</span>
 						</Button>
 					)}
 
