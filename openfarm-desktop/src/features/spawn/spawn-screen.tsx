@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { AppViewModel } from "../../state/use-app-view-model";
 import { PageShell } from "../../ui/layout/page-shell";
 
@@ -6,6 +7,9 @@ interface SpawnScreenProps {
 }
 
 export function SpawnScreen({ vm }: SpawnScreenProps) {
+	const [showAdvanced, setShowAdvanced] = useState(false);
+	const showManualPath = vm.selectedWorkspaceId === "";
+
 	return (
 		<PageShell title="Crear Nueva Tarea">
 			<div className="spawn-form">
@@ -23,7 +27,7 @@ export function SpawnScreen({ vm }: SpawnScreenProps) {
 					rows={4}
 					value={vm.taskInput}
 				/>
-				{vm.selectedWorkspaceId && (
+				{showAdvanced && vm.selectedWorkspaceId && (
 					<>
 						<label htmlFor="slash-commands">Atajos (opcional)</label>
 						<select
@@ -76,27 +80,45 @@ export function SpawnScreen({ vm }: SpawnScreenProps) {
 							</option>
 						))}
 				</select>
-				<input
-					disabled={vm.loading}
-					onChange={(event) => vm.setWorkspaceInput(event.target.value)}
-					placeholder="Ruta de la carpeta del proyecto"
-					type="text"
-					value={vm.workspaceInput}
-				/>
-
-				<label htmlFor="provider-select">Motor de IA</label>
-				<select
-					disabled={vm.loading}
-					id="provider-select"
-					onChange={(event) => vm.setProvider(event.target.value)}
-					value={vm.provider}
+				<button
+					className="btn-secondary"
+					onClick={() => setShowAdvanced((prev) => !prev)}
+					type="button"
 				>
-					<option value="external-agent">Automático (recomendado)</option>
-					<option value="aider">Aider</option>
-					<option value="claude">Claude Code</option>
-					<option value="opencode">OpenCode</option>
-					<option value="codex">Codex</option>
-				</select>
+					{showAdvanced
+						? "Ocultar opciones técnicas"
+						: "Mostrar opciones técnicas"}
+				</button>
+				{showAdvanced && (
+					<>
+						{showManualPath && (
+							<>
+								<label htmlFor="manual-path">Ruta manual del proyecto</label>
+								<input
+									disabled={vm.loading}
+									id="manual-path"
+									onChange={(event) => vm.setWorkspaceInput(event.target.value)}
+									placeholder="Ruta de la carpeta del proyecto"
+									type="text"
+									value={vm.workspaceInput}
+								/>
+							</>
+						)}
+						<label htmlFor="provider-select">Motor de IA</label>
+						<select
+							disabled={vm.loading}
+							id="provider-select"
+							onChange={(event) => vm.setProvider(event.target.value)}
+							value={vm.provider}
+						>
+							<option value="external-agent">Automático (recomendado)</option>
+							<option value="aider">Aider</option>
+							<option value="claude">Claude Code</option>
+							<option value="opencode">OpenCode</option>
+							<option value="codex">Codex</option>
+						</select>
+					</>
+				)}
 
 				<div className="buttons">
 					<button

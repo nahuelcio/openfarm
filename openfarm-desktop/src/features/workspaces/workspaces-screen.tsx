@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { AppViewModel } from "../../state/use-app-view-model";
 import { PageShell } from "../../ui/layout/page-shell";
 
@@ -6,6 +7,8 @@ interface WorkspacesScreenProps {
 }
 
 export function WorkspacesScreen({ vm }: WorkspacesScreenProps) {
+	const [showAdvanced, setShowAdvanced] = useState(false);
+
 	const filteredWorkspaces = vm.workspaces.filter((workspace) => {
 		const repoPath = workspace.repoPath || "";
 		const repoMatches = repoPath
@@ -30,6 +33,15 @@ export function WorkspacesScreen({ vm }: WorkspacesScreenProps) {
 				<p className="list-item-subtitle">
 					Un espacio es la carpeta donde el asistente va a trabajar.
 				</p>
+				<button
+					className="btn-secondary"
+					onClick={() => setShowAdvanced((prev) => !prev)}
+					type="button"
+				>
+					{showAdvanced
+						? "Ocultar opciones técnicas"
+						: "Mostrar opciones técnicas"}
+				</button>
 				<div className="field-row">
 					<input
 						onChange={(event) => vm.setNewWorkspaceName(event.target.value)}
@@ -99,166 +111,179 @@ export function WorkspacesScreen({ vm }: WorkspacesScreenProps) {
 									{workspace.sourceType || "branch"}
 									{workspace.sourceRef ? `:${workspace.sourceRef}` : ""}
 								</span>
-								<span className="list-item-subtitle">
-									Modo de ejecución:{" "}
-									{vm.workspaceScripts[workspace.id]?.run_mode || "concurrent"}
-								</span>
-								<span className="list-item-subtitle">
-									Tareas pendientes:{" "}
-									{
-										(vm.workspaceTodos[workspace.id] || []).filter(
-											(todo) => !todo.completed,
-										).length
-									}
-								</span>
-								<span className="list-item-subtitle">
-									Spotlight:{" "}
-									{workspace.spotlightEnabled ? "activo" : "inactivo"}
-									{workspace.spotlightSyncedAt
-										? ` · último sync ${new Date(workspace.spotlightSyncedAt).toLocaleString()}`
-										: ""}
-								</span>
-								<input
-									onChange={(event) =>
-										vm.setNewWorkspaceTodo((prev) => ({
-											...prev,
-											[workspace.id]: event.target.value,
-										}))
-									}
-									placeholder="Nueva tarea corta (opcional)"
-									type="text"
-									value={vm.newWorkspaceTodo[workspace.id] || ""}
-								/>
-								<button
-									className="icon-btn"
-									onClick={() => vm.addWorkspaceTodo(workspace.id)}
-									type="button"
-								>
-									Agregar Tarea
-								</button>
-								{(vm.workspaceTodos[workspace.id] || []).map((todo) => (
-									<div className="todo-item" key={todo.id}>
-										<input
-											checked={todo.completed}
-											onChange={(event) =>
-												vm.toggleWorkspaceTodo(
-													workspace.id,
-													todo.id,
-													event.target.checked,
-												)
+								{showAdvanced && (
+									<>
+										<span className="list-item-subtitle">
+											Modo de ejecución:{" "}
+											{vm.workspaceScripts[workspace.id]?.run_mode ||
+												"concurrent"}
+										</span>
+										<span className="list-item-subtitle">
+											Tareas pendientes:{" "}
+											{
+												(vm.workspaceTodos[workspace.id] || []).filter(
+													(todo) => !todo.completed,
+												).length
 											}
-											type="checkbox"
+										</span>
+										<span className="list-item-subtitle">
+											Spotlight:{" "}
+											{workspace.spotlightEnabled ? "activo" : "inactivo"}
+											{workspace.spotlightSyncedAt
+												? ` · último sync ${new Date(workspace.spotlightSyncedAt).toLocaleString()}`
+												: ""}
+										</span>
+										<input
+											onChange={(event) =>
+												vm.setNewWorkspaceTodo((prev) => ({
+													...prev,
+													[workspace.id]: event.target.value,
+												}))
+											}
+											placeholder="Nueva tarea corta (opcional)"
+											type="text"
+											value={vm.newWorkspaceTodo[workspace.id] || ""}
 										/>
-										<span>{todo.title}</span>
 										<button
 											className="icon-btn"
-											onClick={() =>
-												vm.deleteWorkspaceTodo(workspace.id, todo.id)
-											}
+											onClick={() => vm.addWorkspaceTodo(workspace.id)}
 											type="button"
 										>
-											Eliminar Tarea
+											Agregar Tarea
 										</button>
-									</div>
-								))}
-								<input
-									onBlur={(event) =>
-										vm.setWorkspaceScriptConfig(workspace.id, {
-											setup_script: event.target.value || undefined,
-										})
-									}
-									onChange={(event) =>
-										vm.setWorkspaceScripts((prev) => ({
-											...prev,
-											[workspace.id]: {
-												...prev[workspace.id],
-												workspace_id: workspace.id,
-												run_mode: prev[workspace.id]?.run_mode || "concurrent",
-												updated_at: prev[workspace.id]?.updated_at || "",
-												setup_script: event.target.value,
-											},
-										}))
-									}
-									placeholder="comando de preparación (opcional)"
-									type="text"
-									value={vm.workspaceScripts[workspace.id]?.setup_script || ""}
-								/>
-								<input
-									onBlur={(event) =>
-										vm.setWorkspaceScriptConfig(workspace.id, {
-											run_script: event.target.value || undefined,
-										})
-									}
-									onChange={(event) =>
-										vm.setWorkspaceScripts((prev) => ({
-											...prev,
-											[workspace.id]: {
-												...prev[workspace.id],
-												workspace_id: workspace.id,
-												run_mode: prev[workspace.id]?.run_mode || "concurrent",
-												updated_at: prev[workspace.id]?.updated_at || "",
-												run_script: event.target.value,
-											},
-										}))
-									}
-									placeholder="comando principal (opcional)"
-									type="text"
-									value={vm.workspaceScripts[workspace.id]?.run_script || ""}
-								/>
-								<input
-									onBlur={(event) =>
-										vm.setWorkspaceScriptConfig(workspace.id, {
-											archive_script: event.target.value || undefined,
-										})
-									}
-									onChange={(event) =>
-										vm.setWorkspaceScripts((prev) => ({
-											...prev,
-											[workspace.id]: {
-												...prev[workspace.id],
-												workspace_id: workspace.id,
-												run_mode: prev[workspace.id]?.run_mode || "concurrent",
-												updated_at: prev[workspace.id]?.updated_at || "",
-												archive_script: event.target.value,
-											},
-										}))
-									}
-									placeholder="comando de cierre (opcional)"
-									type="text"
-									value={
-										vm.workspaceScripts[workspace.id]?.archive_script || ""
-									}
-								/>
-								<select
-									onChange={(event) => {
-										const nextRunMode =
-											event.target.value === "nonconcurrent"
-												? "nonconcurrent"
-												: "concurrent";
-										vm.setWorkspaceScripts((prev) => ({
-											...prev,
-											[workspace.id]: {
-												workspace_id: workspace.id,
-												setup_script: prev[workspace.id]?.setup_script,
-												run_script: prev[workspace.id]?.run_script,
-												archive_script: prev[workspace.id]?.archive_script,
-												run_mode: nextRunMode,
-												updated_at: prev[workspace.id]?.updated_at || "",
-											},
-										}));
-										vm.setWorkspaceScriptConfig(workspace.id, {
-											run_mode: nextRunMode,
-										});
-									}}
-									value={
-										vm.workspaceScripts[workspace.id]?.run_mode || "concurrent"
-									}
-								>
-									<option value="concurrent">Paralelo</option>
-									<option value="nonconcurrent">De a uno</option>
-								</select>
-								{vm.workspaceScriptOutput[workspace.id] && (
-									<pre>{vm.workspaceScriptOutput[workspace.id]}</pre>
+										{(vm.workspaceTodos[workspace.id] || []).map((todo) => (
+											<div className="todo-item" key={todo.id}>
+												<input
+													checked={todo.completed}
+													onChange={(event) =>
+														vm.toggleWorkspaceTodo(
+															workspace.id,
+															todo.id,
+															event.target.checked,
+														)
+													}
+													type="checkbox"
+												/>
+												<span>{todo.title}</span>
+												<button
+													className="icon-btn"
+													onClick={() =>
+														vm.deleteWorkspaceTodo(workspace.id, todo.id)
+													}
+													type="button"
+												>
+													Eliminar Tarea
+												</button>
+											</div>
+										))}
+										<input
+											onBlur={(event) =>
+												vm.setWorkspaceScriptConfig(workspace.id, {
+													setup_script: event.target.value || undefined,
+												})
+											}
+											onChange={(event) =>
+												vm.setWorkspaceScripts((prev) => ({
+													...prev,
+													[workspace.id]: {
+														...prev[workspace.id],
+														workspace_id: workspace.id,
+														run_mode:
+															prev[workspace.id]?.run_mode || "concurrent",
+														updated_at: prev[workspace.id]?.updated_at || "",
+														setup_script: event.target.value,
+													},
+												}))
+											}
+											placeholder="comando de preparación (opcional)"
+											type="text"
+											value={
+												vm.workspaceScripts[workspace.id]?.setup_script || ""
+											}
+										/>
+										<input
+											onBlur={(event) =>
+												vm.setWorkspaceScriptConfig(workspace.id, {
+													run_script: event.target.value || undefined,
+												})
+											}
+											onChange={(event) =>
+												vm.setWorkspaceScripts((prev) => ({
+													...prev,
+													[workspace.id]: {
+														...prev[workspace.id],
+														workspace_id: workspace.id,
+														run_mode:
+															prev[workspace.id]?.run_mode || "concurrent",
+														updated_at: prev[workspace.id]?.updated_at || "",
+														run_script: event.target.value,
+													},
+												}))
+											}
+											placeholder="comando principal (opcional)"
+											type="text"
+											value={
+												vm.workspaceScripts[workspace.id]?.run_script || ""
+											}
+										/>
+										<input
+											onBlur={(event) =>
+												vm.setWorkspaceScriptConfig(workspace.id, {
+													archive_script: event.target.value || undefined,
+												})
+											}
+											onChange={(event) =>
+												vm.setWorkspaceScripts((prev) => ({
+													...prev,
+													[workspace.id]: {
+														...prev[workspace.id],
+														workspace_id: workspace.id,
+														run_mode:
+															prev[workspace.id]?.run_mode || "concurrent",
+														updated_at: prev[workspace.id]?.updated_at || "",
+														archive_script: event.target.value,
+													},
+												}))
+											}
+											placeholder="comando de cierre (opcional)"
+											type="text"
+											value={
+												vm.workspaceScripts[workspace.id]?.archive_script || ""
+											}
+										/>
+										<select
+											onChange={(event) => {
+												const nextRunMode =
+													event.target.value === "nonconcurrent"
+														? "nonconcurrent"
+														: "concurrent";
+												vm.setWorkspaceScripts((prev) => ({
+													...prev,
+													[workspace.id]: {
+														workspace_id: workspace.id,
+														setup_script: prev[workspace.id]?.setup_script,
+														run_script: prev[workspace.id]?.run_script,
+														archive_script: prev[workspace.id]?.archive_script,
+														run_mode: nextRunMode,
+														updated_at: prev[workspace.id]?.updated_at || "",
+													},
+												}));
+												vm.setWorkspaceScriptConfig(workspace.id, {
+													run_mode: nextRunMode,
+												});
+											}}
+											value={
+												vm.workspaceScripts[workspace.id]?.run_mode ||
+												"concurrent"
+											}
+										>
+											<option value="concurrent">Paralelo</option>
+											<option value="nonconcurrent">De a uno</option>
+										</select>
+										{vm.workspaceScriptOutput[workspace.id] && (
+											<pre>{vm.workspaceScriptOutput[workspace.id]}</pre>
+										)}
+									</>
 								)}
 							</div>
 							<div className="list-item-actions">
@@ -281,32 +306,6 @@ export function WorkspacesScreen({ vm }: WorkspacesScreenProps) {
 								>
 									Abrir Carpeta
 								</button>
-								{workspace.spotlightEnabled ? (
-									<button
-										className="icon-btn"
-										onClick={() => vm.disableWorkspaceSpotlight(workspace.id)}
-										type="button"
-									>
-										Apagar Spotlight
-									</button>
-								) : (
-									<button
-										className="icon-btn"
-										disabled={workspace.status === "archived"}
-										onClick={() => vm.enableWorkspaceSpotlight(workspace.id)}
-										type="button"
-									>
-										Encender Spotlight
-									</button>
-								)}
-								<button
-									className="icon-btn"
-									disabled={workspace.status === "archived"}
-									onClick={() => vm.runWorkspaceScript(workspace.id, "setup")}
-									type="button"
-								>
-									Ejecutar Setup
-								</button>
 								<button
 									className="icon-btn"
 									disabled={workspace.status === "archived"}
@@ -322,13 +321,6 @@ export function WorkspacesScreen({ vm }: WorkspacesScreenProps) {
 									type="button"
 								>
 									Detener
-								</button>
-								<button
-									className="icon-btn"
-									onClick={() => vm.runWorkspaceScript(workspace.id, "archive")}
-									type="button"
-								>
-									Ejecutar Cierre
 								</button>
 								{workspace.status === "archived" ? (
 									<button
@@ -347,36 +339,81 @@ export function WorkspacesScreen({ vm }: WorkspacesScreenProps) {
 										Archivar
 									</button>
 								)}
-								<button
-									className="icon-btn"
-									disabled={workspace.status === "archived"}
-									onClick={() => vm.createWorkspacePr(workspace.id)}
-									type="button"
-								>
-									Crear PR
-								</button>
-								{vm.workspacePrs[workspace.id] && (
-									<button
-										className="icon-btn"
-										onClick={() => vm.refreshWorkspacePr(workspace.id)}
-										type="button"
-									>
-										Actualizar PR
-									</button>
-								)}
-								{vm.workspacePrs[workspace.id] &&
-									vm.workspacePrs[workspace.id].status === "open" && (
+								{showAdvanced && (
+									<>
+										{workspace.spotlightEnabled ? (
+											<button
+												className="icon-btn"
+												onClick={() =>
+													vm.disableWorkspaceSpotlight(workspace.id)
+												}
+												type="button"
+											>
+												Apagar Spotlight
+											</button>
+										) : (
+											<button
+												className="icon-btn"
+												disabled={workspace.status === "archived"}
+												onClick={() =>
+													vm.enableWorkspaceSpotlight(workspace.id)
+												}
+												type="button"
+											>
+												Encender Spotlight
+											</button>
+										)}
 										<button
 											className="icon-btn"
-											disabled={(vm.workspaceTodos[workspace.id] || []).some(
-												(todo) => !todo.completed,
-											)}
-											onClick={() => vm.mergeWorkspacePr(workspace.id)}
+											disabled={workspace.status === "archived"}
+											onClick={() =>
+												vm.runWorkspaceScript(workspace.id, "setup")
+											}
 											type="button"
 										>
-											Fusionar PR
+											Ejecutar Setup
 										</button>
-									)}
+										<button
+											className="icon-btn"
+											onClick={() =>
+												vm.runWorkspaceScript(workspace.id, "archive")
+											}
+											type="button"
+										>
+											Ejecutar Cierre
+										</button>
+										<button
+											className="icon-btn"
+											disabled={workspace.status === "archived"}
+											onClick={() => vm.createWorkspacePr(workspace.id)}
+											type="button"
+										>
+											Crear PR
+										</button>
+										{vm.workspacePrs[workspace.id] && (
+											<button
+												className="icon-btn"
+												onClick={() => vm.refreshWorkspacePr(workspace.id)}
+												type="button"
+											>
+												Actualizar PR
+											</button>
+										)}
+										{vm.workspacePrs[workspace.id] &&
+											vm.workspacePrs[workspace.id].status === "open" && (
+												<button
+													className="icon-btn"
+													disabled={(
+														vm.workspaceTodos[workspace.id] || []
+													).some((todo) => !todo.completed)}
+													onClick={() => vm.mergeWorkspacePr(workspace.id)}
+													type="button"
+												>
+													Fusionar PR
+												</button>
+											)}
+									</>
+								)}
 								<button
 									className="delete-btn"
 									onClick={() => vm.removeWorkspace(workspace.id)}
@@ -384,13 +421,14 @@ export function WorkspacesScreen({ vm }: WorkspacesScreenProps) {
 								>
 									Eliminar
 								</button>
-								{vm.workspacePrs[workspace.id] && (
+								{showAdvanced && vm.workspacePrs[workspace.id] && (
 									<span className="list-item-subtitle">
 										PR: {vm.workspacePrs[workspace.id].pr_url} (
 										{vm.workspacePrs[workspace.id].status})
 									</span>
 								)}
-								{vm.workspacePrs[workspace.id] &&
+								{showAdvanced &&
+									vm.workspacePrs[workspace.id] &&
 									vm.workspacePrs[workspace.id].checks_total > 0 && (
 										<span className="list-item-subtitle">
 											Checks: {vm.workspacePrs[workspace.id].checks_state} · ✅{" "}

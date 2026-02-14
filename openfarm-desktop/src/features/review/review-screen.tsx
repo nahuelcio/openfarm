@@ -5,6 +5,46 @@ interface ReviewScreenProps {
 	vm: AppViewModel;
 }
 
+type RiskLevel = "safe" | "review" | "risky";
+
+function resolveRiskLevel(
+	diffFilesCount: number,
+	hasMergeError: boolean,
+	agentStatus: string,
+): RiskLevel {
+	if (hasMergeError || agentStatus === "failed") {
+		return "risky";
+	}
+	if (
+		diffFilesCount > 8 ||
+		agentStatus === "running" ||
+		agentStatus === "pending"
+	) {
+		return "review";
+	}
+	return "safe";
+}
+
+function riskLabel(level: RiskLevel): string {
+	if (level === "risky") {
+		return "Riesgo: Riesgoso";
+	}
+	if (level === "review") {
+		return "Riesgo: Revisar";
+	}
+	return "Riesgo: Seguro";
+}
+
+function riskBadgeClass(level: RiskLevel): string {
+	if (level === "risky") {
+		return "failed";
+	}
+	if (level === "review") {
+		return "approved";
+	}
+	return "completed";
+}
+
 export function ReviewScreen({ vm }: ReviewScreenProps) {
 	if (!vm.selectedAgent) {
 		return null;
@@ -16,6 +56,11 @@ export function ReviewScreen({ vm }: ReviewScreenProps) {
 	const selectedPatch =
 		vm.diffFiles.find((file) => file.path === vm.selectedDiffFile)?.patch ||
 		"No patch available";
+	const riskLevel = resolveRiskLevel(
+		vm.diffFiles.length,
+		Boolean(vm.reviewError),
+		vm.selectedAgent.status,
+	);
 
 	return (
 		<PageShell onBack={() => vm.setView("dashboard")} title="Revisar Resultado">
@@ -52,6 +97,9 @@ export function ReviewScreen({ vm }: ReviewScreenProps) {
 				<p className="list-item-subtitle">
 					Si está bien, confirmá cambios. Si no, rechazá y explicá qué corregir.
 				</p>
+				<span className={`status-badge ${riskBadgeClass(riskLevel)}`}>
+					{riskLabel(riskLevel)}
+				</span>
 				<div className="review-actions">
 					<button
 						className="btn-primary"
