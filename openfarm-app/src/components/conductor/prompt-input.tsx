@@ -3,21 +3,30 @@
 import {
 	ArrowUp,
 	AtSign,
+	ChevronRight,
 	FileCode2,
 	File as FileIcon,
 	FileImage,
 	FileText,
+	Hash,
 	Paperclip,
 	Slash,
 	X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import {
+	expandWorkspaceSlashCommand,
+	listWorkspaceFiles,
+	listWorkspaceSlashCommands,
+} from "@/lib/backend";
 import type {
 	AgentMode,
 	AgentProvider,
 	Attachment,
 	ProviderConfig,
+	WorkspaceFileEntry,
+	WorkspaceSlashCommand,
 } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
@@ -83,6 +92,41 @@ function getOpenCodeGroup(modelId: string, description: string): string {
 	return "OpenCode";
 }
 
+type MentionTrigger = "@" | "#" | "/";
+type MentionKind = "agent" | "subagent" | "file" | "slash";
+
+interface MentionSuggestion {
+	id: string;
+	label: string;
+	insertText: string;
+	section: string;
+	kind: MentionKind;
+	description?: string;
+}
+
+interface MentionToken {
+	trigger: MentionTrigger;
+	query: string;
+	start: number;
+	end: number;
+}
+
+function detectMentionToken(
+	value: string,
+	cursor: number,
+): MentionToken | null {
+	const beforeCursor = value.slice(0, cursor);
+	const matched = /(^|\s)([@#/])([^\s]*)$/.exec(beforeCursor);
+	if (!matched) {
+		return null;
+	}
+	const trigger = matched[2] as MentionTrigger;
+	const query = matched[3] || "";
+	const start = beforeCursor.length - (query.length + 1);
+	const end = beforeCursor.length;
+	return { trigger, query, start, end };
+}
+
 interface PromptInputProps {
 	onSend: (payload: {
 		message: string;
@@ -97,6 +141,9 @@ interface PromptInputProps {
 	model?: string;
 	mode?: AgentMode;
 	providers?: ProviderConfig[];
+	agentId?: string;
+	workspaceId?: string;
+	workspaceAgents?: Array<{ id: string; name: string }>;
 }
 
 export function PromptInput({
@@ -107,6 +154,9 @@ export function PromptInput({
 	model,
 	mode = "general",
 	providers = [],
+	agentId,
+	workspaceId,
+	workspaceAgents = [],
 }: PromptInputProps) {
 	const [value, setValue] = useState("");
 	const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -156,6 +206,15 @@ export function PromptInput({
 			"",
 	);
 	const fileInputRef = useRef<HTMLInputElement>(null);
+	const textareaRef = useRef<HTMLTextAreaElement>(null);
+	const [workspaceFiles, setWorkspaceFiles] = useState<WorkspaceFileEntry[]>(
+		[],
+	);
+	const [slashCommands, setSlashCommands] = useState<WorkspaceSlashCommand[]>(
+		[],
+	);
+	const [activeToken, setActiveToken] = useState<MentionToken | null>(null);
+	const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(0);
 
 	useEffect(() => {
 		const canUseProvider = availableProviders.some(
@@ -186,6 +245,29 @@ export function PromptInput({
 			"";
 		setSelectedMode(nextAgent);
 	}, [availableProviders, mode, provider]);
+
+	useEffect(() => {
+		if (!workspaceId) {
+			setWorkspaceFiles([]);
+			setSlashCommands([]);
+			return;
+		}
+		let active = true;
+		void (async () => {
+			const [files, commands] = await Promise.all([
+				listWorkspaceFiles(workspaceId).catch(() => []),
+				listWorkspaceSlashCommands(workspaceId).catch(() => []),
+			]);
+			if (!active) {
+				return;
+			}
+			setWorkspaceFiles(files);
+			setSlashCommands(commands);
+		})();
+		return () => {
+			active = false;
+		};
+	}, [workspaceId]);
 
 	useEffect(() => {
 		if (selectedProvider !== "opencode") {
@@ -220,24 +302,166 @@ export function PromptInput({
 		);
 	}, [availableAgents, selectedMode, selectedProviderConfig?.defaultAgent]);
 
-	const handleSubmit = () => {
-		if ((value.trim() || attachments.length > 0) && !disabled) {
-			onSend({
-				message: value.trim(),
-				attachments: attachments.length > 0 ? attachments : undefined,
-				provider: selectedProvider,
-				model: selectedModel || undefined,
-				agentMode: selectedMode || undefined,
-			});
-			setValue("");
-			setAttachments([]);
+	const refreshMentionToken = useCallback(
+		(nextValue: string, cursor: number) => {
+			const token = detectMentionToken(nextValue, cursor);
+			setActiveToken(token);
+			setActiveSuggestionIndex(0);
+		},
+		[],
+	);
+
+	const mentionSuggestions = useMemo(() => {
+		if (!activeToken) {
+			return [] as MentionSuggestion[];
 		}
+		const query = activeToken.query.toLowerCase();
+		if (activeToken.trigger === "@") {
+			const agentSuggestions = workspaceAgents
+				.filter((candidate) => candidate.id !== agentId)
+				.map((candidate) => ({
+					id: `agent:${candidate.id}`,
+					label: candidate.name,
+					insertText: `@${candidate.name} `,
+					section: "Agentes",
+					kind: "agent" as const,
+					description: "Agente del workspace",
+				}))
+				.filter((candidate) => candidate.label.toLowerCase().includes(query));
+			const subagentSuggestions = availableAgents
+				.map((candidate) => ({
+					id: `subagent:${candidate.id}`,
+					label: candidate.name,
+					insertText: `@${candidate.name} `,
+					section: "Subagentes",
+					kind: "subagent" as const,
+					description: candidate.description || "Subagente configurado",
+				}))
+				.filter((candidate) => candidate.label.toLowerCase().includes(query));
+			return [...agentSuggestions, ...subagentSuggestions].slice(0, 25);
+		}
+		if (activeToken.trigger === "#") {
+			return workspaceFiles
+				.filter((candidate) => candidate.path.toLowerCase().includes(query))
+				.slice(0, 40)
+				.map((candidate) => ({
+					id: `file:${candidate.path}`,
+					label: candidate.path,
+					insertText: `#${candidate.path} `,
+					section: "Archivos",
+					kind: "file" as const,
+					description: candidate.isDir ? "Directorio" : "Archivo",
+				}));
+		}
+		return slashCommands
+			.filter((candidate) => candidate.name.toLowerCase().includes(query))
+			.slice(0, 40)
+			.map((candidate) => ({
+				id: `slash:${candidate.name}`,
+				label: `/${candidate.name}`,
+				insertText: `/${candidate.name} `,
+				section: "Slash Commands",
+				kind: "slash" as const,
+				description: candidate.path,
+			}));
+	}, [
+		activeToken,
+		agentId,
+		availableAgents,
+		slashCommands,
+		workspaceAgents,
+		workspaceFiles,
+	]);
+
+	const groupedMentionSuggestions = useMemo(() => {
+		const grouped = new Map<string, MentionSuggestion[]>();
+		for (const suggestion of mentionSuggestions) {
+			const existing = grouped.get(suggestion.section) || [];
+			existing.push(suggestion);
+			grouped.set(suggestion.section, existing);
+		}
+		return Array.from(grouped.entries()).map(([section, items]) => ({
+			section,
+			items,
+		}));
+	}, [mentionSuggestions]);
+
+	const applyMentionSuggestion = useCallback(
+		(suggestion: MentionSuggestion) => {
+			const token = activeToken;
+			if (!token) {
+				return;
+			}
+			const nextValue = `${value.slice(0, token.start)}${suggestion.insertText}${value.slice(token.end)}`;
+			setValue(nextValue);
+			setActiveToken(null);
+			setActiveSuggestionIndex(0);
+			requestAnimationFrame(() => {
+				const textarea = textareaRef.current;
+				if (!textarea) {
+					return;
+				}
+				const nextCursor = token.start + suggestion.insertText.length;
+				textarea.focus();
+				textarea.setSelectionRange(nextCursor, nextCursor);
+			});
+		},
+		[activeToken, value],
+	);
+
+	const handleSubmit = async () => {
+		if (!(value.trim() || attachments.length > 0) || disabled) {
+			return;
+		}
+		let message = value.trim();
+		if (workspaceId && message.startsWith("/")) {
+			message = await expandWorkspaceSlashCommand(workspaceId, message).catch(
+				() => message,
+			);
+		}
+		onSend({
+			message,
+			attachments: attachments.length > 0 ? attachments : undefined,
+			provider: selectedProvider,
+			model: selectedModel || undefined,
+			agentMode: selectedMode || undefined,
+		});
+		setValue("");
+		setAttachments([]);
+		setActiveToken(null);
 	};
 
 	const handleKeyDown = (e: React.KeyboardEvent) => {
+		if (activeToken && mentionSuggestions.length > 0) {
+			if (e.key === "ArrowDown") {
+				e.preventDefault();
+				setActiveSuggestionIndex((current) =>
+					Math.min(current + 1, mentionSuggestions.length - 1),
+				);
+				return;
+			}
+			if (e.key === "ArrowUp") {
+				e.preventDefault();
+				setActiveSuggestionIndex((current) => Math.max(current - 1, 0));
+				return;
+			}
+			if (e.key === "Enter" || e.key === "Tab") {
+				e.preventDefault();
+				const selected = mentionSuggestions[activeSuggestionIndex];
+				if (selected) {
+					applyMentionSuggestion(selected);
+				}
+				return;
+			}
+			if (e.key === "Escape") {
+				e.preventDefault();
+				setActiveToken(null);
+				return;
+			}
+		}
 		if (e.key === "Enter" && !e.shiftKey) {
 			e.preventDefault();
-			handleSubmit();
+			void handleSubmit();
 		}
 	};
 
@@ -257,6 +481,24 @@ export function PromptInput({
 
 	const removeAttachment = (id: string) => {
 		setAttachments((prev) => prev.filter((a) => a.id !== id));
+	};
+
+	const insertTriggerCharacter = (trigger: MentionTrigger) => {
+		const textarea = textareaRef.current;
+		if (!textarea) {
+			setValue((current) => `${current}${trigger}`);
+			return;
+		}
+		const start = textarea.selectionStart ?? value.length;
+		const end = textarea.selectionEnd ?? value.length;
+		const nextValue = `${value.slice(0, start)}${trigger}${value.slice(end)}`;
+		setValue(nextValue);
+		requestAnimationFrame(() => {
+			const nextCursor = start + 1;
+			textarea.focus();
+			textarea.setSelectionRange(nextCursor, nextCursor);
+			refreshMentionToken(nextValue, nextCursor);
+		});
 	};
 
 	const providerInfo =
@@ -301,10 +543,54 @@ export function PromptInput({
 
 			<div
 				className={cn(
-					"flex flex-col gap-2 rounded-xl border border-border bg-background px-3 py-2 transition-colors",
+					"relative flex flex-col gap-2 rounded-xl border border-border bg-background px-3 py-2 transition-colors",
 					"focus-within:border-primary/40 focus-within:ring-1 focus-within:ring-primary/20",
 				)}
 			>
+				{activeToken && mentionSuggestions.length > 0 && (
+					<div className="absolute bottom-full left-2 right-2 z-20 mb-2 max-h-56 overflow-y-auto rounded-lg border border-border bg-popover shadow-lg">
+						{groupedMentionSuggestions.map((group) => (
+							<div
+								key={group.section}
+								className="border-b border-border/50 last:border-b-0"
+							>
+								<div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+									{group.section}
+								</div>
+								<div className="pb-1">
+									{group.items.map((suggestion) => {
+										const index = mentionSuggestions.findIndex(
+											(candidate) => candidate.id === suggestion.id,
+										);
+										const active = index === activeSuggestionIndex;
+										return (
+											<button
+												key={suggestion.id}
+												type="button"
+												onClick={() => applyMentionSuggestion(suggestion)}
+												className={cn(
+													"flex w-full items-center justify-between gap-2 px-2 py-1.5 text-left text-xs transition-colors",
+													active
+														? "bg-accent text-foreground"
+														: "text-foreground/90 hover:bg-accent/60",
+												)}
+											>
+												<span className="min-w-0 truncate">
+													{suggestion.label}
+												</span>
+												<span className="inline-flex shrink-0 items-center gap-1 text-[10px] text-muted-foreground">
+													{suggestion.kind}
+													<ChevronRight className="h-3 w-3" />
+												</span>
+											</button>
+										);
+									})}
+								</div>
+							</div>
+						))}
+					</div>
+				)}
+
 				<div className="flex items-end gap-2">
 					{/* Action buttons */}
 					<div className="flex items-center gap-0.5 pb-0.5">
@@ -322,6 +608,7 @@ export function PromptInput({
 							variant="ghost"
 							size="icon"
 							className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-accent"
+							onClick={() => insertTriggerCharacter("@")}
 							type="button"
 						>
 							<AtSign className="h-4 w-4" />
@@ -331,6 +618,17 @@ export function PromptInput({
 							variant="ghost"
 							size="icon"
 							className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-accent"
+							onClick={() => insertTriggerCharacter("#")}
+							type="button"
+						>
+							<Hash className="h-4 w-4" />
+							<span className="sr-only">Files</span>
+						</Button>
+						<Button
+							variant="ghost"
+							size="icon"
+							className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-accent"
+							onClick={() => insertTriggerCharacter("/")}
 							type="button"
 						>
 							<Slash className="h-4 w-4" />
@@ -340,9 +638,24 @@ export function PromptInput({
 
 					{/* Text area */}
 					<textarea
+						ref={textareaRef}
 						value={value}
-						onChange={(e) => setValue(e.target.value)}
+						onChange={(e) => {
+							const nextValue = e.target.value;
+							setValue(nextValue);
+							refreshMentionToken(
+								nextValue,
+								e.target.selectionStart ?? nextValue.length,
+							);
+						}}
 						onKeyDown={handleKeyDown}
+						onClick={(e) => {
+							const target = e.target as HTMLTextAreaElement;
+							refreshMentionToken(
+								target.value,
+								target.selectionStart ?? target.value.length,
+							);
+						}}
 						placeholder={placeholder}
 						disabled={disabled}
 						rows={1}
@@ -371,7 +684,7 @@ export function PromptInput({
 								: "bg-secondary text-muted-foreground cursor-not-allowed",
 						)}
 						disabled={(!value.trim() && attachments.length === 0) || disabled}
-						onClick={handleSubmit}
+						onClick={() => void handleSubmit()}
 						type="button"
 					>
 						<ArrowUp className="h-4 w-4" />

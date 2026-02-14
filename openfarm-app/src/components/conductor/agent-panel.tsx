@@ -15,6 +15,8 @@ import { PromptInput } from "./prompt-input";
 
 interface AgentPanelProps {
 	agent: Agent;
+	workspaceId?: string;
+	workspaceAgents: Agent[];
 	onSendMessage: (payload: {
 		message: string;
 		attachments?: Attachment[];
@@ -27,6 +29,8 @@ interface AgentPanelProps {
 
 export function AgentPanel({
 	agent,
+	workspaceId,
+	workspaceAgents,
 	onSendMessage,
 	providers,
 }: AgentPanelProps) {
@@ -60,6 +64,9 @@ export function AgentPanel({
 				model={agent.model}
 				mode={agent.mode}
 				providers={providers}
+				agentId={agent.id}
+				workspaceId={workspaceId}
+				workspaceAgents={workspaceAgents}
 				placeholder={
 					agent.status === "error"
 						? "Agent encountered an error. Fix the issue and retry."

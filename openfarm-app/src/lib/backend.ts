@@ -10,6 +10,8 @@ import type {
 	FileDiff,
 	ProviderConfig,
 	Workspace,
+	WorkspaceFileEntry,
+	WorkspaceSlashCommand,
 } from "./store";
 import { DEFAULT_SETTINGS } from "./store";
 
@@ -229,6 +231,12 @@ async function webInvoke<T>(
 			writeWebDb(db);
 			return { workspaces: db.workspaces, settings: db.settings } as T;
 		}
+		case "list_workspace_files":
+			return [] as T;
+		case "list_workspace_slash_commands":
+			return [] as T;
+		case "expand_workspace_slash_command":
+			return String(payload.input || "") as T;
 		default:
 			throw new Error(`Unsupported web command: ${command}`);
 	}
@@ -305,6 +313,30 @@ export async function saveSettings(
 
 export async function getProviderCatalog(): Promise<ProviderConfig[]> {
 	return invoke<ProviderConfig[]>("get_provider_catalog");
+}
+
+export async function listWorkspaceFiles(
+	workspaceId: string,
+): Promise<WorkspaceFileEntry[]> {
+	return invoke<WorkspaceFileEntry[]>("list_workspace_files", { workspaceId });
+}
+
+export async function listWorkspaceSlashCommands(
+	workspaceId: string,
+): Promise<WorkspaceSlashCommand[]> {
+	return invoke<WorkspaceSlashCommand[]>("list_workspace_slash_commands", {
+		workspaceId,
+	});
+}
+
+export async function expandWorkspaceSlashCommand(
+	workspaceId: string,
+	input: string,
+): Promise<string> {
+	return invoke<string>("expand_workspace_slash_command", {
+		workspaceId,
+		input,
+	});
 }
 
 export async function pickRepositoryDirectory(): Promise<string | null> {

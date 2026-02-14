@@ -84,6 +84,17 @@ export interface ModelOption {
 	description: string;
 }
 
+export interface WorkspaceFileEntry {
+	path: string;
+	isDir: boolean;
+}
+
+export interface WorkspaceSlashCommand {
+	name: string;
+	path: string;
+	content: string;
+}
+
 export interface ProviderConfig {
 	id: AgentProvider;
 	name: string;

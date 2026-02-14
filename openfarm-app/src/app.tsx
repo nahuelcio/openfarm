@@ -32,14 +32,22 @@ import type {
 import { DEFAULT_SETTINGS } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
-function findAgent(workspaces: Workspace[], id: string | null): Agent | null {
+interface SelectedAgentContext {
+	agent: Agent;
+	workspace: Workspace;
+}
+
+function findAgentContext(
+	workspaces: Workspace[],
+	id: string | null,
+): SelectedAgentContext | null {
 	if (!id) {
 		return null;
 	}
 	for (const workspace of workspaces) {
 		const agent = workspace.agents.find((value) => value.id === id);
 		if (agent) {
-			return agent;
+			return { agent, workspace };
 		}
 	}
 	return null;
@@ -89,10 +97,20 @@ function mergeSettingsWithCatalog(
 	const existingById = new Map(
 		current.providers.map((provider) => [provider.id, provider]),
 	);
+	const defaultsById = new Map(
+		DEFAULT_SETTINGS.providers.map((provider) => [provider.id, provider]),
+	);
 	const providers = catalog.map((provider) => {
 		const existing = existingById.get(provider.id);
+		const fallback = defaultsById.get(provider.id);
 		const modelIds = new Set(provider.models.map((model) => model.id));
-		const agentIds = new Set((provider.agents || []).map((agent) => agent.id));
+		const mergedAgents =
+			provider.agents && provider.agents.length > 0
+				? provider.agents
+				: existing?.agents && existing.agents.length > 0
+					? existing.agents
+					: fallback?.agents || [];
+		const agentIds = new Set(mergedAgents.map((agent) => agent.id));
 		const defaultModel =
 			existing?.defaultModel && modelIds.has(existing.defaultModel)
 				? existing.defaultModel
@@ -100,11 +118,16 @@ function mergeSettingsWithCatalog(
 		const defaultAgent =
 			existing?.defaultAgent && agentIds.has(existing.defaultAgent)
 				? existing.defaultAgent
-				: provider.defaultAgent || provider.agents?.[0]?.id || "";
+				: provider.defaultAgent ||
+					existing?.defaultAgent ||
+					fallback?.defaultAgent ||
+					mergedAgents[0]?.id ||
+					"";
 		return {
 			...provider,
 			connected: existing?.connected ?? provider.connected,
 			apiKey: existing?.apiKey ?? "",
+			agents: mergedAgents,
 			defaultModel,
 			defaultAgent,
 		};
@@ -139,10 +162,13 @@ export default function App() {
 	const [newAgentOpen, setNewAgentOpen] = useState(false);
 	const [settingsOpen, setSettingsOpen] = useState(false);
 	const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
-	const selectedAgent = useMemo(
-		() => findAgent(workspaces, selectedAgentId),
+	const selectedAgentContext = useMemo(
+		() => findAgentContext(workspaces, selectedAgentId),
 		[workspaces, selectedAgentId],
 	);
+	const selectedAgent = selectedAgentContext?.agent || null;
+	const selectedWorkspaceId = selectedAgentContext?.workspace.id;
+	const selectedWorkspaceAgents = selectedAgentContext?.workspace.agents || [];
 	const repos = useMemo(
 		() =>
 			workspaces.map((workspace) => ({
@@ -158,7 +184,9 @@ export default function App() {
 			setSettings(nextState.settings);
 			setSelectedAgentId((prev) => {
 				const candidate = preferredAgentId ?? prev;
-				return findAgent(nextState.workspaces, candidate)?.id || null;
+				return (
+					findAgentContext(nextState.workspaces, candidate)?.agent.id || null
+				);
 			});
 		},
 		[],
@@ -354,6 +382,8 @@ export default function App() {
 							agent={selectedAgent}
 							onSendMessage={handleSendMessage}
 							providers={settings.providers}
+							workspaceId={selectedWorkspaceId}
+							workspaceAgents={selectedWorkspaceAgents}
 						/>
 					) : (
 						<EmptyState onNewAgent={() => setNewAgentOpen(true)} />
