@@ -1584,7 +1584,15 @@ fn spawn_agent_internal(
         }
 
         match output {
-            Ok(_) => {
+            Ok(result_output) => {
+                let _ = state.db.save_agent_event(
+                    &agent_id_clone,
+                    "agent:assistant-message",
+                    &serde_json::json!({
+                        "content": result_output.clone(),
+                        "timestamp": chrono::Utc::now().to_rfc3339()
+                    }),
+                );
                 emit_and_store_event(
                     &app_clone,
                     &state,
@@ -1596,6 +1604,14 @@ fn spawn_agent_internal(
                 );
             }
             Err(err) => {
+                let _ = state.db.save_agent_event(
+                    &agent_id_clone,
+                    "agent:assistant-message",
+                    &serde_json::json!({
+                        "content": err.clone(),
+                        "timestamp": chrono::Utc::now().to_rfc3339()
+                    }),
+                );
                 emit_and_store_event(
                     &app_clone,
                     &state,
