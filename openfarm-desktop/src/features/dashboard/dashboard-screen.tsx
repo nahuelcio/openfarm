@@ -188,6 +188,66 @@ export function DashboardScreen({ vm }: DashboardScreenProps) {
 							<div className="context-grid">
 								<div className="context-block">
 									<div className="context-block-header">
+										<h3>Guía Rápida</h3>
+									</div>
+									<div className="list-item">
+										<div className="list-item-content">
+											<span className="list-item-title">
+												1) Elegí un espacio de trabajo
+											</span>
+											<span className="list-item-subtitle">
+												Seleccioná una carpeta para que el asistente trabaje
+												ahí.
+											</span>
+										</div>
+										<button
+											className="btn-secondary"
+											onClick={() => vm.setView("workspaces")}
+											type="button"
+										>
+											Abrir
+										</button>
+									</div>
+									<div className="list-item">
+										<div className="list-item-content">
+											<span className="list-item-title">
+												2) Escribí tu objetivo
+											</span>
+											<span className="list-item-subtitle">
+												Contá en lenguaje simple qué querés que resuelva.
+											</span>
+										</div>
+										<button
+											className="btn-secondary"
+											onClick={() => vm.setView("spawn")}
+											type="button"
+										>
+											Escribir
+										</button>
+									</div>
+									<div className="list-item">
+										<div className="list-item-content">
+											<span className="list-item-title">
+												3) Revisá y confirmá
+											</span>
+											<span className="list-item-subtitle">
+												Antes de aplicar cambios, verificá los archivos
+												modificados.
+											</span>
+										</div>
+										<button
+											className="btn-secondary"
+											onClick={() =>
+												vm.setView(vm.selectedAgent ? "review" : "runs")
+											}
+											type="button"
+										>
+											Revisar
+										</button>
+									</div>
+								</div>
+								<div className="context-block">
+									<div className="context-block-header">
 										<h3>Workspaces activos</h3>
 									</div>
 									{activeWorkspaces.length === 0 ? (
