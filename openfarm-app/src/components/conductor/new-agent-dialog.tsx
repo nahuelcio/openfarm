@@ -16,11 +16,13 @@ interface NewAgentDialogProps {
 	open: boolean;
 	onClose: () => void;
 	onBrowseRepo?: () => Promise<string | null>;
+	onListBranches?: (repoPath: string) => Promise<string[]>;
 	onSubmit: (data: {
 		prompt: string;
 		repo: string;
 		provider: string;
 		model: string;
+		baseBranch?: string;
 	}) => void;
 	settings: AppSettings;
 	repos?: { name: string; label: string }[];
@@ -69,6 +71,7 @@ export function NewAgentDialog({
 	open,
 	onClose,
 	onBrowseRepo,
+	onListBranches,
 	onSubmit,
 	settings,
 	repos,
@@ -88,6 +91,11 @@ export function NewAgentDialog({
 		defaultProviderConfig?.defaultModel || "",
 	);
 	const [selectedOpenCodeGroup, setSelectedOpenCodeGroup] = useState("all");
+	const [availableBranches, setAvailableBranches] = useState<string[]>([
+		"main",
+		"master",
+	]);
+	const [selectedBaseBranch, setSelectedBaseBranch] = useState("main");
 
 	const connectedProviders = settings.providers.filter((p) => p.connected);
 	const currentProvider =
@@ -141,6 +149,41 @@ export function NewAgentDialog({
 		setSelectedModel(visibleModels[0]?.id || "");
 	}, [selectedModel, visibleModels]);
 
+	useEffect(() => {
+		const normalized = repoPath.trim();
+		if (!normalized) {
+			return;
+		}
+		let active = true;
+		void (async () => {
+			try {
+				const listed = onListBranches
+					? await onListBranches(normalized)
+					: ["main", "master"];
+				if (!active) {
+					return;
+				}
+				const next = [
+					...new Set(listed.filter((value) => value.trim().length > 0)),
+				];
+				const fallback = next.length > 0 ? next : ["main", "master"];
+				setAvailableBranches(fallback);
+				setSelectedBaseBranch((current) =>
+					fallback.includes(current) ? current : fallback[0] || "main",
+				);
+			} catch {
+				if (!active) {
+					return;
+				}
+				setAvailableBranches(["main", "master"]);
+				setSelectedBaseBranch((current) => current || "main");
+			}
+		})();
+		return () => {
+			active = false;
+		};
+	}, [onListBranches, repoPath]);
+
 	if (!open) return null;
 
 	const handleProviderChange = (id: AgentProvider) => {
@@ -161,6 +204,7 @@ export function NewAgentDialog({
 				repo: repoPath,
 				provider: selectedProvider,
 				model: selectedModel,
+				baseBranch: selectedBaseBranch.trim() || undefined,
 			});
 			setPrompt("");
 			onClose();
@@ -236,6 +280,27 @@ export function NewAgentDialog({
 								</button>
 							);
 						})}
+					</div>
+
+					{/* Base branch selector */}
+					<div className="mb-4">
+						<label className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium mb-1.5 block">
+							Base Branch
+						</label>
+						<div className="flex items-center gap-2">
+							<input
+								value={selectedBaseBranch}
+								onChange={(e) => setSelectedBaseBranch(e.target.value)}
+								list="base-branch-options"
+								placeholder="main"
+								className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/40"
+							/>
+							<datalist id="base-branch-options">
+								{availableBranches.map((branch) => (
+									<option key={branch} value={branch} />
+								))}
+							</datalist>
+						</div>
 					</div>
 
 					{/* Model selector */}

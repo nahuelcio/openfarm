@@ -11,6 +11,7 @@ import {
 	createAgent,
 	getProviderCatalog,
 	getSettings,
+	listRepositoryBranches,
 	loadAgentDiffs,
 	pickRepositoryDirectory,
 	saveSettings,
@@ -265,6 +266,7 @@ export default function App() {
 			repo: string;
 			provider: string;
 			model: string;
+			baseBranch?: string;
 		}) => {
 			const next = await createAgent(data);
 			const workspace = next.workspaces.find(
@@ -344,6 +346,7 @@ export default function App() {
 			<NewAgentDialog
 				onBrowseRepo={pickRepositoryDirectory}
 				onClose={() => setNewAgentOpen(false)}
+				onListBranches={listRepositoryBranches}
 				onSubmit={handleNewAgent}
 				open={newAgentOpen}
 				repos={repos}

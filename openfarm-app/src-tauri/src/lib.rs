@@ -5,7 +5,7 @@ use directories;
 use flexi_logger::{Cleanup, Criterion, FileSpec, Logger, Naming};
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
 use std::process::{Command, Output, Stdio};
@@ -1002,11 +1002,32 @@ fn ensure_repo_clean(repo_path: &str) -> Result<(), String> {
     }
 }
 
-fn ensure_worktree(repo_path: &str, branch_name: &str, worktree_path: &str) -> Result<(), String> {
+fn ensure_worktree(
+    repo_path: &str,
+    branch_name: &str,
+    base_branch: &str,
+    worktree_path: &str,
+) -> Result<(), String> {
     let branch_ref = format!("refs/heads/{}", branch_name);
     let branch_exists = git_status(repo_path, &["show-ref", "--verify", "--quiet", &branch_ref])?;
     if !branch_exists {
-        let create_branch = git_output(repo_path, &["branch", branch_name])?;
+        let local_base_ref = format!("refs/heads/{base_branch}");
+        let remote_base_ref = format!("refs/remotes/origin/{base_branch}");
+        let start_point = if git_status(
+            repo_path,
+            &["show-ref", "--verify", "--quiet", &local_base_ref],
+        )? {
+            base_branch.to_string()
+        } else if git_status(
+            repo_path,
+            &["show-ref", "--verify", "--quiet", &remote_base_ref],
+        )? {
+            format!("origin/{base_branch}")
+        } else {
+            return Err(format!("Base branch '{base_branch}' not found"));
+        };
+
+        let create_branch = git_output(repo_path, &["branch", branch_name, &start_point])?;
         if !create_branch.status.success() {
             return Err(String::from_utf8_lossy(&create_branch.stderr).to_string());
         }
@@ -1041,6 +1062,41 @@ fn cleanup_worktree(repo_path: &str, branch_name: &str, worktree_path: &str) {
     let _ = git_output(repo_path, &["worktree", "remove", worktree_path, "--force"]);
     let _ = std::fs::remove_dir_all(worktree_path);
     let _ = git_output(repo_path, &["branch", "-D", branch_name]);
+}
+
+fn strip_ansi_escape_sequences(input: &str) -> String {
+    let mut output = String::with_capacity(input.len());
+    let mut chars = input.chars().peekable();
+
+    while let Some(character) = chars.next() {
+        if character != '\u{1b}' {
+            output.push(character);
+            continue;
+        }
+        if chars.peek() == Some(&'[') {
+            let _ = chars.next();
+            for candidate in chars.by_ref() {
+                if candidate.is_ascii_alphabetic() || candidate == '~' {
+                    break;
+                }
+            }
+        }
+    }
+
+    output
+}
+
+fn sanitize_stream_line(input: &str) -> String {
+    strip_ansi_escape_sequences(input)
+        .chars()
+        .filter(|character| {
+            character.is_ascii_graphic()
+                || character.is_ascii_whitespace()
+                || !character.is_control()
+        })
+        .collect::<String>()
+        .trim()
+        .to_string()
 }
 
 fn emit_and_store_event(
@@ -1227,6 +1283,7 @@ fn spawn_agent(
         provider,
         resolved_workspace,
         None,
+        None,
         resolved_project_id,
         resolved_session_id,
         pool,
@@ -1240,6 +1297,7 @@ fn spawn_agent_internal(
     provider: String,
     workspace: String,
     model: Option<String>,
+    base_branch: Option<String>,
     project_id: Option<String>,
     session_id: Option<String>,
     pool: State<AgentPool>,
@@ -1271,13 +1329,32 @@ fn spawn_agent_internal(
 
     let agent_id = format!("agent-{}", uuid::Uuid::new_v4());
     let branch_name = format!("openfarm-{}", &agent_id[..8]);
+    let requested_base_branch = base_branch
+        .as_ref()
+        .map(|value| value.trim())
+        .filter(|value| !value.is_empty())
+        .map(|value| value.to_string());
+    let resolved_base_branch =
+        requested_base_branch.unwrap_or_else(|| default_branch_for_repo(&workspace));
     let worktree_path = format!("/tmp/openfarm-worktrees/{}", agent_id);
+    let mut worktree_ready = false;
 
-    if let Err(e) = ensure_worktree(&workspace, &branch_name, &worktree_path) {
-        log::warn!("Failed to create worktree: {}", e);
+    if let Err(error) = ensure_worktree(
+        &workspace,
+        &branch_name,
+        &resolved_base_branch,
+        &worktree_path,
+    ) {
+        log::warn!("Failed to create worktree: {}", error);
+    } else {
+        worktree_ready = true;
     }
 
-    let execution_workspace = worktree_path.clone();
+    let execution_workspace = if worktree_ready {
+        worktree_path.clone()
+    } else {
+        workspace.clone()
+    };
     let agent = Agent {
         id: agent_id.clone(),
         task: task.clone(),
@@ -1285,8 +1362,12 @@ fn spawn_agent_internal(
         status: "running".to_string(),
         created_at: chrono::Utc::now().to_rfc3339(),
         output: None,
-        worktree_path: Some(worktree_path.clone()),
-        branch_name: Some(branch_name),
+        worktree_path: if worktree_ready {
+            Some(worktree_path.clone())
+        } else {
+            None
+        },
+        branch_name: Some(branch_name.clone()),
         repo_path: Some(workspace.clone()),
         project_id: project_id.clone(),
         session_id: session_id.clone(),
@@ -1310,6 +1391,11 @@ fn spawn_agent_internal(
             &serde_json::json!({ "model": model_value }),
         );
     }
+    let _ = pool.db.save_agent_event(
+        &agent_id,
+        "agent:base-branch",
+        &serde_json::json!({ "branch": resolved_base_branch }),
+    );
 
     // Emit event for agent started
     emit_and_store_event(
@@ -1318,6 +1404,34 @@ fn spawn_agent_internal(
         "agent:started",
         serde_json::json!({
             "agent_id": agent_id,
+            "timestamp": chrono::Utc::now().to_rfc3339()
+        }),
+    );
+    let setup_summary = if worktree_ready {
+        format!(
+            "Step: base branch `{}`\nStep: worktree branch `{}`\nStep: worktree path `{}`\n",
+            resolved_base_branch, branch_name, worktree_path
+        )
+    } else {
+        format!(
+            "Step: worktree creation failed, using repo path `{}`\n",
+            workspace
+        )
+    };
+    emit_and_store_event(
+        &app,
+        &pool,
+        "agent:output",
+        serde_json::json!({
+            "agent_id": agent_id,
+            "chunk": setup_summary.clone()
+        }),
+    );
+    let _ = pool.db.save_agent_event(
+        &agent_id,
+        "agent:assistant-message",
+        &serde_json::json!({
+            "content": setup_summary,
             "timestamp": chrono::Utc::now().to_rfc3339()
         }),
     );
@@ -1526,7 +1640,11 @@ fn stream_and_emit(
     std::thread::spawn(move || {
         let reader = BufReader::new(stdout);
         for line in reader.lines().map_while(Result::ok) {
-            let _ = tx_out.send(format!("{line}\n"));
+            let clean = sanitize_stream_line(&line);
+            if clean.is_empty() {
+                continue;
+            }
+            let _ = tx_out.send(format!("{clean}\n"));
         }
     });
 
@@ -1534,7 +1652,11 @@ fn stream_and_emit(
     std::thread::spawn(move || {
         let reader = BufReader::new(stderr);
         for line in reader.lines().map_while(Result::ok) {
-            let _ = tx_err.send(format!("[stderr] {line}\n"));
+            let clean = sanitize_stream_line(&line);
+            if clean.is_empty() {
+                continue;
+            }
+            let _ = tx_err.send(format!("{clean}\n"));
         }
     });
     drop(tx);
@@ -2095,7 +2217,8 @@ fn create_workspace(
     let branch_name = format!("openfarm-{}", &agent_id[..8]);
     let worktree_path = format!("/tmp/openfarm-worktrees/{}", agent_id);
 
-    if ensure_worktree(&main_repo, &branch_name, &worktree_path).is_ok() {
+    let base_branch = default_branch_for_repo(&main_repo);
+    if ensure_worktree(&main_repo, &branch_name, &base_branch, &worktree_path).is_ok() {
         let mut agents = pool.agents.lock().unwrap();
         if let Some(agent) = agents.get_mut(&agent_id) {
             agent.worktree_path = Some(worktree_path.clone());
@@ -2154,6 +2277,7 @@ fn retry_agent(agent_id: String, pool: State<AgentPool>, app: AppHandle) -> Resu
         agent.provider,
         workspace,
         load_agent_model(&pool, &agent_id),
+        load_agent_base_branch(&pool, &agent_id),
         agent.project_id,
         agent.session_id,
         pool,
@@ -2406,7 +2530,13 @@ fn restore_workspace(workspace_id: String, pool: State<AgentPool>) -> Result<(),
         .clone()
         .unwrap_or_else(|| format!("/tmp/openfarm-workspaces/{}", workspace.id));
 
-    ensure_worktree(&workspace.repo_path, &workspace.branch_name, &path)?;
+    let base_branch = default_branch_for_repo(&workspace.repo_path);
+    ensure_worktree(
+        &workspace.repo_path,
+        &workspace.branch_name,
+        &base_branch,
+        &path,
+    )?;
     workspace.worktree_path = Some(path);
     workspace.status = "active".to_string();
     workspace.archived_at = None;
@@ -3725,6 +3855,17 @@ fn load_agent_model(pool: &AgentPool, agent_id: &str) -> Option<String> {
         .map(|value| value.to_string())
 }
 
+fn load_agent_base_branch(pool: &AgentPool, agent_id: &str) -> Option<String> {
+    let events = pool.db.load_agent_events(agent_id).ok()?;
+    events
+        .iter()
+        .rev()
+        .find(|event| event.event_type == "agent:base-branch")
+        .and_then(|event| event.data.get("branch"))
+        .and_then(|value| value.as_str())
+        .map(|value| value.to_string())
+}
+
 fn load_agent_messages(pool: &AgentPool, agent: &Agent) -> Vec<UiMessage> {
     let mut messages = vec![UiMessage {
         id: format!("{}-prompt", agent.id),
@@ -3856,6 +3997,14 @@ fn parse_patch(path: &str, patch: &str) -> UiFileDiff {
             status = "deleted".to_string();
             continue;
         }
+        if raw_line.starts_with("--- /dev/null") {
+            status = "added".to_string();
+            continue;
+        }
+        if raw_line.starts_with("+++ /dev/null") {
+            status = "deleted".to_string();
+            continue;
+        }
         if raw_line.starts_with("@@") {
             if let Some(hunk) = current_hunk.take() {
                 hunks.push(hunk);
@@ -3922,6 +4071,66 @@ fn parse_patch(path: &str, patch: &str) -> UiFileDiff {
     }
 }
 
+fn collect_changed_paths(workspace_path: &str, base_branch: &str) -> Result<Vec<String>, String> {
+    let commands: Vec<Vec<String>> = vec![
+        vec![
+            "diff".to_string(),
+            format!("{base_branch}...HEAD"),
+            "--name-only".to_string(),
+        ],
+        vec!["diff".to_string(), "--cached".to_string(), "--name-only".to_string()],
+        vec!["diff".to_string(), "--name-only".to_string()],
+        vec![
+            "ls-files".to_string(),
+            "--others".to_string(),
+            "--exclude-standard".to_string(),
+        ],
+    ];
+
+    let mut paths: BTreeSet<String> = BTreeSet::new();
+    for command in commands {
+        let refs: Vec<&str> = command.iter().map(|value| value.as_str()).collect();
+        let output = git_output(workspace_path, &refs)?;
+        let text = String::from_utf8_lossy(&output.stdout);
+        for line in text.lines() {
+            let clean = line.trim();
+            if clean.is_empty() {
+                continue;
+            }
+            paths.insert(clean.to_string());
+        }
+    }
+
+    Ok(paths.into_iter().collect())
+}
+
+fn load_patch_for_path(workspace_path: &str, base_branch: &str, path: &str) -> Result<String, String> {
+    let mut patch = String::new();
+
+    let committed = git_output(
+        workspace_path,
+        &["diff", &format!("{base_branch}...HEAD"), "--", path],
+    )?;
+    if committed.status.success() {
+        patch.push_str(&String::from_utf8_lossy(&committed.stdout));
+    }
+
+    let working = git_output(workspace_path, &["diff", "HEAD", "--", path])?;
+    if working.status.success() {
+        patch.push_str(&String::from_utf8_lossy(&working.stdout));
+    }
+
+    if patch.trim().is_empty() {
+        let untracked = git_output(
+            workspace_path,
+            &["diff", "--no-index", "--", "/dev/null", path],
+        )?;
+        patch.push_str(&String::from_utf8_lossy(&untracked.stdout));
+    }
+
+    Ok(patch)
+}
+
 fn load_agent_diff_files(pool: &AgentPool, agent_id: &str) -> Result<Vec<UiFileDiff>, String> {
     let agent = {
         let agents = pool.agents.lock().unwrap();
@@ -3930,37 +4139,22 @@ fn load_agent_diff_files(pool: &AgentPool, agent_id: &str) -> Result<Vec<UiFileD
             .cloned()
             .ok_or("Agent not found".to_string())?
     };
-    let worktree_path = agent.worktree_path.as_ref().ok_or("No worktree")?;
-    let main_repo = agent
-        .repo_path
+    let main_repo = agent.repo_path.clone().unwrap_or_else(|| ".".to_string());
+    let workspace_path = agent
+        .worktree_path
         .clone()
-        .unwrap_or_else(|| workspace_root_from_worktree(worktree_path));
-    let default_branch = default_branch_for_repo(&main_repo);
+        .unwrap_or_else(|| main_repo.clone());
+    let base_branch =
+        load_agent_base_branch(pool, agent_id).unwrap_or_else(|| default_branch_for_repo(&main_repo));
 
-    let list_output = git_output(
-        worktree_path,
-        &["diff", &format!("{}...HEAD", default_branch), "--name-only"],
-    )?;
-    if !list_output.status.success() {
-        return Ok(Vec::new());
-    }
-
+    let paths = collect_changed_paths(&workspace_path, &base_branch)?;
     let mut result = Vec::new();
-    for path in String::from_utf8_lossy(&list_output.stdout).lines() {
-        let clean = path.trim();
-        if clean.is_empty() {
+    for path in paths {
+        let patch = load_patch_for_path(&workspace_path, &base_branch, &path)?;
+        if patch.trim().is_empty() {
             continue;
         }
-        let patch_output = git_output(
-            worktree_path,
-            &["diff", &format!("{}...HEAD", default_branch), "--", clean],
-        )?;
-        let patch = if patch_output.status.success() {
-            String::from_utf8_lossy(&patch_output.stdout).to_string()
-        } else {
-            String::new()
-        };
-        result.push(parse_patch(clean, &patch));
+        result.push(parse_patch(&path, &patch));
     }
     Ok(result)
 }
@@ -4113,11 +4307,60 @@ fn add_local_workspace(repo_path: String, pool: State<AgentPool>) -> Result<UiBo
 }
 
 #[tauri::command]
+fn list_repository_branches(repo_path: String) -> Result<Vec<String>, String> {
+    let trimmed = repo_path.trim();
+    if trimmed.is_empty() {
+        return Ok(vec![]);
+    }
+    if !std::path::Path::new(trimmed).exists() {
+        return Err("Repository path does not exist".to_string());
+    }
+    if !git_status(trimmed, &["rev-parse", "--is-inside-work-tree"])? {
+        return Err("Repository path is not a git repository".to_string());
+    }
+
+    let normalized_repo = std::fs::canonicalize(trimmed)
+        .unwrap_or_else(|_| std::path::PathBuf::from(trimmed))
+        .to_string_lossy()
+        .to_string();
+
+    let mut branches: BTreeSet<String> = BTreeSet::new();
+    let commands: Vec<Vec<&str>> = vec![
+        vec!["for-each-ref", "--format=%(refname:short)", "refs/heads"],
+        vec![
+            "for-each-ref",
+            "--format=%(refname:short)",
+            "refs/remotes/origin",
+        ],
+    ];
+
+    for command in commands {
+        let output = git_output(&normalized_repo, &command)?;
+        let text = String::from_utf8_lossy(&output.stdout);
+        for line in text.lines() {
+            let clean = line.trim();
+            if clean.is_empty() || clean == "origin/HEAD" {
+                continue;
+            }
+            let branch = clean.strip_prefix("origin/").unwrap_or(clean).to_string();
+            branches.insert(branch);
+        }
+    }
+
+    if branches.is_empty() {
+        branches.insert(default_branch_for_repo(&normalized_repo));
+    }
+
+    Ok(branches.into_iter().collect())
+}
+
+#[tauri::command]
 fn create_agent(
     prompt: String,
     repo: String,
     provider: String,
     model: Option<String>,
+    base_branch: Option<String>,
     pool: State<AgentPool>,
     app: AppHandle,
 ) -> Result<UiBootstrapState, String> {
@@ -4126,6 +4369,7 @@ fn create_agent(
         provider,
         repo.clone(),
         model,
+        base_branch,
         None,
         None,
         pool.clone(),
@@ -4428,6 +4672,7 @@ pub fn run() {
             get_agent_stats,
             bootstrap_app_state,
             add_local_workspace,
+            list_repository_branches,
             create_agent,
             send_agent_message,
             load_agent_diffs,

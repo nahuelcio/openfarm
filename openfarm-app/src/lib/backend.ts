@@ -104,6 +104,7 @@ async function webInvoke<T>(
 			const repo = String(payload.repo || "");
 			const provider = String(payload.provider || "claude-code");
 			const model = String(payload.model || "");
+			const baseBranch = String(payload.baseBranch || "").trim();
 			const segments = repo.split("/");
 			const workspaceName =
 				segments[segments.length - 1] || repo || "workspace";
@@ -113,10 +114,12 @@ async function webInvoke<T>(
 				id: agentId,
 				name: prompt.slice(0, 40) || "New agent",
 				repo,
-				branch: `feat/${prompt
-					.slice(0, 20)
-					.toLowerCase()
-					.replace(/[^a-z0-9]+/g, "-")}`,
+				branch:
+					baseBranch ||
+					`feat/${prompt
+						.slice(0, 20)
+						.toLowerCase()
+						.replace(/[^a-z0-9]+/g, "-")}`,
 				status: "running",
 				provider: provider as Agent["provider"],
 				model,
@@ -159,6 +162,8 @@ async function webInvoke<T>(
 			writeWebDb(db);
 			return { workspaces: db.workspaces, settings: db.settings } as T;
 		}
+		case "list_repository_branches":
+			return ["main", "master"] as T;
 		case "add_local_workspace": {
 			const repoPath = String(payload.repoPath || "").trim();
 			if (!repoPath) {
@@ -242,8 +247,15 @@ export async function createAgent(input: {
 	repo: string;
 	provider: string;
 	model: string;
+	baseBranch?: string;
 }): Promise<BootstrapState> {
 	return invoke<BootstrapState>("create_agent", input);
+}
+
+export async function listRepositoryBranches(
+	repoPath: string,
+): Promise<string[]> {
+	return invoke<string[]>("list_repository_branches", { repoPath });
 }
 
 export async function addLocalWorkspace(
