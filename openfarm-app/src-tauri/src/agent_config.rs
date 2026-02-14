@@ -164,9 +164,12 @@ pub fn import_agent_config(profile: AgentProfileId) -> Result<ImportedAgentConfi
                 merge_unique(&mut config.agents, names);
             }
         } else if extra.is_file() {
-            if path.ends_with("plugins/config.json") {
-                if let Ok(raw) = fs::read_to_string(extra) {
-                    if let Ok(json) = parse_json_or_jsonc(&raw) {
+            if let Ok(raw) = fs::read_to_string(extra) {
+                if let Ok(json) = parse_json_or_jsonc(&raw) {
+                    let extra_agents = extract_agent_names(&json);
+                    merge_unique(&mut config.agents, extra_agents);
+
+                    if path.ends_with("plugins/config.json") {
                         let plugin_names = extract_object_keys(&json);
                         merge_unique(&mut config.plugins, plugin_names);
                     }
@@ -340,6 +343,7 @@ fn location_for_profile(profile: &AgentProfileId) -> Result<AgentConfigLocation,
             extra_paths: vec![
                 format!("{home}/.claude/skills"),
                 format!("{home}/.claude/agents"),
+                format!("{home}/.claude/agents.json"),
                 format!("{home}/.claude/plugins/config.json"),
             ],
         },
@@ -349,6 +353,8 @@ fn location_for_profile(profile: &AgentProfileId) -> Result<AgentConfigLocation,
             extra_paths: vec![
                 format!("{home}/.config/opencode/skills"),
                 format!("{home}/.config/opencode/agents"),
+                format!("{home}/.config/opencode/opencode.json"),
+                format!("{home}/.config/opencode/oh-my-opencode.json"),
             ],
         },
     };
@@ -483,21 +489,7 @@ fn normalized_from_value(profile: &AgentProfileId, value: &Value) -> UnifiedAgen
         })
         .unwrap_or_default();
 
-    let agents = value
-        .get("agents")
-        .and_then(|v| v.as_array())
-        .map(|arr| {
-            arr.iter()
-                .filter_map(|item| item.as_str().map(|s| s.to_string()))
-                .collect::<Vec<_>>()
-        })
-        .unwrap_or_else(|| {
-            value
-                .get("agentTeams")
-                .and_then(|v| v.as_object())
-                .map(|obj| obj.keys().cloned().collect::<Vec<_>>())
-                .unwrap_or_default()
-        });
+    let agents = extract_agent_names(value);
 
     let plugins = value
         .get("plugins")
@@ -816,6 +808,65 @@ fn extract_object_keys(value: &Value) -> Vec<String> {
         .unwrap_or_default()
 }
 
+fn extract_agent_names(value: &Value) -> Vec<String> {
+    let mut names = Vec::new();
+
+    if let Some(agents_array) = value.get("agents").and_then(|v| v.as_array()) {
+        for item in agents_array {
+            if let Some(name) = item.as_str() {
+                names.push(name.to_string());
+                continue;
+            }
+            if let Some(object) = item.as_object() {
+                if let Some(name) = object.get("name").and_then(|v| v.as_str()) {
+                    names.push(name.to_string());
+                    continue;
+                }
+                if let Some(id) = object.get("id").and_then(|v| v.as_str()) {
+                    names.push(id.to_string());
+                }
+            }
+        }
+    }
+
+    if let Some(agents_object) = value.get("agents").and_then(|v| v.as_object()) {
+        names.extend(agents_object.keys().cloned());
+    }
+
+    if let Some(teams) = value.get("teams").and_then(|v| v.as_object()) {
+        for team in teams.values() {
+            if let Some(team_agents) = team.get("agents").and_then(|v| v.as_array()) {
+                for item in team_agents {
+                    if let Some(name) = item.as_str() {
+                        names.push(name.to_string());
+                        continue;
+                    }
+                    if let Some(object) = item.as_object() {
+                        if let Some(name) = object.get("name").and_then(|v| v.as_str()) {
+                            names.push(name.to_string());
+                            continue;
+                        }
+                        if let Some(id) = object.get("id").and_then(|v| v.as_str()) {
+                            names.push(id.to_string());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if names.is_empty() {
+        if let Some(agent_teams) = value.get("agentTeams").and_then(|v| v.as_object()) {
+            names.extend(agent_teams.keys().cloned());
+        } else if let Some(teams) = value.get("teams").and_then(|v| v.as_object()) {
+            names.extend(teams.keys().cloned());
+        }
+    }
+
+    dedupe_sorted(&mut names);
+    names
+}
+
 fn dedupe_sorted(items: &mut Vec<String>) {
     let mut seen = HashSet::new();
     items.retain(|item| seen.insert(item.clone()));
@@ -867,6 +918,36 @@ mod tests {
         let normalized = normalized_from_value(&AgentProfileId::Codex, &value);
         assert_eq!(normalized.mcp_servers.len(), 1);
         assert_eq!(normalized.mcp_servers[0].name, "demo");
+    }
+
+    #[test]
+    fn extracts_agents_from_object_map() {
+        let value = serde_json::json!({
+            "agents": {
+                "atlas": { "model": "x" },
+                "sisyphus": { "model": "y" }
+            }
+        });
+        let normalized = normalized_from_value(&AgentProfileId::Opencode, &value);
+        assert!(normalized.agents.contains(&"atlas".to_string()));
+        assert!(normalized.agents.contains(&"sisyphus".to_string()));
+    }
+
+    #[test]
+    fn extracts_agents_from_teams_structure() {
+        let value = serde_json::json!({
+            "teams": {
+                "dev-team": {
+                    "agents": [
+                        { "name": "backend-architect" },
+                        { "name": "frontend-dev" }
+                    ]
+                }
+            }
+        });
+        let normalized = normalized_from_value(&AgentProfileId::ClaudeCode, &value);
+        assert!(normalized.agents.contains(&"backend-architect".to_string()));
+        assert!(normalized.agents.contains(&"frontend-dev".to_string()));
     }
 
     #[test]
