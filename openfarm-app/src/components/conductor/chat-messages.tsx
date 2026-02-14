@@ -175,6 +175,10 @@ export function ChatMessages({
 	isRunning,
 	onFileClick,
 }: ChatMessagesProps) {
+	const hasThinkingMessage = messages.some(
+		(message) => message.role === "agent" && message.thinking,
+	);
+
 	return (
 		<ScrollArea className="flex-1">
 			<div className="divide-y divide-border/50">
@@ -188,7 +192,7 @@ export function ChatMessages({
 			</div>
 
 			{/* Live activity indicator */}
-			{isRunning && (
+			{isRunning && !hasThinkingMessage && (
 				<div className="px-5 py-3 border-t border-border/50">
 					<div className="flex items-center gap-3">
 						<div className="h-6 w-6 rounded bg-accent flex items-center justify-center">
