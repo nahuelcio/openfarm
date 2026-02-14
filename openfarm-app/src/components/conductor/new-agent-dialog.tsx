@@ -325,19 +325,19 @@ export function NewAgentDialog({
 						<label className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium mb-1.5 block">
 							Base Branch
 						</label>
-						<div className="flex items-center gap-2">
-							<input
+						<div className="relative">
+							<select
 								value={selectedBaseBranch}
-								onChange={(e) => setSelectedBaseBranch(e.target.value)}
-								list="base-branch-options"
-								placeholder="main"
-								className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/40"
-							/>
-							<datalist id="base-branch-options">
+								onChange={(event) => setSelectedBaseBranch(event.target.value)}
+								className="w-full appearance-none rounded-lg border border-border bg-background text-sm text-foreground px-3 py-2 pr-8 focus:outline-none focus:border-primary/40"
+							>
 								{availableBranches.map((branch) => (
-									<option key={branch} value={branch} />
+									<option key={branch} value={branch}>
+										{branch}
+									</option>
 								))}
-							</datalist>
+							</select>
+							<ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
 						</div>
 					</div>
 
