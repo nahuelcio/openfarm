@@ -17,6 +17,10 @@ export function DashboardScreen({ vm }: DashboardScreenProps) {
 		(workspace) => workspace.id === vm.selectedWorkspaceId,
 	);
 	const recentAgents = vm.agents.slice(0, 6);
+	const recentSessions = availableSessions.slice(
+		0,
+		Math.min(8, availableSessions.length),
+	);
 
 	return (
 		<div className="app">
@@ -130,6 +134,7 @@ export function DashboardScreen({ vm }: DashboardScreenProps) {
 													(item) => item.id === nextSessionId,
 												);
 												vm.setSelectedSession(session || null);
+												vm.loadAgents();
 											}}
 											value={vm.selectedSession?.id || ""}
 										>
@@ -219,6 +224,81 @@ export function DashboardScreen({ vm }: DashboardScreenProps) {
 												</button>
 											))}
 										</div>
+									)}
+								</div>
+								<div className="context-block">
+									<div className="context-block-header">
+										<h3>Threads</h3>
+									</div>
+									{!vm.selectedProject ? (
+										<>
+											<p className="empty">
+												Seleccioná un proyecto para crear y filtrar threads.
+											</p>
+											<button
+												className="btn-secondary"
+												onClick={() => vm.setView("projects")}
+												type="button"
+											>
+												Ir a Projects
+											</button>
+										</>
+									) : (
+										<>
+											<input
+												onChange={(event) =>
+													vm.setNewSessionName(event.target.value)
+												}
+												placeholder="Thread name"
+												type="text"
+												value={vm.newSessionName}
+											/>
+											<div className="list-item-actions">
+												<button
+													className="btn-primary"
+													disabled={!vm.newSessionName.trim()}
+													onClick={vm.createSession}
+													type="button"
+												>
+													Create thread
+												</button>
+												<button
+													className="btn-secondary"
+													onClick={() => vm.setView("sessions")}
+													type="button"
+												>
+													Open sessions
+												</button>
+											</div>
+											{recentSessions.length === 0 ? (
+												<p className="empty">
+													No hay threads para este proyecto.
+												</p>
+											) : (
+												<div className="thread-list">
+													{recentSessions.map((session) => (
+														<button
+															className={`thread-item ${
+																vm.selectedSession?.id === session.id
+																	? "active"
+																	: ""
+															}`}
+															key={session.id}
+															onClick={() => {
+																vm.setSelectedSession(session);
+																vm.loadAgents();
+															}}
+															type="button"
+														>
+															<span>{session.name}</span>
+															<small>
+																{session.agents?.length ?? 0} agents
+															</small>
+														</button>
+													))}
+												</div>
+											)}
+										</>
 									)}
 								</div>
 								<div className="context-block">

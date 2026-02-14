@@ -271,6 +271,12 @@
 	);
 }
 
+.thread-item.active {
+	background: rgba(50, 75, 134, 0.45);
+	border-color: rgba(114, 163, 255, 0.66);
+	color: #edf3ff;
+}
+
 .thread-item small {
 	font-family: var(--font-mono);
 	font-size: 11px;
