@@ -24,6 +24,7 @@ export function DashboardScreen({ vm }: DashboardScreenProps) {
 		0,
 		Math.min(8, availableSessions.length),
 	);
+	const isFirstRun = vm.projects.length === 0 || vm.workspaces.length === 0;
 
 	return (
 		<div className="app">
@@ -185,6 +186,31 @@ export function DashboardScreen({ vm }: DashboardScreenProps) {
 									<span className="stat-label">Failed</span>
 								</div>
 							</div>
+							{isFirstRun && (
+								<div className="form-card">
+									<h3>Empezar en 2 minutos</h3>
+									<p className="list-item-subtitle">
+										Primero conectá tu proyecto y después creá un espacio para
+										trabajar.
+									</p>
+									<div className="list-item-actions">
+										<button
+											className="btn-primary"
+											onClick={() => vm.setView("projects")}
+											type="button"
+										>
+											1) Agregar Proyecto
+										</button>
+										<button
+											className="btn-secondary"
+											onClick={() => vm.setView("workspaces")}
+											type="button"
+										>
+											2) Crear Espacio
+										</button>
+									</div>
+								</div>
+							)}
 							<div className="context-grid">
 								<div className="context-block">
 									<div className="context-block-header">
