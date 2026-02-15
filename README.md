@@ -41,96 +41,30 @@ const result = await client.execute({
 console.log(result.diff)
 ```
 
-## 🖥️ Terminal UI (TUI) - Legacy
+## 🖥️ OpenFarm Desktop
 
-The TUI is now in legacy mode and receives only critical fixes. For new workflows, use OpenFarm Desktop (`openfarm-app/`).
-Migration timeline: `docs/desktop-migration-window.md`.
+OpenFarm Desktop is the modern desktop application for AI-powered code editing. Built with Tauri and React, it provides a native desktop experience with enhanced features and performance.
 
-### Running the Legacy TUI
+### Getting Started
 
-From the project root (after `bun install`):
+Download the latest release from: https://github.com/openfarm/openfarm-app
 
-```bash
-OPENFARM_ENABLE_LEGACY_TUI=1 bun run tui
-```
-
-Or using npx without installation:
+Or build from source:
 
 ```bash
-npx @openfarm/sdk tui --legacy-tui
+cd openfarm-app
+bun install
+bun run build
+bun run dev
 ```
 
-Or run directly:
+### Key Features
 
-```bash
-bun run packages/sdk/src/tui/index.tsx
-```
-
-### Features
-
-- **Interactive Execution** - Execute AI coding tasks with multiple providers
-- **Multiple Providers** - Choose between OpenCode, Claude Code, and Aider
-- **Execution History** - All executions saved to local SQLite database
-- **Diff Viewer** - View code changes with syntax highlighting
-- **Real-time Streaming** - Watch logs and token usage update live
-- **Smart Error Handling** - Categorized errors with actionable suggestions
-- **Workflow Management** - View, edit, and select predefined workflows
-- **Context Generator** - Generate project context for better AI understanding
-
-### Navigation
-
-- **↑/↓ Arrows** - Navigate options and history
-- **Enter** - Select/Confirm
-- **Esc** - Go back/Cancel
-- **Tab** - Switch between sections (where applicable)
-
-### Providers
-
-The TUI supports multiple AI coding providers:
-
-- **OpenCode** - Default provider, optimized for coding tasks
-- **Claude Code** - Anthropic's Claude with coding capabilities
-- **Aider** - Open source AI pair programmer
-
-### Configuration
-
-Set API keys via environment variables:
-
-```bash
-# Anthropic API key (for Claude Code)
-export ANTHROPIC_API_KEY=sk-ant-...
-
-# OpenAI API key (for some providers)
-export OPENAI_API_KEY=sk-...
-
-# Database path (optional, defaults to ./db.db)
-export DB_PATH=/path/to/openfarm.db
-```
-
-### Execution History
-
-All executions are automatically saved to a local SQLite database including:
-- Full execution logs
-- Token usage and costs
-- Git diffs of all changes
-- Error details with suggestions
-- Duration and performance metrics
-
-Access history from the main menu to review past runs, view diffs, and learn from previous executions.
-
-### Workflow Types
-
-Available workflows:
-- **task_runner** (default) - Creates branch → Sets up worktree → Executes → Cleans up
-- **simple** - Direct execution in current directory
-- Custom workflows can be added via YAML files in `packages/core/workflows`
-
-### Tips
-
-- Use the **Context Generator** before complex tasks to improve AI understanding
-- Press **Enter** on any execution in History to view the diff
-- Check execution history to debug failed runs with categorized error messages
-- The diff viewer shows file-by-file changes with additions/deletions highlighted
+- **Native Desktop Experience** - Built with Tauri for performance
+- **Modern UI** - React-based interface with TailwindCSS
+- **Enhanced Performance** - Faster execution and better resource management
+- **Local Development** - Full local development environment
+- **Cross-platform** - Windows, macOS, and Linux support
 
 ## 🏗️ Development
 

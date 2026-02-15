@@ -410,7 +410,7 @@ export class OpenCodeAuthAdapter {
       // OpenCode returns true on success, but since we passed response.ok check
       // we know the request succeeded - verify by checking provider connection
       if (response.ok) {
-        console.log(
+        console.info(
           `[OpenCodeAuth] OAuth callback succeeded for ${providerId}`
         );
 

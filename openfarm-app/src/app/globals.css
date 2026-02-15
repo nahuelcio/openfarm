@@ -102,10 +102,3 @@
   animation: pulse-dot 1.5s ease-in-out infinite;
 }
 
-/* Traffic lights styling */
-.traffic-light {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  display: inline-block;
-}

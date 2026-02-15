@@ -14,10 +14,6 @@ import {
 const baseEntries: ConfigEntry[] = [
   { configKey: "server.defaultProvider", configValue: "copilot" },
   { configKey: "server.defaultModel", configValue: "copilot/gpt-4o-mini" },
-  { configKey: "tui.defaultProvider", configValue: "copilot" },
-  { configKey: "tui.defaultModel", configValue: "copilot/claude-sonnet-4" },
-  { configKey: "tui.maxIterations", configValue: 5 },
-  { configKey: "tui.timeoutSeconds", configValue: 300 },
   { configKey: "providers.copilot.apiKey", configValue: "base-copilot" },
   { configKey: "providers.copilot.apiBase", configValue: "http://copilot" },
   { configKey: "providers.copilot.token", configValue: "token-123" },
@@ -26,10 +22,6 @@ const baseEntries: ConfigEntry[] = [
   {
     configKey: "server.overrides.anthropic.apiKey",
     configValue: "server-override",
-  },
-  {
-    configKey: "tui.overrides.copilot.apiKey",
-    configValue: "tui-override",
   },
 ];
 
@@ -47,12 +39,10 @@ describe("OpenCodeConfigService helpers", () => {
   it("buildConfigMap parses JSON values", () => {
     const entries: ConfigEntry[] = [
       { configKey: "server.defaultProvider", configValue: "copilot" },
-      { configKey: "tui.maxIterations", configValue: "5" },
     ];
     const map = buildConfigMap(entries);
 
     expect(map.get("server.defaultProvider")).toBe("copilot");
-    expect(map.get("tui.maxIterations")).toBe(5);
   });
 
   it("getConfigValue returns default when missing", () => {
@@ -66,9 +56,6 @@ describe("OpenCodeConfigService helpers", () => {
     const map = buildConfigMap(baseEntries);
     expect(getProviderApiKeyFromMap(map, "anthropic", "server")).toBe(
       "server-override"
-    );
-    expect(getProviderApiKeyFromMap(map, "copilot", "tui")).toBe(
-      "tui-override"
     );
   });
 
@@ -115,7 +102,7 @@ describe("OpenCodeConfigService resolveModel", () => {
   });
 
   it("uses step config when provided", async () => {
-    const resolved = await service.resolveModel("tui", {
+    const resolved = await service.resolveModel("server", {
       provider: "opencode",
       model: "opencode/custom",
     });

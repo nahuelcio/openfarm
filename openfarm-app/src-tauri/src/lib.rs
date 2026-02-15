@@ -1162,6 +1162,17 @@ fn parse_structured_agent_event(line: &str) -> Option<String> {
     }
 
     if event_type == "item.completed" {
+        let item_type = value
+            .get("item")
+            .and_then(|item| item.get("type"))
+            .and_then(|item| item.as_str())
+            .unwrap_or_default();
+        if item_type == "reasoning" {
+            return None;
+        }
+        if item_type != "agent_message" && !item_type.is_empty() {
+            return None;
+        }
         return value
             .get("item")
             .and_then(|item| item.get("text"))
@@ -1178,10 +1189,26 @@ fn normalize_agent_stream_line(raw_line: &str) -> Option<String> {
     if clean.is_empty() {
         return None;
     }
+    if clean.eq_ignore_ascii_case("reading prompt from stdin...") {
+        return None;
+    }
+    if clean.contains("codex_core::rollout::list: state db missing rollout path") {
+        return None;
+    }
     if clean.starts_with('{') && clean.ends_with('}') {
         return parse_structured_agent_event(&clean);
     }
     Some(clean)
+}
+
+fn normalize_agent_output_chunk(raw_chunk: &str) -> Vec<String> {
+    let mut normalized = Vec::new();
+    for line in raw_chunk.lines() {
+        if let Some(clean) = normalize_agent_stream_line(line) {
+            normalized.push(clean);
+        }
+    }
+    normalized
 }
 
 fn emit_and_store_event(
@@ -1954,6 +1981,7 @@ fn run_agent_via_bridge(
     let mut last_activity_at = started_at;
     let mut combined = String::new();
     let mut bridge_error = String::new();
+    let mut last_emitted_line = String::new();
     let mut final_result: Option<Result<String, String>> = None;
     let mut exit_status: Option<std::process::ExitStatus> = None;
     loop {
@@ -1975,18 +2003,24 @@ fn run_agent_via_bridge(
                         .unwrap_or_default()
                         .to_string();
                     if !chunk.is_empty() {
-                        let with_newline = format!("{chunk}\n");
-                        combined.push_str(&with_newline);
-                        let state = app.state::<AgentPool>();
-                        emit_and_store_event(
-                            app,
-                            &state,
-                            "agent:output",
-                            serde_json::json!({
-                                "agent_id": agent_id,
-                                "chunk": with_newline
-                            }),
-                        );
+                        for normalized in normalize_agent_output_chunk(&chunk) {
+                            if normalized == last_emitted_line {
+                                continue;
+                            }
+                            last_emitted_line = normalized.clone();
+                            let with_newline = format!("{normalized}\n");
+                            combined.push_str(&with_newline);
+                            let state = app.state::<AgentPool>();
+                            emit_and_store_event(
+                                app,
+                                &state,
+                                "agent:output",
+                                serde_json::json!({
+                                    "agent_id": agent_id,
+                                    "chunk": with_newline
+                                }),
+                            );
+                        }
                     }
                     continue;
                 }
@@ -2001,7 +2035,14 @@ fn run_agent_via_bridge(
                         .unwrap_or_default()
                         .to_string();
                     if !output_text.is_empty() {
-                        combined.push_str(&output_text);
+                        for normalized in normalize_agent_output_chunk(&output_text) {
+                            if normalized == last_emitted_line {
+                                continue;
+                            }
+                            last_emitted_line = normalized.clone();
+                            combined.push_str(&normalized);
+                            combined.push('\n');
+                        }
                     }
                     if success {
                         final_result = Some(Ok(combined.clone()));
@@ -5257,7 +5298,10 @@ fn get_provider_catalog() -> Result<serde_json::Value, String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{extract_pr_number, parse_structured_agent_event, workspace_root_from_worktree};
+    use super::{
+        extract_pr_number, normalize_agent_output_chunk, parse_structured_agent_event,
+        workspace_root_from_worktree,
+    };
 
     #[test]
     fn extracts_pr_number_from_github_url() {
@@ -5289,6 +5333,34 @@ mod tests {
         let line = r#"{"type":"tool_use","part":{"tool":"write","state":{"status":"completed","title":"cuento.md"}}}"#;
         let value = parse_structured_agent_event(line);
         assert_eq!(value, Some("Step: write cuento.md (completed)".to_string()));
+    }
+
+    #[test]
+    fn ignores_codex_thread_events() {
+        let line = r#"{"type":"thread.started","thread_id":"x"}"#;
+        let value = parse_structured_agent_event(line);
+        assert_eq!(value, None);
+    }
+
+    #[test]
+    fn ignores_codex_reasoning_events() {
+        let line = r#"{"type":"item.completed","item":{"id":"item_0","type":"reasoning","text":"thinking"}}"#;
+        let value = parse_structured_agent_event(line);
+        assert_eq!(value, None);
+    }
+
+    #[test]
+    fn parses_codex_agent_message_event() {
+        let line = r#"{"type":"item.completed","item":{"id":"item_1","type":"agent_message","text":"Hola."}}"#;
+        let value = parse_structured_agent_event(line);
+        assert_eq!(value, Some("Hola.".to_string()));
+    }
+
+    #[test]
+    fn normalizes_codex_output_chunk() {
+        let raw = "Reading prompt from stdin...\n{\"type\":\"thread.started\",\"thread_id\":\"x\"}\n{\"type\":\"item.completed\",\"item\":{\"id\":\"item_0\",\"type\":\"reasoning\",\"text\":\"thinking\"}}\n{\"type\":\"item.completed\",\"item\":{\"id\":\"item_1\",\"type\":\"agent_message\",\"text\":\"Hola.\"}}\n2026-02-15T00:48:00.251301Z ERROR codex_core::rollout::list: state db missing rollout path for thread x\n";
+        let value = normalize_agent_output_chunk(raw);
+        assert_eq!(value, vec!["Hola.".to_string()]);
     }
 }
 

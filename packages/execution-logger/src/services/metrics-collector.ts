@@ -1,6 +1,5 @@
 import type { MetricPoint, MetricSeries } from "../types";
 
-// TODO: Move to @openfarm/execution-logger when splitting repos
 export class MetricsCollector {
   private readonly metrics: Map<string, MetricSeries> = new Map();
 

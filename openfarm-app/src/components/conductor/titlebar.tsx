@@ -30,16 +30,6 @@ export function Titlebar({
 			className="flex h-12 items-center border-b border-border bg-sidebar px-3 select-none"
 			style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
 		>
-			{/* Traffic lights area */}
-			<div
-				className="flex items-center gap-1.5 mr-3"
-				style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
-			>
-				<span className="traffic-light bg-[#ff5f57]" />
-				<span className="traffic-light bg-[#febc2e]" />
-				<span className="traffic-light bg-[#28c840]" />
-			</div>
-
 			<Button
 				variant="ghost"
 				size="icon"

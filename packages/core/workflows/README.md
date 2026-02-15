@@ -1,6 +1,6 @@
 # Predefined Workflows
 
-This directory contains JSON files defining predefined workflows for the Minions Farm platform.
+This directory contains JSON files defining predefined workflows for the OpenFarm platform.
 
 ## Workflows
 

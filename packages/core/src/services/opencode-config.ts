@@ -9,7 +9,6 @@ import type {
   OpenCodeConfig,
   OpenCodeProvider,
   ServerConfig,
-  TuiConfig,
 } from "../types/opencode-config";
 import { OPENCODE_DEFAULTS } from "../types/opencode-config";
 import type { AgentAuthorConfig, AgentCodeConfig } from "../types/workflow";
@@ -24,7 +23,6 @@ export type ConfigMap = Map<string, unknown>;
 type SQL = any;
 
 export interface ResolvedServerConfig extends ServerConfig {}
-export interface ResolvedTuiConfig extends TuiConfig {}
 
 export interface ResolvedModel {
   provider: OpenCodeProvider;
@@ -147,36 +145,9 @@ export class OpenCodeConfigService {
     };
   }
 
-  async getTuiConfig(): Promise<ResolvedTuiConfig> {
-    const configMap = await this.loadConfigMap();
-    return {
-      defaultProvider: getConfigValue(
-        configMap,
-        "tui.defaultProvider",
-        OPENCODE_DEFAULTS.tui.defaultProvider
-      ),
-      defaultModel: getConfigValue(
-        configMap,
-        "tui.defaultModel",
-        OPENCODE_DEFAULTS.tui.defaultModel
-      ),
-      maxIterations: getConfigValue(
-        configMap,
-        "tui.maxIterations",
-        OPENCODE_DEFAULTS.tui.maxIterations
-      ),
-      timeoutSeconds: getConfigValue(
-        configMap,
-        "tui.timeoutSeconds",
-        OPENCODE_DEFAULTS.tui.timeoutSeconds
-      ),
-      overrides: this.buildOverrides(configMap, "tui"),
-    };
-  }
-
   async getProviderApiKey(
     provider: OpenCodeProvider,
-    context: "server" | "tui"
+    context: "server"
   ): Promise<string | null> {
     const configMap = await this.loadConfigMap();
     const overrideKey = `${context}.overrides.${provider}.apiKey`;
@@ -216,17 +187,13 @@ export class OpenCodeConfigService {
     const defaultProvider = getConfigValue(
       configMap,
       `${context}.defaultProvider`,
-      context === "server"
-        ? OPENCODE_DEFAULTS.server.defaultProvider
-        : OPENCODE_DEFAULTS.tui.defaultProvider
+      OPENCODE_DEFAULTS.server.defaultProvider
     );
 
     const defaultModel = getConfigValue(
       configMap,
       `${context}.defaultModel`,
-      context === "server"
-        ? OPENCODE_DEFAULTS.server.defaultModel
-        : OPENCODE_DEFAULTS.tui.defaultModel
+      OPENCODE_DEFAULTS.server.defaultModel
     );
 
     const envModel = resolveEnvModel();
@@ -260,7 +227,6 @@ export class OpenCodeConfigService {
     return {
       providers: providersConfig,
       server: await this.getServerConfig(),
-      tui: await this.getTuiConfig(),
     };
   }
 
@@ -285,8 +251,8 @@ export class OpenCodeConfigService {
 
   private buildOverrides(
     configMap: Map<string, unknown>,
-    context: "server" | "tui"
-  ): ServerConfig["overrides"] | TuiConfig["overrides"] {
+    context: "server"
+  ): ServerConfig["overrides"] {
     const overrides: Record<string, { apiKey?: string }> = {};
     const providers: OpenCodeProvider[] = [
       "copilot",

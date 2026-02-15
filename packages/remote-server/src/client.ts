@@ -2,7 +2,7 @@
  * Remote Client
  *
  * WebSocket client for connecting to remote OpenFarm instances.
- * Used by the TUI to control multiple machines.
+ * Used by the desktop app to control multiple machines.
  */
 
 import { logger } from "@openfarm/logger";

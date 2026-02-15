@@ -111,8 +111,7 @@ export interface Workflow {
   description?: string;
   extends?: string; // ID of parent workflow to inherit from
   abstract?: boolean; // If true, workflow cannot be executed directly (inheritance-only via extends)
-  reusable?: boolean; // Deprecated, use abstract instead
-  parameters?: Record<string, WorkflowParameter>; // Parameters for reusable workflows
+  parameters?: Record<string, WorkflowParameter>; // Parameters for abstract workflows
   variables?: Record<string, Expression | unknown>; // Workflow-level variables
   steps: ExtendedWorkflowStep[];
   createdAt?: string;

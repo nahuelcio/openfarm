@@ -2,10 +2,18 @@ import { DEFAULT_HOSTS, DEFAULT_PORTS } from "@openfarm/core";
 import type { TenantSecrets, VaultConfig } from "../types";
 import { VaultClient } from "./vault-client";
 
-// TODO: Move to @openfarm/vault-adapter when splitting repos
 export class VaultManager {
   private readonly client: VaultClient;
   private readonly config: VaultConfig;
+
+  private logger = {
+    info: (message: string) => {
+      // Simple logger implementation - could be replaced with proper logger
+      if (process.env.NODE_ENV !== 'test') {
+        console.info(`[VaultManager] ${message}`);
+      }
+    }
+  };
 
   constructor(config?: VaultConfig) {
     this.config = config || {
@@ -64,7 +72,7 @@ export class VaultManager {
 
     try {
       await this.client.writeSecret(secretPath, secrets);
-      console.log(`Stored secrets for tenant ${tenantId}`);
+      this.logger.info(`Stored secrets for tenant ${tenantId}`);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
       throw new Error(
@@ -78,7 +86,7 @@ export class VaultManager {
 
     try {
       await this.client.deleteSecret(secretPath);
-      console.log(`Deleted secrets for tenant ${tenantId}`);
+      this.logger.info(`Deleted secrets for tenant ${tenantId}`);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
       throw new Error(
@@ -141,7 +149,7 @@ export class VaultManager {
     secrets[secretKey] = newValue;
     await this.storeTenantSecrets(tenantId, secrets);
 
-    console.log(`Rotated secret ${secretKey} for tenant ${tenantId}`);
+    this.logger.info(`Rotated secret ${secretKey} for tenant ${tenantId}`);
   }
 
   async addSecret(
@@ -153,7 +161,7 @@ export class VaultManager {
     secrets[secretKey] = value;
     await this.storeTenantSecrets(tenantId, secrets);
 
-    console.log(`Added secret ${secretKey} for tenant ${tenantId}`);
+    this.logger.info(`Added secret ${secretKey} for tenant ${tenantId}`);
   }
 
   async removeSecret(tenantId: string, secretKey: string): Promise<void> {
@@ -161,7 +169,7 @@ export class VaultManager {
     delete secrets[secretKey];
     await this.storeTenantSecrets(tenantId, secrets);
 
-    console.log(`Removed secret ${secretKey} for tenant ${tenantId}`);
+    this.logger.info(`Removed secret ${secretKey} for tenant ${tenantId}`);
   }
 
   async validateTenantSecrets(tenantId: string): Promise<{

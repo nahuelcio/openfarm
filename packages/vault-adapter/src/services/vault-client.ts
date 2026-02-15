@@ -1,6 +1,5 @@
 import type { VaultConfig, VaultHealthStatus, VaultResponse } from "../types";
 
-// TODO: Move to @openfarm/vault-adapter when splitting repos
 export class VaultClient {
   private readonly config: VaultConfig;
 

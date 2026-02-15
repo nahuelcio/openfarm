@@ -8,9 +8,9 @@ export async function runLegacyCLI(
   const client = new OpenFarm(config);
 
   if (args.length === 0) {
-    console.log("Minions Farm SDK - CLI");
+    console.log("OpenFarm SDK - CLI");
     console.log(
-      "Usage: minion <task> [--provider <provider>] [--model <model>]"
+      "Usage: openfarm <task> [--provider <provider>] [--model <model>]"
     );
     return;
   }

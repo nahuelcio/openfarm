@@ -26,6 +26,12 @@ type AgentEventType =
 interface WebDb {
 	workspaces: Workspace[];
 	settings: AppSettings;
+	installedMcps: Array<{
+		id: string;
+		provider: AgentProvider;
+		config: Record<string, any>;
+		installedAt: string;
+	}>;
 }
 
 const WEB_DB_KEY = "openfarm-app-web-db-v1";
@@ -46,6 +52,7 @@ function createEmptyDb(): WebDb {
 	return {
 		workspaces: [],
 		settings: DEFAULT_SETTINGS,
+		installedMcps: [],
 	};
 }
 
@@ -312,6 +319,42 @@ async function webInvoke<T>(
 			return [] as T;
 		case "expand_workspace_slash_command":
 			return String(payload.input || "") as T;
+		case "install_mcp": {
+			const mcpId = String(payload.mcpId || "");
+			const provider = String(payload.provider || "");
+			const config = payload.config || {};
+			const existingIndex = db.installedMcps.findIndex(
+				(mcp) => mcp.id === mcpId && mcp.provider === provider,
+			);
+			if (existingIndex >= 0) {
+				db.installedMcps[existingIndex] = {
+					id: mcpId,
+					provider: provider as AgentProvider,
+					config,
+					installedAt: new Date().toISOString(),
+				};
+			} else {
+				db.installedMcps.push({
+					id: mcpId,
+					provider: provider as AgentProvider,
+					config,
+					installedAt: new Date().toISOString(),
+				});
+			}
+			writeWebDb(db);
+			return db.installedMcps as T;
+		}
+		case "uninstall_mcp": {
+			const mcpId = String(payload.mcpId || "");
+			const provider = String(payload.provider || "");
+			db.installedMcps = db.installedMcps.filter(
+				(mcp) => !(mcp.id === mcpId && mcp.provider === provider),
+			);
+			writeWebDb(db);
+			return db.installedMcps as T;
+		}
+		case "get_installed_mcps":
+			return db.installedMcps as T;
 		default:
 			throw new Error(`Unsupported web command: ${command}`);
 	}
@@ -484,4 +527,38 @@ export async function subscribeAgentEvents(
 	return () => {
 		unlisten();
 	};
+}
+
+export async function installMcp(config: {
+	mcpId: string;
+	provider: AgentProvider;
+	config: Record<string, any>;
+}): Promise<Array<{
+	id: string;
+	provider: AgentProvider;
+	config: Record<string, any>;
+	installedAt: string;
+}>> {
+	return invoke("install_mcp", config);
+}
+
+export async function uninstallMcp(config: {
+	mcpId: string;
+	provider: AgentProvider;
+}): Promise<Array<{
+	id: string;
+	provider: AgentProvider;
+	config: Record<string, any>;
+	installedAt: string;
+}>> {
+	return invoke("uninstall_mcp", config);
+}
+
+export async function getInstalledMcps(): Promise<Array<{
+	id: string;
+	provider: AgentProvider;
+	config: Record<string, any>;
+	installedAt: string;
+}>> {
+	return invoke("get_installed_mcps");
 }

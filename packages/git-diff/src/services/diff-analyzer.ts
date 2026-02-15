@@ -1,6 +1,5 @@
 import type { DiffChange, DiffFile, DiffStats } from "../types";
 
-// TODO: Move to @openfarm/git-diff when splitting repos
 export class DiffAnalyzer {
   analyzeComplexity(diffChange: DiffChange): {
     complexity: "low" | "medium" | "high";

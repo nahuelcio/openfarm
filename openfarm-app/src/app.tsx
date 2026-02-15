@@ -1,3 +1,10 @@
+import type { InstalledMcp } from "@openfarm/mcp-marketplace/browser";
+import {
+	getByCategory,
+	getCategories,
+	getCatalogEntries as getMcps,
+	searchAvailable,
+} from "@openfarm/mcp-marketplace/browser";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AgentPanel } from "@/components/conductor/agent-panel";
 import { AppSidebar } from "@/components/conductor/app-sidebar";
@@ -5,15 +12,17 @@ import { EmptyState } from "@/components/conductor/empty-state";
 import { NewAgentDialog } from "@/components/conductor/new-agent-dialog";
 import { SettingsPanel } from "@/components/conductor/settings-panel";
 import { Titlebar } from "@/components/conductor/titlebar";
-import { McpMarketplaceView } from "@/components/mcp";
+import { McpMarketplaceView, McpConfigDialog } from "@/components/mcp";
 import {
 	addLocalWorkspace,
 	archiveAgentConversation,
 	bootstrapAppState,
 	createAgent,
 	getAgentEvents,
+	getInstalledMcps,
 	getProviderCatalog,
 	getSettings,
+	installMcp,
 	killAgent,
 	listRepositoryBranches,
 	loadAgentDiffs,
@@ -21,6 +30,7 @@ import {
 	saveSettings,
 	sendAgentMessage,
 	subscribeAgentEvents,
+	uninstallMcp,
 } from "@/lib/backend";
 import type {
 	Agent,
@@ -156,6 +166,14 @@ export default function App() {
 	>(undefined);
 	const [settingsOpen, setSettingsOpen] = useState(false);
 	const [marketplaceOpen, setMarketplaceOpen] = useState(false);
+	const [mcpConfigOpen, setMcpConfigOpen] = useState(false);
+	const [selectedMcpId, setSelectedMcpId] = useState<string | null>(null);
+	const [installedMcps, setInstalledMcps] = useState<Array<{
+		id: string;
+		provider: AgentProvider;
+		config: Record<string, any>;
+		installedAt: string;
+	}>>([]);
 	const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
 	const [queuedInstructionsByAgent, setQueuedInstructionsByAgent] = useState<
 		Record<string, QueuedInstruction[]>
@@ -297,6 +315,16 @@ export default function App() {
 				return;
 			}
 			setSettings(persisted);
+		})();
+
+		// Cargar MCPs instalados
+		void (async () => {
+			try {
+				const mcps = await getInstalledMcps();
+				setInstalledMcps(mcps);
+			} catch (error) {
+				console.error("Failed to load installed MCPs:", error);
+			}
 		})();
 	}, []);
 
@@ -620,6 +648,36 @@ export default function App() {
 		[],
 	);
 
+	const handleMcpInstall = useCallback((mcpId: string) => {
+		console.log("handleMcpInstall called with:", mcpId);
+		setSelectedMcpId(mcpId);
+		setMcpConfigOpen(true);
+	}, []);
+
+	const handleMcpConfigSubmit = useCallback(async (config: {
+		mcpId: string;
+		provider: AgentProvider;
+		config: Record<string, any>;
+	}) => {
+		try {
+			const updatedMcps = await installMcp(config);
+			setInstalledMcps(updatedMcps);
+			console.log("MCP installed successfully:", config);
+		} catch (error) {
+			console.error("Failed to install MCP:", error);
+			const message = error instanceof Error ? error.message : "Failed to install MCP";
+			if (typeof window !== "undefined") {
+				window.alert(message);
+			}
+			return; // No cerrar los diálogos si hay error
+		}
+		
+		// Cerrar diálogos solo si la instalación fue exitosa
+		setMcpConfigOpen(false);
+		setSelectedMcpId(null);
+		setMarketplaceOpen(false);
+	}, []);
+
 	useEffect(() => {
 		const validAgentIds = new Set(
 			workspaces.flatMap((workspace) =>
@@ -830,18 +888,56 @@ export default function App() {
 				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
 					<div className="h-[80vh] w-[90vw] max-w-4xl overflow-hidden rounded-lg border bg-background shadow-xl">
 						<McpMarketplaceView
-							catalog={mcpManager.listAvailable()}
-							installed={mcpManager.listInstalled()}
-							onInstall={async (id) => {
-								await mcpManager.install(id);
-								setMarketplaceOpen(false);
-							}}
+							catalog={getMcps()}
+							installed={installedMcps.map((mcp) => ({
+								id: `${mcp.id}-${mcp.provider}`,
+								catalogEntryId: mcp.id,
+							}))}
+							onInstall={handleMcpInstall}
 							onUninstall={async (id) => {
-								await mcpManager.uninstall(id);
+								const [catalogEntryId] = id.split('-');
+								const mcp = installedMcps.find(
+									(m) => m.id === catalogEntryId
+								);
+								if (mcp) {
+									try {
+										const updatedMcps = await uninstallMcp({
+											mcpId: mcp.id,
+											provider: mcp.provider,
+										});
+										setInstalledMcps(updatedMcps);
+										console.log("MCP uninstalled successfully:", id);
+									} catch (error) {
+										console.error("Failed to uninstall MCP:", error);
+										const message = error instanceof Error ? error.message : "Failed to uninstall MCP";
+										if (typeof window !== "undefined") {
+											window.alert(message);
+										}
+									}
+								}
 							}}
 						/>
 					</div>
 				</div>
+			)}
+
+			{selectedMcpId && (
+				<>
+					{console.log("Rendering McpConfigDialog with:", { selectedMcpId, mcpConfigOpen })}
+					<McpConfigDialog
+						open={mcpConfigOpen}
+						onClose={() => {
+							console.log("Dialog onClose called");
+							setMcpConfigOpen(false);
+							setSelectedMcpId(null);
+						}}
+						onSubmit={handleMcpConfigSubmit}
+						mcpId={selectedMcpId}
+						mcpName={getMcps().find((mcp) => mcp.id === selectedMcpId)?.name || ""}
+						mcpConfigSchema={getMcps().find((mcp) => mcp.id === selectedMcpId)?.configSchema || {}}
+						providers={settings.providers}
+					/>
+				 </>
 			)}
 		</div>
 	);

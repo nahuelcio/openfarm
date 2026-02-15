@@ -1,9 +1,30 @@
-export type { InstalledMcp, McpCatalogEntry } from "./types";
+export interface McpCatalogEntry {
+	id: string;
+	name: string;
+	description: string;
+	icon: string;
+	npmPackage: string;
+	category: string;
+	defaultArgs: string[];
+	defaultEnv: Record<string, string>;
+	configSchema: Record<string, unknown>;
+	verified?: boolean;
+	docsUrl?: string;
+}
 
-const catalogData: {
-	version: string;
-	mcps: import("./types").McpCatalogEntry[];
-} = {
+export interface InstalledMcp {
+	id: string;
+	catalogEntryId: string;
+	displayName?: string;
+	command: string;
+	args: string[];
+	env: Record<string, string>;
+	enabled: boolean;
+	installedAt: string;
+	configOverrides: Record<string, unknown>;
+}
+
+const catalogData: { version: string; mcps: McpCatalogEntry[] } = {
 	version: "1.0.0",
 	mcps: [
 		{
@@ -81,19 +102,15 @@ const catalogData: {
 	],
 };
 
-export function getCatalogEntries(): import("./types").McpCatalogEntry[] {
+export function getCatalogEntries(): McpCatalogEntry[] {
 	return catalogData.mcps;
 }
 
-export function getCatalogEntry(
-	id: string,
-): import("./types").McpCatalogEntry | undefined {
+export function getCatalogEntry(id: string): McpCatalogEntry | undefined {
 	return catalogData.mcps.find((mcp) => mcp.id === id);
 }
 
-export function searchAvailable(
-	query: string,
-): import("./types").McpCatalogEntry[] {
+export function searchAvailable(query: string): McpCatalogEntry[] {
 	const lowerQuery = query.toLowerCase();
 	return catalogData.mcps.filter(
 		(entry) =>
@@ -103,9 +120,7 @@ export function searchAvailable(
 	);
 }
 
-export function getByCategory(
-	category: string,
-): import("./types").McpCatalogEntry[] {
+export function getByCategory(category: string): McpCatalogEntry[] {
 	return catalogData.mcps.filter((entry) => entry.category === category);
 }
 

@@ -6,7 +6,6 @@ import type {
   DiffSummary,
 } from "../types";
 
-// TODO: Move to @openfarm/git-diff when splitting repos
 export class DiffProcessor {
   parseDiff(diffText: string): DiffChange {
     const files: DiffFile[] = [];

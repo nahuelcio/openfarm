@@ -8,7 +8,6 @@ export interface WorkflowAST {
   description?: string;
   extends?: string; // ID of parent workflow to inherit from
   abstract?: boolean; // If true, workflow cannot be executed directly (inheritance-only via extends)
-  reusable?: boolean; // Deprecated, use abstract instead
   parameters?: Record<string, ParameterAST>;
   variables?: Record<string, unknown>;
   steps: StepAST[];
@@ -115,7 +114,6 @@ export async function parseWorkflowYAML(
       description: workflow.description as string | undefined,
       extends: workflow.extends as string | undefined,
       abstract: workflow.abstract as boolean | undefined,
-      reusable: workflow.reusable as boolean | undefined,
       parameters: workflow.parameters as
         | Record<string, ParameterAST>
         | undefined,

@@ -1,7 +1,7 @@
 /**
  * OpenCode Configuration Types
  *
- * Defines the structure for OpenCode Server (LLM Gateway) and TUI (Code Execution) configuration.
+ * Defines the structure for OpenCode Server (LLM Gateway) configuration.
  * Supports shared providers with per-context overrides.
  * @see https://opencode.ai/docs/providers
  */
@@ -77,46 +77,16 @@ export interface ServerConfigStatus {
   };
 }
 
-/** TUI-specific configuration (Code Execution) */
-export interface TuiConfig {
-  defaultProvider: OpenCodeProvider;
-  defaultModel: string;
-  maxIterations: number;
-  timeoutSeconds: number;
-  mcpServers?: McpServerConfig[];
-  overrides?: {
-    [provider in OpenCodeProvider]?: {
-      apiKey?: string;
-    };
-  };
-}
-
-/** TUI config for API responses (secrets masked) */
-export interface TuiConfigStatus {
-  defaultProvider: OpenCodeProvider;
-  defaultModel: string;
-  maxIterations: number;
-  timeoutSeconds: number;
-  mcpServers?: McpServerConfig[];
-  overrides?: {
-    [provider in OpenCodeProvider]?: {
-      hasApiKey: boolean;
-    };
-  };
-}
-
 /** Complete OpenCode configuration */
 export interface OpenCodeConfig {
   providers: Record<OpenCodeProvider, ProviderConfig>;
   server: ServerConfig;
-  tui: TuiConfig;
 }
 
 /** Complete config for API responses (secrets masked) */
 export interface OpenCodeConfigStatus {
   providers: Record<OpenCodeProvider, ProviderStatus>;
   server: ServerConfigStatus;
-  tui: TuiConfigStatus;
 }
 
 /** Default configuration values */
@@ -124,12 +94,6 @@ export const OPENCODE_DEFAULTS = {
   server: {
     defaultProvider: "zai" as OpenCodeProvider,
     defaultModel: "zai/glm-4.7",
-  },
-  tui: {
-    defaultProvider: "zai" as OpenCodeProvider,
-    defaultModel: "zai/glm-4.7",
-    maxIterations: 5,
-    timeoutSeconds: 300,
   },
 } as const;
 

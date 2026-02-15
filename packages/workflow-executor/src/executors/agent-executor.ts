@@ -541,18 +541,14 @@ export async function executeAgentCode(
 
   let resolvedModel =
     validatedConfig.model || context.agentConfiguration?.model || undefined;
-  let tuiConfig: Awaited<
-    ReturnType<typeof openCodeConfigService.getTuiConfig>
-  > | null = null;
 
   if (useOpenCode) {
     const resolved = await openCodeConfigService.resolveModel(
-      "tui",
+      "server",
       validatedConfig,
       context.agentConfiguration
     );
     resolvedModel = resolved.model;
-    tuiConfig = await openCodeConfigService.getTuiConfig();
   }
 
   // Determine which engine to use
@@ -620,7 +616,7 @@ export async function executeAgentCode(
       onLog: defaultEngineOptions.onLog,
       onChanges: defaultEngineOptions.onChanges,
       onChatMessage: defaultEngineOptions.onChatMessage,
-      maxIterations: tuiConfig?.maxIterations,
+      maxIterations: 5,
       ...runtimeOptions,
     });
     await logger(`Using step-specific model: ${resolvedModel}`);
@@ -651,7 +647,7 @@ export async function executeAgentCode(
         onLog: defaultEngineOptions.onLog,
         onChanges: defaultEngineOptions.onChanges,
         onChatMessage: defaultEngineOptions.onChatMessage,
-        maxIterations: tuiConfig?.maxIterations,
+        maxIterations: 5,
         ...runtimeOptions,
       });
     } else {
@@ -676,7 +672,7 @@ export async function executeAgentCode(
             onLog: defaultEngineOptions.onLog,
             onChanges: defaultEngineOptions.onChanges,
             onChatMessage: defaultEngineOptions.onChatMessage,
-            maxIterations: tuiConfig?.maxIterations,
+            maxIterations: 5,
             ...runtimeOptions,
           });
         } else {

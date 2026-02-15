@@ -6,7 +6,10 @@
 	"types": "src/index.ts",
 	"exports": {
 		".": "./src/index.ts",
-		"./browser": "./src/browser.ts",
+		"./browser": {
+			"types": "./src/browser.ts",
+			"default": "./src/browser.ts"
+		},
 		"./types": "./src/types.ts",
 		"./catalog": "./catalog.json"
 	},

@@ -2,7 +2,7 @@
  * Remote Server
  *
  * WebSocket server that exposes OpenFarm functionality for remote control.
- * Allows controlling task loops from a central TUI.
+ * Allows controlling task loops from a central desktop app.
  */
 
 import { randomUUID } from "node:crypto";

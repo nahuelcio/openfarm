@@ -5,7 +5,6 @@ import type {
   LogLevel,
 } from "../types";
 
-// TODO: Move to @openfarm/execution-logger when splitting repos
 export class ExecutionLogger {
   private logs: ExecutionLog[] = [];
   private readonly metrics: Map<string, ExecutionMetrics> = new Map();

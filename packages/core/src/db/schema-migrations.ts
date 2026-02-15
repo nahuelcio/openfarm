@@ -658,10 +658,6 @@ async function migrateOpenCodeConfig(db: SQL): Promise<void> {
     const defaults: Record<string, string> = {
       "server.defaultProvider": '"zai"',
       "server.defaultModel": '"zai/glm-4.7"',
-      "tui.defaultProvider": '"zai"',
-      "tui.defaultModel": '"zai/glm-4.7"',
-      "tui.maxIterations": "5",
-      "tui.timeoutSeconds": "300",
       "providers.copilot.enabled": "true",
       "providers.anthropic.enabled": "false",
       "providers.openrouter.enabled": "false",

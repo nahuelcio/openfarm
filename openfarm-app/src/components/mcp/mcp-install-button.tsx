@@ -34,7 +34,10 @@ export function McpInstallButton({
 	}
 
 	return (
-		<Button size="sm" onClick={onInstall}>
+		<Button size="sm" onClick={() => {
+			console.log("Install button clicked");
+			onInstall();
+		}}>
 			<Plus className="mr-2 h-4 w-4" />
 			Add
 		</Button>

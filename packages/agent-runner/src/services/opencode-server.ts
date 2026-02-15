@@ -177,7 +177,10 @@ class OpenCodeServerManager {
     const messageLevelIndex = logLevels.indexOf(level);
 
     if (messageLevelIndex >= currentLevelIndex) {
-      console.log(
+      const logMethod = level === "error" ? console.error : 
+                       level === "warn" ? console.warn : 
+                       console.info;
+      logMethod(
         `[OpenCodeServer] [${timestamp}] [${level.toUpperCase()}] ${message}`
       );
     }
