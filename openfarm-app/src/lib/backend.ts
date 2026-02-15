@@ -15,6 +15,7 @@ import type {
 	WorkspaceSlashCommand,
 } from "./store";
 import { DEFAULT_SETTINGS } from "./store";
+import { getProviderMcpIntegration } from "./provider-mcp-integration";
 
 type AgentEventType =
 	| "agent:started"
@@ -154,6 +155,17 @@ async function webInvoke<T>(
 						content: "Starting task in web fallback mode.",
 						timestamp: nowTimeLabel(),
 						thinking: true,
+						statistics: {
+							creditsSpent: 0,
+							toolCalls: 0,
+							model: provider || "web-fallback",
+							filesChanged: 0,
+							terminalsCreated: 0,
+							requestId: `web-${Date.now()}`,
+							tokensInput: 0,
+							tokensOutput: 0,
+							duration: 0,
+						},
 					},
 				],
 			};
@@ -217,6 +229,17 @@ async function webInvoke<T>(
 						content: "Starting task in web fallback mode.",
 						timestamp: nowTimeLabel(),
 						thinking: true,
+						statistics: {
+							creditsSpent: 0,
+							toolCalls: 0,
+							model: provider || "web-fallback",
+							filesChanged: 0,
+							terminalsCreated: 0,
+							requestId: `web-${Date.now()}`,
+							tokensInput: 0,
+							tokensOutput: 0,
+							duration: 0,
+						},
 					},
 				],
 			};
@@ -279,6 +302,17 @@ async function webInvoke<T>(
 				if (agentMode) {
 					agent.mode = agentMode as AgentMode;
 				}
+
+				// Get MCP tools for this agent's provider
+				let mcpTools: any[] = [];
+				try {
+					const integration = getProviderMcpIntegration(agent.provider);
+					mcpTools = await integration.getToolsForAgent(agentId);
+					console.log(`🔧 Loaded ${mcpTools.length} MCP tools for ${agent.provider} agent ${agentId}`);
+				} catch (error) {
+					console.warn(`⚠️ Failed to load MCP tools for ${agent.provider}:`, error);
+				}
+
 				agent.messages.push({
 					id: `m-${Date.now()}-u`,
 					role: "user",
@@ -286,11 +320,30 @@ async function webInvoke<T>(
 					timestamp: nowTimeLabel(),
 					attachments,
 				});
+
+				// Create enhanced response with MCP tools info
+				let responseContent = "Web fallback response: message received.";
+				if (mcpTools.length > 0) {
+					const toolNames = mcpTools.map(tool => tool.name || tool.function?.name).join(", ");
+					responseContent = `Web fallback response: message received. Available MCP tools: ${toolNames}`;
+				}
+
 				agent.messages.push({
 					id: `m-${Date.now()}-a`,
 					role: "agent",
-					content: "Web fallback response: message received.",
+					content: responseContent,
 					timestamp: nowTimeLabel(),
+					statistics: {
+						creditsSpent: 0,
+						toolCalls: mcpTools.length,
+						model: provider || "web-fallback",
+						filesChanged: 0,
+						terminalsCreated: 0,
+						requestId: `web-${Date.now()}`,
+						tokensInput: 0,
+						tokensOutput: 0,
+						duration: 0,
+					},
 				});
 				agent.status = "completed";
 				break;

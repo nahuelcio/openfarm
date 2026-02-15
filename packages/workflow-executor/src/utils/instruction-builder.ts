@@ -5,7 +5,6 @@
 
 import type { ActionableWorkflowStep, WorkflowStep } from "@openfarm/core/types";
 import type { AgentAuthorConfig, AgentCodeConfig } from "../executors/validation";
-import type { StepExecutionRequest } from "../types";
 import { replaceWorkItemExpressions, replaceStepResultsExpressions, type WorkItemExpressions, type StepResult } from "./expression-replacer";
 
 /**
@@ -15,8 +14,9 @@ export function sanitize(text?: string): string {
   if (!text) return "";
   
   return text
-    .replace(/[\x00-\x1F\x7F]/g, "") // Remove control characters
-    .replace(/[\uFFFE\uFFFF]/g, "") // Remove BOM characters
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: intentional removal of control chars
+    .replace(/[\u0000-\u001F\u007F]/g, "")
+    .replace(/[\uFFFE\uFFFF]/g, "")
     .trim();
 }
 

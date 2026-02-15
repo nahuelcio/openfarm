@@ -182,6 +182,9 @@ export class LlmService {
       timeout,
     } = params;
 
+    // Initialize statistics collector
+    const statsCollector = new StatisticsCollector(provider.model);
+
     try {
       const model = getModel(provider);
 
@@ -202,17 +205,23 @@ export class LlmService {
           }
         | undefined;
 
+      const promptTokens = usageResult?.promptTokens ?? 0;
+      const completionTokens = usageResult?.completionTokens ?? 0;
+      
+      const statistics = statsCollector.getStatistics(promptTokens, completionTokens);
+
       return {
         text: result.text,
         provider: provider.provider,
         model: provider.model,
         usage: usageResult
           ? {
-              promptTokens: usageResult.promptTokens ?? 0,
-              completionTokens: usageResult.completionTokens ?? 0,
+              promptTokens,
+              completionTokens,
               totalTokens: usageResult.totalTokens ?? 0,
             }
           : undefined,
+        statistics,
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -250,6 +259,17 @@ export class LlmService {
       promptTokens: number;
       completionTokens: number;
       totalTokens: number;
+    };
+    statistics?: {
+      creditsSpent: number;
+      toolCalls: number;
+      model: string;
+      filesChanged: number;
+      terminalsCreated: number;
+      requestId: string;
+      tokensInput: number;
+      tokensOutput: number;
+      duration: number;
     };
   }> {
     return async (prompt: string, abortSignal?: AbortSignal) => {

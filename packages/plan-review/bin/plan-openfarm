@@ -1,0 +1,51 @@
+#!/usr/bin/env bun
+
+import { PlanOpenfarmCLI } from '../src/cli';
+
+// Parse command line arguments
+const args = process.argv.slice(2);
+const options: any = {};
+
+for (let i = 0; i < args.length; i++) {
+  const arg = args[i];
+  switch (arg) {
+    case '--auto':
+      options.auto = true;
+      break;
+    case '--port':
+      options.port = parseInt(args[++i]);
+      break;
+    case '--agent':
+      options.agent = args[++i];
+      break;
+    case '--output':
+      options.output = args[++i];
+      break;
+    case '--simple':
+      options.simple = true;
+      break;
+    case '--help':
+      console.log(`
+🚀 PlanOpenfarm - Revisión Visual de Planes
+
+Uso:
+  plan-openfarm [options]
+
+Options:
+  --auto          Abrir browser automáticamente
+  --port <n>      Puerto para el servidor (default: 3001)
+  --agent <name>  Nombre del agente (default: claude-code)
+  --output <path> Ruta del HTML generado (default: ./plan-review.html)
+  --simple        Usar UI simple (más rápida y ligera)
+  --help          Mostrar esta ayuda
+
+Ejemplos:
+  plan-openfarm --auto --simple
+  plan-openfarm --agent claude-code --output ./review.html
+        `);
+      process.exit(0);
+  }
+}
+
+const cli = new PlanOpenfarmCLI(options);
+cli.execute().catch(console.error);

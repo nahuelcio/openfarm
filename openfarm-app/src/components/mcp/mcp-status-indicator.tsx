@@ -1,7 +1,7 @@
 "use client";
 
-import { ChevronDown, Database, Globe, Settings, ExternalLink, Power, PowerOff } from "lucide-react";
-import { useState } from "react";
+import { ChevronDown, Database, Globe, Settings, ExternalLink, Power, PowerOff, Activity } from "lucide-react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
@@ -11,7 +11,7 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { AgentProvider, ProviderConfig } from "@/lib/store";
-import { REAL_PROVIDER_MCPS, type RealMcpInfo } from "@/lib/real-provider-mcps";
+import { mcpManager, type McpServer } from "@/lib/mcp-manager";
 import { cn } from "@/lib/utils";
 
 interface InstalledMcp {
@@ -45,6 +45,44 @@ export function McpStatusIndicator({
 	onToggleMcp,
 }: McpStatusIndicatorProps) {
 	const [openProvider, setOpenProvider] = useState<AgentProvider | null>(null);
+	const [mcpServers, setMcpServers] = useState<Map<string, McpServer>>(new Map());
+
+	// Load real MCP servers from manager
+	React.useEffect(() => {
+		const loadMcpServers = async () => {
+			try {
+				// Get real servers from MCP Manager
+				const servers = mcpManager.getServersForProvider("claude-code");
+				const allServers = new Map<string, McpServer>();
+				
+				// For now, simulate servers from installedMcps
+				// In the future, this will be real data from mcpManager
+				for (const mcp of installedMcps) {
+					const server: McpServer = {
+						config: {
+							id: mcp.id,
+							name: mcp.id,
+							command: "npx",
+							args: [],
+							env: mcp.config,
+							provider: mcp.provider,
+							enabled: true,
+						},
+						tools: [], // Will be populated by MCP Manager
+						resources: [], // Will be populated by MCP Manager
+						connected: true, // Will be updated by MCP Manager
+					};
+					allServers.set(mcp.id, server);
+				}
+				
+				setMcpServers(allServers);
+			} catch (error) {
+				console.error("Failed to load MCP servers:", error);
+			}
+		};
+
+		loadMcpServers();
+	}, [installedMcps]);
 
 	// Get MCP status (active/inactive) from localStorage
 	const getMcpStatus = (mcpId: string, provider: AgentProvider) => {
@@ -69,7 +107,9 @@ export function McpStatusIndicator({
 			{providers.map((provider) => {
 				const Icon = PROVIDER_ICONS[provider.id];
 				const providerMcps = mcpsByProvider[provider.id] || [];
-				const realMcps = REAL_PROVIDER_MCPS[provider.id] || [];
+				const connectedServers = Array.from(mcpServers.values()).filter(
+					server => server.config.provider === provider.id && server.connected
+				);
 				const color = PROVIDER_COLORS[provider.id];
 				
 				return (
@@ -101,7 +141,7 @@ export function McpStatusIndicator({
 								<ChevronDown className="h-3 w-3.5" />
 							</Button>
 						</DropdownMenuTrigger>
-						<DropdownMenuContent className="w-72" align="end">
+						<DropdownMenuContent className="w-80" align="end">
 							<div className="px-2 py-1.5">
 								<div className="flex items-center justify-between">
 									<div>
@@ -109,7 +149,7 @@ export function McpStatusIndicator({
 											{provider.name} MCPs
 										</div>
 										<div className="text-xs text-muted-foreground">
-											{providerMcps.length} configured
+											{connectedServers.length} connected
 										</div>
 									</div>
 									{provider.connected && (
@@ -119,35 +159,41 @@ export function McpStatusIndicator({
 							</div>
 							<DropdownMenuSeparator />
 							
-							{/* MCPs Configurados */}
+							{/* MCP Servers Conectados */}
 							<div className="max-h-64 overflow-y-auto">
-								{providerMcps.length === 0 ? (
+								{connectedServers.length === 0 ? (
 									<div className="px-2 py-4 text-xs text-muted-foreground text-center">
 										<Database className="h-4 w-4 mx-auto mb-2 text-muted-foreground" />
-										No MCPs configured
+										No MCP servers connected
 									</div>
 								) : (
-									providerMcps.map((mcp) => {
-										const isActive = getMcpStatus(mcp.id, mcp.provider);
+									connectedServers.map((server) => {
+										const isActive = getMcpStatus(server.config.id, server.config.provider);
 										return (
 											<DropdownMenuItem
-												key={`${mcp.id}-${mcp.provider}`}
+												key={server.config.id}
 												className="flex flex-col items-start p-3"
 											>
 												<div className="flex items-center justify-between w-full">
 													<div className="flex items-center gap-2">
-														<Database className={`h-3.5 w-3.5 ${isActive ? 'text-green-600' : 'text-gray-400'}`} />
-														<span className="text-xs font-medium">{mcp.id}</span>
+														<Database className={`h-3.5 w-3.5 ${server.connected ? 'text-green-600' : 'text-gray-400'}`} />
+														<span className="text-xs font-medium">{server.config.name}</span>
 														<span className={`text-xs px-1.5 py-0.5 rounded-full ${isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
 															{isActive ? 'Active' : 'Inactive'}
 														</span>
+														{server.connected && (
+															<span className="text-xs px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700">
+																<Activity className="h-2 w-2 inline mr-1" />
+																Connected
+															</span>
+														)}
 													</div>
 													{onToggleMcp && (
 														<Button
 															variant="ghost"
 															size="sm"
 															className="h-6 w-6 p-0"
-															onClick={() => onToggleMcp(mcp.id, mcp.provider)}
+															onClick={() => onToggleMcp(server.config.id, server.config.provider)}
 														>
 															{isActive ? (
 																<Power className="h-3 w-3 text-green-600" />
@@ -158,11 +204,11 @@ export function McpStatusIndicator({
 													)}
 												</div>
 												<div className="text-xs text-muted-foreground ml-5 mt-1">
-													Configured: {new Date(mcp.installedAt).toLocaleDateString()}
+													{server.tools.length} tools, {server.resources.length} resources
 												</div>
-												{Object.keys(mcp.config).length > 0 && (
-													<div className="text-xs text-muted-foreground ml-5 mt-1">
-														Settings: {Object.keys(mcp.config).join(", ")}
+												{server.lastError && (
+													<div className="text-xs text-red-600 ml-5 mt-1">
+														Error: {server.lastError}
 													</div>
 												)}
 											</DropdownMenuItem>

@@ -8,6 +8,7 @@ import type {
   ProviderMetadata,
   StreamResponseParser,
 } from "@openfarm/sdk";
+import { StatisticsCollector } from "./statistics-collector";
 import {
   createOpenCodeMetadata,
   OPENCODE_DEFAULT_TIMEOUT,
@@ -48,6 +49,9 @@ export class OpenCodeProvider implements Provider {
   async execute(options: ExecutionOptions): Promise<ExecutionResult> {
     const startTime = Date.now();
     const onLog = options.onLog;
+    
+    // Initialize statistics collector
+    const statsCollector = new StatisticsCollector(options.model || "opencode");
 
     const log = (msg: string) => {
       if (onLog) {
@@ -91,6 +95,19 @@ export class OpenCodeProvider implements Provider {
         const looksLikeJson =
           normalizedLine.startsWith("{") && normalizedLine.endsWith("}");
         const jsonParsed = this.parseJsonStreamLine(normalizedLine);
+
+        // Track tool calls and file changes
+        if (jsonParsed) {
+          if (jsonParsed.includes("tool")) {
+            statsCollector.recordToolCall();
+          }
+          if (jsonParsed.includes("file") && jsonParsed.includes("changed")) {
+            statsCollector.recordFileChanged();
+          }
+          if (jsonParsed.includes("terminal") || jsonParsed.includes("process")) {
+            statsCollector.recordTerminalCreated();
+          }
+        }
 
         // If it's JSON but not a user-facing event, skip raw output noise.
         if (looksLikeJson && !jsonParsed) {
@@ -188,10 +205,14 @@ export class OpenCodeProvider implements Provider {
         );
       }
 
+      // Generate statistics (no token data for CLI providers)
+      const statistics = statsCollector.getStatistics(0, 0);
+
       return {
         success: true,
         output,
         duration: Date.now() - startTime,
+        statistics,
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";

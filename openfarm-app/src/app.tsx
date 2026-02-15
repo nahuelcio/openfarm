@@ -13,6 +13,8 @@ import { NewAgentDialog } from "@/components/conductor/new-agent-dialog";
 import { SettingsPanel } from "@/components/conductor/settings-panel";
 import { Titlebar } from "@/components/conductor/titlebar";
 import { McpMarketplaceView, McpConfigDialog } from "@/components/mcp";
+import { mcpManager } from "@/lib/mcp-manager";
+import { initializeProviderMcpIntegrations, cleanupProviderMcpIntegrations } from "@/lib/provider-mcp-integration";
 import {
 	addLocalWorkspace,
 	archiveAgentConversation,
@@ -625,6 +627,25 @@ export default function App() {
 		}
 	}, [selectedAgent, syncState]);
 
+	const handleArchiveAgentFromSidebar = useCallback(async (agent: Agent) => {
+		try {
+			const next = await archiveAgentConversation(agent.id);
+			syncState(next, null);
+			// If the archived agent was selected, clear the selection
+			if (selectedAgentId === agent.id) {
+				syncState(next, null);
+			}
+		} catch (error) {
+			const message =
+				error instanceof Error
+					? error.message
+					: "Failed to archive conversation";
+			if (typeof window !== "undefined") {
+				window.alert(message);
+			}
+		}
+	}, [selectedAgentId, syncState]);
+
 	const handleSpawnAgentInWorkspace = useCallback((workspace: Workspace) => {
 		setNewAgentInitialRepo(workspace.repo);
 		setNewAgentInitialWorkspaceId(workspace.id);
@@ -737,11 +758,11 @@ export default function App() {
 			let changed = false;
 			const next: Record<string, QueuedInstruction[]> = {};
 			for (const [agentId, queue] of Object.entries(prev)) {
-				if (!validAgentIds.has(agentId)) {
+				if (validAgentIds.has(agentId)) {
+					next[agentId] = queue;
+				} else {
 					changed = true;
-					continue;
 				}
-				next[agentId] = queue;
 			}
 			return changed ? next : prev;
 		});
@@ -786,6 +807,31 @@ export default function App() {
 			return stillExists ? prev : null;
 		});
 	}, [workspaces]);
+
+	// Initialize MCP Manager
+	useEffect(() => {
+		const initializeMcpSystem = async () => {
+			try {
+				// Initialize MCP Manager
+				await mcpManager.loadServers();
+				console.log("🚀 MCP Manager initialized and servers loaded");
+
+				// Initialize all provider integrations
+				await initializeProviderMcpIntegrations();
+				console.log("🚀 All provider MCP integrations initialized");
+			} catch (error) {
+				console.error("❌ Failed to initialize MCP system:", error);
+			}
+		};
+
+		initializeMcpSystem();
+
+		// Cleanup on unmount
+		return () => {
+			mcpManager.cleanup();
+			cleanupProviderMcpIntegrations();
+		};
+	}, []);
 
 	useEffect(() => {
 		const statuses = new Map<string, AgentStatus>();
@@ -876,6 +922,7 @@ export default function App() {
 						onSelectAgent={handleSelectAgent}
 						onSelectSubthread={handleSelectSubthread}
 						onSpawnAgentInWorkspace={handleSpawnAgentInWorkspace}
+						onArchiveAgent={handleArchiveAgentFromSidebar}
 						selectedAgentId={selectedAgentId}
 						selectedSubthread={selectedSubthread}
 						workspaces={workspaces}

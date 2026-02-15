@@ -8,6 +8,7 @@ import type {
   ProviderMetadata,
   StreamResponseParser,
 } from "@openfarm/sdk";
+import { StatisticsCollector } from "./statistics-collector";
 import {
   CLAUDE_DEFAULT_TIMEOUT,
   createClaudeMetadata,
@@ -48,6 +49,9 @@ export class ClaudeProvider implements Provider {
   async execute(options: ExecutionOptions): Promise<ExecutionResult> {
     const startTime = Date.now();
     const onLog = options.onLog;
+    
+    // Initialize statistics collector
+    const statsCollector = new StatisticsCollector(options.model || "claude-code");
 
     const log = (msg: string) => {
       if (onLog) {
@@ -112,10 +116,14 @@ export class ClaudeProvider implements Provider {
         );
       }
 
+      // Generate statistics (no token data for CLI providers)
+      const statistics = statsCollector.getStatistics(0, 0);
+
       return {
         success: true,
         output,
         duration: Date.now() - startTime,
+        statistics,
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
