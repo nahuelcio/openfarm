@@ -5,7 +5,7 @@ use directories;
 use flexi_logger::{Cleanup, Criterion, FileSpec, Logger, Naming};
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
 use std::process::{Command, Output, Stdio};
@@ -1655,16 +1655,7 @@ fn normalize_provider_for_bridge(provider: &str) -> (String, Option<String>, Opt
     match provider.trim().to_lowercase().as_str() {
         "claude-code" | "claude" => ("claude".to_string(), None, None),
         "opencode" | "external-agent" => ("opencode".to_string(), None, None),
-        "codex" => (
-            "external-agent".to_string(),
-            Some("codex".to_string()),
-            Some(vec![
-                "exec".to_string(),
-                "--json".to_string(),
-                "-s".to_string(),
-                "workspace-write".to_string(),
-            ]),
-        ),
+        "codex" => ("external-agent".to_string(), Some("codex".to_string()), None),
         "aider" => ("aider".to_string(), None, None),
         other => (other.to_string(), None, None),
     }
@@ -2270,25 +2261,97 @@ fn merge_provider_agents_into_catalog(
             .and_then(|value| value.as_str())
             .unwrap_or_default()
             .to_string();
-        let agents = by_provider.get(&provider_id).cloned().unwrap_or_default();
-        let serialized = agents
+        let local_agents = by_provider.get(&provider_id).cloned().unwrap_or_default();
+        let local_set = local_agents.iter().cloned().collect::<HashSet<_>>();
+
+        let mut existing_names = HashMap::<String, String>::new();
+        let mut existing_descriptions = HashMap::<String, String>::new();
+        let mut existing_agent_ids = Vec::<String>::new();
+        if let Some(existing) = object.get("agents").and_then(|value| value.as_array()) {
+            for item in existing {
+                if let Some(id) = item
+                    .get("id")
+                    .and_then(|value| value.as_str())
+                    .or_else(|| item.as_str())
+                    .map(|value| value.trim())
+                    .filter(|value| !value.is_empty())
+                {
+                    let id_string = id.to_string();
+                    existing_agent_ids.push(id_string.clone());
+                    let name = item
+                        .get("name")
+                        .and_then(|value| value.as_str())
+                        .map(|value| value.trim().to_string())
+                        .filter(|value| !value.is_empty())
+                        .unwrap_or_else(|| id_string.clone());
+                    let description = item
+                        .get("description")
+                        .and_then(|value| value.as_str())
+                        .map(|value| value.trim().to_string())
+                        .filter(|value| !value.is_empty())
+                        .unwrap_or_else(|| "Agent mode".to_string());
+                    existing_names.insert(id_string.clone(), name);
+                    existing_descriptions.insert(id_string, description);
+                }
+            }
+        }
+
+        let mut merged_agents = Vec::<String>::new();
+        let mut seen = HashSet::<String>::new();
+        for candidate in existing_agent_ids.iter().chain(local_agents.iter()) {
+            let normalized = candidate.trim();
+            if normalized.is_empty() {
+                continue;
+            }
+            if seen.insert(normalized.to_string()) {
+                merged_agents.push(normalized.to_string());
+            }
+        }
+
+        let serialized = merged_agents
             .iter()
             .map(|agent| {
+                let name = existing_names
+                    .get(agent)
+                    .cloned()
+                    .unwrap_or_else(|| agent.clone());
+                let description = if local_set.contains(agent) {
+                    "Agent loaded from local CLI config".to_string()
+                } else {
+                    existing_descriptions
+                        .get(agent)
+                        .cloned()
+                        .unwrap_or_else(|| "Agent mode".to_string())
+                };
                 serde_json::json!({
                     "id": agent,
-                    "name": agent,
-                    "description": "Agent loaded from local CLI config"
+                    "name": name,
+                    "description": description
                 })
             })
             .collect::<Vec<_>>();
         object.insert("agents".to_string(), serde_json::Value::Array(serialized));
-        object.insert(
-            "defaultAgent".to_string(),
-            agents
+
+        let default_from_existing = object
+            .get("defaultAgent")
+            .and_then(|value| value.as_str())
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty() && merged_agents.contains(value));
+        let default_agent = if local_agents.is_empty() {
+            default_from_existing
+                .or_else(|| merged_agents.first().cloned())
+                .unwrap_or_default()
+        } else {
+            local_agents
                 .first()
                 .cloned()
-                .map(serde_json::Value::String)
-                .unwrap_or(serde_json::Value::String(String::new())),
+                .or(default_from_existing)
+                .or_else(|| merged_agents.first().cloned())
+                .unwrap_or_default()
+        };
+        object.insert(
+            "defaultAgent".to_string(),
+            serde_json::Value::String(default_agent),
         );
     }
     serde_json::Value::Array(providers)

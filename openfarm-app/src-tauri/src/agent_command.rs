@@ -44,10 +44,48 @@ pub fn resolve_agent_command(
             program: "claude".to_string(),
             args: vec![task.to_string()],
         },
-        "codex" => AgentCommand {
-            program: "codex".to_string(),
-            args: vec![task.to_string()],
-        },
+        "codex" => {
+            let mut args = vec![
+                "exec".to_string(),
+                "--json".to_string(),
+                "-s".to_string(),
+                "workspace-write".to_string(),
+            ];
+            if let Some(value) = model.map(|item| item.trim()).filter(|item| !item.is_empty()) {
+                args.push("--model".to_string());
+                args.push(value.to_string());
+            }
+            if let Some(value) = agent_mode
+                .map(|item| item.trim())
+                .filter(|item| !item.is_empty())
+            {
+                let lower = value.to_lowercase();
+                if lower != "general" && lower != "default" && lower != "defaultmodel" {
+                    if let Some(reasoning) = lower.strip_prefix("reasoning:") {
+                        if !reasoning.trim().is_empty() {
+                            args.push("-c".to_string());
+                            args.push(format!("model_reasoning_effort={}", reasoning.trim()));
+                        }
+                    } else if let Some(profile) = value.strip_prefix("profile:") {
+                        if !profile.trim().is_empty() {
+                            args.push("--profile".to_string());
+                            args.push(profile.trim().to_string());
+                        }
+                    } else if matches!(lower.as_str(), "low" | "medium" | "high" | "xhigh") {
+                        args.push("-c".to_string());
+                        args.push(format!("model_reasoning_effort={}", lower));
+                    } else {
+                        args.push("--profile".to_string());
+                        args.push(value.to_string());
+                    }
+                }
+            }
+            args.push(task.to_string());
+            AgentCommand {
+                program: "codex".to_string(),
+                args,
+            }
+        }
         _ => {
             return Err(format!(
                 "Unsupported provider '{}'. Supported: opencode, aider, claude, codex",
@@ -114,7 +152,61 @@ mod tests {
     fn resolves_codex() {
         let resolved = resolve_agent_command("codex", "write tests", None, None).unwrap();
         assert_eq!(resolved.program, "codex");
-        assert_eq!(resolved.args, vec!["write tests"]);
+        assert_eq!(
+            resolved.args,
+            vec![
+                "exec".to_string(),
+                "--json".to_string(),
+                "-s".to_string(),
+                "workspace-write".to_string(),
+                "write tests".to_string()
+            ]
+        );
+    }
+
+    #[test]
+    fn resolves_codex_with_model_and_reasoning() {
+        let resolved = resolve_agent_command(
+            "codex",
+            "write tests",
+            Some("gpt-5.3-codex"),
+            Some("reasoning:xhigh"),
+        )
+        .unwrap();
+        assert_eq!(resolved.program, "codex");
+        assert_eq!(
+            resolved.args,
+            vec![
+                "exec".to_string(),
+                "--json".to_string(),
+                "-s".to_string(),
+                "workspace-write".to_string(),
+                "--model".to_string(),
+                "gpt-5.3-codex".to_string(),
+                "-c".to_string(),
+                "model_reasoning_effort=xhigh".to_string(),
+                "write tests".to_string()
+            ]
+        );
+    }
+
+    #[test]
+    fn resolves_codex_with_profile_mode() {
+        let resolved =
+            resolve_agent_command("codex", "write tests", None, Some("atlas")).unwrap();
+        assert_eq!(resolved.program, "codex");
+        assert_eq!(
+            resolved.args,
+            vec![
+                "exec".to_string(),
+                "--json".to_string(),
+                "-s".to_string(),
+                "workspace-write".to_string(),
+                "--profile".to_string(),
+                "atlas".to_string(),
+                "write tests".to_string()
+            ]
+        );
     }
 
     #[test]

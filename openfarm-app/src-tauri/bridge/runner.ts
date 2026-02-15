@@ -1,7 +1,11 @@
 import { OpenFarm } from "@openfarm/sdk";
 import { getAvailableModels as getClaudeModels } from "@openfarm/provider-claude";
 import { getAvailableModels as getOpenCodeModels } from "@openfarm/provider-opencode";
-import { spawnSync } from "node:child_process";
+import {
+	getCodexCatalog,
+	getCodexConfigSnapshot,
+	resolveCodexExecutionArgs,
+} from "../../../packages/provider-codex/src/index";
 
 interface BridgeRequest {
 	kind?: "execute" | "catalog";
@@ -28,6 +32,12 @@ interface BridgeProviderCatalog {
 		description: string;
 	}>;
 	defaultModel: string;
+	agents?: Array<{
+		id: string;
+		name: string;
+		description: string;
+	}>;
+	defaultAgent?: string;
 }
 
 function emit(event: Record<string, unknown>): void {
@@ -44,14 +54,6 @@ async function readStdin(): Promise<string> {
 		process.stdin.on("end", () => resolve(data));
 		process.stdin.on("error", reject);
 	});
-}
-
-function parseModels(raw: string): string[] {
-	const values = raw
-		.split("\n")
-		.map((line) => line.trim())
-		.filter((line) => /^[a-zA-Z0-9._:-]+(\/[a-zA-Z0-9._:-]+)*$/.test(line));
-	return [...new Set(values)];
 }
 
 function providerLabel(modelId: string): string {
@@ -77,28 +79,6 @@ function modelName(modelId: string): string {
 	return segments[segments.length - 1] || modelId;
 }
 
-function getCodexModels(): string[] {
-	const commands: Array<{ cmd: string; args: string[] }> = [
-		{ cmd: "codex", args: ["models"] },
-		{ cmd: "codex", args: ["model", "list"] },
-	];
-	for (const command of commands) {
-		const result = spawnSync(command.cmd, command.args, {
-			encoding: "utf8",
-			timeout: 5000,
-			stdio: ["ignore", "pipe", "ignore"],
-		});
-		if (result.status !== 0 || !result.stdout) {
-			continue;
-		}
-		const parsed = parseModels(result.stdout);
-		if (parsed.length > 0) {
-			return parsed;
-		}
-	}
-	return ["codex-mini-latest", "o4-mini", "o3"];
-}
-
 function toModelOptions(
 	models: string[],
 	mapDescription?: (modelId: string) => string,
@@ -110,13 +90,21 @@ function toModelOptions(
 	}));
 }
 
+function isCodexBridgeRequest(request: BridgeRequest): boolean {
+	const provider = (request.provider || "").trim().toLowerCase();
+	const cli = (request.cli || "").trim().toLowerCase();
+	return provider === "codex" || (provider === "external-agent" && cli === "codex");
+}
+
 async function loadProviderCatalog(): Promise<BridgeProviderCatalog[]> {
 	const client = new OpenFarm();
 	const available = new Set(await client.getAvailableProviders());
 
 	const claudeModels = getClaudeModels();
 	const opencodeModels = getOpenCodeModels();
-	const codexModels = getCodexModels();
+	const codexCatalog = getCodexCatalog();
+	const codexModels = codexCatalog.models;
+	const codexModes = codexCatalog.modes;
 
 	return [
 		{
@@ -136,8 +124,18 @@ async function loadProviderCatalog(): Promise<BridgeProviderCatalog[]> {
 			color: "#10a37f",
 			connected: available.has("external-agent"),
 			apiKey: "",
-			models: toModelOptions(codexModels, () => "Codex CLI"),
-			defaultModel: codexModels[0] || "codex-mini-latest",
+			models: codexModels.map((model) => ({
+				id: model.id,
+				name: model.name,
+				description: model.description,
+			})),
+			defaultModel: codexCatalog.defaultModel || codexModels[0]?.id || "gpt-5.3-codex",
+			agents: codexModes.map((mode) => ({
+				id: mode.id,
+				name: mode.name,
+				description: mode.description,
+			})),
+			defaultAgent: codexCatalog.defaultMode,
 		},
 		{
 			id: "opencode",
@@ -163,8 +161,28 @@ async function loadProviderCatalog(): Promise<BridgeProviderCatalog[]> {
 		if (provider.id === "codex") {
 			return {
 				...provider,
-				models: toModelOptions(["codex-mini-latest"], () => "Codex CLI"),
-				defaultModel: "codex-mini-latest",
+				models:
+					provider.models.length > 0
+						? provider.models
+						: [
+								{
+									id: "gpt-5.3-codex",
+									name: "gpt-5.3-codex",
+									description: "Codex CLI model",
+								},
+							],
+				defaultModel: provider.defaultModel || "gpt-5.3-codex",
+				agents:
+					provider.agents && provider.agents.length > 0
+						? provider.agents
+						: [
+								{
+									id: "reasoning:medium",
+									name: "medium",
+									description: "Codex reasoning effort: medium",
+								},
+							],
+				defaultAgent: provider.defaultAgent || "reasoning:medium",
 			};
 		}
 		return {
@@ -187,12 +205,29 @@ async function main(): Promise<void> {
 		return;
 	}
 
+	const selectedAgent = request.agent?.trim();
+	const codexRequest = isCodexBridgeRequest(request);
+	const codexProfiles = codexRequest
+		? getCodexConfigSnapshot().profiles.map((profile) => profile.id)
+		: [];
+	const resolvedProvider = codexRequest
+		? "external-agent"
+		: request.provider || "opencode";
+	const resolvedCli = codexRequest ? "codex" : request.cli;
+	const resolvedArgs = codexRequest
+		? resolveCodexExecutionArgs({
+				model: request.model,
+				mode: selectedAgent,
+				knownProfiles: codexProfiles,
+			})
+		: request.args;
+
 	const client = new OpenFarm({
-		defaultProvider: request.provider || "opencode",
+		defaultProvider: resolvedProvider,
 		defaultModel: request.model,
 	});
-	const selectedAgent = request.agent?.trim();
-	if ((request.provider || "opencode") === "opencode") {
+
+	if (resolvedProvider === "opencode") {
 		if (selectedAgent && selectedAgent !== "general") {
 			process.env.OPENCODE_AGENT = selectedAgent;
 		} else {
@@ -204,11 +239,11 @@ async function main(): Promise<void> {
 		task: request.task || "",
 		context: request.context,
 		workspace: request.workspace || "",
-		provider: request.provider,
+		provider: resolvedProvider,
 		model: request.model,
 		agentName: selectedAgent,
-		cli: request.cli,
-		args: request.args,
+		cli: resolvedCli,
+		args: resolvedArgs,
 		onLog: (chunk) => emit({ type: "log", chunk }),
 	});
 
