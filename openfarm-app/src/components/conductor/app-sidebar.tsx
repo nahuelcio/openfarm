@@ -16,123 +16,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Agent, AgentProvider, AgentStatus, Workspace } from "@/lib/store";
+import { extractSubthreads } from "@/lib/subthreads";
 import { cn } from "@/lib/utils";
-
-interface AgentSubthread {
-	id: string;
-	name: string;
-	status: AgentStatus;
-	lastUpdate: string;
-	preview: string;
-}
-
-const SUBAGENT_PATTERNS = [
-	/background_output\s+([a-zA-Z][a-zA-Z0-9_-]*)/gi,
-	/\bsubagente\s+`?([a-zA-Z][a-zA-Z0-9_-]*)`?/gi,
-	/\bsubagent\s+`?([a-zA-Z][a-zA-Z0-9_-]*)`?/gi,
-	/\bagente\s+`([a-zA-Z][a-zA-Z0-9_-]*)`/gi,
-	/\bagent\s+`([a-zA-Z][a-zA-Z0-9_-]*)`/gi,
-	/@([a-zA-Z][a-zA-Z0-9_-]*)/g,
-];
-
-function normalizeSubagentName(value: string): string | null {
-	const clean = value.trim().toLowerCase();
-	if (!clean) {
-		return null;
-	}
-	const blocked = new Set([
-		"agent",
-		"agente",
-		"subagent",
-		"subagente",
-		"workspace",
-		"repo",
-	]);
-	if (blocked.has(clean)) {
-		return null;
-	}
-	return clean;
-}
-
-function extractSubagentNames(content: string): string[] {
-	const names = new Set<string>();
-	for (const pattern of SUBAGENT_PATTERNS) {
-		const regex = new RegExp(pattern.source, pattern.flags);
-		for (const match of content.matchAll(regex)) {
-			const raw = match[1];
-			if (!raw) {
-				continue;
-			}
-			const normalized = normalizeSubagentName(raw);
-			if (!normalized) {
-				continue;
-			}
-			names.add(normalized);
-		}
-	}
-	return [...names];
-}
-
-function inferSubthreadStatus(content: string): AgentStatus {
-	const normalized = content.toLowerCase();
-	if (
-		normalized.includes("(completed)") ||
-		normalized.includes("completed") ||
-		normalized.includes("done") ||
-		normalized.includes("finalizado") ||
-		normalized.includes("completado")
-	) {
-		return "completed";
-	}
-	if (
-		normalized.includes("failed") ||
-		normalized.includes("error") ||
-		normalized.includes("fallo")
-	) {
-		return "error";
-	}
-	if (
-		normalized.includes("working") ||
-		normalized.includes("running") ||
-		normalized.includes("thinking") ||
-		normalized.includes("trabajando")
-	) {
-		return "running";
-	}
-	return "idle";
-}
-
-function extractSubthreads(agent: Agent): AgentSubthread[] {
-	const byName = new Map<string, AgentSubthread>();
-	for (const message of agent.messages) {
-		const names = extractSubagentNames(message.content || "");
-		if (names.length === 0) {
-			continue;
-		}
-		const statusFromMessage = inferSubthreadStatus(message.content || "");
-		for (const name of names) {
-			const existing = byName.get(name);
-			if (!existing) {
-				byName.set(name, {
-					id: `${agent.id}::${name}`,
-					name,
-					status: statusFromMessage,
-					lastUpdate: message.timestamp,
-					preview: message.content,
-				});
-				continue;
-			}
-			existing.status = statusFromMessage;
-			existing.lastUpdate = message.timestamp;
-			existing.preview = message.content;
-		}
-	}
-	if (byName.size === 0) {
-		return [];
-	}
-
-	return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name));
-}
 
 function StatusIcon({ status }: { status: AgentStatus }) {
 	switch (status) {
@@ -258,7 +143,9 @@ function ProviderBadge({ provider }: { provider: AgentProvider }) {
 interface AppSidebarProps {
 	workspaces: Workspace[];
 	selectedAgentId: string | null;
+	selectedSubthread: { agentId: string; name: string } | null;
 	onSelectAgent: (agent: Agent) => void;
+	onSelectSubthread: (agent: Agent, subthreadName: string) => void;
 	onAddWorkspace: () => void;
 	onSpawnAgentInWorkspace: (workspace: Workspace) => void;
 }
@@ -266,7 +153,9 @@ interface AppSidebarProps {
 export function AppSidebar({
 	workspaces,
 	selectedAgentId,
+	selectedSubthread,
 	onSelectAgent,
+	onSelectSubthread,
 	onAddWorkspace,
 	onSpawnAgentInWorkspace,
 }: AppSidebarProps) {
@@ -373,12 +262,13 @@ export function AppSidebar({
 									<div className="pb-1">
 										{workspace.agents.map((agent) => {
 											const subthreads = extractSubthreads(agent);
+											const isParentSelected = selectedAgentId === agent.id;
 											return (
 												<div key={agent.id}>
 													<button
 														className={cn(
 															"flex w-full items-start gap-2.5 px-4 pl-9 py-2 text-left transition-colors group",
-															selectedAgentId === agent.id
+															isParentSelected
 																? "bg-sidebar-accent"
 																: "hover:bg-sidebar-accent/50",
 														)}
@@ -390,7 +280,7 @@ export function AppSidebar({
 																<span
 																	className={cn(
 																		"text-[13px] truncate block",
-																		selectedAgentId === agent.id
+																		isParentSelected
 																			? "text-sidebar-accent-foreground font-medium"
 																			: "text-sidebar-foreground",
 																	)}
@@ -418,23 +308,44 @@ export function AppSidebar({
 															<div className="px-1 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
 																Subagentes
 															</div>
-															{subthreads.map((thread) => (
-																<button
-																	key={thread.id}
-																	className="flex w-full min-w-0 items-center gap-2 rounded px-1.5 py-1.5 text-left hover:bg-sidebar-accent/50 transition-colors"
-																	onClick={() => onSelectAgent(agent)}
-																	title={`${thread.lastUpdate} ${thread.preview ? `• ${thread.preview}` : ""}`}
-																	type="button"
-																>
-																	<SubthreadStatusDot status={thread.status} />
-																	<span className="min-w-0 flex-1 truncate text-[11px] font-medium text-sidebar-foreground">
-																		@{thread.name}
-																	</span>
-																	<SubthreadStatusLabel
-																		status={thread.status}
-																	/>
-																</button>
-															))}
+															{subthreads.map((thread) => {
+																const isSubthreadSelected =
+																	selectedSubthread?.agentId === agent.id &&
+																	selectedSubthread.name === thread.name;
+																return (
+																	<button
+																		key={thread.id}
+																		className={cn(
+																			"flex w-full min-w-0 items-center gap-2 rounded px-1.5 py-1.5 text-left transition-colors",
+																			isSubthreadSelected
+																				? "bg-sidebar-accent text-sidebar-accent-foreground"
+																				: "hover:bg-sidebar-accent/50",
+																		)}
+																		onClick={() =>
+																			onSelectSubthread(agent, thread.name)
+																		}
+																		title={`${thread.lastUpdate} ${thread.preview ? `• ${thread.preview}` : ""}`}
+																		type="button"
+																	>
+																		<SubthreadStatusDot
+																			status={thread.status}
+																		/>
+																		<span
+																			className={cn(
+																				"min-w-0 flex-1 truncate text-[11px] font-medium",
+																				isSubthreadSelected
+																					? "text-sidebar-accent-foreground"
+																					: "text-sidebar-foreground",
+																			)}
+																		>
+																			@{thread.name}
+																		</span>
+																		<SubthreadStatusLabel
+																			status={thread.status}
+																		/>
+																	</button>
+																);
+															})}
 														</div>
 													)}
 												</div>

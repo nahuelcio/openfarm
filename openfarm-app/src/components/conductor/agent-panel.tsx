@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import type {
 	Agent,
 	AgentExecutionEvent,
+	AgentMessage,
 	AgentMode,
 	AgentProvider,
 	Attachment,
@@ -20,6 +21,9 @@ import { PromptInput } from "./prompt-input";
 
 interface AgentPanelProps {
 	agent: Agent;
+	messages: AgentMessage[];
+	activeSubthreadName?: string | null;
+	onBackToMainThread?: () => void;
 	workspaceId?: string;
 	workspaceAgents: Agent[];
 	queuedInstructions: QueuedInstruction[];
@@ -50,6 +54,9 @@ interface AgentPanelProps {
 
 export function AgentPanel({
 	agent,
+	messages,
+	activeSubthreadName,
+	onBackToMainThread,
 	workspaceId,
 	workspaceAgents,
 	queuedInstructions,
@@ -100,8 +107,27 @@ export function AgentPanel({
 				onToggleLogs={handleToggleLogs}
 				logsOpen={logsOpen}
 			/>
+			{activeSubthreadName && (
+				<div className="flex items-center justify-between gap-2 border-b border-border/70 bg-secondary/20 px-4 py-2">
+					<p className="text-xs text-muted-foreground">
+						Viendo subagente{" "}
+						<span className="font-mono text-foreground">
+							@{activeSubthreadName}
+						</span>
+					</p>
+					<Button
+						variant="ghost"
+						size="sm"
+						className="h-6 px-2 text-[11px]"
+						onClick={onBackToMainThread}
+						type="button"
+					>
+						Ver principal
+					</Button>
+				</div>
+			)}
 			<ChatMessages
-				messages={agent.messages}
+				messages={messages}
 				isRunning={agent.status === "running"}
 				onFileClick={handleFileClick}
 			/>

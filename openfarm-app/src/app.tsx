@@ -35,11 +35,20 @@ import type {
 	Workspace,
 } from "@/lib/store";
 import { DEFAULT_SETTINGS } from "@/lib/store";
+import {
+	extractSubthreads,
+	filterMessagesForSubthread,
+} from "@/lib/subthreads";
 import { cn } from "@/lib/utils";
 
 interface SelectedAgentContext {
 	agent: Agent;
 	workspace: Workspace;
+}
+
+interface SelectedSubthreadContext {
+	agentId: string;
+	name: string;
 }
 
 interface MessagePayload {
@@ -135,6 +144,8 @@ export default function App() {
 	const [sidebarOpen, setSidebarOpen] = useState(true);
 	const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
 	const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+	const [selectedSubthread, setSelectedSubthread] =
+		useState<SelectedSubthreadContext | null>(null);
 	const [newAgentOpen, setNewAgentOpen] = useState(false);
 	const [newAgentInitialRepo, setNewAgentInitialRepo] = useState<
 		string | undefined
@@ -160,6 +171,22 @@ export default function App() {
 		[workspaces, selectedAgentId],
 	);
 	const selectedAgent = selectedAgentContext?.agent || null;
+	const selectedSubthreadName =
+		selectedAgent && selectedSubthread?.agentId === selectedAgent.id
+			? selectedSubthread.name
+			: null;
+	const selectedAgentMessages = useMemo(() => {
+		if (!selectedAgent) {
+			return [];
+		}
+		if (!selectedSubthreadName) {
+			return selectedAgent.messages;
+		}
+		return filterMessagesForSubthread(
+			selectedAgent.messages,
+			selectedSubthreadName,
+		);
+	}, [selectedAgent, selectedSubthreadName]);
 	const selectedWorkspaceId = selectedAgentContext?.workspace.id;
 	const selectedWorkspaceAgents = selectedAgentContext?.workspace.agents || [];
 	const selectedQueuedInstructions = selectedAgent
@@ -273,7 +300,19 @@ export default function App() {
 
 	const handleSelectAgent = useCallback((agent: Agent) => {
 		setSelectedAgentId(agent.id);
+		setSelectedSubthread(null);
 	}, []);
+
+	const handleSelectSubthread = useCallback(
+		(agent: Agent, subthreadName: string) => {
+			setSelectedAgentId(agent.id);
+			setSelectedSubthread({
+				agentId: agent.id,
+				name: subthreadName,
+			});
+		},
+		[],
+	);
 
 	const dispatchMessageToAgent = useCallback(
 		async (agentId: string, payload: MessagePayload) => {
@@ -624,6 +663,22 @@ export default function App() {
 	}, [workspaces]);
 
 	useEffect(() => {
+		setSelectedSubthread((prev) => {
+			if (!prev) {
+				return prev;
+			}
+			const context = findAgentContext(workspaces, prev.agentId);
+			if (!context) {
+				return null;
+			}
+			const stillExists = extractSubthreads(context.agent).some(
+				(thread) => thread.name === prev.name,
+			);
+			return stillExists ? prev : null;
+		});
+	}, [workspaces]);
+
+	useEffect(() => {
 		const statuses = new Map<string, AgentStatus>();
 		for (const workspace of workspaces) {
 			for (const agent of workspace.agents) {
@@ -709,8 +764,10 @@ export default function App() {
 					<AppSidebar
 						onAddWorkspace={handleAddWorkspace}
 						onSelectAgent={handleSelectAgent}
+						onSelectSubthread={handleSelectSubthread}
 						onSpawnAgentInWorkspace={handleSpawnAgentInWorkspace}
 						selectedAgentId={selectedAgentId}
+						selectedSubthread={selectedSubthread}
 						workspaces={workspaces}
 					/>
 				</div>
@@ -733,6 +790,9 @@ export default function App() {
 							agentEvents={selectedAgentEvents}
 							logsLoading={selectedLogsLoading}
 							onLoadAgentEvents={handleLoadAgentEvents}
+							messages={selectedAgentMessages}
+							activeSubthreadName={selectedSubthreadName}
+							onBackToMainThread={() => setSelectedSubthread(null)}
 						/>
 					) : (
 						<EmptyState onNewAgent={() => setNewAgentOpen(true)} />
