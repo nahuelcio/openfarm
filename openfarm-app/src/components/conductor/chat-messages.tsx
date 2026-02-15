@@ -13,6 +13,165 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import type { AgentMessage, Attachment } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
+type JsonObject = Record<string, unknown>;
+
+function parseJsonLine(line: string): JsonObject | null {
+	try {
+		const parsed = JSON.parse(line) as unknown;
+		if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+			return null;
+		}
+		return parsed as JsonObject;
+	} catch {
+		return null;
+	}
+}
+
+function getStringValue(object: JsonObject, key: string): string | null {
+	const value = object[key];
+	return typeof value === "string" ? value : null;
+}
+
+function equalsIgnoreCase(value: string, expected: string): boolean {
+	return value.toLowerCase() === expected.toLowerCase();
+}
+
+function isLikelyAgentStreamEvent(event: JsonObject): boolean {
+	const type = getStringValue(event, "type");
+	if (!type) {
+		return false;
+	}
+
+	if (
+		type === "thread.started" ||
+		type === "turn.started" ||
+		type === "turn.completed" ||
+		type === "item.completed" ||
+		type === "text" ||
+		type === "step_start" ||
+		type === "step_finish" ||
+		type === "error" ||
+		type === "log" ||
+		type === "result"
+	) {
+		return true;
+	}
+
+	return (
+		Object.hasOwn(event, "thread_id") ||
+		Object.hasOwn(event, "usage") ||
+		Object.hasOwn(event, "item") ||
+		Object.hasOwn(event, "sessionID") ||
+		Object.hasOwn(event, "part")
+	);
+}
+
+function extractTextFromAgentStreamEvent(event: JsonObject): string | null {
+	const type = getStringValue(event, "type");
+	if (!type) {
+		return null;
+	}
+
+	if (type === "text") {
+		const part = event.part;
+		if (part && typeof part === "object" && !Array.isArray(part)) {
+			const text = getStringValue(part as JsonObject, "text");
+			return text?.trim() || null;
+		}
+		return null;
+	}
+
+	if (type === "item.completed") {
+		const item = event.item;
+		if (!item || typeof item !== "object" || Array.isArray(item)) {
+			return null;
+		}
+		const itemObject = item as JsonObject;
+		const itemType = getStringValue(itemObject, "type");
+		if (itemType !== "agent_message") {
+			return null;
+		}
+		const text = getStringValue(itemObject, "text");
+		return text?.trim() || null;
+	}
+
+	if (type === "error") {
+		const message =
+			getStringValue(event, "message") || getStringValue(event, "error");
+		return message ? `Error: ${message}` : null;
+	}
+
+	if (type === "log") {
+		const chunk = getStringValue(event, "chunk");
+		return chunk?.trim() || null;
+	}
+
+	if (type === "result") {
+		const output = getStringValue(event, "output");
+		return output?.trim() || null;
+	}
+
+	return null;
+}
+
+function sanitizeAgentMessageContent(content: string): string {
+	const normalized = content.replaceAll("\r\n", "\n").replaceAll("\r", "\n");
+	const output: string[] = [];
+	let lastNonEmptyLine = "";
+	for (const rawLine of normalized.split("\n")) {
+		const trimmed = rawLine.trim();
+		if (!trimmed) {
+			if (output.length > 0 && output[output.length - 1] !== "") {
+				output.push("");
+			}
+			continue;
+		}
+
+		if (equalsIgnoreCase(trimmed, "reading prompt from stdin...")) {
+			continue;
+		}
+		if (
+			trimmed.includes(
+				"codex_core::rollout::list: state db missing rollout path",
+			)
+		) {
+			continue;
+		}
+		if (
+			equalsIgnoreCase(trimmed, "run started") ||
+			equalsIgnoreCase(trimmed, "run completed") ||
+			trimmed.startsWith("Step:")
+		) {
+			continue;
+		}
+
+		const parsed = parseJsonLine(trimmed);
+		if (parsed && isLikelyAgentStreamEvent(parsed)) {
+			const extracted = extractTextFromAgentStreamEvent(parsed);
+			if (!extracted) {
+				continue;
+			}
+			if (extracted === lastNonEmptyLine) {
+				continue;
+			}
+			output.push(extracted);
+			lastNonEmptyLine = extracted;
+			continue;
+		}
+
+		if (trimmed === lastNonEmptyLine) {
+			continue;
+		}
+		output.push(rawLine);
+		lastNonEmptyLine = trimmed;
+	}
+
+	while (output.length > 0 && output[output.length - 1] === "") {
+		output.pop();
+	}
+	return output.join("\n").trim();
+}
+
 function escapeHtml(value: string): string {
 	return value
 		.replaceAll("&", "&amp;")
@@ -237,6 +396,11 @@ function MessageBubble({
 	}
 
 	// Agent message
+	const cleanedAgentContent = sanitizeAgentMessageContent(message.content);
+	if (!message.thinking && !cleanedAgentContent) {
+		return null;
+	}
+
 	return (
 		<div className="flex items-start gap-3 px-5 py-3">
 			<div className="h-6 w-6 rounded bg-accent flex items-center justify-center shrink-0 mt-0.5">
@@ -264,7 +428,7 @@ function MessageBubble({
 				<div
 					className="text-[13px] text-foreground leading-relaxed"
 					dangerouslySetInnerHTML={{
-						__html: renderMarkdownToHtml(message.content),
+						__html: renderMarkdownToHtml(cleanedAgentContent),
 					}}
 				/>
 				{message.files && message.files.length > 0 && (
