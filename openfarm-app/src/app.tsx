@@ -5,6 +5,7 @@ import { EmptyState } from "@/components/conductor/empty-state";
 import { NewAgentDialog } from "@/components/conductor/new-agent-dialog";
 import { SettingsPanel } from "@/components/conductor/settings-panel";
 import { Titlebar } from "@/components/conductor/titlebar";
+import { McpMarketplaceView } from "@/components/mcp";
 import {
 	addLocalWorkspace,
 	archiveAgentConversation,
@@ -154,6 +155,7 @@ export default function App() {
 		string | undefined
 	>(undefined);
 	const [settingsOpen, setSettingsOpen] = useState(false);
+	const [marketplaceOpen, setMarketplaceOpen] = useState(false);
 	const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
 	const [queuedInstructionsByAgent, setQueuedInstructionsByAgent] = useState<
 		Record<string, QueuedInstruction[]>
@@ -750,6 +752,7 @@ export default function App() {
 					setNewAgentOpen(true);
 				}}
 				onOpenSettings={() => setSettingsOpen(true)}
+				onOpenMarketplace={() => setMarketplaceOpen(true)}
 				onToggleSidebar={() => setSidebarOpen((value) => !value)}
 				sidebarOpen={sidebarOpen}
 			/>
@@ -822,6 +825,24 @@ export default function App() {
 				open={settingsOpen}
 				settings={settings}
 			/>
+
+			{marketplaceOpen && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+					<div className="h-[80vh] w-[90vw] max-w-4xl overflow-hidden rounded-lg border bg-background shadow-xl">
+						<McpMarketplaceView
+							catalog={mcpManager.listAvailable()}
+							installed={mcpManager.listInstalled()}
+							onInstall={async (id) => {
+								await mcpManager.install(id);
+								setMarketplaceOpen(false);
+							}}
+							onUninstall={async (id) => {
+								await mcpManager.uninstall(id);
+							}}
+						/>
+					</div>
+				</div>
+			)}
 		</div>
 	);
 }

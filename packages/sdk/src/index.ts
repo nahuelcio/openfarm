@@ -1,7 +1,9 @@
 // Context Generation
 // export { ContextEngine } from "@openfarm/context";
-export { runLegacyCLI } from "./cli-legacy";
 
+// MCP Marketplace
+export * from "@openfarm/mcp-marketplace";
+export { runLegacyCLI } from "./cli-legacy";
 // Main export
 export { OpenFarm } from "./open-farm";
 export * from "./parsers";

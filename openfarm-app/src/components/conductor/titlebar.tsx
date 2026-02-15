@@ -6,6 +6,7 @@ import {
 	Plus,
 	Search,
 	Settings,
+	Store,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -14,6 +15,7 @@ interface TitlebarProps {
 	onToggleSidebar: () => void;
 	onNewAgent: () => void;
 	onOpenSettings: () => void;
+	onOpenMarketplace: () => void;
 }
 
 export function Titlebar({
@@ -21,6 +23,7 @@ export function Titlebar({
 	onToggleSidebar,
 	onNewAgent,
 	onOpenSettings,
+	onOpenMarketplace,
 }: TitlebarProps) {
 	return (
 		<header
@@ -74,6 +77,15 @@ export function Titlebar({
 				>
 					<Plus className="h-4 w-4" />
 					<span className="sr-only">New agent</span>
+				</Button>
+				<Button
+					variant="ghost"
+					size="icon"
+					className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-accent"
+					onClick={onOpenMarketplace}
+				>
+					<Store className="h-4 w-4" />
+					<span className="sr-only">MCP Marketplace</span>
 				</Button>
 				<Button
 					variant="ghost"

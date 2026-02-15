@@ -232,7 +232,7 @@ export function PromptInput({
 		if (canUseProvider) {
 			setSelectedProvider(provider);
 		}
-	}, [availableProviders, provider]);
+	}, [provider]);
 
 	useEffect(() => {
 		const nextModel =
@@ -242,7 +242,7 @@ export function PromptInput({
 			availableProviders[0]?.defaultModel ||
 			"";
 		setSelectedModel(nextModel);
-	}, [availableProviders, model, provider]);
+	}, [model, provider]);
 
 	useEffect(() => {
 		const nextAgent =
@@ -253,7 +253,7 @@ export function PromptInput({
 				?.agents?.[0]?.id ||
 			"";
 		setSelectedMode(nextAgent);
-	}, [availableProviders, mode, provider]);
+	}, [mode, provider]);
 
 	useEffect(() => {
 		if (!workspaceId) {

@@ -1,0 +1,133 @@
+{
+	"version": "1.0.0",
+	"mcps": [
+		{
+			"id": "context7",
+			"name": "Context7",
+			"description": "Enhanced context awareness using VectorDB. Index and query your codebase with semantic search.",
+			"icon": "database",
+			"npmPackage": "@upstash/context7-mcp",
+			"category": "dev-tools",
+			"defaultArgs": [],
+			"defaultEnv": {},
+			"configSchema": {
+				"context7ApiKey": {
+					"type": "string",
+					"required": true,
+					"description": "Context7 API key"
+				}
+			},
+			"verified": true,
+			"docsUrl": "https://context7.com/docs"
+		},
+		{
+			"id": "figma",
+			"name": "Figma",
+			"description": "Access Figma designs, components, and files. Fetch design data and convert to code.",
+			"icon": "figma",
+			"npmPackage": "@modelcontextprotocol/server-figma",
+			"category": "design",
+			"defaultArgs": [],
+			"defaultEnv": {
+				"FIGMA_ACCESS_TOKEN": ""
+			},
+			"configSchema": {
+				"figmaToken": {
+					"type": "string",
+					"required": true,
+					"description": "Figma personal access token"
+				}
+			},
+			"verified": true,
+			"docsUrl": "https://www.figma.com/developers/api"
+		},
+		{
+			"id": "github",
+			"name": "GitHub",
+			"description": "Manage issues, pull requests, repositories, and workflows. Create branches, commit changes, and more.",
+			"icon": "github",
+			"npmPackage": "@modelcontextprotocol/server-github",
+			"category": "dev-tools",
+			"defaultArgs": [],
+			"defaultEnv": {
+				"GITHUB_PERSONAL_ACCESS_TOKEN": ""
+			},
+			"configSchema": {
+				"token": {
+					"type": "string",
+					"required": true,
+					"description": "GitHub personal access token"
+				}
+			},
+			"verified": true,
+			"docsUrl": "https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens"
+		},
+		{
+			"id": "linear",
+			"name": "Linear",
+			"description": "Issue tracking and project management. Create, update, and sync issues with Linear.",
+			"icon": "linear",
+			"npmPackage": "@modelcontextprotocol/server-linear",
+			"category": "productivity",
+			"defaultArgs": [],
+			"defaultEnv": {
+				"LINEAR_API_KEY": ""
+			},
+			"configSchema": {
+				"apiKey": {
+					"type": "string",
+					"required": true,
+					"description": "Linear API key"
+				},
+				"organizationId": {
+					"type": "string",
+					"required": false,
+					"description": "Linear organization ID"
+				}
+			},
+			"verified": true,
+			"docsUrl": "https://developers.linear.app/api/graphql"
+		},
+		{
+			"id": "notion",
+			"name": "Notion",
+			"description": "Access and manage Notion pages, databases, and blocks. Read and write content.",
+			"icon": "notion",
+			"npmPackage": "@notionhq/notion-mcp",
+			"category": "productivity",
+			"defaultArgs": [],
+			"defaultEnv": {
+				"NOTION_API_KEY": ""
+			},
+			"configSchema": {
+				"apiKey": {
+					"type": "string",
+					"required": true,
+					"description": "Notion API key"
+				}
+			},
+			"verified": true,
+			"docsUrl": "https://developers.notion.com/reference"
+		},
+		{
+			"id": "playwright",
+			"name": "Playwright",
+			"description": "Browser automation and testing. Control Chromium, Firefox, and WebKit browsers.",
+			"icon": "playwright",
+			"npmPackage": "@modelcontextprotocol/server-playwright",
+			"category": "testing",
+			"defaultArgs": [],
+			"defaultEnv": {},
+			"configSchema": {
+				"browserType": {
+					"type": "string",
+					"required": false,
+					"description": "Browser to use: chromium, firefox, or webkit",
+					"default": "chromium"
+				}
+			},
+			"verified": true,
+			"docsUrl": "https://playwright.dev/"
+		}
+	]
+}
