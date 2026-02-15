@@ -66,43 +66,6 @@ function findAgentContext(
 	return null;
 }
 
-function applyOutputChunk(
-	workspaces: Workspace[],
-	agentId: string,
-	chunk: string,
-	status?: AgentStatus,
-): Workspace[] {
-	return workspaces.map((workspace) => ({
-		...workspace,
-		agents: workspace.agents.map((agent) => {
-			if (agent.id !== agentId) {
-				return agent;
-			}
-			const messages = [...agent.messages];
-			const last = messages[messages.length - 1];
-			if (last && last.role === "agent" && last.thinking) {
-				last.content = `${last.content}${chunk}`;
-			} else {
-				messages.push({
-					id: `m-${Date.now()}-${Math.random().toString(16).slice(2, 6)}`,
-					role: "agent",
-					content: chunk,
-					timestamp: new Date().toLocaleTimeString([], {
-						hour: "2-digit",
-						minute: "2-digit",
-					}),
-					thinking: true,
-				});
-			}
-			return {
-				...agent,
-				status: status || agent.status,
-				messages,
-			};
-		}),
-	}));
-}
-
 function mergeSettingsWithCatalog(
 	current: AppSettings,
 	catalog: ProviderConfig[],
@@ -280,15 +243,6 @@ export default function App() {
 								agent.id === id ? { ...agent, diffs } : agent,
 							),
 						})),
-					);
-				}),
-				await subscribeAgentEvents("agent:output", (payload) => {
-					const value = payload as { agent_id?: string; chunk?: string };
-					if (!value.agent_id || !value.chunk) {
-						return;
-					}
-					setWorkspaces((prev) =>
-						applyOutputChunk(prev, value.agent_id || "", value.chunk || ""),
 					);
 				}),
 			];

@@ -4258,6 +4258,28 @@ fn sanitize_assistant_context(content: &str) -> String {
     lines.join("\n").trim().to_string()
 }
 
+fn sanitize_assistant_chat_content(content: &str) -> String {
+    let lines: Vec<&str> = content
+        .lines()
+        .filter(|line| {
+            let trimmed = line.trim();
+            if trimmed.is_empty() {
+                return true;
+            }
+            if trimmed.starts_with("Step:") {
+                return false;
+            }
+            if trimmed.eq_ignore_ascii_case("Run started")
+                || trimmed.eq_ignore_ascii_case("Run completed")
+            {
+                return false;
+            }
+            true
+        })
+        .collect();
+    lines.join("\n").trim().to_string()
+}
+
 fn build_execution_context(pool: &AgentPool, agent: &Agent, latest_message: &str) -> Option<String> {
     let clean_latest = latest_message.trim();
     if clean_latest.is_empty() {
@@ -4386,104 +4408,22 @@ fn load_agent_messages(pool: &AgentPool, agent: &Agent) -> Vec<UiMessage> {
                     });
                 }
             }
-            if event.event_type == "agent:model" {
-                let model = event
-                    .data
-                    .get("model")
-                    .and_then(|value| value.as_str())
-                    .unwrap_or_default();
-                if !model.is_empty() {
-                    push_message(&mut messages, UiMessage {
-                        id: format!("{}-{}", agent.id, uuid::Uuid::new_v4()),
-                        role: "system".to_string(),
-                        content: format!("Model selected: `{model}`"),
-                        timestamp: event_timestamp.clone(),
-                        thinking: false,
-                    });
-                }
-            }
-            if event.event_type == "agent:mode" {
-                let mode = event
-                    .data
-                    .get("mode")
-                    .and_then(|value| value.as_str())
-                    .unwrap_or_default();
-                if !mode.is_empty() {
-                    push_message(&mut messages, UiMessage {
-                        id: format!("{}-{}", agent.id, uuid::Uuid::new_v4()),
-                        role: "system".to_string(),
-                        content: format!("Agent mode: `{mode}`"),
-                        timestamp: event_timestamp.clone(),
-                        thinking: false,
-                    });
-                }
-            }
-            if event.event_type == "agent:started" {
-                push_message(&mut messages, UiMessage {
-                    id: format!("{}-{}", agent.id, uuid::Uuid::new_v4()),
-                    role: "system".to_string(),
-                    content: "Run started".to_string(),
-                    timestamp: event_timestamp.clone(),
-                    thinking: false,
-                });
-            }
-            if event.event_type == "agent:output" {
-                let chunk = event
-                    .data
-                    .get("chunk")
-                    .and_then(|value| value.as_str())
-                    .unwrap_or_default()
-                    .trim()
-                    .to_string();
-                if !chunk.is_empty() {
-                    push_message(&mut messages, UiMessage {
-                        id: format!("{}-{}", agent.id, uuid::Uuid::new_v4()),
-                        role: "system".to_string(),
-                        content: chunk,
-                        timestamp: event_timestamp.clone(),
-                        thinking: false,
-                    });
-                }
-            }
             if event.event_type == "agent:assistant-message" {
                 let content = event
                     .data
                     .get("content")
                     .and_then(|value| value.as_str())
                     .unwrap_or_default();
-                if !content.is_empty() {
+                let cleaned = sanitize_assistant_chat_content(content);
+                if !cleaned.is_empty() {
                     push_message(&mut messages, UiMessage {
                         id: format!("{}-{}", agent.id, uuid::Uuid::new_v4()),
                         role: "agent".to_string(),
-                        content: content.to_string(),
+                        content: cleaned,
                         timestamp: event_timestamp.clone(),
                         thinking: false,
                     });
                 }
-            }
-            if event.event_type == "agent:completed" {
-                push_message(&mut messages, UiMessage {
-                    id: format!("{}-{}", agent.id, uuid::Uuid::new_v4()),
-                    role: "system".to_string(),
-                    content: "Run completed".to_string(),
-                    timestamp: event_timestamp.clone(),
-                    thinking: false,
-                });
-            }
-            if event.event_type == "agent:failed" {
-                let error = event
-                    .data
-                    .get("error")
-                    .and_then(|value| value.as_str())
-                    .unwrap_or("Run failed")
-                    .to_string();
-                push_message(&mut messages, UiMessage {
-                    id: format!("{}-{}", agent.id, uuid::Uuid::new_v4()),
-                    role: "system".to_string(),
-                    content: format!("Run failed: {error}"),
-                    timestamp: event_timestamp,
-                    thinking: false,
-                });
             }
         }
     }
