@@ -31,6 +31,17 @@ export interface ExecutionResult {
   error?: string;
   duration: number;
   tokens?: number;
+  statistics?: {
+    creditsSpent: number;
+    toolCalls: number;
+    model: string;
+    filesChanged: number;
+    terminalsCreated: number;
+    requestId: string;
+    tokensInput: number;
+    tokensOutput: number;
+    duration: number;
+  };
 }
 
 export interface ProviderInfo {

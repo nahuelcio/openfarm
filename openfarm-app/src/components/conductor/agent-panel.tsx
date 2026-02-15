@@ -17,6 +17,7 @@ import { AgentHeader } from "./agent-header";
 import { AgentLogsSidebar } from "./agent-logs-sidebar";
 import { ChatMessages } from "./chat-messages";
 import { DiffViewer } from "./diff-viewer";
+import { McpStatusIndicator } from "../mcp";
 import { PromptInput } from "./prompt-input";
 
 interface AgentPanelProps {
@@ -50,6 +51,13 @@ interface AgentPanelProps {
 	stoppingAgent: boolean;
 	onLoadAgentEvents: () => void;
 	providers: ProviderConfig[];
+	installedMcps: Array<{
+		id: string;
+		provider: AgentProvider;
+		config: Record<string, any>;
+		installedAt: string;
+	}>;
+	onToggleMcp?: (mcpId: string, provider: AgentProvider) => void;
 }
 
 export function AgentPanel({
@@ -71,6 +79,8 @@ export function AgentPanel({
 	stoppingAgent,
 	onLoadAgentEvents,
 	providers,
+	installedMcps,
+	onToggleMcp,
 }: AgentPanelProps) {
 	const [diffOpen, setDiffOpen] = useState(false);
 	const [diffInitialFile, setDiffInitialFile] = useState<string | undefined>();
@@ -107,6 +117,14 @@ export function AgentPanel({
 				onToggleLogs={handleToggleLogs}
 				logsOpen={logsOpen}
 			/>
+			{/* MCP Status Indicator */}
+			<div className="flex items-center justify-between gap-2 border-b border-border/70 bg-secondary/20 px-4 py-2">
+				<McpStatusIndicator 
+					providers={providers} 
+					installedMcps={installedMcps}
+					onToggleMcp={onToggleMcp}
+				/>
+			</div>
 			{activeSubthreadName && (
 				<div className="flex items-center justify-between gap-2 border-b border-border/70 bg-secondary/20 px-4 py-2">
 					<p className="text-xs text-muted-foreground">

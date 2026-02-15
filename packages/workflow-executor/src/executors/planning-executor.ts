@@ -263,7 +263,7 @@ export function buildPlanningInstruction(
       .replace(/{repositoryUrl}/g, workItem.repositoryUrl || "")
       .replace(/{tags}/g, workItem.tags?.join(", ") || "")
       .replace(/{state}/g, workItem.state || "")
-      .replace(/{assignedTo}/g, workItem.assignedTo || "");
+      .replace(/{assignee}/g, workItem.assignee?.name || "");
 
     // Handle preInstructions conditionally - if empty, remove the placeholder line completely
     if (sanitizedPreInstructions) {

@@ -150,3 +150,4 @@ export const defaultFetch: FetchFunction =
 export { CircuitBreaker } from "./circuit-breaker";
 export { metrics } from "./metrics";
 export { validateInstruction } from "./validation";
+export { StatisticsCollector, type ExecutionStatistics } from "./statistics-collector";

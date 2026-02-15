@@ -11,6 +11,8 @@ interface McpCatalogEntry {
 	icon: string;
 	npmPackage: string;
 	category: string;
+	configSchema?: Record<string, any>;
+	docsUrl?: string;
 }
 
 interface InstalledMcp {
@@ -106,6 +108,8 @@ export function McpMarketplaceView({
 							loading={loading === mcp.id}
 							onInstall={() => onInstall(mcp.id)}
 							onUninstall={() => onUninstall(mcp.id)}
+							configSchema={mcp.configSchema}
+							docsUrl={mcp.docsUrl}
 						/>
 					))}
 				</div>

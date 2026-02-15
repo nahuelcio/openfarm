@@ -121,9 +121,7 @@ export async function executeGitCheckout(
   const result = await checkoutBranch(
     updatedGitConfig,
     branch,
-    defaultBranch,
-    fs,
-    execFn
+    { defaultBranch }
   );
 
   if (!result.ok) {
@@ -208,9 +206,7 @@ export async function executeGitBranch(
   const result = await checkoutBranch(
     updatedGitConfig,
     finalBranchName,
-    defaultBranch,
-    fsPod,
-    execFn
+    { defaultBranch }
   );
 
   if (!result.ok) {

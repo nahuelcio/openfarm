@@ -3,78 +3,9 @@ import { logger } from "@openfarm/logger";
 import { err, ok, type Result } from "@openfarm/result";
 import { chunk } from "@openfarm/utils";
 import { workItemCache } from "./cache";
-
-// Regex patterns at top level for performance
-const TRAILING_SLASH_REGEX = /\/$/;
-
-// Types for Azure API responses
-interface AzureWorkItemFields {
-  "System.Tags"?: string;
-  "System.AssignedTo"?:
-    | string
-    | {
-        displayName?: string;
-        uniqueName?: string;
-        imageUrl?: string;
-        id?: string;
-      };
-  "System.Id"?: number | string;
-  "System.Title"?: string;
-  "System.Description"?: string;
-  "Microsoft.VSTS.Common.AcceptanceCriteria"?: string;
-  "Microsoft.VSTS.Common.Priority"?: number; // Priority field from Azure (1-4 typically)
-  "System.WorkItemType"?: string;
-  "System.TeamProject"?: string;
-  "System.State"?: string;
-}
-
-interface AzureWorkItemApiResponse {
-  id: number | string;
-  fields?: AzureWorkItemFields;
-}
-
-interface AzureWiqlWorkItem {
-  id: number | string;
-}
-
-interface AzureWiqlResponse {
-  workItems: AzureWiqlWorkItem[];
-}
-
-interface AzureRepositoryApiResponse {
-  id: string;
-  name: string;
-  remoteUrl?: string;
-  url?: string;
-}
-
-interface AzureProjectApiResponse {
-  id: string;
-  name: string;
-}
-
-interface AzurePullRequest {
-  sourceRefName: string;
-  targetRefName: string;
-  status: string;
-  url?: string;
-}
-
-interface AzureConfig {
-  orgUrl: string;
-  project: string;
-  pat: string;
-  repoId?: string; // Needed for PR
-}
-
-export interface AzureRepository {
-  id: string;
-  name: string;
-  url: string;
-  project: string;
-}
-
-export { AzurePlatformAdapter } from "./adapter";
+import { parseTags, getAssignedToValue, extractAssignee, mapAzurePriority, convertToWorkItem } from "./utils/azure-helpers";
+import { checkCacheForWorkItems, executeWiqlQuery, applyPaginationToIds, saveToCacheIfNeeded } from "./utils/query-helpers";
+import type { AzureConfig, FetchFunction, AzureRepository, AzureProject } from "./types";
 
 import { defaultFetch, type FetchFunction } from "@openfarm/utils";
 
@@ -556,7 +487,6 @@ export const processWorkItemBatch = async (
         project: fields["System.TeamProject"] || config.project,
         tags,
         state: fields["System.State"] || "Unknown",
-        assignedTo, // Keep for backward compatibility
         assignee,
         priority,
       };

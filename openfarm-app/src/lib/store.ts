@@ -43,6 +43,30 @@ export interface FileDiff {
 	hunks: DiffHunk[];
 }
 
+export interface ResponseStatistics {
+	creditsSpent: number;
+	toolCalls: number;
+	model: string;
+	filesChanged: number;
+	terminalsCreated: number;
+	requestId: string;
+	tokensInput: number;
+	tokensOutput: number;
+	duration: number;
+}
+
+export interface ExecutionStatistics {
+	creditsSpent: number;
+	toolCalls: number;
+	model: string;
+	filesChanged: number;
+	terminalsCreated: number;
+	requestId: string;
+	tokensInput: number;
+	tokensOutput: number;
+	duration: number;
+}
+
 export interface AgentMessage {
 	id: string;
 	role: "user" | "agent" | "system";
@@ -51,6 +75,7 @@ export interface AgentMessage {
 	files?: string[];
 	thinking?: boolean;
 	attachments?: Attachment[];
+	statistics?: ResponseStatistics;
 }
 
 export interface AgentExecutionEvent {

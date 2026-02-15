@@ -8,8 +8,10 @@ import {
 	FileText,
 	Terminal,
 	User,
+	BarChart3,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { StatisticsDialog } from "@/components/conductor/statistics-dialog";
 import type { AgentMessage, Attachment } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
@@ -443,9 +445,22 @@ function MessageBubble({
 					</div>
 				)}
 			</div>
-			<span className="mt-1 hidden shrink-0 text-[10px] text-muted-foreground lg:block">
-				{message.timestamp}
-			</span>
+			<div className="flex items-start gap-2 mt-1">
+				<span className="hidden shrink-0 text-[10px] text-muted-foreground lg:block">
+					{message.timestamp}
+				</span>
+				{message.statistics && (
+					<StatisticsDialog statistics={message.statistics}>
+						<button
+							className="shrink-0 p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+							type="button"
+						>
+							<BarChart3 className="h-3 w-3" />
+							<span className="sr-only">View statistics</span>
+						</button>
+					</StatisticsDialog>
+				)}
+			</div>
 		</div>
 	);
 }

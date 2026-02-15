@@ -108,7 +108,11 @@ export class GitHubPlatformAdapter implements PlatformAdapter {
         repositoryUrl: `https://github.com/${this.owner}/${this.repo}.git`,
         tags: data.labels?.map((l: { name: string }) => l.name) || [],
         state: data.state,
-        assignedTo: data.assignee?.login || undefined,
+        assignee: data.assignee ? {
+          id: data.assignee.id.toString(),
+          name: data.assignee.login,
+          avatarUrl: data.assignee.avatar_url
+        } : undefined,
       };
 
       return ok(workItem);

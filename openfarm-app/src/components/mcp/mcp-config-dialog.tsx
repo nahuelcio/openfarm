@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import {
 	Dialog,
 	DialogContent,
+	DialogDescription,
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
@@ -41,8 +42,6 @@ export function McpConfigDialog({
 	mcpConfigSchema,
 	providers,
 }: McpConfigDialogProps) {
-	console.log("McpConfigDialog rendered with:", { open, mcpId, mcpName, providers: providers.length });
-	
 	const [selectedProvider, setSelectedProvider] = useState<AgentProvider>(
 		(providers[0]?.id as AgentProvider) || "claude-code",
 	);
@@ -90,6 +89,9 @@ export function McpConfigDialog({
 			<DialogContent className="max-w-lg">
 				<DialogHeader>
 					<DialogTitle>Install {mcpName}</DialogTitle>
+					<DialogDescription>
+						Select a provider and configure the MCP settings
+					</DialogDescription>
 				</DialogHeader>
 
 				<div className="space-y-6">
@@ -144,21 +146,29 @@ export function McpConfigDialog({
 								Configuration
 							</label>
 							<div className="space-y-3">
-								{Object.entries(mcpConfigSchema).map(([key, schema]) => (
-									<div key={key}>
-										<label className="text-xs text-muted-foreground uppercase tracking-wider font-medium mb-1.5 block">
-											{schema.description}
-											{schema.required && <span className="text-red-500 ml-1">*</span>}
-										</label>
-										<input
-											type={schema.type === "string" ? "text" : "password"}
-											value={configValues[key] || ""}
-											onChange={(e) => handleConfigChange(key, e.target.value)}
-											placeholder={`Enter ${schema.description.toLowerCase()}`}
-											className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/40"
-										/>
-									</div>
-								))}
+								{Object.entries(mcpConfigSchema).map(([key, schema]) => {
+									// Validar que schema exista y tenga las propiedades necesarias
+									if (!schema || typeof schema !== 'object') {
+										console.warn(`Invalid schema for key: ${key}`, schema);
+										return null;
+									}
+									
+									return (
+										<div key={key}>
+											<label className="text-xs text-muted-foreground uppercase tracking-wider font-medium mb-1.5 block">
+												{schema?.description || key}
+												{schema?.required && <span className="text-red-500 ml-1">*</span>}
+											</label>
+											<input
+												type={schema?.type === "string" ? "text" : "password"}
+												value={configValues[key] || ""}
+												onChange={(e) => handleConfigChange(key, e.target.value)}
+												placeholder={`Enter ${schema?.description?.toLowerCase?.() || 'value'}`}
+												className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/40"
+											/>
+										</div>
+									);
+								})}
 							</div>
 						</div>
 					)}

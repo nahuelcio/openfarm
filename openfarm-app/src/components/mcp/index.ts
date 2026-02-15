@@ -3,3 +3,4 @@ export { McpConfigDialog } from "./mcp-config-dialog";
 export { McpInstallButton } from "./mcp-install-button";
 export { McpMarketplaceView } from "./mcp-marketplace-view";
 export { McpSearch } from "./mcp-search";
+export { McpStatusIndicator } from "./mcp-status-indicator";

@@ -1,5 +1,6 @@
 import { MODEL_ALIASES } from "@openfarm/config";
 import { generateText, type LanguageModel } from "ai";
+import { StatisticsCollector } from "@openfarm/utils";
 
 function createOpenRouterModel(
   apiKey: string,
@@ -158,6 +159,18 @@ export class LlmService {
       promptTokens: number;
       completionTokens: number;
       totalTokens: number;
+    };
+    /** Execution statistics */
+    statistics?: {
+      creditsSpent: number;
+      toolCalls: number;
+      model: string;
+      filesChanged: number;
+      terminalsCreated: number;
+      requestId: string;
+      tokensInput: number;
+      tokensOutput: number;
+      duration: number;
     };
   }> {
     const {
