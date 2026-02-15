@@ -16,7 +16,8 @@ export const REAL_PROVIDER_MCPS = {
 		{
 			id: "fetch",
 			name: "Fetch",
-			description: "Web content fetching and conversion for efficient LLM usage",
+			description:
+				"Web content fetching and conversion for efficient LLM usage",
 			icon: "globe",
 			category: "network",
 			official: true,
@@ -68,7 +69,8 @@ export const REAL_PROVIDER_MCPS = {
 		{
 			id: "sequential-thinking",
 			name: "Sequential Thinking",
-			description: "Dynamic and reflective problem-solving through thought sequences",
+			description:
+				"Dynamic and reflective problem-solving through thought sequences",
 			icon: "brain",
 			category: "ai",
 			official: true,
@@ -92,7 +94,8 @@ export const REAL_PROVIDER_MCPS = {
 		{
 			id: "github",
 			name: "GitHub",
-			description: "GitHub integration for repositories, issues, and pull requests",
+			description:
+				"GitHub integration for repositories, issues, and pull requests",
 			icon: "github",
 			category: "development",
 			official: true,

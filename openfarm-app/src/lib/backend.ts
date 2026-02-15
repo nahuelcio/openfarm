@@ -1,5 +1,6 @@
 import { invoke as tauriInvoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { getProviderMcpIntegration } from "./provider-mcp-integration";
 import type {
 	Agent,
 	AgentExecutionEvent,
@@ -15,7 +16,6 @@ import type {
 	WorkspaceSlashCommand,
 } from "./store";
 import { DEFAULT_SETTINGS } from "./store";
-import { getProviderMcpIntegration } from "./provider-mcp-integration";
 
 type AgentEventType =
 	| "agent:started"
@@ -160,7 +160,7 @@ async function webInvoke<T>(
 							toolCalls: 0,
 							model: provider || "web-fallback",
 							filesChanged: 0,
-							terminalsCreated: 0,
+							processesCreated: 0,
 							requestId: `web-${Date.now()}`,
 							tokensInput: 0,
 							tokensOutput: 0,
@@ -234,7 +234,7 @@ async function webInvoke<T>(
 							toolCalls: 0,
 							model: provider || "web-fallback",
 							filesChanged: 0,
-							terminalsCreated: 0,
+							processesCreated: 0,
 							requestId: `web-${Date.now()}`,
 							tokensInput: 0,
 							tokensOutput: 0,
@@ -308,9 +308,14 @@ async function webInvoke<T>(
 				try {
 					const integration = getProviderMcpIntegration(agent.provider);
 					mcpTools = await integration.getToolsForAgent(agentId);
-					console.log(`🔧 Loaded ${mcpTools.length} MCP tools for ${agent.provider} agent ${agentId}`);
+					console.log(
+						`🔧 Loaded ${mcpTools.length} MCP tools for ${agent.provider} agent ${agentId}`,
+					);
 				} catch (error) {
-					console.warn(`⚠️ Failed to load MCP tools for ${agent.provider}:`, error);
+					console.warn(
+						`⚠️ Failed to load MCP tools for ${agent.provider}:`,
+						error,
+					);
 				}
 
 				agent.messages.push({
@@ -324,7 +329,9 @@ async function webInvoke<T>(
 				// Create enhanced response with MCP tools info
 				let responseContent = "Web fallback response: message received.";
 				if (mcpTools.length > 0) {
-					const toolNames = mcpTools.map(tool => tool.name || tool.function?.name).join(", ");
+					const toolNames = mcpTools
+						.map((tool) => tool.name || tool.function?.name)
+						.join(", ");
 					responseContent = `Web fallback response: message received. Available MCP tools: ${toolNames}`;
 				}
 
@@ -338,7 +345,7 @@ async function webInvoke<T>(
 						toolCalls: mcpTools.length,
 						model: provider || "web-fallback",
 						filesChanged: 0,
-						terminalsCreated: 0,
+						processesCreated: 0,
 						requestId: `web-${Date.now()}`,
 						tokensInput: 0,
 						tokensOutput: 0,
@@ -586,32 +593,38 @@ export async function installMcp(config: {
 	mcpId: string;
 	provider: AgentProvider;
 	config: Record<string, any>;
-}): Promise<Array<{
-	id: string;
-	provider: AgentProvider;
-	config: Record<string, any>;
-	installedAt: string;
-}>> {
+}): Promise<
+	Array<{
+		id: string;
+		provider: AgentProvider;
+		config: Record<string, any>;
+		installedAt: string;
+	}>
+> {
 	return invoke("install_mcp", config);
 }
 
 export async function uninstallMcp(config: {
 	mcpId: string;
 	provider: AgentProvider;
-}): Promise<Array<{
-	id: string;
-	provider: AgentProvider;
-	config: Record<string, any>;
-	installedAt: string;
-}>> {
+}): Promise<
+	Array<{
+		id: string;
+		provider: AgentProvider;
+		config: Record<string, any>;
+		installedAt: string;
+	}>
+> {
 	return invoke("uninstall_mcp", config);
 }
 
-export async function getInstalledMcps(): Promise<Array<{
-	id: string;
-	provider: AgentProvider;
-	config: Record<string, any>;
-	installedAt: string;
-}>> {
+export async function getInstalledMcps(): Promise<
+	Array<{
+		id: string;
+		provider: AgentProvider;
+		config: Record<string, any>;
+		installedAt: string;
+	}>
+> {
 	return invoke("get_installed_mcps");
 }

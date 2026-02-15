@@ -67,7 +67,7 @@ export async function startWebServer(
     console.warn(
       `\n⚠️  WARNING: Binding to ${config.host} exposes this server to the network.`
     );
-    console.warn("   Anyone with network access can control your terminal.\n");
+    console.warn("   Anyone with network access can control this interface.\n");
     if (config.token) {
       console.log(`   Security token: ${config.token}`);
       console.log(

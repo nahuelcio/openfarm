@@ -15,12 +15,14 @@
     "test:e2e": "bun run --cwd openfarm-app test:e2e",
     "web": "bun run packages/sdk/src/cli-web.ts",
     "web:dev": "cd packages/web-ui && bun run dev",
+    "plan-review": "bun run packages/plan-review/bin/plan-openfarm",
     "clean": "turbo run clean && bun pm cache rm node_modules || rmdir /s /q node_modules",
     "prepare": "lefthook install"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.43",
     "@ai-sdk/openai": "^3.0.28",
+    "@modelcontextprotocol/sdk": "^1.26.0",
     "better-sqlite3": "^12.6.2",
     "node-pty": "^1.1.0",
     "pino": "^10.3.1",

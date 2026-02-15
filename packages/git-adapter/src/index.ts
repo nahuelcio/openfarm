@@ -374,9 +374,9 @@ export async function checkoutExistingBranch(
 }
 
 /**
- * Create a new branch
+ * Create a branch with specified name
  */
-export async function createNewBranch(
+export async function createBranch(
   config: GitConfig,
   branchName: string,
   execFn: ExecFunction
@@ -398,9 +398,9 @@ export async function createNewBranch(
 }
 
 /**
- * Checkout a branch with the new options-based signature
+ * Checkout a branch with options-based configuration
  */
-async function checkoutBranchNew(
+async function checkoutBranchWithOptions(
   config: GitConfig,
   branchName: string,
   options?: { defaultBranch?: string; skipConfigure?: boolean }
@@ -474,7 +474,7 @@ async function checkoutBranchNew(
   if (branchExists) {
     return checkoutExistingBranch(config, branchName, execFn);
   }
-  return createNewBranch(config, branchName, execFn);
+  return createBranch(config, branchName, execFn);
 }
 
 export async function checkoutBranch(
@@ -482,7 +482,7 @@ export async function checkoutBranch(
   branchName: string,
   options?: { defaultBranch?: string; skipConfigure?: boolean }
 ): Promise<Result<void>> {
-  return checkoutBranchNew(config, branchName, options);
+  return checkoutBranchWithOptions(config, branchName, options);
 }
 
 export const commitChanges = async (

@@ -1,4 +1,9 @@
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import type { AgentProvider } from "@/lib/store";
+import { scanSystemMcpConfigs, getPlatformMcpCommand, getPlatformEnvironment } from "./mcp-system-scanner";
+
+// Note: StdioClientTransport is not available in browser environment
+// We'll need to use a different transport or implement browser-compatible MCP
 
 export interface McpServerConfig {
 	id: string;
@@ -24,12 +29,12 @@ export interface McpResource {
 }
 
 export interface McpServer {
+	client: any; // Will be initialized by backend in browser environment
 	config: McpServerConfig;
-	tools: McpTool[];
-	resources: McpResource[];
+	tools: any[]; // Tool definitions
+	resources: any[]; // Resource definitions
 	connected: boolean;
 	lastError?: string;
-	process?: any; // Node.js child process
 }
 
 export class McpManager {
@@ -47,19 +52,24 @@ export class McpManager {
 	}
 
 	/**
-	 * Load MCP servers from localStorage and configuration
+	 * Load MCP servers from localStorage, system paths, and configuration
 	 */
 	async loadServers(): Promise<void> {
 		try {
-			// Get installed MCPs from localStorage
-			const installedData = localStorage.getItem('openfarm-installed-mcps');
+			console.log("🔍 Loading MCP servers from multiple sources...");
+
+			// 1. Get installed MCPs from localStorage
+			const installedData = localStorage.getItem("openfarm-installed-mcps");
 			const installedMcps = installedData ? JSON.parse(installedData) : [];
 
-			// Get MCP status (active/inactive)
-			const statusData = localStorage.getItem('openfarm-mcp-status');
+			// 2. Scan system paths for MCP configurations
+			const systemConfigs = await this.scanSystemConfigs();
+
+			// 3. Get MCP status (active/inactive)
+			const statusData = localStorage.getItem("openfarm-mcp-status");
 			const statusMap = statusData ? JSON.parse(statusData) : {};
 
-			// Load real provider MCPs
+			// Load localStorage MCPs first
 			for (const mcp of installedMcps) {
 				const key = `${mcp.id}-${mcp.provider}`;
 				const isActive = statusMap[key] !== false; // Default to true
@@ -77,9 +87,39 @@ export class McpManager {
 				}
 			}
 
-			console.log(`📦 Loaded ${this.servers.size} MCP servers`);
+			// Load system MCP configurations
+			for (const config of systemConfigs) {
+				const key = `${config.id}-${config.provider}`;
+				const isActive = statusMap[key] !== false; // Default to true
+
+				if (isActive && !this.servers.has(config.id)) {
+					await this.addServer({
+						...config,
+						env: {
+							...getPlatformEnvironment(),
+							...config.env,
+						},
+					});
+				}
+			}
+
+			console.log(`📦 Loaded ${this.servers.size} MCP servers (${installedMcps.length} from localStorage, ${systemConfigs.length} from system)`);
 		} catch (error) {
 			console.error("❌ Failed to load MCP servers:", error);
+		}
+	}
+
+	/**
+	 * Scan system paths for MCP configurations
+	 */
+	private async scanSystemConfigs(): Promise<any[]> {
+		try {
+			const systemConfigs = await scanSystemMcpConfigs();
+			console.log(`🔍 Found ${systemConfigs.length} MCP configurations in system paths`);
+			return systemConfigs;
+		} catch (error) {
+			console.log("⚠️ Could not scan system MCP configurations:", error);
+			return [];
 		}
 	}
 
@@ -90,25 +130,28 @@ export class McpManager {
 		try {
 			console.log(`🔧 Adding MCP server: ${config.name}`);
 
-			// For now, simulate the server connection
-			// In the future, this will actually spawn the MCP process
+			// Browser environment - MCP servers run via Tauri backend
+			// Store configuration for later use by backend
 			const server: McpServer = {
+				client: null as any, // Will be initialized by backend
 				config,
-				tools: this.getMockTools(config.id),
-				resources: this.getMockResources(config.id),
-				connected: true,
+				tools: [],
+				resources: [],
+				connected: false,
+				lastError: "Browser environment - MCP server managed by backend",
 			};
 
 			this.servers.set(config.id, server);
-			console.log(`✅ MCP server connected: ${config.name}`);
+			console.log(`✅ MCP server configuration stored: ${config.name}`);
 
 		} catch (error) {
 			console.error(`❌ Failed to add MCP server ${config.name}:`, error);
 			
 			// Store error but don't throw
 			const server: McpServer = {
+				client: null as any,
 				config,
-				tools: [],
+					tools: [],
 				resources: [],
 				connected: false,
 				lastError: error instanceof Error ? error.message : String(error),
@@ -122,11 +165,12 @@ export class McpManager {
 	 */
 	async removeServer(serverId: string): Promise<void> {
 		const server = this.servers.get(serverId);
-		if (server?.process) {
+		if (server?.client) {
 			try {
-				server.process.kill();
+				// Browser environment - cleanup handled by backend
+				console.log(`🗑️ Removing MCP server configuration: ${serverId}`);
 			} catch (error) {
-				console.error(`Error closing MCP server ${serverId}:`, error);
+				console.error(`Error removing MCP server ${serverId}:`, error);
 			}
 		}
 		this.servers.delete(serverId);
@@ -134,11 +178,48 @@ export class McpManager {
 	}
 
 	/**
-	 * Get all servers for a specific provider
+	 * Get MCP command for a specific package
+	 */
+	private getMcpCommand(mcpId: string, provider: AgentProvider): string {
+		// Use platform-specific command
+		return getPlatformMcpCommand(mcpId);
+	}
+
+	/**
+	 * Get MCP arguments for a specific package
+	 */
+	private getMcpArgs(mcpId: string, provider: AgentProvider, config: any): string[] {
+		const packageMap: Record<string, string> = {
+			context7: "@context7/mcp-server",
+			filesystem: "@modelcontextprotocol/server-filesystem",
+			git: "@modelcontextprotocol/server-git",
+			fetch: "@modelcontextprotocol/server-fetch",
+			"brave-search": "@modelcontextprotocol/server-brave-search",
+			memory: "@modelcontextprotocol/server-memory",
+			// Add more mappings as needed
+		};
+
+		const packageName = packageMap[mcpId] || mcpId;
+		const args = [packageName];
+
+		// Add provider-specific arguments
+		if (provider === "claude-code") {
+			args.push("--anthropic");
+		} else if (provider === "codex") {
+			args.push("--github");
+		} else if (provider === "opencode") {
+			args.push("--openai");
+		}
+
+		return args;
+	}
+
+	/**
+	 * Get servers for a specific provider
 	 */
 	getServersForProvider(provider: AgentProvider): McpServer[] {
 		return Array.from(this.servers.values()).filter(
-			server => server.config.provider === provider
+			(server) => server.config.provider === provider,
 		);
 	}
 
@@ -169,7 +250,7 @@ export class McpManager {
 	}
 
 	/**
-	 * Execute a tool on a specific server (mock implementation)
+	 * Execute a tool on a specific server
 	 */
 	async callTool(serverId: string, toolName: string, args: any): Promise<any> {
 		const server = this.servers.get(serverId);
@@ -178,20 +259,15 @@ export class McpManager {
 		}
 
 		try {
-			// Mock implementation - in the future this will call the actual MCP
-			console.log(`🔧 Calling tool ${toolName} on ${serverId} with args:`, args);
-			
-			// Simulate tool execution
-			const result = {
-				content: [
-					{
-						type: "text",
-						text: `Mock result from ${toolName} with args: ${JSON.stringify(args)}`,
-					},
-				],
-				isError: false,
-			};
-			
+			console.log(
+				`🔧 Calling tool ${toolName} on ${serverId} with args:`,
+				args,
+			);
+			const result = await server.client.callTool({
+				name: toolName,
+				arguments: args,
+			});
+			console.log(`✅ Tool ${toolName} executed successfully`);
 			return result;
 		} catch (error) {
 			console.error(`❌ Tool call failed ${toolName} on ${serverId}:`, error);
@@ -200,7 +276,7 @@ export class McpManager {
 	}
 
 	/**
-	 * Read a resource from a specific server (mock implementation)
+	 * Read a resource from a specific server
 	 */
 	async readResource(serverId: string, uri: string): Promise<any> {
 		const server = this.servers.get(serverId);
@@ -209,19 +285,9 @@ export class McpManager {
 		}
 
 		try {
-			// Mock implementation - in the future this will call the actual MCP
 			console.log(`📖 Reading resource ${uri} from ${serverId}`);
-			
-			const result = {
-				contents: [
-					{
-						uri,
-						mimeType: "text/plain",
-						text: `Mock content from ${uri}`,
-					},
-				],
-			};
-			
+			const result = await server.client.readResource({ uri });
+			console.log(`✅ Resource ${uri} read successfully`);
 			return result;
 		} catch (error) {
 			console.error(`❌ Resource read failed ${uri} on ${serverId}:`, error);
@@ -238,12 +304,15 @@ export class McpManager {
 			connectedServers: 0,
 			totalTools: 0,
 			totalResources: 0,
-			serversByProvider: {} as Record<AgentProvider, {
-				total: number;
-				connected: number;
-				tools: number;
-				resources: number;
-			}>,
+			serversByProvider: {} as Record<
+				AgentProvider,
+				{
+					total: number;
+					connected: number;
+					tools: number;
+					resources: number;
+				}
+			>,
 		};
 
 		for (const server of this.servers.values()) {
@@ -266,141 +335,23 @@ export class McpManager {
 			if (server.connected) {
 				summary.serversByProvider[provider].connected++;
 				summary.serversByProvider[provider].tools += server.tools.length;
-				summary.serversByProvider[provider].resources += server.resources.length;
+				summary.serversByProvider[provider].resources +=
+					server.resources.length;
 			}
 		}
-
 		return summary;
-	}
-
-	/**
-	 * Get mock tools for testing
-	 */
-	private getMockTools(mcpId: string): McpTool[] {
-		const toolMap: Record<string, McpTool[]> = {
-			context7: [
-				{
-					name: "search_docs",
-					description: "Search through documentation",
-					inputSchema: {
-						type: "object",
-						properties: {
-							query: { type: "string", description: "Search query" },
-							limit: { type: "number", description: "Result limit" },
-						},
-						required: ["query"],
-					},
-				},
-			],
-			filesystem: [
-				{
-					name: "read_file",
-					description: "Read a file from the filesystem",
-					inputSchema: {
-						type: "object",
-						properties: {
-							path: { type: "string", description: "File path" },
-						},
-						required: ["path"],
-					},
-				},
-				{
-					name: "write_file",
-					description: "Write content to a file",
-					inputSchema: {
-						type: "object",
-						properties: {
-							path: { type: "string", description: "File path" },
-							content: { type: "string", description: "File content" },
-						},
-						required: ["path", "content"],
-					},
-				},
-			],
-			git: [
-				{
-					name: "git_status",
-					description: "Get git repository status",
-					inputSchema: {
-						type: "object",
-						properties: {
-							path: { type: "string", description: "Repository path" },
-						},
-						required: ["path"],
-					},
-				},
-			],
-		};
-
-		return toolMap[mcpId] || [];
-	}
-
-	/**
-	 * Get mock resources for testing
-	 */
-	private getMockResources(mcpId: string): McpResource[] {
-		const resourceMap: Record<string, McpResource[]> = {
-			filesystem: [
-				{
-					uri: "file:///Users/nahuelcioffi/Proyectos/openfarm/README.md",
-					name: "README.md",
-					description: "Project README file",
-					mimeType: "text/markdown",
-				},
-			],
-			git: [
-				{
-					uri: "git://status",
-					name: "Git Status",
-					description: "Current git repository status",
-				},
-			],
-		};
-
-		return resourceMap[mcpId] || [];
-	}
-
-	/**
-	 * Get command for MCP based on ID and provider
-	 */
-	private getMcpCommand(mcpId: string, provider: AgentProvider): string {
-		// For now, use npx to run MCP packages
-		// In the future, this could be more sophisticated
-		return "npx";
-	}
-
-	/**
-	 * Get arguments for MCP based on ID and provider
-	 */
-	private getMcpArgs(mcpId: string, provider: AgentProvider, config: any): string[] {
-		const packageMap: Record<string, string> = {
-			"context7": "@context7/mcp-server",
-			"filesystem": "@modelcontextprotocol/server-filesystem",
-			"git": "@modelcontextprotocol/server-git",
-			"fetch": "@modelcontextprotocol/server-fetch",
-			// Add more mappings as needed
-		};
-
-		const packageName = packageMap[mcpId] || mcpId;
-		const args = [packageName];
-
-		// Add provider-specific arguments
-		if (provider === "claude-code") {
-			args.push("--anthropic");
-		} else if (provider === "codex") {
-			args.push("--github");
-		} else if (provider === "opencode") {
-			args.push("--openai");
-		}
-
-		return args;
 	}
 
 	/**
 	 * Get environment variables for MCP
 	 */
-	private getMcpEnv(mcpId: string, provider: AgentProvider, config: any): Record<string, string> {
-		const env: Record<string, string> = {};
+	private getMcpEnv(
+		mcpId: string,
+		provider: AgentProvider,
+		config: any,
+	): Record<string, string> {
+		// Start with platform environment
+		const env = getPlatformEnvironment();
 
 		// Add configuration as environment variables
 		for (const [key, value] of Object.entries(config)) {
@@ -416,6 +367,13 @@ export class McpManager {
 			env["OPENAI_API_KEY"] = config.openaiApiKey || "";
 		}
 
+		// MCP-specific environment variables
+		if (mcpId === "brave-search") {
+			env["BRAVE_API_KEY"] = config.braveApiKey || "";
+		} else if (mcpId === "filesystem") {
+			env["FILESYSTEM_ROOT"] = config.rootPath || env.HOME || "/";
+		}
+
 		return env;
 	}
 
@@ -425,11 +383,12 @@ export class McpManager {
 	async cleanup(): Promise<void> {
 		console.log("🧹 Cleaning up MCP Manager...");
 		for (const [serverId, server] of this.servers.entries()) {
-			if (server.process) {
+			if (server.client) {
 				try {
-					server.process.kill();
+					// Browser environment - cleanup handled by backend
+					console.log(`Cleaning up server configuration: ${serverId}`);
 				} catch (error) {
-					console.error(`Error closing server ${serverId}:`, error);
+					console.error(`Error cleaning up server ${serverId}:`, error);
 				}
 			}
 		}

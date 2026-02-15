@@ -12,7 +12,7 @@ export default defineConfig([
     bundle: true,
     minify: false,
     treeshake: true,
-    // Bundle all workspace dependencies
+    // Bundle only essential workspace dependencies
     noExternal: [
       "@openfarm/core",
       "@openfarm/types",
@@ -20,16 +20,8 @@ export default defineConfig([
       "@openfarm/result",
       "@openfarm/utils",
       "@openfarm/config",
-      "@openfarm/agent-runner",
-      "@openfarm/workflow-engine",
-      "@openfarm/analysis",
-      "@openfarm/agent-system",
-      "@openfarm/git-adapter",
-      "@openfarm/github-adapter",
-      "@openfarm/azure-adapter",
-      "@openfarm/context",
     ],
-    // Keep external npm dependencies external
+    // Keep most dependencies external for smaller bundle
     external: [
       "better-sqlite3",
       "pino",
@@ -38,6 +30,20 @@ export default defineConfig([
       "zod",
       "js-yaml",
       "ai",
+      // Keep workspace packages external for lazy loading
+      "@openfarm/agent-runner",
+      "@openfarm/workflow-engine",
+      "@openfarm/analysis",
+      "@openfarm/agent-system",
+      "@openfarm/git-adapter",
+      "@openfarm/github-adapter",
+      "@openfarm/azure-adapter",
+      "@openfarm/context",
+      "@openfarm/mcp-marketplace",
+      "@openfarm/remote-server",
+      "@openfarm/task-loop",
+      "@openfarm/web-ui",
+      "@openfarm/workflow-engine",
       // External providers are optional and loaded dynamically
       "@openfarm/provider-aider",
       "@openfarm/provider-claude",
@@ -62,14 +68,6 @@ export default defineConfig([
       "@openfarm/result",
       "@openfarm/utils",
       "@openfarm/config",
-      "@openfarm/agent-runner",
-      "@openfarm/workflow-engine",
-      "@openfarm/analysis",
-      "@openfarm/agent-system",
-      "@openfarm/git-adapter",
-      "@openfarm/github-adapter",
-      "@openfarm/azure-adapter",
-      "@openfarm/context",
     ],
     external: [
       "better-sqlite3",
@@ -79,6 +77,20 @@ export default defineConfig([
       "zod",
       "js-yaml",
       "ai",
+      // Keep workspace packages external for lazy loading
+      "@openfarm/agent-runner",
+      "@openfarm/workflow-engine",
+      "@openfarm/analysis",
+      "@openfarm/agent-system",
+      "@openfarm/git-adapter",
+      "@openfarm/github-adapter",
+      "@openfarm/azure-adapter",
+      "@openfarm/context",
+      "@openfarm/mcp-marketplace",
+      "@openfarm/remote-server",
+      "@openfarm/task-loop",
+      "@openfarm/web-ui",
+      "@openfarm/workflow-engine",
       // External providers are optional and loaded dynamically
       "@openfarm/provider-aider",
       "@openfarm/provider-claude",

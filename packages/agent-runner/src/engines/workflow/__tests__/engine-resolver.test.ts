@@ -710,8 +710,8 @@ describe("Engine Resolver", () => {
 
     it("should create new engine when factory is provided and config differs", async () => {
       const mockEngine = { applyChanges: vi.fn() } as unknown as CodingEngine;
-      const newEngine = { applyChanges: vi.fn() } as unknown as CodingEngine;
-      const engineFactory = vi.fn().mockReturnValue(newEngine);
+      const createdEngine = { applyChanges: vi.fn() } as unknown as CodingEngine;
+      const engineFactory = vi.fn().mockReturnValue(createdEngine);
 
       const config = createAgentCodeConfig({ provider: "claude-code" });
       const context = createContext();
@@ -725,13 +725,13 @@ describe("Engine Resolver", () => {
 
       const result = await resolveEngine(config, context, services);
 
-      expect(result).toBe(newEngine);
+      expect(result).toBe(createdEngine);
       expect(engineFactory).toHaveBeenCalledOnce();
     });
 
     it("should create new engine when no existing engine", async () => {
-      const newEngine = { applyChanges: vi.fn() } as unknown as CodingEngine;
-      const engineFactory = vi.fn().mockReturnValue(newEngine);
+      const createdEngine = { applyChanges: vi.fn() } as unknown as CodingEngine;
+      const engineFactory = vi.fn().mockReturnValue(createdEngine);
 
       const config = createAgentCodeConfig();
       const context = createContext();
@@ -743,7 +743,7 @@ describe("Engine Resolver", () => {
 
       const result = await resolveEngine(config, context, services);
 
-      expect(result).toBe(newEngine);
+      expect(result).toBe(createdEngine);
       expect(engineFactory).toHaveBeenCalledOnce();
     });
 
@@ -777,8 +777,8 @@ describe("Engine Resolver", () => {
     });
 
     it("should pass callbacks to factory when provided in additionalOptions", async () => {
-      const newEngine = { applyChanges: vi.fn() } as unknown as CodingEngine;
-      const engineFactory = vi.fn().mockReturnValue(newEngine);
+      const createdEngine = { applyChanges: vi.fn() } as unknown as CodingEngine;
+      const engineFactory = vi.fn().mockReturnValue(createdEngine);
       const onLog = vi.fn();
       const onChanges = vi.fn();
       const onChatMessage = vi.fn();
@@ -807,8 +807,8 @@ describe("Engine Resolver", () => {
     });
 
     it("should pass callbacks from defaults when additionalOptions callbacks not provided", async () => {
-      const newEngine = { applyChanges: vi.fn() } as unknown as CodingEngine;
-      const engineFactory = vi.fn().mockReturnValue(newEngine);
+      const createdEngine = { applyChanges: vi.fn() } as unknown as CodingEngine;
+      const engineFactory = vi.fn().mockReturnValue(createdEngine);
       const onLog = vi.fn();
 
       const config = createAgentCodeConfig({ provider: "claude-code" });
@@ -829,8 +829,8 @@ describe("Engine Resolver", () => {
     });
 
     it("should pass resolved model to factory", async () => {
-      const newEngine = { applyChanges: vi.fn() } as unknown as CodingEngine;
-      const engineFactory = vi.fn().mockReturnValue(newEngine);
+      const createdEngine = { applyChanges: vi.fn() } as unknown as CodingEngine;
+      const engineFactory = vi.fn().mockReturnValue(createdEngine);
 
       const config = createAgentCodeConfig();
       const context = createContext();
@@ -852,8 +852,8 @@ describe("Engine Resolver", () => {
     });
 
     it("should pass maxIterations to factory", async () => {
-      const newEngine = { applyChanges: vi.fn() } as unknown as CodingEngine;
-      const engineFactory = vi.fn().mockReturnValue(newEngine);
+      const createdEngine = { applyChanges: vi.fn() } as unknown as CodingEngine;
+      const engineFactory = vi.fn().mockReturnValue(createdEngine);
 
       const config = createAgentCodeConfig();
       const context = createContext();
@@ -873,8 +873,8 @@ describe("Engine Resolver", () => {
     });
 
     it("should build correct engine config with all options", async () => {
-      const newEngine = { applyChanges: vi.fn() } as unknown as CodingEngine;
-      const engineFactory = vi.fn().mockReturnValue(newEngine);
+      const createdEngine = { applyChanges: vi.fn() } as unknown as CodingEngine;
+      const engineFactory = vi.fn().mockReturnValue(createdEngine);
 
       const config = createAgentCodeConfig({
         provider: "claude-code",

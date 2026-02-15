@@ -71,6 +71,7 @@ export interface WorkItem {
   azureRepositoryProject?: string; // Azure DevOps project that owns the repository
   tags?: string[]; // Tags from Azure DevOps
   state?: string; // Azure DevOps state (New, Active, Resolved, etc.)
+  assignedTo?: string; // Legacy field for backward compatibility
   assignee?: {
     id: string;
     name: string;

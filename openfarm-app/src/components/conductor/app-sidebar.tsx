@@ -7,6 +7,7 @@ import {
 	ChevronRight,
 	Circle,
 	Eye,
+	FileText,
 	FolderGit2,
 	GitBranch,
 	Loader2,
@@ -57,7 +58,7 @@ function StatusLabel({ status }: { status: AgentStatus }) {
 	return (
 		<span
 			className={cn(
-				"text-[10px] font-medium uppercase tracking-wider",
+				"text-[10px] font-medium uppercase tracking-wider shrink-0",
 				colors[status],
 			)}
 		>
@@ -130,7 +131,7 @@ function ProviderBadge({ provider }: { provider: AgentProvider }) {
 	return (
 		<span
 			className={cn(
-				"text-[10px] font-mono px-1.5 py-0.5 rounded",
+				"text-[10px] font-mono px-1.5 py-0.5 rounded shrink-0",
 				p.bg,
 				p.text,
 			)}
@@ -148,6 +149,9 @@ interface AppSidebarProps {
 	onSelectSubthread: (agent: Agent, subthreadName: string) => void;
 	onAddWorkspace: () => void;
 	onSpawnAgentInWorkspace: (workspace: Workspace) => void;
+	onOpenPlanReview?: () => void;
+	onArchiveAgent?: (agent: Agent) => void;
+	isSelectingAgent?: boolean;
 }
 
 export function AppSidebar({
@@ -158,6 +162,9 @@ export function AppSidebar({
 	onSelectSubthread,
 	onAddWorkspace,
 	onSpawnAgentInWorkspace,
+	onOpenPlanReview,
+	onArchiveAgent,
+	isSelectingAgent = false,
 }: AppSidebarProps) {
 	const [expandedWorkspaces, setExpandedWorkspaces] = useState<Set<string>>(
 		new Set(workspaces.map((w) => w.id)),
@@ -195,15 +202,29 @@ export function AppSidebar({
 						</span>
 					)}
 				</div>
-				<Button
-					variant="ghost"
-					size="icon"
-					className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent"
-					onClick={onAddWorkspace}
-				>
-					<Plus className="h-3.5 w-3.5" />
-					<span className="sr-only">Add workspace</span>
-				</Button>
+				<div className="flex items-center gap-1">
+					{onOpenPlanReview && (
+						<Button
+							variant="ghost"
+							size="icon"
+							className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent"
+							onClick={onOpenPlanReview}
+							title="Plan Review"
+						>
+							<FileText className="h-3.5 w-3.5" />
+							<span className="sr-only">Plan Review</span>
+						</Button>
+					)}
+					<Button
+						variant="ghost"
+						size="icon"
+						className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent"
+						onClick={onAddWorkspace}
+					>
+						<Plus className="h-3.5 w-3.5" />
+						<span className="sr-only">Add workspace</span>
+					</Button>
+				</div>
 			</div>
 
 			{/* Workspace list */}
@@ -271,8 +292,10 @@ export function AppSidebar({
 															isParentSelected
 																? "bg-sidebar-accent"
 																: "hover:bg-sidebar-accent/50",
+															isSelectingAgent && "opacity-50 cursor-not-allowed",
 														)}
-														onClick={() => onSelectAgent(agent)}
+														onClick={() => !isSelectingAgent && onSelectAgent(agent)}
+														disabled={isSelectingAgent}
 													>
 														<StatusIcon status={agent.status} />
 														<div className="flex-1 min-w-0">
@@ -293,8 +316,8 @@ export function AppSidebar({
 																	Principal
 																</span>
 																<div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-																	<GitBranch className="h-3 w-3" />
-																	<span className="truncate max-w-[120px]">
+																	<GitBranch className="h-3 w-3 shrink-0" />
+																	<span className="truncate max-w-[80px] sm:max-w-[100px] md:max-w-[120px]">
 																		{agent.branch}
 																	</span>
 																</div>
@@ -320,10 +343,12 @@ export function AppSidebar({
 																			isSubthreadSelected
 																				? "bg-sidebar-accent text-sidebar-accent-foreground"
 																				: "hover:bg-sidebar-accent/50",
+																			isSelectingAgent && "opacity-50 cursor-not-allowed",
 																		)}
 																		onClick={() =>
-																			onSelectSubthread(agent, thread.name)
+																			!isSelectingAgent && onSelectSubthread(agent, thread.name)
 																		}
+																		disabled={isSelectingAgent}
 																		title={`${thread.lastUpdate} ${thread.preview ? `• ${thread.preview}` : ""}`}
 																		type="button"
 																	>

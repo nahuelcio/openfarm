@@ -48,7 +48,7 @@ export interface ResponseStatistics {
 	toolCalls: number;
 	model: string;
 	filesChanged: number;
-	terminalsCreated: number;
+	processesCreated: number;
 	requestId: string;
 	tokensInput: number;
 	tokensOutput: number;
@@ -60,7 +60,7 @@ export interface ExecutionStatistics {
 	toolCalls: number;
 	model: string;
 	filesChanged: number;
-	terminalsCreated: number;
+	processesCreated: number;
 	requestId: string;
 	tokensInput: number;
 	tokensOutput: number;
@@ -125,6 +125,59 @@ export interface ModelOption {
 	description: string;
 }
 
+// Advanced provider configuration types
+export interface McpServerConfig {
+	id: string;
+	name: string;
+	command: string;
+	args?: string[];
+	env?: Record<string, string>;
+	enabled: boolean;
+	provider: AgentProvider;
+	installedAt: string;
+}
+
+export interface AgentConfig {
+	id: string;
+	name: string;
+	description: string;
+	prompt?: string;
+	mode?: string;
+	enabled: boolean;
+	customSettings?: Record<string, unknown>;
+}
+
+export interface HookConfig {
+	id: string;
+	name: string;
+	type: "before" | "after" | "error";
+	script: string;
+	enabled: boolean;
+	triggerEvents: string[];
+	customSettings?: Record<string, unknown>;
+}
+
+export interface SubAgentConfig {
+	id: string;
+	name: string;
+	description: string;
+	parentAgent: string;
+	capability: string;
+	enabled: boolean;
+	model?: string;
+	customSettings?: Record<string, unknown>;
+}
+
+export interface EndpointConfig {
+	id: string;
+	name: string;
+	url: string;
+	method: "GET" | "POST" | "PUT" | "DELETE";
+	headers?: Record<string, string>;
+	enabled: boolean;
+	rateLimit?: number;
+}
+
 export interface WorkspaceFileEntry {
 	path: string;
 	isDir: boolean;
@@ -147,6 +200,14 @@ export interface ProviderConfig {
 	defaultModel: string;
 	agents?: AgentOption[];
 	defaultAgent?: string;
+
+	// Advanced configuration
+	mcpServers?: McpServerConfig[];
+	customAgents?: AgentConfig[];
+	hooks?: HookConfig[];
+	subAgents?: SubAgentConfig[];
+	endpoints?: EndpointConfig[];
+	customSettings?: Record<string, unknown>;
 }
 
 export interface AppSettings {

@@ -166,7 +166,7 @@ export class LlmService {
       toolCalls: number;
       model: string;
       filesChanged: number;
-      terminalsCreated: number;
+      processesCreated: number;
       requestId: string;
       tokensInput: number;
       tokensOutput: number;
@@ -265,7 +265,7 @@ export class LlmService {
       toolCalls: number;
       model: string;
       filesChanged: number;
-      terminalsCreated: number;
+      processesCreated: number;
       requestId: string;
       tokensInput: number;
       tokensOutput: number;

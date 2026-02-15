@@ -90,7 +90,7 @@ export const askUser = async (
   }
 
   const questionId = uuidv4();
-  const newQuestion = {
+  const userQuestion = {
     id: questionId,
     question,
     type,
@@ -115,7 +115,7 @@ export const askUser = async (
           if (!updatedJob.questions) {
             updatedJob.questions = [];
           }
-          updatedJob.questions = [...updatedJob.questions, newQuestion];
+          updatedJob.questions = [...updatedJob.questions, userQuestion];
           updatedJob.status = JobStatus.WAITING_FOR_USER;
           updatedJob.currentQuestionId = questionId;
           return updatedJob;
@@ -171,7 +171,7 @@ export const askUser = async (
     if (!updatedJob.questions) {
       updatedJob.questions = [];
     }
-    updatedJob.questions = [...updatedJob.questions, newQuestion];
+    updatedJob.questions = [...updatedJob.questions, userQuestion];
     updatedJob.status = JobStatus.WAITING_FOR_USER;
     updatedJob.currentQuestionId = questionId;
     return updatedJob;

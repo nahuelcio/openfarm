@@ -30,13 +30,13 @@ function send(msg) {
 }
 
 const term = pty.spawn(cmd, cmdArgs.length ? cmdArgs : ["run", "tui"], {
-  name: "xterm-256color",
+  name: "ansi",
   cols,
   rows,
   cwd,
   env: {
     ...process.env,
-    TERM: "xterm-256color",
+    TERM: "ansi",
     FORCE_COLOR: "1",
     OPENFARM_WEB_MODE: "1",
   },

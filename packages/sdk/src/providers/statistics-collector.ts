@@ -5,7 +5,7 @@ export interface ExecutionStatistics {
 	toolCalls: number;
 	model: string;
 	filesChanged: number;
-	terminalsCreated: number;
+	processesCreated: number;
 	requestId: string;
 	tokensInput: number;
 	tokensOutput: number;
@@ -15,7 +15,7 @@ export interface ExecutionStatistics {
 export class StatisticsCollector {
 	private toolCalls: number = 0;
 	private filesChanged: number = 0;
-	private terminalsCreated: number = 0;
+	private processesCreated: number = 0;
 	private startTime: number = Date.now();
 	private requestId: string = randomUUID();
 
@@ -29,8 +29,8 @@ export class StatisticsCollector {
 		this.filesChanged++;
 	}
 
-	recordTerminalCreated(): void {
-		this.terminalsCreated++;
+	recordProcessCreated(): void {
+		this.processesCreated++;
 	}
 
 	getStatistics(tokensInput: number, tokensOutput: number): ExecutionStatistics {
@@ -42,7 +42,7 @@ export class StatisticsCollector {
 			toolCalls: this.toolCalls,
 			model: this.model,
 			filesChanged: this.filesChanged,
-			terminalsCreated: this.terminalsCreated,
+			processesCreated: this.processesCreated,
 			requestId: this.requestId,
 			tokensInput,
 			tokensOutput,

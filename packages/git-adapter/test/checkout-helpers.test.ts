@@ -5,7 +5,7 @@ import {
   checkoutDefaultBranch,
   checkoutExistingBranch,
   configureGitUser,
-  createNewBranch,
+  createBranch,
   type ExecFunction,
   type FileSystem,
   fetchAndPull,
@@ -522,11 +522,11 @@ describe("checkout helper functions", () => {
     });
   });
 
-  describe("createNewBranch", () => {
+  describe("createBranch", () => {
     it("should create new branch", async () => {
       (mockExec as any).mockResolvedValueOnce({ stdout: "", stderr: "" });
 
-      const result = await createNewBranch(mockConfig, "new-feature", mockExec);
+      const result = await createBranch(mockConfig, "new-feature", mockExec);
 
       expect(result.ok).toBe(true);
       expect(mockExec).toHaveBeenCalledWith(
@@ -542,7 +542,7 @@ describe("checkout helper functions", () => {
         .mockResolvedValueOnce({ stdout: "", stderr: "" })
         .mockResolvedValueOnce({ stdout: "", stderr: "" });
 
-      const result = await createNewBranch(mockConfig, "existing", mockExec);
+      const result = await createBranch(mockConfig, "existing", mockExec);
 
       expect(result.ok).toBe(true);
       expect(mockExec).toHaveBeenCalledWith(
@@ -558,7 +558,7 @@ describe("checkout helper functions", () => {
         new Error("'new-feature' is already used by worktree")
       );
 
-      const result = await createNewBranch(mockConfig, "new-feature", mockExec);
+      const result = await createBranch(mockConfig, "new-feature", mockExec);
 
       expect(result.ok).toBe(true);
     });
@@ -566,7 +566,7 @@ describe("checkout helper functions", () => {
     it("should return error on other failures", async () => {
       (mockExec as any).mockRejectedValueOnce(new Error("permission denied"));
 
-      const result = await createNewBranch(mockConfig, "new-feature", mockExec);
+      const result = await createBranch(mockConfig, "new-feature", mockExec);
 
       expect(result.ok).toBe(false);
       if (!result.ok) {

@@ -315,9 +315,7 @@ export async function executeAgentCode(
 
   let resolvedModel =
     validatedConfig.model || context.agentConfiguration?.model || undefined;
-  let tuiConfig: Awaited<
-    ReturnType<typeof openCodeConfigService.getTuiConfig>
-  > | null = null;
+  const tuiConfig: any | null = null;
 
   if (useOpenCode) {
     const resolved = await openCodeConfigService.resolveModel(
@@ -326,7 +324,7 @@ export async function executeAgentCode(
       context.agentConfiguration
     );
     resolvedModel = resolved.model;
-    tuiConfig = await openCodeConfigService.getTuiConfig();
+    // tuiConfig = await openCodeConfigService.getTuiConfig(); // TODO: Implement getTuiConfig if needed
   }
 
   // Determine which engine to use using the engine resolver

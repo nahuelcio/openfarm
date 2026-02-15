@@ -1,13 +1,12 @@
 import type { Bug, WorkItem } from "@openfarm/core/types/domain";
 import { logger } from "@openfarm/logger";
 import { err, ok, type Result } from "@openfarm/result";
-import { chunk } from "@openfarm/utils";
+import { chunk, defaultFetch } from "@openfarm/utils";
 import { workItemCache } from "./cache";
 import { parseTags, getAssignedToValue, extractAssignee, mapAzurePriority, convertToWorkItem } from "./utils/azure-helpers";
-import { checkCacheForWorkItems, executeWiqlQuery, applyPaginationToIds, saveToCacheIfNeeded } from "./utils/query-helpers";
-import type { AzureConfig, FetchFunction, AzureRepository, AzureProject } from "./types";
-
-import { defaultFetch, type FetchFunction } from "@openfarm/utils";
+import type { AzureConfig, FetchFunction, AzureRepository, AzureWorkItemApiResponse, AzureWiqlResponse, AzureRepositoryApiResponse, AzureProjectApiResponse, AzurePullRequest } from "./types";
+import { TRAILING_SLASH_REGEX } from "./types";
+export { AzurePlatformAdapter } from "./adapter";
 
 /**
  * Helper function to find existing PR by source and target branches
@@ -745,7 +744,7 @@ export const fetchNewWorkItems = async (
       return wiqlResult;
     }
 
-    let ids = wiqlResult.value.workItems.map((wi) => wi.id);
+    let ids = wiqlResult.value.workItems.map((wi: any) => wi.id);
     ids = applyPaginationToIds(ids, pagination);
 
     // Process batches

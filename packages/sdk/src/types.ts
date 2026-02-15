@@ -25,23 +25,23 @@ export interface ExecutionOptions {
   agentName?: string;
 }
 
+export interface ExecutionStatistics {
+  toolCalls: number;
+  model: string;
+  filesChanged: number;
+  processesCreated: number;
+  requestId: string;
+  tokensInput: number;
+  tokensOutput: number;
+}
+
 export interface ExecutionResult {
   success: boolean;
   output?: string;
   error?: string;
   duration: number;
   tokens?: number;
-  statistics?: {
-    creditsSpent: number;
-    toolCalls: number;
-    model: string;
-    filesChanged: number;
-    terminalsCreated: number;
-    requestId: string;
-    tokensInput: number;
-    tokensOutput: number;
-    duration: number;
-  };
+  statistics?: ExecutionStatistics;
 }
 
 export interface ProviderInfo {

@@ -1,7 +1,7 @@
 {
   "name": "@openfarm/web-ui",
   "version": "0.1.0",
-  "description": "Web terminal for OpenFarm TUI - Thin Client via xterm.js + PTY",
+  "description": "Web UI components for OpenFarm",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -19,15 +19,14 @@
     }
   },
   "files": [
-    "dist",
-    "static"
+    "dist"
   ],
   "scripts": {
-    "build": "tsup && bun run build:frontend",
-    "build:frontend": "cp node_modules/xterm/css/xterm.css static/xterm.css 2>/dev/null || cp ../../node_modules/xterm/css/xterm.css static/xterm.css && bun build static/terminal.ts --outfile=static/bundle.js --bundle --minify",
+    "build": "tsup",
     "dev": "tsup --watch",
     "type-check": "tsc --noEmit",
     "lint": "bunx biome check .",
+    "lint:fix": "bunx biome check . --write",
     "clean": "rm -rf dist node_modules",
     "test": "vitest run --passWithNoTests"
   },
@@ -40,9 +39,6 @@
     "@types/ws": "^8.5.10",
     "tsup": "^8.5.1",
     "typescript": "^5.6.0",
-    "xterm": "^5.3.0",
-    "@xterm/addon-fit": "^0.10.0",
-    "@xterm/addon-web-links": "^0.11.0",
-    "@xterm/addon-search": "^0.15.0"
+    "vitest": "^4.0.18"
   }
 }

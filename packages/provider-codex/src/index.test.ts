@@ -5,6 +5,8 @@ import {
 	parseCodexConfigToml,
 	parseCodexModelsCache,
 	resolveCodexExecutionArgs,
+	getModelCapabilities,
+	getAllReasoningEfforts,
 } from "./index";
 
 describe("provider-codex", () => {
@@ -112,6 +114,48 @@ model = "gpt-5.2-codex"
 			"-c",
 			"model_reasoning_effort=xhigh",
 		]);
+	});
+
+	it("rejects unsupported reasoning effort for limited model", () => {
+		expect(() => {
+			resolveCodexExecutionArgs({
+				model: "gpt-5.1-codex-mini",
+				mode: "reasoning:xhigh",
+			});
+		}).toThrow(
+			"Reasoning effort 'xhigh' is not supported by model 'gpt-5.1-codex-mini'. Supported values: low, medium, high"
+		);
+	});
+
+	it("allows high reasoning effort for limited model", () => {
+		const args = resolveCodexExecutionArgs({
+			model: "gpt-5.1-codex-mini",
+			mode: "reasoning:high",
+		});
+
+		expect(args).toEqual([
+			"exec",
+			"--json",
+			"-s",
+			"workspace-write",
+			"--model",
+			"gpt-5.1-codex-mini",
+			"-c",
+			"model_reasoning_effort=high",
+		]);
+	});
+
+	it("exports model capabilities", () => {
+		const capabilities = getModelCapabilities("gpt-5.3-codex");
+		expect(capabilities).toEqual(["low", "medium", "high", "xhigh"]);
+
+		const limitedCapabilities = getModelCapabilities("gpt-5.1-codex-mini");
+		expect(limitedCapabilities).toEqual(["low", "medium", "high"]);
+	});
+
+	it("exports all reasoning efforts", () => {
+		const allEfforts = getAllReasoningEfforts();
+		expect(allEfforts).toEqual(["low", "medium", "high", "xhigh"]);
 	});
 
 	it("chooses default mode from codex profile", () => {

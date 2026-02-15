@@ -110,7 +110,7 @@ export class ExternalAgentProvider {
   /**
    * Inicia el agente y comienza el monitoreo.
    *
-   * Esto crea una sesión tmux y ejecuta el CLI especificado.
+   * Esto crea una sesión y ejecuta el CLI especificado.
    * El agente comienza a monitorear el output buscando comandos.
    */
   async start(): Promise<void> {
@@ -118,7 +118,7 @@ export class ExternalAgentProvider {
       throw new Error(`Agent ${this.config.name} is already running`);
     }
 
-    // Aquí se inicializaría el TmuxWrapper
+    // Aquí se inicializaría el wrapper del agente
     // Por ahora es una implementación mock
     console.log(`[${this.config.name}] Starting ${this.config.cli}...`);
 

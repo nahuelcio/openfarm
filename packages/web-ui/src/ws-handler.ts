@@ -1,6 +1,8 @@
 import type { WebSocket } from "ws";
 import type { PtyManager } from "./pty-manager.ts";
-import { CONTROL_PREFIX, ControlMessage } from "./types.ts";
+import { ControlMessage } from "./types.ts";
+
+const CONTROL_PREFIX = 0x00;
 
 const HEARTBEAT_INTERVAL = 30_000; // 30s
 const HEARTBEAT_TIMEOUT = 60_000; // 60s

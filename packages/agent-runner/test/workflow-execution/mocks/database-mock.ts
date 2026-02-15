@@ -47,7 +47,7 @@ export class DatabaseMock {
       this.executions.set(executionId, updated);
     } else {
       // Crear nueva ejecución si no existe
-      const newExecution = updater({
+      const workflowExecution = updater({
         id: executionId,
         workflowId: "",
         workItemId: "",
@@ -57,7 +57,7 @@ export class DatabaseMock {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       } as WorkflowExecution);
-      this.executions.set(executionId, newExecution);
+      this.executions.set(executionId, workflowExecution);
     }
   }
 

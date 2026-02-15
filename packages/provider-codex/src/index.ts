@@ -6,7 +6,14 @@ const DEFAULT_CODEX_MODEL = "gpt-5.3-codex";
 const DEFAULT_REASONING_EFFORT = "medium";
 const REASONING_MODE_PREFIX = "reasoning:";
 const PROFILE_MODE_PREFIX = "profile:";
-const KNOWN_REASONING_EFFORTS = ["low", "medium", "high", "xhigh"] as const;
+
+// Model capabilities mapping - this should be updated dynamically from API
+const MODEL_REASONING_CAPABILITIES = {
+	"gpt-5.3-codex": ["low", "medium", "high", "xhigh"],
+	"gpt-5.2-codex": ["low", "medium", "high"],
+	"gpt-5.1-codex": ["low", "medium", "high"],
+	"gpt-5.1-codex-mini": ["low", "medium", "high"],
+} as const;
 
 const FALLBACK_MODELS = [
 	DEFAULT_CODEX_MODEL,
@@ -22,7 +29,16 @@ const CODEX_EXEC_BASE_ARGS = [
 	"workspace-write",
 ] as const;
 
-type KnownReasoningEffort = (typeof KNOWN_REASONING_EFFORTS)[number];
+type ReasoningEffort = "low" | "medium" | "high" | "xhigh";
+
+function getModelReasoningCapabilities(model: string): ReasoningEffort[] {
+	return MODEL_REASONING_CAPABILITIES[model as keyof typeof MODEL_REASONING_CAPABILITIES] || ["low", "medium", "high"];
+}
+
+function validateReasoningEffort(model: string, effort: string): boolean {
+	const capabilities = getModelReasoningCapabilities(model);
+	return capabilities.includes(effort as ReasoningEffort);
+}
 
 interface RawReasoningLevel {
 	effort?: string;
@@ -124,8 +140,9 @@ function normalizeReasoningEffort(
 	return normalized || undefined;
 }
 
-function isKnownReasoningEffort(value: string): value is KnownReasoningEffort {
-	return (KNOWN_REASONING_EFFORTS as readonly string[]).includes(value);
+function isKnownReasoningEffort(value: string): boolean {
+	const allEfforts = ["low", "medium", "high", "xhigh"];
+	return allEfforts.includes(value);
 }
 
 function unique(values: string[]): string[] {
@@ -134,19 +151,11 @@ function unique(values: string[]): string[] {
 
 function sortReasoningEfforts(efforts: string[]): string[] {
 	const deduped = unique(efforts.map((effort) => effort.toLowerCase()));
+	const allEfforts = ["low", "medium", "high", "xhigh"];
 	return deduped.sort((left, right) => {
-		const leftIndex = KNOWN_REASONING_EFFORTS.indexOf(
-			left as KnownReasoningEffort,
-		);
-		const rightIndex = KNOWN_REASONING_EFFORTS.indexOf(
-			right as KnownReasoningEffort,
-		);
-		const safeLeft = leftIndex === -1 ? Number.MAX_SAFE_INTEGER : leftIndex;
-		const safeRight = rightIndex === -1 ? Number.MAX_SAFE_INTEGER : rightIndex;
-		if (safeLeft !== safeRight) {
-			return safeLeft - safeRight;
-		}
-		return left.localeCompare(right);
+		const leftIndex = allEfforts.indexOf(left);
+		const rightIndex = allEfforts.indexOf(right);
+		return leftIndex - rightIndex;
 	});
 }
 
@@ -635,8 +644,26 @@ export function resolveCodexExecutionArgs(
 	if (parsedMode.profile) {
 		args.push("--profile", parsedMode.profile);
 	} else if (parsedMode.reasoningEffort) {
+		// Validate reasoning effort against model capabilities
+		if (!validateReasoningEffort(model || DEFAULT_CODEX_MODEL, parsedMode.reasoningEffort)) {
+			const capabilities = getModelReasoningCapabilities(model || DEFAULT_CODEX_MODEL);
+			throw new Error(
+				`Reasoning effort '${parsedMode.reasoningEffort}' is not supported by model '${model}'. ` +
+				`Supported values: ${capabilities.join(", ")}`
+			);
+		}
 		args.push("-c", `model_reasoning_effort=${parsedMode.reasoningEffort}`);
 	}
 
 	return args;
+}
+
+// Export model capabilities for external use
+export function getModelCapabilities(model: string): ReasoningEffort[] {
+	return getModelReasoningCapabilities(model);
+}
+
+// Export all available reasoning efforts for UI
+export function getAllReasoningEfforts(): ReasoningEffort[] {
+	return ["low", "medium", "high", "xhigh"];
 }

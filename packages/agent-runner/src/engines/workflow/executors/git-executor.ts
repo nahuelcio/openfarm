@@ -123,9 +123,7 @@ export async function executeGitCheckout(
   const result = await checkoutBranch(
     updatedGitConfig,
     branch,
-    defaultBranch,
-    fs,
-    execFn
+    { defaultBranch }
   );
 
   if (!result.ok) {
@@ -158,7 +156,7 @@ export async function executeGitCheckout(
  */
 export async function executeGitBranch(
   request: StepExecutionRequest
-): Promise<Result<{ message: string; newBranchName: string }>> {
+): Promise<Result<{ message: string; createdBranchName: string }>> {
   const { step, context, logger, flags } = request;
   const { config } = step;
 
@@ -194,7 +192,7 @@ export async function executeGitBranch(
     // and subsequent steps (even if mocked) use the correct branch name.
     return ok({
       message: `[Dry Run] Simulated branch creation: ${finalBranchName}`,
-      newBranchName: finalBranchName,
+      createdBranchName: finalBranchName,
     });
   }
 
@@ -210,9 +208,7 @@ export async function executeGitBranch(
   const result = await checkoutBranch(
     updatedGitConfig,
     finalBranchName,
-    defaultBranch,
-    fsPod,
-    execFn
+    { defaultBranch }
   );
 
   if (!result.ok) {
@@ -222,7 +218,7 @@ export async function executeGitBranch(
 
   return ok({
     message: `Created branch: ${finalBranchName}`,
-    newBranchName: finalBranchName,
+    createdBranchName: finalBranchName,
   });
 }
 
@@ -560,7 +556,7 @@ export async function executeGitAction(
 ): Promise<
   Result<
     | string
-    | { message: string; newBranchName: string }
+    | { message: string; createdBranchName: string }
     | { message: string; worktreePath?: string }
   >
 > {

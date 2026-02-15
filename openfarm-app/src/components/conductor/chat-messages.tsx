@@ -1,6 +1,7 @@
 "use client";
 
 import {
+	BarChart3,
 	BotMessageSquare,
 	FileCode2,
 	File as FileIcon,
@@ -8,14 +9,36 @@ import {
 	FileText,
 	Terminal,
 	User,
-	BarChart3,
 } from "lucide-react";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { memo, useMemo } from "react";
 import { StatisticsDialog } from "@/components/conductor/statistics-dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import type { AgentMessage, Attachment } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
 type JsonObject = Record<string, unknown>;
+
+// Global cache for rendered markdown to avoid recomputation across re-renders
+const markdownCache = new Map<string, string>();
+const MAX_CACHE_SIZE = 500;
+
+function getCachedMarkdown(content: string): string {
+	const cached = markdownCache.get(content);
+	if (cached) {
+		return cached;
+	}
+	
+	const rendered = renderMarkdownToHtmlInternal(content);
+	
+	// Limit cache size to prevent memory leaks
+	if (markdownCache.size >= MAX_CACHE_SIZE) {
+		const firstKey = markdownCache.keys().next().value;
+		if (firstKey) markdownCache.delete(firstKey);
+	}
+	
+	markdownCache.set(content, rendered);
+	return rendered;
+}
 
 function parseJsonLine(line: string): JsonObject | null {
 	try {
@@ -198,7 +221,7 @@ function renderInlineMarkdown(value: string): string {
 		.replace(/\*(?!\*)([^*]+)\*(?!\*)/g, "<em>$1</em>");
 }
 
-function renderMarkdownToHtml(content: string): string {
+function renderMarkdownToHtmlInternal(content: string): string {
 	const lines = content.replaceAll("\r\n", "\n").split("\n");
 	const html: string[] = [];
 	let codeFenceOpen = false;
@@ -293,6 +316,11 @@ function renderMarkdownToHtml(content: string): string {
 	return html.join("");
 }
 
+// Public function that uses cache
+function renderMarkdownToHtml(content: string): string {
+	return getCachedMarkdown(content);
+}
+
 function FileChip({ name, onClick }: { name: string; onClick?: () => void }) {
 	return (
 		<button
@@ -336,7 +364,7 @@ function AttachmentCard({ attachment }: { attachment: Attachment }) {
 	);
 }
 
-function MessageBubble({
+const MessageBubble = memo(function MessageBubble({
 	message,
 	onFileClick,
 }: {
@@ -398,7 +426,16 @@ function MessageBubble({
 	}
 
 	// Agent message
-	const cleanedAgentContent = sanitizeAgentMessageContent(message.content);
+	const cleanedAgentContent = useMemo(
+		() => sanitizeAgentMessageContent(message.content),
+		[message.content]
+	);
+	
+	const renderedHtml = useMemo(
+		() => renderMarkdownToHtml(cleanedAgentContent),
+		[cleanedAgentContent]
+	);
+	
 	if (!message.thinking && !cleanedAgentContent) {
 		return null;
 	}
@@ -430,7 +467,7 @@ function MessageBubble({
 				<div
 					className="text-[13px] text-foreground leading-relaxed"
 					dangerouslySetInnerHTML={{
-						__html: renderMarkdownToHtml(cleanedAgentContent),
+						__html: renderedHtml,
 					}}
 				/>
 				{message.files && message.files.length > 0 && (
@@ -463,7 +500,7 @@ function MessageBubble({
 			</div>
 		</div>
 	);
-}
+});
 
 interface ChatMessagesProps {
 	messages: AgentMessage[];
@@ -471,13 +508,14 @@ interface ChatMessagesProps {
 	onFileClick?: (filename: string) => void;
 }
 
-export function ChatMessages({
+export const ChatMessages = memo(function ChatMessages({
 	messages,
 	isRunning,
 	onFileClick,
 }: ChatMessagesProps) {
-	const hasThinkingMessage = messages.some(
-		(message) => message.role === "agent" && message.thinking,
+	const hasThinkingMessage = useMemo(
+		() => messages.some((message) => message.role === "agent" && message.thinking),
+		[messages]
 	);
 
 	return (
@@ -520,4 +558,4 @@ export function ChatMessages({
 			)}
 		</ScrollArea>
 	);
-}
+});

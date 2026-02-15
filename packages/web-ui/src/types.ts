@@ -27,9 +27,6 @@ export interface WebServerHandle {
   close: () => void;
 }
 
-/** Control message prefix byte - \x00 never appears in normal terminal output */
-export const CONTROL_PREFIX = 0x00;
-
 export enum ControlMessage {
   Resize = "resize",
   Ping = "ping",

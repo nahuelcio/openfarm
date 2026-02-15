@@ -1,6 +1,6 @@
 "use client";
 
-import { Copy, BarChart3 } from "lucide-react";
+import { BarChart3, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -36,14 +36,17 @@ function StatRow({
 	);
 }
 
-export function StatisticsDialog({ statistics, children }: StatisticsDialogProps) {
+export function StatisticsDialog({
+	statistics,
+	children,
+}: StatisticsDialogProps) {
 	const copyToClipboard = () => {
 		const statsText = `RESPONSE STATISTICS
 Credits spent: ${statistics.creditsSpent} credits
 Tool calls: ${statistics.toolCalls} calls
 Model: ${statistics.model}
 Files changed: ${statistics.filesChanged} files
-Terminals created: ${statistics.terminalsCreated} processes
+Processes created: ${statistics.processesCreated} processes
 Request ID: ${statistics.requestId}
 Tokens input: ${statistics.tokensInput}
 Tokens output: ${statistics.tokensOutput}
@@ -62,7 +65,7 @@ Duration: ${statistics.duration}ms`;
 						Response Statistics
 					</DialogTitle>
 				</DialogHeader>
-				
+
 				<div className="space-y-4">
 					<div className="space-y-1">
 						<StatRow
@@ -73,10 +76,7 @@ Duration: ${statistics.duration}ms`;
 							label="Tool calls"
 							value={`${statistics.toolCalls} calls`}
 						/>
-						<StatRow
-							label="Model"
-							value={statistics.model}
-						/>
+						<StatRow label="Model" value={statistics.model} />
 					</div>
 
 					<div className="space-y-1">
@@ -88,8 +88,8 @@ Duration: ${statistics.duration}ms`;
 							value={`${statistics.filesChanged} files`}
 						/>
 						<StatRow
-							label="Terminals created"
-							value={`${statistics.terminalsCreated} processes`}
+							label="Processes created"
+							value={`${statistics.processesCreated} processes`}
 						/>
 					</div>
 
@@ -115,10 +115,7 @@ Duration: ${statistics.duration}ms`;
 						<h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide py-2">
 							Request Details
 						</h4>
-						<StatRow
-							label="Request ID"
-							value={statistics.requestId}
-						/>
+						<StatRow label="Request ID" value={statistics.requestId} />
 					</div>
 
 					<Button

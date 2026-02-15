@@ -12,7 +12,7 @@ import {
 import type { AgentProvider, AppSettings } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
-interface NewAgentDialogProps {
+interface AgentCreationDialogProps {
 	open: boolean;
 	onClose: () => void;
 	onBrowseRepo?: () => Promise<string | null>;
@@ -32,8 +32,8 @@ interface NewAgentDialogProps {
 }
 
 const DEFAULT_REPOS = [
-	{ name: "conductor-labs/conductor", label: "conductor-app" },
-	{ name: "conductor-labs/api", label: "api-server" },
+	{ id: "conductor-app", name: "conductor-labs/conductor", label: "conductor-app" },
+	{ id: "api-server", name: "conductor-labs/api", label: "api-server" },
 ];
 
 const PROVIDER_COLORS: Record<AgentProvider, string> = {
@@ -70,7 +70,7 @@ function getOpenCodeGroup(modelId: string, description: string): string {
 	return "OpenCode";
 }
 
-export function NewAgentDialog({
+export function AgentCreationDialog({
 	open,
 	onClose,
 	onBrowseRepo,
@@ -80,7 +80,7 @@ export function NewAgentDialog({
 	repos,
 	initialRepo,
 	initialWorkspaceId,
-}: NewAgentDialogProps) {
+}: AgentCreationDialogProps) {
 	const repoOptions = repos && repos.length > 0 ? repos : DEFAULT_REPOS;
 	const [prompt, setPrompt] = useState("");
 	const [selectedRepo, setSelectedRepo] = useState(repoOptions[0]);

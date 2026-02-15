@@ -30,9 +30,7 @@ describe("checkoutBranch", () => {
     const result = await checkoutBranch(
       mockConfig,
       "feature-branch",
-      "dev",
-      mockFs,
-      mockExec
+      { defaultBranch: "dev" }
     );
 
     expect(result.ok).toBe(false);
@@ -52,9 +50,7 @@ describe("checkoutBranch", () => {
     const result = await checkoutBranch(
       mockConfig,
       "feature-branch",
-      "dev",
-      mockFs,
-      mockExec
+      { defaultBranch: "dev" }
     );
 
     expect(result.ok).toBe(false);
@@ -77,9 +73,7 @@ describe("checkoutBranch", () => {
     const result = await checkoutBranch(
       mockConfig,
       "feature-branch",
-      "dev",
-      mockFs,
-      mockExec
+      { defaultBranch: "dev" }
     );
 
     expect(result.ok).toBe(true);
@@ -98,9 +92,7 @@ describe("checkoutBranch", () => {
     const result = await checkoutBranch(
       mockConfig,
       "dev",
-      "dev",
-      mockFs,
-      mockExec
+      { defaultBranch: "dev" }
     );
 
     expect(result.ok).toBe(true);
@@ -120,9 +112,7 @@ describe("checkoutBranch", () => {
     const result = await checkoutBranch(
       mockConfig,
       "dev",
-      "dev",
-      mockFs,
-      mockExec
+      { defaultBranch: "dev" }
     );
 
     expect(result.ok).toBe(true);

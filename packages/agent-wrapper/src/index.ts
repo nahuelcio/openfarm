@@ -10,7 +10,6 @@ export {
   type CommandHandler,
   type ExitHandler,
   type OutputHandler,
-  TmuxWrapper,
   type Wrapper,
   type WrapperOptions,
 } from "./wrappers";

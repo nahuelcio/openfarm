@@ -38,21 +38,21 @@ export class GitMock {
    */
   async executeGitBranch(
     request: StepExecutionRequest
-  ): Promise<Result<{ message: string; newBranchName: string }>> {
+  ): Promise<Result<{ message: string; createdBranchName: string }>> {
     const { step, context } = request;
     const pattern = (step.config?.pattern as string) || "test-branch";
 
     // Simular creación de nombre de branch basado en el pattern
     // En un caso real, esto se resolvería con expresiones
-    const newBranchName = pattern.includes("${")
+    const resolvedBranchName = pattern.includes("${")
       ? pattern.replace(/\$\{[^}]+\}/g, "resolved")
       : pattern;
 
     this.calls.branch.push({ pattern, context });
 
     return ok({
-      message: `Created branch: ${newBranchName}`,
-      newBranchName,
+      message: `Created branch: ${resolvedBranchName}`,
+      createdBranchName: resolvedBranchName,
     });
   }
 

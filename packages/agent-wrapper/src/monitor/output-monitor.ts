@@ -115,16 +115,16 @@ export class OutputMonitor {
       this.lastHash = hash;
 
       // Calcular delta
-      const newContent = output.slice(this.lastOutput.length);
+      const freshContent = output.slice(this.lastOutput.length);
       this.lastOutput = output;
 
       // Notificar output nuevo
-      if (newContent.trim()) {
-        this.options.onOutput(newContent);
+      if (freshContent.trim()) {
+        this.options.onOutput(freshContent);
       }
 
       // Parsear comandos
-      const commands = this.options.parser.parse(newContent);
+      const commands = this.options.parser.parse(freshContent);
       for (const command of commands) {
         this.options.onCommand(command);
       }

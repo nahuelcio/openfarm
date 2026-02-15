@@ -1,8 +1,7 @@
 /**
  * @openfarm/web-ui
  *
- * Thin Client web terminal for OpenFarm TUI.
- * Renders the TUI in a browser via xterm.js connected to a PTY backend.
+ * Web UI components for OpenFarm.
  */
 
 export { isLocalhost, parseConfig } from "./config.ts";

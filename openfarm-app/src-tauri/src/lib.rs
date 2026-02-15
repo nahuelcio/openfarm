@@ -1700,6 +1700,19 @@ struct BridgeRequest {
     args: Option<Vec<String>>,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+struct ExecutionStatistics {
+    credits_spent: f64,
+    tool_calls: u32,
+    model: String,
+    files_changed: u32,
+    processes_created: u32,
+    request_id: String,
+    tokens_input: u32,
+    tokens_output: u32,
+    duration: u64,
+}
+
 fn normalize_provider_for_bridge(provider: &str) -> (String, Option<String>, Option<Vec<String>>) {
     match provider.trim().to_lowercase().as_str() {
         "claude-code" | "claude" => ("claude".to_string(), None, None),
@@ -2006,6 +2019,17 @@ fn run_agent_via_bridge(
     let mut last_emitted_line = String::new();
     let mut final_result: Option<Result<String, String>> = None;
     let mut exit_status: Option<std::process::ExitStatus> = None;
+    let mut execution_stats = ExecutionStatistics {
+        credits_spent: 0.0,
+        tool_calls: 0,
+        model: provider.to_string(),
+        files_changed: 0,
+        processes_created: 0,
+        request_id: format!("bridge-{}-{}", agent_id, started_at.duration_since(Instant::now()).as_millis()),
+        tokens_input: 0,
+        tokens_output: 0,
+        duration: 0,
+    };
     loop {
         match rx.recv_timeout(Duration::from_millis(500)) {
             Ok((is_stderr, line)) => {
@@ -2018,6 +2042,14 @@ fn run_agent_via_bridge(
                 let value = serde_json::from_str::<serde_json::Value>(&line)
                     .unwrap_or_else(|_| serde_json::json!({}));
                 let kind = value.get("type").and_then(|v| v.as_str()).unwrap_or("log");
+                
+                // Track statistics from bridge responses
+                if let Some(stats) = value.get("statistics") {
+                    if let Ok(parsed_stats) = serde_json::from_value::<ExecutionStatistics>(stats.clone()) {
+                        execution_stats = parsed_stats;
+                    }
+                }
+                
                 if kind == "log" {
                     let chunk = value
                         .get("chunk")
@@ -2130,6 +2162,9 @@ fn run_agent_via_bridge(
     }
 
     if let Some(result) = final_result {
+        // Calculate final duration
+        execution_stats.duration = started_at.elapsed().as_millis() as u64;
+        
         if child
             .try_wait()
             .map_err(|e| e.to_string())?
@@ -2143,6 +2178,14 @@ fn run_agent_via_bridge(
             let mut pids = state.pids.lock().unwrap();
             pids.remove(agent_id);
         }
+        
+        // Store execution statistics in database
+        let _ = app.state::<AgentPool>().db.save_agent_event(
+            agent_id,
+            "agent:statistics",
+            &serde_json::to_value(&execution_stats).unwrap_or_else(|_| serde_json::json!({})),
+        );
+        
         return result;
     }
 
@@ -5232,14 +5275,27 @@ fn send_agent_message(
                         "timestamp": chrono::Utc::now().to_rfc3339()
                     }),
                 );
+                
+                // Include statistics in completion event
+                let events = state.db.load_agent_events(&agent_id_clone).unwrap_or_default();
+                let stats = events.iter()
+                    .find(|e| e.event_type == "agent:statistics")
+                    .and_then(|e| serde_json::from_value::<ExecutionStatistics>(e.data.clone()).ok());
+                
+                let mut completion_data = serde_json::json!({
+                    "agent_id": agent_id_clone,
+                    "timestamp": chrono::Utc::now().to_rfc3339()
+                });
+                
+                if let Some(execution_stats) = stats {
+                    completion_data["statistics"] = serde_json::to_value(execution_stats).unwrap_or_default();
+                }
+                
                 emit_and_store_event(
                     &app_clone,
                     &state,
                     "agent:completed",
-                    serde_json::json!({
-                        "agent_id": agent_id_clone,
-                        "timestamp": chrono::Utc::now().to_rfc3339()
-                    }),
+                    completion_data,
                 );
             }
             Err(error) => {
@@ -5265,15 +5321,28 @@ fn send_agent_message(
                         "timestamp": chrono::Utc::now().to_rfc3339()
                     }),
                 );
+                
+                // Include statistics in failure event
+                let events = state.db.load_agent_events(&agent_id_clone).unwrap_or_default();
+                let stats = events.iter()
+                    .find(|e| e.event_type == "agent:statistics")
+                    .and_then(|e| serde_json::from_value::<ExecutionStatistics>(e.data.clone()).ok());
+                
+                let mut failure_data = serde_json::json!({
+                    "agent_id": agent_id_clone,
+                    "error": persisted_error,
+                    "timestamp": chrono::Utc::now().to_rfc3339()
+                });
+                
+                if let Some(execution_stats) = stats {
+                    failure_data["statistics"] = serde_json::to_value(execution_stats).unwrap_or_default();
+                }
+                
                 emit_and_store_event(
                     &app_clone,
                     &state,
                     "agent:failed",
-                    serde_json::json!({
-                        "agent_id": agent_id_clone,
-                        "error": persisted_error,
-                        "timestamp": chrono::Utc::now().to_rfc3339()
-                    }),
+                    failure_data,
                 );
             }
         }

@@ -1,3 +1,17 @@
+import {
+	Box,
+	ChevronDown,
+	ChevronUp,
+	Database,
+	ExternalLink,
+	FileText,
+	Github,
+	HelpCircle,
+	Layout,
+	Palette,
+	TestTube,
+} from "lucide-react";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,20 +27,6 @@ import {
 	CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { McpInstallButton } from "./mcp-install-button";
-import { 
-	Github, 
-	Palette, 
-	Database, 
-	Layout, 
-	FileText, 
-	TestTube, 
-	Box, 
-	ChevronDown, 
-	ChevronUp,
-	HelpCircle,
-	ExternalLink
-} from "lucide-react";
-import { useState } from "react";
 
 interface McpCardProps {
 	id: string;
@@ -53,12 +53,18 @@ const iconMap: Record<string, React.ComponentType<any>> = {
 };
 
 const configHelp: Record<string, string> = {
-	context7ApiKey: "Get your API key from context7.com after signing up for a free account",
-	figmaToken: "Create a personal access token in Figma → Account → Personal access tokens",
-	token: "Generate a personal access token in GitHub → Settings → Developer settings → Personal access tokens",
-	apiKey: "Obtain API key from the service's developer portal or account settings",
-	linearApiKey: "Create API key in Linear → Settings → API → Create new API key",
-	notionApiKey: "Generate integration token in Notion → Settings & Members → Integrations",
+	context7ApiKey:
+		"Get your API key from context7.com after signing up for a free account",
+	figmaToken:
+		"Create a personal access token in Figma → Account → Personal access tokens",
+	token:
+		"Generate a personal access token in GitHub → Settings → Developer settings → Personal access tokens",
+	apiKey:
+		"Obtain API key from the service's developer portal or account settings",
+	linearApiKey:
+		"Create API key in Linear → Settings → API → Create new API key",
+	notionApiKey:
+		"Generate integration token in Notion → Settings & Members → Integrations",
 	browserType: "Choose which browser to use: chromium, firefox, or webkit",
 	organizationId: "Find your organization ID in Linear → Settings → General",
 };
@@ -114,7 +120,7 @@ export function McpCard({
 			</CardHeader>
 			<CardContent className="flex-1">
 				<p className="text-sm text-muted-foreground mb-4">{description}</p>
-				
+
 				{/* Configuration Help Section */}
 				{configSchema && Object.keys(configSchema).length > 0 && (
 					<Collapsible open={configOpen} onOpenChange={setConfigOpen}>

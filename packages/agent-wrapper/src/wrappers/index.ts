@@ -1,3 +1,4 @@
+// Base wrapper exports
 export {
   BaseWrapper,
   type CommandHandler,
@@ -6,5 +7,3 @@ export {
   type Wrapper,
   type WrapperOptions,
 } from "./base-wrapper";
-
-export { TmuxWrapper } from "./tmux-wrapper";

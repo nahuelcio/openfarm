@@ -1,4 +1,4 @@
-import Database from "better-sqlite3";
+import Database, { type Database as SQLiteDatabase } from "better-sqlite3";
 import { v4 as uuidv4 } from "uuid";
 import type { Annotation } from "../types";
 import type {
@@ -8,7 +8,7 @@ import type {
 } from "./annotation-types";
 
 export class AnnotationStorage {
-	private db: Database.Database;
+	private db: SQLiteDatabase;
 
 	constructor(dbPath?: string) {
 		this.db = new Database(dbPath || ":memory:");

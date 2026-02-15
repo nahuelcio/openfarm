@@ -4,7 +4,7 @@
  */
 
 import type { WorkItem } from "@openfarm/core/types/domain";
-export { WorkItem };
+export type { WorkItem };
 
 // Regex patterns at top level for performance
 export const TRAILING_SLASH_REGEX = /\/$/;

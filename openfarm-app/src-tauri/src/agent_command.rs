@@ -4,6 +4,22 @@ pub struct AgentCommand {
     pub args: Vec<String>,
 }
 
+// Model capabilities mapping - should match the TypeScript implementation
+fn get_model_reasoning_capabilities(model: &str) -> Vec<&'static str> {
+    match model {
+        "gpt-5.3-codex" => vec!["low", "medium", "high", "xhigh"],
+        "gpt-5.2-codex" => vec!["low", "medium", "high"],
+        "gpt-5.1-codex" => vec!["low", "medium", "high"],
+        "gpt-5.1-codex-mini" => vec!["low", "medium", "high"],
+        _ => vec!["low", "medium", "high"], // fallback
+    }
+}
+
+fn validate_reasoning_effort(model: &str, effort: &str) -> bool {
+    let capabilities = get_model_reasoning_capabilities(model);
+    capabilities.contains(&effort)
+}
+
 pub fn resolve_agent_command(
     provider: &str,
     task: &str,
@@ -63,15 +79,22 @@ pub fn resolve_agent_command(
                 if lower != "general" && lower != "default" && lower != "defaultmodel" {
                     if let Some(reasoning) = lower.strip_prefix("reasoning:") {
                         if !reasoning.trim().is_empty() {
-                            args.push("-c".to_string());
-                            args.push(format!("model_reasoning_effort={}", reasoning.trim()));
+                            // Validate reasoning effort against model capabilities
+                            if validate_reasoning_effort(model.unwrap_or("gpt-5.3-codex"), reasoning.trim()) {
+                                args.push("-c".to_string());
+                                args.push(format!("model_reasoning_effort={}", reasoning.trim()));
+                            } else {
+                                // Fall back to profile mode for unsupported effort
+                                args.push("--profile".to_string());
+                                args.push(value.to_string());
+                            }
                         }
                     } else if let Some(profile) = value.strip_prefix("profile:") {
                         if !profile.trim().is_empty() {
                             args.push("--profile".to_string());
                             args.push(profile.trim().to_string());
                         }
-                    } else if matches!(lower.as_str(), "low" | "medium" | "high" | "xhigh") {
+                    } else if validate_reasoning_effort(model.unwrap_or("gpt-5.3-codex"), &lower) {
                         args.push("-c".to_string());
                         args.push(format!("model_reasoning_effort={}", lower));
                     } else {
@@ -188,6 +211,23 @@ mod tests {
                 "write tests".to_string()
             ]
         );
+    }
+
+    #[test]
+    fn resolves_codex_with_limited_model_rejects_xhigh() {
+        let resolved = resolve_agent_command(
+            "codex",
+            "write tests",
+            Some("gpt-5.1-codex-mini"),
+            Some("reasoning:xhigh"),
+        );
+        // This should not error out, but should fall back to profile mode
+        assert!(resolved.is_ok());
+        let command = resolved.unwrap();
+        assert_eq!(command.program, "codex");
+        // Should use profile mode instead of reasoning for unsupported effort
+        assert!(command.args.contains(&"--profile".to_string()));
+        assert!(command.args.contains(&"reasoning:xhigh".to_string()));
     }
 
     #[test]

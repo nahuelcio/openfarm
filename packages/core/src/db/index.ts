@@ -28,7 +28,6 @@ export * from "./session-checkpoints";
 export * from "./system-configs";
 export * from "./types";
 export * from "./utils";
-export * from "./warp-chat";
 export * from "./work-items";
 export * from "./workflows/index";
 

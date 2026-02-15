@@ -104,8 +104,8 @@ export class OpenCodeProvider implements Provider {
           if (jsonParsed.includes("file") && jsonParsed.includes("changed")) {
             statsCollector.recordFileChanged();
           }
-          if (jsonParsed.includes("terminal") || jsonParsed.includes("process")) {
-            statsCollector.recordTerminalCreated();
+          if (jsonParsed.includes("process")) {
+            statsCollector.recordProcessCreated();
           }
         }
 

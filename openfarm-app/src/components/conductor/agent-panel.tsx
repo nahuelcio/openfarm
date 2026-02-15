@@ -13,11 +13,11 @@ import type {
 	ProviderConfig,
 	QueuedInstruction,
 } from "@/lib/store";
+import { McpStatusIndicator } from "../mcp";
 import { AgentHeader } from "./agent-header";
 import { AgentLogsSidebar } from "./agent-logs-sidebar";
 import { ChatMessages } from "./chat-messages";
 import { DiffViewer } from "./diff-viewer";
-import { McpStatusIndicator } from "../mcp";
 import { PromptInput } from "./prompt-input";
 
 interface AgentPanelProps {
@@ -119,8 +119,8 @@ export function AgentPanel({
 			/>
 			{/* MCP Status Indicator */}
 			<div className="flex items-center justify-between gap-2 border-b border-border/70 bg-secondary/20 px-4 py-2">
-				<McpStatusIndicator 
-					providers={providers} 
+				<McpStatusIndicator
+					providers={providers}
 					installedMcps={installedMcps}
 					onToggleMcp={onToggleMcp}
 				/>

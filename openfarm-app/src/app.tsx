@@ -6,15 +6,23 @@ import {
 	searchAvailable,
 } from "@openfarm/mcp-marketplace/browser";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+// Simple debounce utility
+function debounce<T extends (...args: any[]) => void>(func: T, wait: number): T {
+	let timeout: NodeJS.Timeout;
+	return ((...args: Parameters<T>) => {
+		clearTimeout(timeout);
+		timeout = setTimeout(() => func(...args), wait);
+	}) as T;
+}
 import { AgentPanel } from "@/components/conductor/agent-panel";
 import { AppSidebar } from "@/components/conductor/app-sidebar";
 import { EmptyState } from "@/components/conductor/empty-state";
-import { NewAgentDialog } from "@/components/conductor/new-agent-dialog";
-import { SettingsPanel } from "@/components/conductor/settings-panel";
+import { AgentCreationDialog } from "@/components/conductor/agent-creation-dialog";
+import { AdvancedSettingsPanel } from "@/components/conductor/advanced-settings-panel";
 import { Titlebar } from "@/components/conductor/titlebar";
-import { McpMarketplaceView, McpConfigDialog } from "@/components/mcp";
-import { mcpManager } from "@/lib/mcp-manager";
-import { initializeProviderMcpIntegrations, cleanupProviderMcpIntegrations } from "@/lib/provider-mcp-integration";
+import { McpConfigDialog, McpMarketplaceView } from "@/components/mcp";
+import { PlanReviewManager } from "@/components/plan-review";
 import {
 	addLocalWorkspace,
 	archiveAgentConversation,
@@ -34,6 +42,11 @@ import {
 	subscribeAgentEvents,
 	uninstallMcp,
 } from "@/lib/backend";
+import { mcpManager } from "@/lib/mcp-manager";
+import {
+	cleanupProviderMcpIntegrations,
+	initializeProviderMcpIntegrations,
+} from "@/lib/provider-mcp-integration";
 import type {
 	Agent,
 	AgentExecutionEvent,
@@ -154,11 +167,20 @@ function mergeSettingsWithCatalog(
 }
 
 export default function App() {
-	const [sidebarOpen, setSidebarOpen] = useState(true);
+	const [isAppLoading, setIsAppLoading] = useState(true);
+	const [isLoadingChat, setIsLoadingChat] = useState(false);
+	const [sidebarOpen, setSidebarOpen] = useState(() => {
+		// Default to closed on smaller screens
+		if (typeof window !== 'undefined') {
+			return window.innerWidth >= 768; // md breakpoint
+		}
+		return true;
+	});
 	const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
 	const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
 	const [selectedSubthread, setSelectedSubthread] =
 		useState<SelectedSubthreadContext | null>(null);
+	const [isSelectingAgent, setIsSelectingAgent] = useState(false);
 	const [newAgentOpen, setNewAgentOpen] = useState(false);
 	const [newAgentInitialRepo, setNewAgentInitialRepo] = useState<
 		string | undefined
@@ -170,12 +192,14 @@ export default function App() {
 	const [marketplaceOpen, setMarketplaceOpen] = useState(false);
 	const [mcpConfigOpen, setMcpConfigOpen] = useState(false);
 	const [selectedMcpId, setSelectedMcpId] = useState<string | null>(null);
-	const [installedMcps, setInstalledMcps] = useState<Array<{
-		id: string;
-		provider: AgentProvider;
-		config: Record<string, any>;
-		installedAt: string;
-	}>>([]);
+	const [installedMcps, setInstalledMcps] = useState<
+		Array<{
+			id: string;
+			provider: AgentProvider;
+			config: Record<string, any>;
+			installedAt: string;
+		}>
+	>([]);
 	const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
 	const [queuedInstructionsByAgent, setQueuedInstructionsByAgent] = useState<
 		Record<string, QueuedInstruction[]>
@@ -187,10 +211,17 @@ export default function App() {
 		Record<string, boolean>
 	>({});
 	const [stoppingAgentId, setStoppingAgentId] = useState<string | null>(null);
+	const [planReviewOpen, setPlanReviewOpen] = useState(false);
 	const queueDispatchingRef = useRef<Set<string>>(new Set());
 	const selectedAgentContext = useMemo(
 		() => findAgentContext(workspaces, selectedAgentId),
 		[workspaces, selectedAgentId],
+	);
+	
+	// Memoized findAgentContext to prevent recalculations
+	const memoizedFindAgentContext = useMemo(
+		() => findAgentContext,
+		[]
 	);
 	const selectedAgent = selectedAgentContext?.agent || null;
 	const selectedSubthreadName =
@@ -235,10 +266,18 @@ export default function App() {
 			setWorkspaces(nextState.workspaces);
 			setSettings(nextState.settings);
 			setSelectedAgentId((prev) => {
-				const candidate = preferredAgentId ?? prev;
-				return (
-					findAgentContext(nextState.workspaces, candidate)?.agent.id || null
-				);
+				// If we have a preferred agent ID (from user action), use it
+				if (preferredAgentId) {
+					const context = findAgentContext(nextState.workspaces, preferredAgentId);
+					return context?.agent.id || null;
+				}
+				// Otherwise, try to preserve the current selection if it still exists
+				if (prev) {
+					const context = findAgentContext(nextState.workspaces, prev);
+					return context?.agent.id || null;
+				}
+				// If no current selection, don't auto-select anything
+				return null;
 			});
 		},
 		[],
@@ -252,6 +291,12 @@ export default function App() {
 		[syncState],
 	);
 
+	// Debounced version for events to prevent excessive calls
+	const debouncedRefreshState = useMemo(
+		() => debounce(refreshState, 2000), // Increased to 2 seconds
+		[refreshState]
+	);
+
 	useEffect(() => {
 		let mounted = true;
 		void (async () => {
@@ -259,24 +304,120 @@ export default function App() {
 			if (!mounted) {
 				return;
 			}
-			syncState(state, selectedAgentId);
+			// Only sync state if no agent is currently selected
+			if (!selectedAgentId) {
+				syncState(state);
+			} else {
+				// Just update workspaces and settings, preserve selection
+				setWorkspaces(state.workspaces);
+				setSettings(state.settings);
+			}
+			// Mark app as loaded
+			setIsAppLoading(false);
 		})();
 
 		const active = setInterval(() => {
-			void refreshState(selectedAgentId);
-		}, 4000);
+			// Only refresh if no agent is selected to avoid interfering with user interaction
+			if (!selectedAgentId) {
+				debouncedRefreshState();
+			}
+		}, 30000); // Increased to 30 seconds - much less frequent
+
+		// Handle window resize for responsive sidebar
+		const handleResize = () => {
+			if (typeof window !== 'undefined') {
+				const isMobile = window.innerWidth < 768;
+				if (isMobile && sidebarOpen) {
+					// Optionally close sidebar on mobile when resizing down
+					// setSidebarOpen(false);
+				}
+			}
+		};
+
+		window.addEventListener('resize', handleResize);
 
 		let unsubs: Array<() => void> = [];
 		void (async () => {
 			unsubs = [
 				await subscribeAgentEvents("agent:started", () => {
-					void refreshState(selectedAgentId);
+					// Don't refresh state - let the existing intervals handle it
+					// This prevents blocking the UI when user is interacting
 				}),
-				await subscribeAgentEvents("agent:completed", () => {
-					void refreshState(selectedAgentId);
+				await subscribeAgentEvents("agent:completed", async (payload) => {
+					const value = payload as { agent_id?: string; agentId?: string; statistics?: any };
+					const id = value.agent_id || value.agentId;
+					if (!id) {
+						return;
+					}
+					
+					// Update agent with statistics if available
+					if (value.statistics) {
+						setWorkspaces((prev) =>
+							prev.map((workspace) => ({
+								...workspace,
+								agents: workspace.agents.map((agent) => {
+									if (agent.id === id) {
+										const lastMessage = agent.messages[agent.messages.length - 1];
+										if (lastMessage && lastMessage.role === "agent") {
+											return {
+												...agent,
+												messages: [
+													...agent.messages.slice(0, -1),
+													{
+														...lastMessage,
+														statistics: value.statistics,
+														thinking: false,
+													},
+												],
+											};
+										}
+									}
+									return agent;
+								})
+							}))
+						);
+					}
+					
+					// Don't refresh state - let the existing intervals handle it
+					// This prevents blocking the UI when user is interacting
 				}),
-				await subscribeAgentEvents("agent:failed", () => {
-					void refreshState(selectedAgentId);
+				await subscribeAgentEvents("agent:failed", async (payload) => {
+					const value = payload as { agent_id?: string; agentId?: string; statistics?: any };
+					const id = value.agent_id || value.agentId;
+					if (!id) {
+						return;
+					}
+					
+					// Update agent with statistics if available
+					if (value.statistics) {
+						setWorkspaces((prev) =>
+							prev.map((workspace) => ({
+								...workspace,
+								agents: workspace.agents.map((agent) => {
+									if (agent.id === id) {
+										const lastMessage = agent.messages[agent.messages.length - 1];
+										if (lastMessage && lastMessage.role === "agent") {
+											return {
+												...agent,
+												messages: [
+													...agent.messages.slice(0, -1),
+													{
+														...lastMessage,
+														statistics: value.statistics,
+														thinking: false,
+													},
+												],
+											};
+										}
+									}
+									return agent;
+								})
+							}))
+						);
+					}
+					
+					// Don't refresh state - let the existing intervals handle it
+					// This prevents blocking the UI when user is interacting
 				}),
 				await subscribeAgentEvents("agent:diff-updated", async (payload) => {
 					const value = payload as { agent_id?: string; agentId?: string };
@@ -300,11 +441,12 @@ export default function App() {
 		return () => {
 			mounted = false;
 			clearInterval(active);
+			window.removeEventListener('resize', handleResize);
 			for (const unlisten of unsubs) {
 				unlisten();
 			}
 		};
-	}, [refreshState, selectedAgentId, syncState]);
+	}, [refreshState, selectedAgentId, syncState, sidebarOpen]);
 
 	useEffect(() => {
 		void (async () => {
@@ -328,11 +470,13 @@ export default function App() {
 				console.log("MCP commands not available, using localStorage fallback");
 				// Intentar cargar desde localStorage
 				try {
-					const existingData = localStorage.getItem('openfarm-installed-mcps');
+					const existingData = localStorage.getItem("openfarm-installed-mcps");
 					const mcps = existingData ? JSON.parse(existingData) : [];
 					setInstalledMcps(mcps);
 				} catch (localStorageError) {
-					console.log("No installed MCPs found in localStorage, using empty state");
+					console.log(
+						"No installed MCPs found in localStorage, using empty state",
+					);
 					setInstalledMcps([]);
 				}
 			}
@@ -340,19 +484,56 @@ export default function App() {
 	}, []);
 
 	const handleSelectAgent = useCallback((agent: Agent) => {
+		// Don't do anything if this agent is already selected or we're already selecting
+		if (selectedAgentId === agent.id || isSelectingAgent || isLoadingChat) {
+			return;
+		}
+		
+		// Set loading states for visual feedback
+		setIsSelectingAgent(true);
+		setIsLoadingChat(true);
+		
+		// Immediate UI update - NO backend calls for instant response
 		setSelectedAgentId(agent.id);
 		setSelectedSubthread(null);
-	}, []);
+		
+		// Clear loading states after a short delay (simulates loading)
+		// This gives visual feedback that something is happening
+		requestAnimationFrame(() => {
+			setTimeout(() => {
+				setIsSelectingAgent(false);
+				setIsLoadingChat(false);
+			}, 150);
+		});
+	}, [selectedAgentId, isSelectingAgent, isLoadingChat]);
 
 	const handleSelectSubthread = useCallback(
 		(agent: Agent, subthreadName: string) => {
+			// Don't do anything if this subthread is already selected or we're already selecting
+			if (selectedAgentId === agent.id && selectedSubthread?.name === subthreadName) {
+				return;
+			}
+			
+			// Set loading states for visual feedback
+			setIsSelectingAgent(true);
+			setIsLoadingChat(true);
+			
+			// Immediate UI update - NO backend calls for instant response
 			setSelectedAgentId(agent.id);
 			setSelectedSubthread({
 				agentId: agent.id,
 				name: subthreadName,
 			});
+			
+			// Clear loading states after a short delay
+			requestAnimationFrame(() => {
+				setTimeout(() => {
+					setIsSelectingAgent(false);
+					setIsLoadingChat(false);
+				}, 150);
+			});
 		},
-		[],
+		[selectedAgentId, selectedSubthread],
 	);
 
 	const dispatchMessageToAgent = useCallback(
@@ -627,24 +808,27 @@ export default function App() {
 		}
 	}, [selectedAgent, syncState]);
 
-	const handleArchiveAgentFromSidebar = useCallback(async (agent: Agent) => {
-		try {
-			const next = await archiveAgentConversation(agent.id);
-			syncState(next, null);
-			// If the archived agent was selected, clear the selection
-			if (selectedAgentId === agent.id) {
+	const handleArchiveAgentFromSidebar = useCallback(
+		async (agent: Agent) => {
+			try {
+				const next = await archiveAgentConversation(agent.id);
 				syncState(next, null);
+				// If the archived agent was selected, clear the selection
+				if (selectedAgentId === agent.id) {
+					syncState(next, null);
+				}
+			} catch (error) {
+				const message =
+					error instanceof Error
+						? error.message
+						: "Failed to archive conversation";
+				if (typeof window !== "undefined") {
+					window.alert(message);
+				}
 			}
-		} catch (error) {
-			const message =
-				error instanceof Error
-					? error.message
-					: "Failed to archive conversation";
-			if (typeof window !== "undefined") {
-				window.alert(message);
-			}
-		}
-	}, [selectedAgentId, syncState]);
+		},
+		[selectedAgentId, syncState],
+	);
 
 	const handleSpawnAgentInWorkspace = useCallback((workspace: Workspace) => {
 		setNewAgentInitialRepo(workspace.repo);
@@ -683,70 +867,82 @@ export default function App() {
 		setMcpConfigOpen(true);
 	}, []);
 
-	const handleMcpConfigSubmit = useCallback(async (config: {
-		mcpId: string;
-		provider: AgentProvider;
-		config: Record<string, any>;
-	}) => {
-		try {
-			const updatedMcps = await installMcp(config);
-			setInstalledMcps(updatedMcps);
-			console.log("MCP installed successfully:", config);
-		} catch (error) {
-			console.log("MCP commands not available, using localStorage fallback");
-			// Si los comandos no están disponibles, guardamos en localStorage directamente
+	const handleMcpConfigSubmit = useCallback(
+		async (config: {
+			mcpId: string;
+			provider: AgentProvider;
+			config: Record<string, any>;
+		}) => {
 			try {
-				const existingData = localStorage.getItem('openfarm-installed-mcps');
-				const mcps = existingData ? JSON.parse(existingData) : [];
-				
-				// Buscar si ya existe
-				const existingIndex = mcps.findIndex(
-					(mcp: any) => mcp.id === config.mcpId && mcp.provider === config.provider
-				);
-				
-				const mcpEntry = {
-					id: config.mcpId,
-					provider: config.provider,
-					config: config.config,
-					installedAt: new Date().toISOString(),
-				};
-				
-				if (existingIndex >= 0) {
-					mcps[existingIndex] = mcpEntry;
-				} else {
-					mcps.push(mcpEntry);
-				}
-				
-				localStorage.setItem('openfarm-installed-mcps', JSON.stringify(mcps));
-				setInstalledMcps(mcps);
-				console.log("MCP installed successfully via localStorage:", config);
-			} catch (localStorageError) {
-				console.error("Failed to install MCP:", localStorageError);
-				const message = localStorageError instanceof Error ? localStorageError.message : "Failed to install MCP";
-				if (typeof window !== "undefined") {
-					window.alert(message);
-				}
-				return; // No cerrar los diálogos si hay error
-			}
-		}
-		
-		// Cerrar diálogos solo si la instalación fue exitosa
-		setMcpConfigOpen(false);
-		setSelectedMcpId(null);
-		setMarketplaceOpen(false);
-	}, []);
+				const updatedMcps = await installMcp(config);
+				setInstalledMcps(updatedMcps);
+				console.log("MCP installed successfully:", config);
+			} catch (error) {
+				console.log("MCP commands not available, using localStorage fallback");
+				// Si los comandos no están disponibles, guardamos en localStorage directamente
+				try {
+					const existingData = localStorage.getItem("openfarm-installed-mcps");
+					const mcps = existingData ? JSON.parse(existingData) : [];
 
-	const handleToggleMcp = useCallback((mcpId: string, provider: AgentProvider) => {
-		// Toggle MCP active/inactive status
-		const existingData = localStorage.getItem('openfarm-mcp-status');
-		const statusMap = existingData ? JSON.parse(existingData) : {};
-		
-		const key = `${mcpId}-${provider}`;
-		statusMap[key] = !statusMap[key]; // Toggle
-		
-		localStorage.setItem('openfarm-mcp-status', JSON.stringify(statusMap));
-		console.log(`MCP ${mcpId} ${statusMap[key] ? 'activated' : 'deactivated'}`);
-	}, []);
+					// Buscar si ya existe
+					const existingIndex = mcps.findIndex(
+						(mcp: any) =>
+							mcp.id === config.mcpId && mcp.provider === config.provider,
+					);
+
+					const mcpEntry = {
+						id: config.mcpId,
+						provider: config.provider,
+						config: config.config,
+						installedAt: new Date().toISOString(),
+					};
+
+					if (existingIndex >= 0) {
+						mcps[existingIndex] = mcpEntry;
+					} else {
+						mcps.push(mcpEntry);
+					}
+
+					localStorage.setItem("openfarm-installed-mcps", JSON.stringify(mcps));
+					setInstalledMcps(mcps);
+					console.log("MCP installed successfully via localStorage:", config);
+				} catch (localStorageError) {
+					console.error("Failed to install MCP:", localStorageError);
+					const message =
+						localStorageError instanceof Error
+							? localStorageError.message
+							: "Failed to install MCP";
+					if (typeof window !== "undefined") {
+						window.alert(message);
+					}
+					return; // No cerrar los diálogos si hay error
+				}
+			}
+
+			// Cerrar diálogos solo si la instalación fue exitosa
+			setMcpConfigOpen(false);
+			setSelectedMcpId(null);
+			setMarketplaceOpen(false);
+		},
+		[],
+	);
+
+	const handleToggleMcp = useCallback(
+		(mcpId: string, provider: AgentProvider) => {
+			// Toggle MCP active/inactive status
+			const existingData = localStorage.getItem("openfarm-mcp-status");
+			const statusMap = existingData ? JSON.parse(existingData) : {};
+
+			const key = `${mcpId}-${provider}`;
+			statusMap[key] = !statusMap[key]; // Toggle
+
+			localStorage.setItem("openfarm-mcp-status", JSON.stringify(statusMap));
+			console.log(
+				`MCP ${mcpId} ${statusMap[key] ? "activated" : "deactivated"}`,
+			);
+		},
+		[],
+	);
 
 	useEffect(() => {
 		const validAgentIds = new Set(
@@ -896,6 +1092,22 @@ export default function App() {
 		}
 	}, [dispatchMessageToAgent, queuedInstructionsByAgent, workspaces]);
 
+	// Show loading screen while app is initializing
+	if (isAppLoading) {
+		return (
+			<div className="flex h-screen flex-col items-center justify-center bg-background">
+				<div className="flex flex-col items-center gap-4">
+					<div className="flex items-center gap-2">
+						<div className="h-3 w-3 rounded-full bg-primary animate-pulse" />
+						<div className="h-3 w-3 rounded-full bg-primary animate-pulse" style={{ animationDelay: "0.2s" }} />
+						<div className="h-3 w-3 rounded-full bg-primary animate-pulse" style={{ animationDelay: "0.4s" }} />
+					</div>
+					<span className="text-sm text-muted-foreground">Loading OpenFarm...</span>
+				</div>
+			</div>
+		);
+	}
+
 	return (
 		<div className="flex h-screen flex-col overflow-hidden">
 			<Titlebar
@@ -910,11 +1122,21 @@ export default function App() {
 				sidebarOpen={sidebarOpen}
 			/>
 
-			<div className="flex flex-1 overflow-hidden">
+			<div className="flex flex-1 overflow-hidden relative">
+				{/* Mobile backdrop */}
+				{sidebarOpen && (
+					<div 
+						className="fixed inset-0 bg-black/50 z-[5] md:hidden" 
+						onClick={() => setSidebarOpen(false)}
+					/>
+				)}
 				<div
 					className={cn(
-						"shrink-0 overflow-hidden border-r border-border transition-all duration-200",
-						sidebarOpen ? "w-72 xl:w-80" : "w-0",
+						"shrink-0 overflow-hidden border-r border-border transition-all duration-200 z-10",
+						sidebarOpen ? "w-60 md:w-72 xl:w-80" : "w-0",
+						"md:relative absolute inset-y-0 left-0",
+						"md:translate-x-0", 
+						sidebarOpen ? "translate-x-0" : "-translate-x-full"
 					)}
 				>
 					<AppSidebar
@@ -926,11 +1148,28 @@ export default function App() {
 						selectedAgentId={selectedAgentId}
 						selectedSubthread={selectedSubthread}
 						workspaces={workspaces}
+						onOpenPlanReview={() => setPlanReviewOpen(true)}
+						isSelectingAgent={isSelectingAgent}
 					/>
 				</div>
 
-				<main className="min-w-0 flex-1">
-					{selectedAgent ? (
+				<main className="min-w-0 flex-1 relative">
+					{/* Chat loading overlay */}
+					{isLoadingChat && (
+						<div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-20 flex items-center justify-center">
+							<div className="flex flex-col items-center gap-3">
+								<div className="flex items-center gap-1.5">
+									<div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+									<div className="h-2 w-2 rounded-full bg-primary animate-pulse" style={{ animationDelay: "0.15s" }} />
+									<div className="h-2 w-2 rounded-full bg-primary animate-pulse" style={{ animationDelay: "0.3s" }} />
+								</div>
+								<span className="text-xs text-muted-foreground">Loading chat...</span>
+							</div>
+						</div>
+					)}
+					{planReviewOpen ? (
+						<PlanReviewManager />
+					) : selectedAgent ? (
 						<AgentPanel
 							agent={selectedAgent}
 							onSendMessage={handleSendMessage}
@@ -959,7 +1198,7 @@ export default function App() {
 				</main>
 			</div>
 
-			<NewAgentDialog
+			<AgentCreationDialog
 				onBrowseRepo={pickRepositoryDirectory}
 				onClose={() => {
 					setNewAgentOpen(false);
@@ -975,7 +1214,7 @@ export default function App() {
 				initialWorkspaceId={newAgentInitialWorkspaceId}
 			/>
 
-			<SettingsPanel
+			<AdvancedSettingsPanel
 				onClose={() => setSettingsOpen(false)}
 				onSettingsChange={handleSettingsChange}
 				open={settingsOpen}
@@ -993,10 +1232,8 @@ export default function App() {
 							}))}
 							onInstall={handleMcpInstall}
 							onUninstall={async (id) => {
-								const [catalogEntryId] = id.split('-');
-								const mcp = installedMcps.find(
-									(m) => m.id === catalogEntryId
-								);
+								const [catalogEntryId] = id.split("-");
+								const mcp = installedMcps.find((m) => m.id === catalogEntryId);
 								if (mcp) {
 									try {
 										const updatedMcps = await uninstallMcp({
@@ -1006,23 +1243,40 @@ export default function App() {
 										setInstalledMcps(updatedMcps);
 										console.log("MCP uninstalled successfully:", id);
 									} catch (error) {
-										console.log("MCP commands not available, using localStorage fallback");
+										console.log(
+											"MCP commands not available, using localStorage fallback",
+										);
 										// Usar localStorage fallback
 										try {
-											const existingData = localStorage.getItem('openfarm-installed-mcps');
+											const existingData = localStorage.getItem(
+												"openfarm-installed-mcps",
+											);
 											const mcps = existingData ? JSON.parse(existingData) : [];
-											
+
 											// Filtrar para remover el MCP específico
 											const updatedMcps = mcps.filter(
-												(mcp: any) => !(mcp.id === mcp.id && mcp.provider === mcp.provider)
+												(mcp: any) =>
+													!(mcp.id === mcp.id && mcp.provider === mcp.provider),
 											);
-											
-											localStorage.setItem('openfarm-installed-mcps', JSON.stringify(updatedMcps));
+
+											localStorage.setItem(
+												"openfarm-installed-mcps",
+												JSON.stringify(updatedMcps),
+											);
 											setInstalledMcps(updatedMcps);
-											console.log("MCP uninstalled successfully via localStorage:", id);
+											console.log(
+												"MCP uninstalled successfully via localStorage:",
+												id,
+											);
 										} catch (localStorageError) {
-											console.error("Failed to uninstall MCP:", localStorageError);
-											const message = localStorageError instanceof Error ? localStorageError.message : "Failed to uninstall MCP";
+											console.error(
+												"Failed to uninstall MCP:",
+												localStorageError,
+											);
+											const message =
+												localStorageError instanceof Error
+													? localStorageError.message
+													: "Failed to uninstall MCP";
 											if (typeof window !== "undefined") {
 												window.alert(message);
 											}
@@ -1044,8 +1298,13 @@ export default function App() {
 					}}
 					onSubmit={handleMcpConfigSubmit}
 					mcpId={selectedMcpId}
-					mcpName={getMcps().find((mcp) => mcp.id === selectedMcpId)?.name || ""}
-					mcpConfigSchema={getMcps().find((mcp) => mcp.id === selectedMcpId)?.configSchema || {}}
+					mcpName={
+						getMcps().find((mcp) => mcp.id === selectedMcpId)?.name || ""
+					}
+					mcpConfigSchema={
+						getMcps().find((mcp) => mcp.id === selectedMcpId)?.configSchema ||
+						{}
+					}
 					providers={settings.providers}
 				/>
 			)}

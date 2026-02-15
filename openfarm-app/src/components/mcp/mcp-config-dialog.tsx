@@ -10,7 +10,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
-import type { ProviderConfig, AgentProvider } from "@/lib/store";
+import type { AgentProvider, ProviderConfig } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
 interface McpConfigDialogProps {
@@ -148,22 +148,26 @@ export function McpConfigDialog({
 							<div className="space-y-3">
 								{Object.entries(mcpConfigSchema).map(([key, schema]) => {
 									// Validar que schema exista y tenga las propiedades necesarias
-									if (!schema || typeof schema !== 'object') {
+									if (!schema || typeof schema !== "object") {
 										console.warn(`Invalid schema for key: ${key}`, schema);
 										return null;
 									}
-									
+
 									return (
 										<div key={key}>
 											<label className="text-xs text-muted-foreground uppercase tracking-wider font-medium mb-1.5 block">
 												{schema?.description || key}
-												{schema?.required && <span className="text-red-500 ml-1">*</span>}
+												{schema?.required && (
+													<span className="text-red-500 ml-1">*</span>
+												)}
 											</label>
 											<input
 												type={schema?.type === "string" ? "text" : "password"}
 												value={configValues[key] || ""}
-												onChange={(e) => handleConfigChange(key, e.target.value)}
-												placeholder={`Enter ${schema?.description?.toLowerCase?.() || 'value'}`}
+												onChange={(e) =>
+													handleConfigChange(key, e.target.value)
+												}
+												placeholder={`Enter ${schema?.description?.toLowerCase?.() || "value"}`}
 												className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/40"
 											/>
 										</div>
