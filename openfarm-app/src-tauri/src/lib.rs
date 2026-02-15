@@ -1593,12 +1593,22 @@ fn spawn_agent_internal(
             if let Some(agent) = agents.get_mut(&agent_id_clone) {
                 match output {
                     Ok(ref combined) => {
+                        let cleaned = sanitize_assistant_chat_content(combined);
                         agent.status = "completed".to_string();
-                        agent.output = Some(combined.clone());
+                        agent.output = Some(if cleaned.is_empty() {
+                            combined.clone()
+                        } else {
+                            cleaned
+                        });
                     }
                     Err(ref err) => {
+                        let cleaned = sanitize_assistant_chat_content(err);
                         agent.status = "failed".to_string();
-                        agent.output = Some(err.clone());
+                        agent.output = Some(if cleaned.is_empty() {
+                            err.clone()
+                        } else {
+                            cleaned
+                        });
                     }
                 }
                 if let Err(e) = state.db.save_agent(agent) {
@@ -1613,11 +1623,17 @@ fn spawn_agent_internal(
 
         match output {
             Ok(result_output) => {
+                let cleaned = sanitize_assistant_chat_content(&result_output);
+                let persisted_output = if cleaned.is_empty() {
+                    result_output
+                } else {
+                    cleaned
+                };
                 let _ = state.db.save_agent_event(
                     &agent_id_clone,
                     "agent:assistant-message",
                     &serde_json::json!({
-                        "content": result_output.clone(),
+                        "content": persisted_output,
                         "timestamp": chrono::Utc::now().to_rfc3339()
                     }),
                 );
@@ -1632,11 +1648,17 @@ fn spawn_agent_internal(
                 );
             }
             Err(err) => {
+                let cleaned = sanitize_assistant_chat_content(&err);
+                let persisted_error = if cleaned.is_empty() {
+                    err.clone()
+                } else {
+                    cleaned
+                };
                 let _ = state.db.save_agent_event(
                     &agent_id_clone,
                     "agent:assistant-message",
                     &serde_json::json!({
-                        "content": err.clone(),
+                        "content": persisted_error.clone(),
                         "timestamp": chrono::Utc::now().to_rfc3339()
                     }),
                 );
@@ -1646,7 +1668,7 @@ fn spawn_agent_internal(
                     "agent:failed",
                     serde_json::json!({
                         "agent_id": agent_id_clone,
-                        "error": err,
+                        "error": persisted_error,
                         "timestamp": chrono::Utc::now().to_rfc3339()
                     }),
                 );
@@ -4349,39 +4371,54 @@ fn load_agent_base_branch(pool: &AgentPool, agent_id: &str) -> Option<String> {
         .map(|value| value.to_string())
 }
 
-fn sanitize_assistant_context(content: &str) -> String {
-    let lines: Vec<String> = content
-        .lines()
-        .map(|line| line.trim())
-        .filter(|line| !line.is_empty())
-        .filter(|line| !line.starts_with("Step:"))
-        .filter(|line| !line.eq_ignore_ascii_case("Run started"))
-        .filter(|line| !line.eq_ignore_ascii_case("Run completed"))
-        .map(|line| line.to_string())
-        .collect();
+fn is_transient_assistant_line(line: &str) -> bool {
+    line.starts_with("Step:")
+        || line.eq_ignore_ascii_case("Run started")
+        || line.eq_ignore_ascii_case("Run completed")
+}
+
+fn sanitize_assistant_content(content: &str, keep_empty_lines: bool) -> String {
+    let mut lines = Vec::<String>::new();
+    let mut last_non_empty = String::new();
+
+    for raw_line in content.lines() {
+        if raw_line.trim().is_empty() {
+            if keep_empty_lines
+                && !lines.is_empty()
+                && lines.last().map(|line| !line.is_empty()).unwrap_or(false)
+            {
+                lines.push(String::new());
+            }
+            continue;
+        }
+
+        let Some(normalized_line) = normalize_agent_stream_line(raw_line) else {
+            continue;
+        };
+        let clean = normalized_line.trim().to_string();
+        if clean.is_empty() || is_transient_assistant_line(&clean) {
+            continue;
+        }
+        if clean == last_non_empty {
+            continue;
+        }
+        last_non_empty = clean.clone();
+        lines.push(clean);
+    }
+
+    while lines.last().map(|line| line.is_empty()).unwrap_or(false) {
+        lines.pop();
+    }
+
     lines.join("\n").trim().to_string()
 }
 
+fn sanitize_assistant_context(content: &str) -> String {
+    sanitize_assistant_content(content, false)
+}
+
 fn sanitize_assistant_chat_content(content: &str) -> String {
-    let lines: Vec<&str> = content
-        .lines()
-        .filter(|line| {
-            let trimmed = line.trim();
-            if trimmed.is_empty() {
-                return true;
-            }
-            if trimmed.starts_with("Step:") {
-                return false;
-            }
-            if trimmed.eq_ignore_ascii_case("Run started")
-                || trimmed.eq_ignore_ascii_case("Run completed")
-            {
-                return false;
-            }
-            true
-        })
-        .collect();
-    lines.join("\n").trim().to_string()
+    sanitize_assistant_content(content, true)
 }
 
 fn build_execution_context(pool: &AgentPool, agent: &Agent, latest_message: &str) -> Option<String> {
@@ -4534,11 +4571,12 @@ fn load_agent_messages(pool: &AgentPool, agent: &Agent) -> Vec<UiMessage> {
 
     if messages.iter().all(|message| message.role != "agent") {
         if let Some(output) = &agent.output {
-            if !output.trim().is_empty() {
+            let cleaned = sanitize_assistant_chat_content(output);
+            if !cleaned.is_empty() {
                 messages.push(UiMessage {
                     id: format!("{}-last-output", agent.id),
                     role: "agent".to_string(),
-                    content: output.clone(),
+                    content: cleaned,
                     timestamp: chrono::Utc::now().to_rfc3339(),
                     thinking: false,
                 });
@@ -5172,11 +5210,17 @@ fn send_agent_message(
         let state = app_clone.state::<AgentPool>();
         match result {
             Ok(output) => {
+                let cleaned_output = sanitize_assistant_chat_content(&output);
+                let persisted_output = if cleaned_output.is_empty() {
+                    output
+                } else {
+                    cleaned_output
+                };
                 {
                     let mut agents = state.agents.lock().unwrap();
                     if let Some(agent) = agents.get_mut(&agent_id_clone) {
                         agent.status = "completed".to_string();
-                        agent.output = Some(output.clone());
+                        agent.output = Some(persisted_output.clone());
                         let _ = state.db.save_agent(agent);
                     }
                 }
@@ -5184,7 +5228,7 @@ fn send_agent_message(
                     &agent_id_clone,
                     "agent:assistant-message",
                     &serde_json::json!({
-                        "content": output,
+                        "content": persisted_output,
                         "timestamp": chrono::Utc::now().to_rfc3339()
                     }),
                 );
@@ -5199,11 +5243,17 @@ fn send_agent_message(
                 );
             }
             Err(error) => {
+                let cleaned_error = sanitize_assistant_chat_content(&error);
+                let persisted_error = if cleaned_error.is_empty() {
+                    error.clone()
+                } else {
+                    cleaned_error
+                };
                 {
                     let mut agents = state.agents.lock().unwrap();
                     if let Some(agent) = agents.get_mut(&agent_id_clone) {
                         agent.status = "failed".to_string();
-                        agent.output = Some(error.clone());
+                        agent.output = Some(persisted_error.clone());
                         let _ = state.db.save_agent(agent);
                     }
                 }
@@ -5211,7 +5261,7 @@ fn send_agent_message(
                     &agent_id_clone,
                     "agent:assistant-message",
                     &serde_json::json!({
-                        "content": error.clone(),
+                        "content": persisted_error.clone(),
                         "timestamp": chrono::Utc::now().to_rfc3339()
                     }),
                 );
@@ -5221,7 +5271,7 @@ fn send_agent_message(
                     "agent:failed",
                     serde_json::json!({
                         "agent_id": agent_id_clone,
-                        "error": error,
+                        "error": persisted_error,
                         "timestamp": chrono::Utc::now().to_rfc3339()
                     }),
                 );
@@ -5300,7 +5350,7 @@ fn get_provider_catalog() -> Result<serde_json::Value, String> {
 mod tests {
     use super::{
         extract_pr_number, normalize_agent_output_chunk, parse_structured_agent_event,
-        workspace_root_from_worktree,
+        sanitize_assistant_chat_content, workspace_root_from_worktree,
     };
 
     #[test]
@@ -5361,6 +5411,20 @@ mod tests {
         let raw = "Reading prompt from stdin...\n{\"type\":\"thread.started\",\"thread_id\":\"x\"}\n{\"type\":\"item.completed\",\"item\":{\"id\":\"item_0\",\"type\":\"reasoning\",\"text\":\"thinking\"}}\n{\"type\":\"item.completed\",\"item\":{\"id\":\"item_1\",\"type\":\"agent_message\",\"text\":\"Hola.\"}}\n2026-02-15T00:48:00.251301Z ERROR codex_core::rollout::list: state db missing rollout path for thread x\n";
         let value = normalize_agent_output_chunk(raw);
         assert_eq!(value, vec!["Hola.".to_string()]);
+    }
+
+    #[test]
+    fn sanitizes_codex_json_noise_from_chat_content() {
+        let raw = "Hola. ¿En qué te ayudo?\n\n{\"type\":\"thread.started\",\"thread_id\":\"019c5ef0-4a82-76e3-8553-b29e30d14830\"}\n\n{\"type\":\"turn.started\"}\n\n{\"type\":\"item.completed\",\"item\":{\"id\":\"item_0\",\"type\":\"agent_message\",\"text\":\"Hola. ¿En qué te ayudo?\"}}\n\n{\"type\":\"turn.completed\",\"usage\":{\"input_tokens\":8109,\"cached_input_tokens\":6912,\"output_tokens\":13}}";
+        let value = sanitize_assistant_chat_content(raw);
+        assert_eq!(value, "Hola. ¿En qué te ayudo?");
+    }
+
+    #[test]
+    fn sanitizes_chat_content_removing_steps_and_runtime_noise() {
+        let raw = "Step: worktree branch `openfarm-agent-x`\nRun started\nReading prompt from stdin...\n2026-02-15T00:48:00.251301Z ERROR codex_core::rollout::list: state db missing rollout path for thread x\nStory ready.";
+        let value = sanitize_assistant_chat_content(raw);
+        assert_eq!(value, "Story ready.");
     }
 }
 
