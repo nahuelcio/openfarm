@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "localBankPath": "/Users/nahuelcioffi/Proyectos/openfarm/openfarm-app/src-tauri/.openfarm/memories",
+  "globalBanksRoot": "/Users/nahuelcioffi/.openfarm-global/shared-banks",
+  "multiWorkspaceEnabled": false,
+  "banks": [
+    {
+      "id": "local",
+      "name": "Local Workspace Memory",
+      "path": "/Users/nahuelcioffi/Proyectos/openfarm/openfarm-app/src-tauri/.openfarm/memories",
+      "scope": "local",
+      "enabled": true
+    }
+  ],
+  "workspaces": []
+}

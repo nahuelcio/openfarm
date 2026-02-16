@@ -1,4 +1,6 @@
-import { randomUUID } from "crypto";
+const createRequestId = (): string =>
+	globalThis.crypto?.randomUUID?.() ??
+	`req-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
 export interface ExecutionStatistics {
 	creditsSpent: number;
@@ -17,7 +19,7 @@ export class StatisticsCollector {
 	private filesChanged: number = 0;
 	private processesCreated: number = 0;
 	private startTime: number = Date.now();
-	private requestId: string = randomUUID();
+	private requestId: string = createRequestId();
 
 	constructor(private model: string) {}
 

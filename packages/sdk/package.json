@@ -40,6 +40,7 @@
 		"@openfarm/core": "workspace:*",
 		"@openfarm/git-worktree": "workspace:*",
 		"@openfarm/mcp-marketplace": "workspace:*",
+		"@openfarm/memory-system": "workspace:*",
 		"@openfarm/remote-server": "workspace:*",
 		"@openfarm/task-loop": "workspace:*",
 		"@openfarm/web-ui": "workspace:*",

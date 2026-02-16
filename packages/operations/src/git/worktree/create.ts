@@ -106,7 +106,7 @@ export const createWorktree = async (
     if (onLog) {
       await onLog(message);
     }
-    logger.info({ branchName, worktreePath }, message);
+    logger().info({ branchName, worktreePath }, message);
   };
 
   try {

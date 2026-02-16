@@ -6,6 +6,7 @@ import {
 	FileText,
 	Loader2,
 	Plus,
+	Trash2,
 	XCircle,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -64,54 +65,9 @@ export function PlanReviewManager({ className }: PlanReviewManagerProps) {
 			// Simulación - en producción usaríamos PlanManager
 			await new Promise((resolve) => setTimeout(resolve, 1000));
 
-			const mockPlans: Plan[] = [
-				{
-					id: "1",
-					title: "Implementar autenticación de usuarios",
-					description: "Crear sistema completo de autenticación con JWT",
-					status: "pending",
-					createdAt: new Date(),
-					agentId: "claude-code",
-					steps: [
-						{
-							id: "1-1",
-							title: "Crear modelo de usuario",
-							description:
-								"Definir schema de usuario en base de datos con email, password, etc.",
-						},
-						{
-							id: "1-2",
-							title: "Implementar endpoints de auth",
-							description: "Crear /login, /register, /refresh-token endpoints",
-						},
-						{
-							id: "1-3",
-							title: "Agregar middleware JWT",
-							description: "Proteger rutas con middleware de autenticación",
-						},
-					],
-				},
-				{
-					id: "2",
-					title: "Migrar base de datos a PostgreSQL",
-					description: "Cambiar de SQLite a PostgreSQL para producción",
-					status: "in-review",
-					createdAt: new Date(Date.now() - 3600000),
-					agentId: "claude-code",
-					steps: [
-						{
-							id: "2-1",
-							title: "Configurar PostgreSQL",
-							description: "Instalar y configurar PostgreSQL en producción",
-						},
-						{
-							id: "2-2",
-							title: "Migrar schemas",
-							description: "Convertir schemas de SQLite a PostgreSQL",
-						},
-					],
-				},
-			];
+			// Iniciar con planes vacíos en lugar de datos mock
+			// Los usuarios pueden crear planes manualmente o los agentes pueden generarlos
+			const mockPlans: Plan[] = [];
 
 			setPlans(mockPlans);
 		} catch (err) {
@@ -154,6 +110,29 @@ export function PlanReviewManager({ className }: PlanReviewManagerProps) {
 	const handlePlanSelect = (plan: Plan) => {
 		setSelectedPlan(plan);
 		loadAnnotations(plan.id);
+	};
+
+	const handleDeletePlan = async (planId: string) => {
+		try {
+			// Simulación - en producción usaríamos PlanManager
+			await new Promise((resolve) => setTimeout(resolve, 500));
+
+			setPlans((prev) => prev.filter((p) => p.id !== planId));
+
+			if (selectedPlan?.id === planId) {
+				setSelectedPlan(null);
+				setAnnotations([]);
+			}
+
+			console.log("🗑️ Plan eliminado:", planId);
+		} catch (err) {
+			setError("Error eliminando plan");
+		}
+	};
+
+	const handleCreatePlan = () => {
+		// Placeholder para futura implementación
+		console.log("📝 Crear nuevo plan - funcionalidad por implementar");
 	};
 
 	const handleApprove = async () => {
@@ -294,7 +273,7 @@ export function PlanReviewManager({ className }: PlanReviewManagerProps) {
 							<FileText className="h-5 w-5" />
 							Plan Review Manager
 						</CardTitle>
-						<Button size="sm">
+						<Button size="sm" onClick={handleCreatePlan}>
 							<Plus className="h-4 w-4 mr-2" />
 							Nuevo Plan
 						</Button>
@@ -310,7 +289,7 @@ export function PlanReviewManager({ className }: PlanReviewManagerProps) {
 							<p className="text-muted-foreground mb-4">
 								Los planes aparecerán aquí cuando los agentes los generen
 							</p>
-							<Button>
+							<Button onClick={handleCreatePlan}>
 								<Plus className="h-4 w-4 mr-2" />
 								Crear Primer Plan
 							</Button>
@@ -350,8 +329,25 @@ export function PlanReviewManager({ className }: PlanReviewManagerProps) {
 										<Badge className={getStatusColor(plan.status)}>
 											{plan.status}
 										</Badge>
-										<Button size="sm" variant="outline">
+										<Button
+											size="sm"
+											variant="outline"
+											onClick={(e) => {
+												e.stopPropagation();
+												handlePlanSelect(plan);
+											}}
+										>
 											<Eye className="h-4 w-4" />
+										</Button>
+										<Button
+											size="sm"
+											variant="destructive"
+											onClick={(e) => {
+												e.stopPropagation();
+												handleDeletePlan(plan.id);
+											}}
+										>
+											<Trash2 className="h-4 w-4" />
 										</Button>
 									</div>
 								</div>

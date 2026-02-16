@@ -83,7 +83,7 @@ const handlePrCreationConflict = async (
     }
 
     // PR was created between our check and creation attempt, find it now
-    logger.info(
+    logger().info(
       { sourceRefName, targetRefName },
       "PR creation failed because PR already exists, searching for existing PR"
     );
@@ -94,7 +94,7 @@ const handlePrCreationConflict = async (
       fetchFn
     );
     if (existingPrResult.ok && existingPrResult.value) {
-      logger.info(
+      logger().info(
         { prUrl: existingPrResult.value },
         "Found existing PR after creation conflict"
       );
@@ -123,7 +123,7 @@ const checkExistingPr = async (
   );
   if (!existingPrResult.ok) {
     // If search failed, continue with creation attempt
-    logger.warn(
+    logger().warn(
       { error: existingPrResult.error },
       "Failed to search for existing PR, continuing with creation"
     );
@@ -131,7 +131,7 @@ const checkExistingPr = async (
   }
   if (existingPrResult.value) {
     // PR already exists, return its URL
-    logger.info(
+    logger().info(
       { sourceRefName, targetRefName, prUrl: existingPrResult.value },
       "PR already exists, returning existing PR URL"
     );
@@ -204,7 +204,7 @@ export const updateWorkItem = async (
 
     if (!response.ok) {
       const errorText = await response.text();
-      logger.error(
+      logger().error(
         {
           status: response.status,
           statusText: response.statusText,
@@ -228,7 +228,7 @@ export const updateWorkItem = async (
       workItemIds: [workItemId],
     });
 
-    logger.info(
+    logger().info(
       { workItemId, updates },
       "Successfully updated work item in Azure DevOps"
     );
@@ -328,7 +328,7 @@ export const processWorkItemBatch = async (
       };
       const cached = workItemCache.get(cacheKey);
       if (cached) {
-        logger.info(
+        logger().info(
           {
             orgUrl: config.orgUrl,
             project: config.project,
@@ -354,7 +354,7 @@ export const processWorkItemBatch = async (
 
     if (!detailsResponse.ok) {
       const errorText = await detailsResponse.text();
-      logger.error(
+      logger().error(
         {
           status: detailsResponse.status,
           statusText: detailsResponse.statusText,
@@ -558,7 +558,7 @@ function checkCacheForWorkItems(
   };
   const cached = workItemCache.get(cacheKey);
   if (cached) {
-    logger.info(
+    logger().info(
       {
         orgUrl: config.orgUrl,
         project: config.project,
@@ -624,7 +624,7 @@ function applyPaginationToIds(
   const beforeCount = ids.length;
   const paginatedIds = ids.slice(skip, skip + limit);
 
-  logger.info(
+  logger().info(
     {
       skip,
       limit,
@@ -692,7 +692,7 @@ function saveToCacheIfNeeded(
       },
       allWorkItems
     );
-    logger.info(
+    logger().info(
       {
         orgUrl: config.orgUrl,
         project: config.project,
@@ -701,7 +701,7 @@ function saveToCacheIfNeeded(
       "Workitems cached for future requests"
     );
   } else if (pagination) {
-    logger.info(
+    logger().info(
       {
         orgUrl: config.orgUrl,
         project: config.project,

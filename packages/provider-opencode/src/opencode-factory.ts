@@ -81,7 +81,8 @@ export class OpenCodeProviderFactory implements ProviderFactory {
     communicationStrategy: CommunicationStrategy;
     commandLabel: string;
   } {
-    const command = process.env.OPENCODE_COMMAND || "bunx";
+    const configuredCommand = process.env.OPENCODE_COMMAND?.trim();
+    const command = configuredCommand || "opencode";
     const useBunx = command === "bunx";
     const defaultArgs = useBunx ? ["opencode-ai"] : [];
     const commandLabel = useBunx ? "bunx opencode-ai" : command;

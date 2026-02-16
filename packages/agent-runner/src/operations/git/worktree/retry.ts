@@ -20,7 +20,7 @@ export async function aggressiveCleanupForBranchExists(
     if (onLog) {
       await onLog(message);
     }
-    logger.info({ branchName, worktreePath }, message);
+    logger().info({ branchName, worktreePath }, message);
   };
 
   const sanitizedMainRepoPath = sanitizePath(mainRepoPath);

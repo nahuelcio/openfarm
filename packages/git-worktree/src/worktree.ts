@@ -91,7 +91,7 @@ export async function listWorktrees(
 
     return ok(worktrees);
   } catch (error) {
-    logger.error({ error, repoPath }, "Failed to list worktrees");
+    logger().error({ error, repoPath }, "Failed to list worktrees");
     return err(
       error instanceof Error ? error : new Error("Failed to list worktrees")
     );
@@ -152,7 +152,7 @@ export async function createWorktree(
       normalizedPath = resolve(options.path);
     }
 
-    logger.info(
+    logger().info(
       { normalizedPath, expectedPath: options.path },
       "Looking for worktree"
     );
@@ -161,7 +161,7 @@ export async function createWorktree(
       try {
         const normalizedWorktreePath = realpathSync(wt.path);
         const match = normalizedWorktreePath === normalizedPath;
-        logger.info(
+        logger().info(
           {
             worktreePath: wt.path,
             normalizedWorktreePath,
@@ -201,14 +201,14 @@ export async function createWorktree(
       );
     }
 
-    logger.info(
+    logger().info(
       { path: options.path, branch: options.branch },
       "Worktree created successfully"
     );
 
     return ok(createdWorktree);
   } catch (error) {
-    logger.error({ error, options }, "Failed to create worktree");
+    logger().error({ error, options }, "Failed to create worktree");
     return err(
       error instanceof Error ? error : new Error("Failed to create worktree")
     );
@@ -235,10 +235,10 @@ export async function removeWorktree(
 
     await gitExec(args, { cwd: repoPath });
 
-    logger.info({ worktreePath }, "Worktree removed successfully");
+    logger().info({ worktreePath }, "Worktree removed successfully");
     return ok(undefined);
   } catch (error) {
-    logger.error({ error, worktreePath }, "Failed to remove worktree");
+    logger().error({ error, worktreePath }, "Failed to remove worktree");
     return err(
       error instanceof Error ? error : new Error("Failed to remove worktree")
     );
@@ -254,10 +254,10 @@ export async function pruneWorktrees(
 ): Promise<Result<void>> {
   try {
     await gitExec(["worktree", "prune"], { cwd: repoPath });
-    logger.info({ repoPath }, "Worktrees pruned successfully");
+    logger().info({ repoPath }, "Worktrees pruned successfully");
     return ok(undefined);
   } catch (error) {
-    logger.error({ error, repoPath }, "Failed to prune worktrees");
+    logger().error({ error, repoPath }, "Failed to prune worktrees");
     return err(
       error instanceof Error ? error : new Error("Failed to prune worktrees")
     );

@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, FolderGit2 } from "lucide-react";
+import { ChevronDown, FolderGit2, Info } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -232,7 +232,7 @@ export function AgentCreationDialog({
 
 	const handleSubmit = () => {
 		const normalizedRepoPath = repoPath.trim();
-		if (prompt.trim() && normalizedRepoPath) {
+		if (normalizedRepoPath) {
 			const selectedWorkspaceId = repoOptions.find(
 				(repo) => repo.name === normalizedRepoPath,
 			)?.id;
@@ -437,13 +437,18 @@ export function AgentCreationDialog({
 
 					{/* Prompt */}
 					<div className="mb-4">
-						<label className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium mb-1.5 block">
-							Task
-						</label>
+						<div className="flex items-center gap-2 mb-1.5">
+							<label className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium">
+								Task
+							</label>
+							<span className="text-[10px] text-muted-foreground/70 font-normal">
+								(Optional - you can add it later)
+							</span>
+						</div>
 						<textarea
 							value={prompt}
 							onChange={(e) => setPrompt(e.target.value)}
-							placeholder="Describe what the agent should do..."
+							placeholder="Describe what the agent should do... (optional)"
 							rows={4}
 							className={cn(
 								"w-full resize-none rounded-lg border border-border bg-background px-3 py-2",
@@ -453,6 +458,15 @@ export function AgentCreationDialog({
 							)}
 							autoFocus
 						/>
+						{!prompt.trim() && (
+							<div className="mt-2 flex items-start gap-2 p-2 rounded-lg bg-muted/30 border border-border/50">
+								<Info className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
+								<div className="text-[10px] text-muted-foreground leading-relaxed">
+									<p className="font-medium text-foreground/80 mb-1">No task provided</p>
+									<p>The agent will be created without an initial task. You can assign a task later by selecting the agent in the sidebar.</p>
+								</div>
+							</div>
+						)}
 					</div>
 
 					{/* Actions */}
@@ -465,11 +479,11 @@ export function AgentCreationDialog({
 							Cancel
 						</Button>
 						<Button
-							disabled={!prompt.trim() || !repoPath.trim()}
+							disabled={!repoPath.trim()}
 							onClick={handleSubmit}
 							className="bg-primary text-primary-foreground hover:bg-primary/90"
 						>
-							Deploy Agent
+							{prompt.trim() ? "Deploy Agent with Task" : "Deploy Agent"}
 						</Button>
 					</div>
 				</div>

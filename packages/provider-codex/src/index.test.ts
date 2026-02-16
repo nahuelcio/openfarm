@@ -145,6 +145,23 @@ model = "gpt-5.2-codex"
 		]);
 	});
 
+	it("uses safe default reasoning effort when mode is omitted", () => {
+		const args = resolveCodexExecutionArgs({
+			model: "gpt-5.1-codex-mini",
+		});
+
+		expect(args).toEqual([
+			"exec",
+			"--json",
+			"-s",
+			"workspace-write",
+			"--model",
+			"gpt-5.1-codex-mini",
+			"-c",
+			"model_reasoning_effort=medium",
+		]);
+	});
+
 	it("exports model capabilities", () => {
 		const capabilities = getModelCapabilities("gpt-5.3-codex");
 		expect(capabilities).toEqual(["low", "medium", "high", "xhigh"]);

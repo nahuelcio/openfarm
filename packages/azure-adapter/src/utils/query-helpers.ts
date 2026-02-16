@@ -38,7 +38,7 @@ export function checkCacheForWorkItems(
   };
   const cached = workItemCache.get(cacheKey);
   if (cached) {
-    logger.info(
+    logger().info(
       {
         orgUrl: config.orgUrl,
         project: config.project,
@@ -116,7 +116,7 @@ export function saveToCacheIfNeeded(
   };
   
   workItemCache.set(cacheKey, workItems);
-  logger.info(
+  logger().info(
     {
       orgUrl: config.orgUrl,
       project: config.project,

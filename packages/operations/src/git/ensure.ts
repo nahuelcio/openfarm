@@ -53,7 +53,7 @@ export const ensureMainRepo = async (
           "--prune",
         ]);
       } catch (fetchError) {
-        logger.warn(
+        logger().warn(
           { mainRepoPath: sanitizedMainRepoPath, error: fetchError },
           "Failed to fetch from origin, continuing with existing local state"
         );
@@ -91,7 +91,7 @@ export const ensureMainRepo = async (
       await execFn("git", ["clone", escapedUrl, sanitizedMainRepoPath]);
     } catch (cloneError) {
       // If clone fails, try with --single-branch for faster clone
-      logger.warn(
+      logger().warn(
         { mainRepoPath: sanitizedMainRepoPath, error: cloneError },
         "Full clone failed, trying single-branch clone"
       );
@@ -131,7 +131,7 @@ export const ensureMainRepo = async (
         sanitizedName,
       ]);
     } catch (configError) {
-      logger.warn(
+      logger().warn(
         { mainRepoPath: sanitizedMainRepoPath, error: configError },
         "Failed to configure git user, continuing anyway"
       );

@@ -147,14 +147,14 @@ export function PlanReviewPanel({
 			</Card>
 
 			{/* Main Content */}
-			<div className="flex flex-1 gap-4 min-h-0">
+			<div className="flex flex-1 gap-4 min-h-0 flex-col lg:flex-row">
 				{/* Plan Steps */}
-				<Card className="flex-1">
+				<Card className="flex-1 min-w-0">
 					<CardHeader>
 						<CardTitle className="text-base">📋 Pasos del Plan</CardTitle>
 					</CardHeader>
 					<CardContent>
-						<ScrollArea className="h-96">
+						<ScrollArea className="h-96 lg:h-[32rem]">
 							<div className="space-y-3">
 								{plan.steps.map((step, index) => (
 									<div
@@ -181,14 +181,14 @@ export function PlanReviewPanel({
 				</Card>
 
 				{/* Annotations */}
-				<Card className="w-80">
+				<Card className="w-full lg:w-80 lg:flex-shrink-0">
 					<CardHeader>
 						<CardTitle className="text-base">
 							💬 Anotaciones ({annotations.length})
 						</CardTitle>
 					</CardHeader>
 					<CardContent>
-						<ScrollArea className="h-96">
+						<ScrollArea className="h-64 lg:h-96">
 							<div className="space-y-2">
 								{annotations.length === 0 ? (
 									<p className="text-sm text-muted-foreground text-center py-4">
@@ -226,7 +226,7 @@ export function PlanReviewPanel({
 			{/* Actions */}
 			<Card className="mt-4">
 				<CardContent className="pt-6">
-					<div className="flex gap-3">
+					<div className="flex flex-col sm:flex-row gap-3">
 						<Button
 							onClick={handleApprove}
 							disabled={isApproving || isRejecting}

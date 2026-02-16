@@ -24,22 +24,31 @@ class Logger {
   }
 
   private detectLevel(): LogLevel {
+    const env = this.getEnv();
+
     // Check environment variable first
-    const envLevel = process.env.OPENFARM_LOG_LEVEL?.toLowerCase() as LogLevel;
+    const envLevel = env?.OPENFARM_LOG_LEVEL?.toLowerCase() as
+      | LogLevel
+      | undefined;
     if (envLevel && envLevel in LEVEL_PRIORITY) {
       return envLevel;
     }
 
     // In production/test, default to warn
-    if (
-      process.env.NODE_ENV === "production" ||
-      process.env.NODE_ENV === "test"
-    ) {
+    if (env?.NODE_ENV === "production" || env?.NODE_ENV === "test") {
       return "warn";
     }
 
     // Default to error for core package (less verbose)
     return "error";
+  }
+
+  private getEnv(): Record<string, string | undefined> | undefined {
+    if (typeof process === "undefined") {
+      return undefined;
+    }
+
+    return process.env;
   }
 
   setLevel(level: LogLevel): void {

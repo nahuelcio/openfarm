@@ -38,7 +38,7 @@ export interface McpServer {
 }
 
 export class McpManager {
-	private servers: Map<string, McpServer> = new Map();
+	public servers: Map<string, McpServer> = new Map();
 	private initialized = false;
 
 	constructor() {

@@ -634,9 +634,9 @@ export function resolveCodexExecutionArgs(
 	options: CodexExecutionOptions = {},
 ): string[] {
 	const args = [...CODEX_EXEC_BASE_ARGS];
-	const model = (options.model || "").trim();
-	if (model) {
-		args.push("--model", model);
+	const selectedModel = (options.model || "").trim();
+	if (selectedModel) {
+		args.push("--model", selectedModel);
 	}
 
 	const knownProfiles = unique(options.knownProfiles || []);
@@ -645,14 +645,33 @@ export function resolveCodexExecutionArgs(
 		args.push("--profile", parsedMode.profile);
 	} else if (parsedMode.reasoningEffort) {
 		// Validate reasoning effort against model capabilities
-		if (!validateReasoningEffort(model || DEFAULT_CODEX_MODEL, parsedMode.reasoningEffort)) {
-			const capabilities = getModelReasoningCapabilities(model || DEFAULT_CODEX_MODEL);
+		if (
+			!validateReasoningEffort(
+				selectedModel || DEFAULT_CODEX_MODEL,
+				parsedMode.reasoningEffort,
+			)
+		) {
+			const capabilities = getModelReasoningCapabilities(
+				selectedModel || DEFAULT_CODEX_MODEL,
+			);
 			throw new Error(
-				`Reasoning effort '${parsedMode.reasoningEffort}' is not supported by model '${model}'. ` +
+				`Reasoning effort '${parsedMode.reasoningEffort}' is not supported by model '${selectedModel}'. ` +
 				`Supported values: ${capabilities.join(", ")}`
 			);
 		}
 		args.push("-c", `model_reasoning_effort=${parsedMode.reasoningEffort}`);
+	} else {
+		const capabilities = getModelReasoningCapabilities(
+			selectedModel || DEFAULT_CODEX_MODEL,
+		);
+		const fallbackEffort = capabilities.includes(
+			DEFAULT_REASONING_EFFORT as ReasoningEffort,
+		)
+			? DEFAULT_REASONING_EFFORT
+			: capabilities[0];
+		if (fallbackEffort) {
+			args.push("-c", `model_reasoning_effort=${fallbackEffort}`);
+		}
 	}
 
 	return args;

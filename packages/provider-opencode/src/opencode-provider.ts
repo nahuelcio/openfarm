@@ -14,6 +14,44 @@ import {
   OPENCODE_DEFAULT_TIMEOUT,
 } from "./provider-definition";
 
+const INPUT_TOKEN_KEYS = new Set([
+  "input_tokens",
+  "inputTokens",
+  "prompt_tokens",
+  "promptTokens",
+  "tokens_input",
+  "tokensInput",
+]);
+const OUTPUT_TOKEN_KEYS = new Set([
+  "output_tokens",
+  "outputTokens",
+  "completion_tokens",
+  "completionTokens",
+  "tokens_output",
+  "tokensOutput",
+]);
+const CREDIT_KEYS = new Set([
+  "credits_spent",
+  "creditsSpent",
+  "total_usd",
+  "totalUSD",
+  "cost_usd",
+  "costUSD",
+  "total_cost",
+  "totalCost",
+  "cost",
+]);
+const FILE_PATH_KEYS = new Set(["filePath", "file_path", "path", "targetPath"]);
+const COMMAND_KEYS = new Set(["command", "cmd"]);
+
+interface RuntimeStatsAccumulator {
+  tokensInput: number;
+  tokensOutput: number;
+  creditsSpent: number;
+  seenFiles: Set<string>;
+  seenCommands: Set<string>;
+}
+
 export class OpenCodeProvider implements Provider {
   readonly type = "opencode";
   readonly name = "OpenCode";
@@ -49,15 +87,31 @@ export class OpenCodeProvider implements Provider {
   async execute(options: ExecutionOptions): Promise<ExecutionResult> {
     const startTime = Date.now();
     const onLog = options.onLog;
-    
+
     // Initialize statistics collector
     const statsCollector = new StatisticsCollector(options.model || "opencode");
+    const runtimeStats: RuntimeStatsAccumulator = {
+      tokensInput: 0,
+      tokensOutput: 0,
+      creditsSpent: 0,
+      seenFiles: new Set<string>(),
+      seenCommands: new Set<string>(),
+    };
 
     const log = (msg: string) => {
       if (onLog) {
         onLog(msg);
       }
     };
+    const buildStatistics = (duration: number) =>
+      statsCollector.getStatistics(
+        runtimeStats.tokensInput,
+        runtimeStats.tokensOutput,
+        {
+          creditsSpent: runtimeStats.creditsSpent,
+          duration,
+        }
+      );
 
     try {
       if (!options.task?.trim()) {
@@ -91,23 +145,11 @@ export class OpenCodeProvider implements Provider {
         line.length > 180 ? `${line.slice(0, 177)}...` : line;
 
       const handleStdoutLine = (line: string) => {
+        this.trackStructuredStats(line, runtimeStats, statsCollector);
         const normalizedLine = sanitizeLine(line);
         const looksLikeJson =
           normalizedLine.startsWith("{") && normalizedLine.endsWith("}");
         const jsonParsed = this.parseJsonStreamLine(normalizedLine);
-
-        // Track tool calls and file changes
-        if (jsonParsed) {
-          if (jsonParsed.includes("tool")) {
-            statsCollector.recordToolCall();
-          }
-          if (jsonParsed.includes("file") && jsonParsed.includes("changed")) {
-            statsCollector.recordFileChanged();
-          }
-          if (jsonParsed.includes("process")) {
-            statsCollector.recordProcessCreated();
-          }
-        }
 
         // If it's JSON but not a user-facing event, skip raw output noise.
         if (looksLikeJson && !jsonParsed) {
@@ -129,6 +171,7 @@ export class OpenCodeProvider implements Provider {
       };
 
       const handleStderrLine = (line: string) => {
+        this.trackStructuredStats(line, runtimeStats, statsCollector);
         const cleaned = trimForDisplay(sanitizeLine(line));
         if (!cleaned) {
           return;
@@ -153,11 +196,13 @@ export class OpenCodeProvider implements Provider {
       const response = await this.communicationStrategy.execute(request);
 
       if (!response.success) {
+        const duration = Date.now() - startTime;
         return {
           success: false,
           output: response.body,
-          duration: Date.now() - startTime,
+          duration,
           error: response.error || "Execution failed",
+          statistics: buildStatistics(duration),
         };
       }
 
@@ -205,23 +250,25 @@ export class OpenCodeProvider implements Provider {
         );
       }
 
-      // Generate statistics (no token data for CLI providers)
-      const statistics = statsCollector.getStatistics(0, 0);
+      const duration = Date.now() - startTime;
+      const statistics = buildStatistics(duration);
 
       return {
         success: true,
         output,
-        duration: Date.now() - startTime,
+        duration,
         statistics,
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
       log(`Error: ${message}`);
+      const duration = Date.now() - startTime;
       return {
         success: false,
         output: `OpenCode execution failed: ${message}`,
-        duration: Date.now() - startTime,
+        duration,
         error: message,
+        statistics: buildStatistics(duration),
       };
     }
   }
@@ -388,5 +435,178 @@ ${prompt}`;
     } catch {
       return null;
     }
+  }
+
+  private trackStructuredStats(
+    line: string,
+    runtimeStats: RuntimeStatsAccumulator,
+    statsCollector: StatisticsCollector
+  ): void {
+    const event = this.parseJsonRecord(line);
+    if (!event) {
+      return;
+    }
+
+    const type = typeof event.type === "string" ? event.type : "";
+    const item = this.asRecord(event.item);
+    const part = this.asRecord(event.part);
+
+    const itemType =
+      typeof item?.type === "string" ? item.type.toLowerCase() : "";
+    const hasToolSignal =
+      type === "tool_use" ||
+      type === "tool_call" ||
+      itemType.includes("tool") ||
+      (typeof part?.tool === "string" && part.tool.trim().length > 0);
+    if (hasToolSignal) {
+      statsCollector.recordToolCall();
+    }
+
+    const fileCandidates: string[] = [];
+    this.collectStringsByKeys(event, FILE_PATH_KEYS, fileCandidates);
+    for (const filePath of fileCandidates) {
+      if (!runtimeStats.seenFiles.has(filePath)) {
+        runtimeStats.seenFiles.add(filePath);
+        statsCollector.recordFileChanged();
+      }
+    }
+
+    const commandCandidates: string[] = [];
+    this.collectStringsByKeys(event, COMMAND_KEYS, commandCandidates);
+    for (const command of commandCandidates) {
+      if (!runtimeStats.seenCommands.has(command)) {
+        runtimeStats.seenCommands.add(command);
+        statsCollector.recordProcessCreated();
+      }
+    }
+
+    const inputCandidates: number[] = [];
+    this.collectNumbersByKeys(event, INPUT_TOKEN_KEYS, inputCandidates);
+    if (inputCandidates.length > 0) {
+      runtimeStats.tokensInput = Math.max(
+        runtimeStats.tokensInput,
+        ...inputCandidates
+      );
+    }
+
+    const outputCandidates: number[] = [];
+    this.collectNumbersByKeys(event, OUTPUT_TOKEN_KEYS, outputCandidates);
+    if (outputCandidates.length > 0) {
+      runtimeStats.tokensOutput = Math.max(
+        runtimeStats.tokensOutput,
+        ...outputCandidates
+      );
+    }
+
+    const creditCandidates: number[] = [];
+    this.collectNumbersByKeys(event, CREDIT_KEYS, creditCandidates);
+    if (creditCandidates.length > 0) {
+      runtimeStats.creditsSpent = Math.max(
+        runtimeStats.creditsSpent,
+        ...creditCandidates
+      );
+    }
+  }
+
+  private parseJsonRecord(line: string): Record<string, unknown> | null {
+    const trimmed = line.trim();
+    if (!(trimmed.startsWith("{") && trimmed.endsWith("}"))) {
+      return null;
+    }
+
+    try {
+      const parsed = JSON.parse(trimmed) as unknown;
+      return this.asRecord(parsed);
+    } catch {
+      return null;
+    }
+  }
+
+  private asRecord(value: unknown): Record<string, unknown> | null {
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      return value as Record<string, unknown>;
+    }
+    return null;
+  }
+
+  private collectNumbersByKeys(
+    value: unknown,
+    keys: Set<string>,
+    sink: number[]
+  ): void {
+    if (value === null || value === undefined) {
+      return;
+    }
+    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+      return;
+    }
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        this.collectNumbersByKeys(item, keys, sink);
+      }
+      return;
+    }
+
+    const record = this.asRecord(value);
+    if (!record) {
+      return;
+    }
+
+    for (const [key, nested] of Object.entries(record)) {
+      if (keys.has(key)) {
+        const parsed = this.toFiniteNumber(nested);
+        if (parsed !== null) {
+          sink.push(parsed);
+        }
+      }
+      this.collectNumbersByKeys(nested, keys, sink);
+    }
+  }
+
+  private collectStringsByKeys(
+    value: unknown,
+    keys: Set<string>,
+    sink: string[]
+  ): void {
+    if (value === null || value === undefined) {
+      return;
+    }
+    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+      return;
+    }
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        this.collectStringsByKeys(item, keys, sink);
+      }
+      return;
+    }
+
+    const record = this.asRecord(value);
+    if (!record) {
+      return;
+    }
+
+    for (const [key, nested] of Object.entries(record)) {
+      if (keys.has(key) && typeof nested === "string") {
+        const clean = nested.trim();
+        if (clean.length > 0) {
+          sink.push(clean);
+        }
+      }
+      this.collectStringsByKeys(nested, keys, sink);
+    }
+  }
+
+  private toFiniteNumber(value: unknown): number | null {
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return value;
+    }
+    if (typeof value === "string") {
+      const parsed = Number(value);
+      if (Number.isFinite(parsed)) {
+        return parsed;
+      }
+    }
+    return null;
   }
 }

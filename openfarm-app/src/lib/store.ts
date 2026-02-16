@@ -67,6 +67,25 @@ export interface ExecutionStatistics {
 	duration: number;
 }
 
+export interface EventExecutionStatistics {
+	credits_spent?: number;
+	tool_calls?: number;
+	model?: string;
+	files_changed?: number;
+	processes_created?: number;
+	request_id?: string;
+	tokens_input?: number;
+	tokens_output?: number;
+	duration?: number;
+	creditsSpent?: number;
+	toolCalls?: number;
+	filesChanged?: number;
+	processesCreated?: number;
+	requestId?: string;
+	tokensInput?: number;
+	tokensOutput?: number;
+}
+
 export interface AgentMessage {
 	id: string;
 	role: "user" | "agent" | "system";
@@ -210,6 +229,14 @@ export interface ProviderConfig {
 	customSettings?: Record<string, unknown>;
 }
 
+export interface AzureDevOpsConfig {
+	orgUrl: string;
+	pat: string;
+	project: string;
+	repoId: string;
+	connected: boolean;
+}
+
 export interface AppSettings {
 	providers: ProviderConfig[];
 	defaultProvider: AgentProvider;
@@ -219,6 +246,7 @@ export interface AppSettings {
 	systemPrompt: string;
 	autoPR: boolean;
 	branchConvention: string;
+	azureDevOps?: AzureDevOpsConfig;
 }
 
 export interface BootstrapState {
@@ -316,4 +344,11 @@ export const DEFAULT_SETTINGS: AppSettings = {
 	systemPrompt: "",
 	autoPR: false,
 	branchConvention: "feat/<task-slug>",
+	azureDevOps: {
+		orgUrl: "",
+		pat: "",
+		project: "",
+		repoId: "",
+		connected: false,
+	},
 };

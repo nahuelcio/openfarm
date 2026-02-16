@@ -1,4 +1,6 @@
-import { randomUUID } from "crypto";
+const createRequestId = (): string =>
+	globalThis.crypto?.randomUUID?.() ??
+	`req-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
 export interface ExecutionStatistics {
 	creditsSpent: number;
@@ -17,7 +19,7 @@ export class StatisticsCollector {
 	private filesChanged: number = 0;
 	private processesCreated: number = 0;
 	private startTime: number = Date.now();
-	private requestId: string = randomUUID();
+	private requestId: string = createRequestId();
 
 	constructor(private model: string) {}
 
@@ -33,9 +35,19 @@ export class StatisticsCollector {
 		this.processesCreated++;
 	}
 
-	getStatistics(tokensInput: number, tokensOutput: number): ExecutionStatistics {
-		const duration = Date.now() - this.startTime;
-		const creditsSpent = this.calculateCredits(tokensInput, tokensOutput);
+	getStatistics(
+		tokensInput: number,
+		tokensOutput: number,
+		overrides?: {
+			creditsSpent?: number;
+			duration?: number;
+		},
+	): ExecutionStatistics {
+		const duration = overrides?.duration ?? Date.now() - this.startTime;
+		const creditsSpent =
+			typeof overrides?.creditsSpent === "number" && Number.isFinite(overrides.creditsSpent)
+				? Number(overrides.creditsSpent.toFixed(6))
+				: 0;
 
 		return {
 			creditsSpent,
@@ -48,12 +60,5 @@ export class StatisticsCollector {
 			tokensOutput,
 			duration,
 		};
-	}
-
-	private calculateCredits(inputTokens: number, outputTokens: number): number {
-		// Basic credit calculation - can be enhanced with provider-specific pricing
-		const inputCost = inputTokens * 0.000001; // $0.001 per 1M input tokens
-		const outputCost = outputTokens * 0.000002; // $0.002 per 1M output tokens
-		return Number((inputCost + outputCost).toFixed(6));
 	}
 }

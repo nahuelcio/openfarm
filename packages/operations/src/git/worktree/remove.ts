@@ -59,6 +59,6 @@ export const removeWorktree = async (
     }
   } catch (error) {
     // Ignore cleanup errors
-    logger.warn({ worktreePath, error }, "Failed to remove worktree");
+    logger().warn({ worktreePath, error }, "Failed to remove worktree");
   }
 };

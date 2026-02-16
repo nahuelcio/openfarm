@@ -196,6 +196,20 @@
         "vitest": "^3.0.0",
       },
     },
+    "packages/memory-system": {
+      "name": "@openfarm/memory-system",
+      "version": "0.1.0",
+      "dependencies": {
+        "better-sqlite3": "^12.6.2",
+        "zod": "^4.3.6",
+      },
+      "devDependencies": {
+        "@types/better-sqlite3": "^7.6.13",
+        "@types/node": "^25.2.3",
+        "typescript": "^5.9.3",
+        "vitest": "^4.0.18",
+      },
+    },
     "packages/operations": {
       "name": "@openfarm/operations",
       "version": "0.0.1",
@@ -225,6 +239,7 @@
         "@openfarm/result": "workspace:*",
         "@openfarm/types": "workspace:*",
         "@openfarm/utils": "workspace:*",
+        "better-sqlite3": "^12.6.2",
         "uuid": "^11.1.0",
         "zod": "^4.3.6",
       },
@@ -360,6 +375,7 @@
         "@openfarm/core": "workspace:*",
         "@openfarm/git-worktree": "workspace:*",
         "@openfarm/mcp-marketplace": "workspace:*",
+        "@openfarm/memory-system": "workspace:*",
         "@openfarm/remote-server": "workspace:*",
         "@openfarm/task-loop": "workspace:*",
         "@openfarm/web-ui": "workspace:*",
@@ -436,12 +452,9 @@
       "devDependencies": {
         "@types/node": "^22.0.0",
         "@types/ws": "^8.5.10",
-        "@xterm/addon-fit": "^0.10.0",
-        "@xterm/addon-search": "^0.15.0",
-        "@xterm/addon-web-links": "^0.11.0",
         "tsup": "^8.5.1",
         "typescript": "^5.6.0",
-        "xterm": "^5.3.0",
+        "vitest": "^4.0.18",
       },
     },
     "packages/workflow-engine": {
@@ -753,6 +766,8 @@
     "@openfarm/logger": ["@openfarm/logger@workspace:packages/logger"],
 
     "@openfarm/mcp-marketplace": ["@openfarm/mcp-marketplace@workspace:packages/mcp-marketplace"],
+
+    "@openfarm/memory-system": ["@openfarm/memory-system@workspace:packages/memory-system"],
 
     "@openfarm/operations": ["@openfarm/operations@workspace:packages/operations"],
 
@@ -1155,14 +1170,6 @@
     "@vitest/spy": ["@vitest/spy@4.0.18", "", {}, "sha512-cbQt3PTSD7P2OARdVW3qWER5EGq7PHlvE+QfzSC0lbwO+xnt7+XH06ZzFjFRgzUX//JmpxrCu92VdwvEPlWSNw=="],
 
     "@vitest/utils": ["@vitest/utils@4.0.18", "", { "dependencies": { "@vitest/pretty-format": "4.0.18", "tinyrainbow": "^3.0.3" } }, "sha512-msMRKLMVLWygpK3u2Hybgi4MNjcYJvwTb0Ru09+fOyCXIgT5raYP041DRRdiJiI3k/2U6SEbAETB3YtBrUkCFA=="],
-
-    "@xterm/addon-fit": ["@xterm/addon-fit@0.10.0", "", { "peerDependencies": { "@xterm/xterm": "^5.0.0" } }, "sha512-UFYkDm4HUahf2lnEyHvio51TNGiLK66mqP2JoATy7hRZeXaGMRDr00JiSF7m63vR5WKATF605yEggJKsw0JpMQ=="],
-
-    "@xterm/addon-search": ["@xterm/addon-search@0.15.0", "", { "peerDependencies": { "@xterm/xterm": "^5.0.0" } }, "sha512-ZBZKLQ+EuKE83CqCmSSz5y1tx+aNOCUaA7dm6emgOX+8J9H1FWXZyrKfzjwzV+V14TV3xToz1goIeRhXBS5qjg=="],
-
-    "@xterm/addon-web-links": ["@xterm/addon-web-links@0.11.0", "", { "peerDependencies": { "@xterm/xterm": "^5.0.0" } }, "sha512-nIHQ38pQI+a5kXnRaTgwqSHnX7KE6+4SVoceompgHL26unAxdfP6IPqUTSYPQgSwM56hsElfoNrrW5V7BUED/Q=="],
-
-    "@xterm/xterm": ["@xterm/xterm@5.5.0", "", {}, "sha512-hqJHYaQb5OptNunnyAnkHyM8aCjZ1MEIDTQu1iIbbTD/xops91NB5yq1ZK/dC2JDbVWtF23zUtl9JE2NqwT87A=="],
 
     "accepts": ["accepts@2.0.0", "", { "dependencies": { "mime-types": "^3.0.0", "negotiator": "^1.0.0" } }, "sha512-5cvg6CtKwfgdmVqY1WIiXKc3Q1bkRqGLi+2W/6ao+6Y7gu/RCwRuAhGEzh5B4KlszSuTLgZYuqFqo5bImjNKng=="],
 
@@ -2093,8 +2100,6 @@
     "ws": ["ws@8.19.0", "", { "peerDependencies": { "bufferutil": "^4.0.1", "utf-8-validate": ">=5.0.2" }, "optionalPeers": ["bufferutil", "utf-8-validate"] }, "sha512-blAT2mjOEIi0ZzruJfIhb3nps74PRWTCz1IjglWEEpQl5XS/UNama6u2/rjFkDDouqr4L67ry+1aGIALViWjDg=="],
 
     "xtend": ["xtend@4.0.2", "", {}, "sha512-LKYU1iAXJXUgAXn9URjiu+MWhyUXHsvfp7mcuYm9dSUKK0/CjtrUwFAxD82/mCWbtLsGjFIad0wIsod4zrTAEQ=="],
-
-    "xterm": ["xterm@5.3.0", "", {}, "sha512-8QqjlekLUFTrU6x7xck1MsPzPA571K5zNqWm0M0oroYEWVOptZ0+ubQSkQ3uxIEhcIHRujJy6emDWX4A7qyFzg=="],
 
     "y18n": ["y18n@5.0.8", "", {}, "sha512-0pfFzegeDWJHJIAmTLRP2DwHjdF5s7jo9tuztdQxAhINCdvS+3nGINqPd00AphqJR/0LhANUS6/+7SCb98YOfA=="],
 

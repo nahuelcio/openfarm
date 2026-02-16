@@ -2,6 +2,8 @@
 
 import {
 	AlertCircle,
+	Archive,
+	BookOpen,
 	CheckCircle2,
 	ChevronDown,
 	ChevronRight,
@@ -11,14 +13,33 @@ import {
 	FolderGit2,
 	GitBranch,
 	Loader2,
+	MoreHorizontal,
 	Plus,
+	Settings,
+	Trash2,
+	User,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import type { Agent, AgentProvider, AgentStatus, Workspace } from "@/lib/store";
+import { getCurrentUser } from "@/lib/backend";
+import type {
+	Agent,
+	AgentProvider,
+	AgentStatus,
+	AppSettings,
+	Workspace,
+} from "@/lib/store";
 import { extractSubthreads } from "@/lib/subthreads";
 import { cn } from "@/lib/utils";
+import { UserSettingsDialog } from "./user-settings-dialog";
+import { MemoryDialog } from "../memory/memory-dialog";
 
 function StatusIcon({ status }: { status: AgentStatus }) {
 	switch (status) {
@@ -151,7 +172,10 @@ interface AppSidebarProps {
 	onSpawnAgentInWorkspace: (workspace: Workspace) => void;
 	onOpenPlanReview?: () => void;
 	onArchiveAgent?: (agent: Agent) => void;
+	onDeleteWorkspace?: (workspace: Workspace) => void;
 	isSelectingAgent?: boolean;
+	settings: AppSettings;
+	onSettingsChange: (settings: AppSettings) => void;
 }
 
 export function AppSidebar({
@@ -164,11 +188,36 @@ export function AppSidebar({
 	onSpawnAgentInWorkspace,
 	onOpenPlanReview,
 	onArchiveAgent,
+	onDeleteWorkspace,
 	isSelectingAgent = false,
+	settings,
+	onSettingsChange,
 }: AppSidebarProps) {
 	const [expandedWorkspaces, setExpandedWorkspaces] = useState<Set<string>>(
 		new Set(workspaces.map((w) => w.id)),
 	);
+	const [currentUser, setCurrentUser] = useState<string>("Unknown User");
+	const [userSettingsOpen, setUserSettingsOpen] = useState(false);
+
+	const formatUsername = (username: string) => {
+		return username
+			.toLowerCase()
+			.split(' ')
+			.map(word => word.charAt(0).toUpperCase() + word.slice(1))
+			.join(' ');
+	};
+
+	const getInitials = (username: string) => {
+		return username
+			.split(' ')
+			.map(word => word.charAt(0).toUpperCase())
+			.slice(0, 2)
+			.join('');
+	};
+
+	useEffect(() => {
+		void getCurrentUser().then(setCurrentUser);
+	}, []);
 
 	const toggleWorkspace = (id: string) => {
 		setExpandedWorkspaces((prev) => {
@@ -215,6 +264,17 @@ export function AppSidebar({
 							<span className="sr-only">Plan Review</span>
 						</Button>
 					)}
+					<MemoryDialog>
+						<Button
+							variant="ghost"
+							size="icon"
+							className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent"
+							title="Memory System"
+						>
+							<BookOpen className="h-3.5 w-3.5" />
+							<span className="sr-only">Memory System</span>
+						</Button>
+					</MemoryDialog>
 					<Button
 						variant="ghost"
 						size="icon"
@@ -238,20 +298,22 @@ export function AppSidebar({
 						return (
 							<div key={workspace.id}>
 								{/* Workspace header */}
-								<button
-									className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-sidebar-accent transition-colors"
-									onClick={() => toggleWorkspace(workspace.id)}
-								>
-									{isExpanded ? (
-										<ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-									) : (
-										<ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-									)}
-									<FolderGit2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-									<span className="text-[13px] font-medium text-sidebar-foreground truncate">
-										{workspace.name}
-									</span>
-									<span
+								<div className="flex items-center gap-2 px-3 py-2 hover:bg-sidebar-accent transition-colors">
+									<button
+										className="flex items-center gap-2 text-left hover:bg-sidebar-accent transition-colors flex-1"
+										onClick={() => toggleWorkspace(workspace.id)}
+									>
+										{isExpanded ? (
+											<ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+										) : (
+											<ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+										)}
+										<FolderGit2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+										<span className="text-[13px] font-medium text-sidebar-foreground truncate">
+											{workspace.name}
+										</span>
+									</button>
+									<button
 										className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
 										onClick={(event) => {
 											event.stopPropagation();
@@ -264,89 +326,155 @@ export function AppSidebar({
 												onSpawnAgentInWorkspace(workspace);
 											}
 										}}
-										role="button"
-										tabIndex={0}
+										title="Spawn agent in workspace"
 									>
 										<Plus className="h-3 w-3" />
-										<span className="sr-only">Spawn agent in workspace</span>
-									</span>
+									</button>
 									<span className="ml-auto text-[10px] text-muted-foreground">
 										{workspace.agents.length}
 									</span>
 									{running > 0 && (
 										<span className="h-1.5 w-1.5 rounded-full bg-agent-active animate-pulse shrink-0" />
 									)}
-								</button>
-
-								{/* Agent list */}
-								{isExpanded && (
-									<div className="pb-1">
-										{workspace.agents.map((agent) => {
-											const subthreads = extractSubthreads(agent);
-											const isParentSelected = selectedAgentId === agent.id;
-											return (
-												<div key={agent.id}>
-													<button
-														className={cn(
-															"flex w-full items-start gap-2.5 px-4 pl-9 py-2 text-left transition-colors group",
-															isParentSelected
-																? "bg-sidebar-accent"
-																: "hover:bg-sidebar-accent/50",
-															isSelectingAgent && "opacity-50 cursor-not-allowed",
-														)}
-														onClick={() => !isSelectingAgent && onSelectAgent(agent)}
-														disabled={isSelectingAgent}
-													>
-														<StatusIcon status={agent.status} />
-														<div className="flex-1 min-w-0">
-															<div className="flex items-center gap-2">
-																<span
-																	className={cn(
-																		"text-[13px] truncate block",
-																		isParentSelected
-																			? "text-sidebar-accent-foreground font-medium"
-																			: "text-sidebar-foreground",
-																	)}
-																>
-																	{agent.name}
-																</span>
-															</div>
-															<div className="flex items-center gap-2 mt-0.5">
-																<span className="rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-																	Principal
-																</span>
-																<div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-																	<GitBranch className="h-3 w-3 shrink-0" />
-																	<span className="truncate max-w-[80px] sm:max-w-[100px] md:max-w-[120px]">
-																		{agent.branch}
-																	</span>
-																</div>
-																<ProviderBadge provider={agent.provider} />
-															</div>
+									{onDeleteWorkspace && (
+										<button
+											className={cn(
+												"inline-flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-sidebar-accent transition-colors ml-1",
+												workspace.agents.length === 0
+													? "hover:text-destructive cursor-pointer"
+													: "cursor-not-allowed opacity-50",
+											)}
+											onClick={(event) => {
+												event.stopPropagation();
+												if (workspace.agents.length === 0) {
+													onDeleteWorkspace(workspace);
+												} else {
+													console.log("Cannot delete workspace - has agents");
+												}
+											}}
+											onKeyDown={(event) => {
+												if (event.key === "Enter" || event.key === " ") {
+													event.preventDefault();
+													event.stopPropagation();
+													if (workspace.agents.length === 0) {
+														onDeleteWorkspace(workspace);
+													}
+												}
+											}}
+											disabled={workspace.agents.length > 0}
+											title={
+												workspace.agents.length === 0
+													? "Delete workspace"
+													: "Delete workspace"
+											}
+										>
+											<Trash2 className="h-3 w-3" />
+											<span className="sr-only">Delete workspace</span>
+										</button>
+									)}
+								</div>
+							{/* Agent list */}
+							{isExpanded && (
+								<div className="pb-1">
+									{workspace.agents.map((agent) => {
+										const subthreads = extractSubthreads(agent);
+										const isParentSelected = selectedAgentId === agent.id;
+										return (
+											<div key={agent.id}>
+												<button
+													className={cn(
+														"flex w-full items-start gap-2.5 px-4 pl-9 py-2 text-left transition-colors group",
+														isParentSelected
+															? "bg-sidebar-accent"
+															: "hover:bg-sidebar-accent/50",
+														isSelectingAgent &&
+															"opacity-50 cursor-not-allowed",
+													)}
+													onClick={() =>
+														!isSelectingAgent && onSelectAgent(agent)
+													}
+													disabled={isSelectingAgent}
+												>
+													<StatusIcon status={agent.status} />
+													<div className="flex-1 min-w-0">
+														<div className="flex items-center gap-2">
+															<span
+																className={cn(
+																	"text-[13px] truncate block",
+																	isParentSelected
+																		? "text-sidebar-accent-foreground font-medium"
+																		: "text-sidebar-foreground",
+																)}
+															>
+																{agent.name}
+															</span>
 														</div>
-														<StatusLabel status={agent.status} />
-													</button>
-													{subthreads.length > 0 && (
-														<div className="ml-12 mr-2 mb-1 rounded border border-border/60 bg-sidebar-accent/20 px-1.5 py-1">
-															<div className="px-1 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-																Subagentes
+														<div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+															<span className="rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground shrink-0">
+																Principal
+															</span>
+															<div className="flex items-center gap-1 text-[11px] text-muted-foreground min-w-0">
+																<GitBranch className="h-3 w-3 shrink-0" />
+																<span className="truncate max-w-[60px] sm:max-w-[80px] md:max-w-[100px]">
+																	{agent.branch}
+																</span>
 															</div>
-															{subthreads.map((thread) => {
-																const isSubthreadSelected =
-																	selectedSubthread?.agentId === agent.id &&
-																	selectedSubthread.name === thread.name;
-																return (
-																	<button
-																		key={thread.id}
-																		className={cn(
-																			"flex w-full min-w-0 items-center gap-2 rounded px-1.5 py-1.5 text-left transition-colors",
+															<ProviderBadge provider={agent.provider} />
+														</div>
+													</div>
+													<StatusLabel status={agent.status} />
+													{onArchiveAgent && (
+														<DropdownMenu>
+															<DropdownMenuTrigger asChild>
+																<Button
+																	variant="ghost"
+																	size="icon"
+																	className="h-6 w-6 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-opacity"
+																	onClick={(e) => e.stopPropagation()}
+																>
+																	<MoreHorizontal className="h-3.5 w-3.5" />
+																	<span className="sr-only">
+																		Agent options
+																	</span>
+																</Button>
+															</DropdownMenuTrigger>
+															<DropdownMenuContent align="end">
+																<DropdownMenuItem
+																	onClick={(e) => {
+																		e.stopPropagation();
+																		onArchiveAgent(agent);
+																	}}
+																>
+																	<Archive className="h-3.5 w-3.5 mr-2" />
+																	Archive chat
+																</DropdownMenuItem>
+															</DropdownMenuContent>
+														</DropdownMenu>
+													)}
+												</button>
+												{subthreads.length > 0 && (
+													<div className="ml-12 mr-2 mb-1 rounded border border-border/60 bg-sidebar-accent/20 px-1.5 py-1">
+														<div className="px-1 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+															Subagentes
+														</div>
+														{subthreads.map((thread) => {
+															const isSubthreadSelected =
+																selectedSubthread?.agentId === agent.id &&
+																selectedSubthread.name === thread.name;
+															return (
+																<button
+																	key={thread.id}
+																	className={cn(
+																		"flex w-full min-w-0 items-center gap-2 rounded px-1.5 py-1.5 text-left transition-colors",
 																			isSubthreadSelected
 																				? "bg-sidebar-accent text-sidebar-accent-foreground"
 																				: "hover:bg-sidebar-accent/50",
-																			isSelectingAgent && "opacity-50 cursor-not-allowed",
+																			isSelectingAgent &&
+																				"opacity-50 cursor-not-allowed",
 																		)}
 																		onClick={() =>
-																			!isSelectingAgent && onSelectSubthread(agent, thread.name)
+																			!isSelectingAgent &&
+																			onSelectSubthread(agent, thread.name)
 																		}
 																		disabled={isSelectingAgent}
 																		title={`${thread.lastUpdate} ${thread.preview ? `• ${thread.preview}` : ""}`}
@@ -388,18 +516,42 @@ export function AppSidebar({
 			<div className="border-t border-sidebar-border px-4 py-3">
 				<div className="flex items-center gap-2">
 					<div className="h-6 w-6 rounded-full bg-primary/20 flex items-center justify-center">
-						<span className="text-[10px] font-semibold text-primary">JD</span>
+						<span className="text-[10px] font-semibold text-primary">
+							{getInitials(currentUser)}
+						</span>
 					</div>
 					<div className="flex-1 min-w-0">
 						<p className="text-[12px] font-medium text-sidebar-accent-foreground truncate">
-							John Doe
-						</p>
-						<p className="text-[10px] text-muted-foreground truncate">
-							Pro Plan
+							{formatUsername(currentUser)}
 						</p>
 					</div>
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<Button
+								variant="ghost"
+								size="icon"
+								className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent"
+							>
+								<Settings className="h-3.5 w-3.5" />
+								<span className="sr-only">Configuración</span>
+							</Button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="end">
+							<DropdownMenuItem onClick={() => setUserSettingsOpen(true)}>
+								<User className="h-3.5 w-3.5 mr-2" />
+								Configuración de Usuario
+							</DropdownMenuItem>
+						</DropdownMenuContent>
+					</DropdownMenu>
 				</div>
 			</div>
+
+			<UserSettingsDialog
+				open={userSettingsOpen}
+				onOpenChange={setUserSettingsOpen}
+				settings={settings}
+				onSettingsChange={onSettingsChange}
+			/>
 		</div>
 	);
 }

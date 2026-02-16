@@ -66,6 +66,7 @@ pub fn resolve_agent_command(
                 "--json".to_string(),
                 "-s".to_string(),
                 "workspace-write".to_string(),
+                "--skip-git-repo-check".to_string(),
             ];
             if let Some(value) = model.map(|item| item.trim()).filter(|item| !item.is_empty()) {
                 args.push("--model".to_string());
@@ -182,6 +183,7 @@ mod tests {
                 "--json".to_string(),
                 "-s".to_string(),
                 "workspace-write".to_string(),
+                "--skip-git-repo-check".to_string(),
                 "write tests".to_string()
             ]
         );
@@ -204,6 +206,7 @@ mod tests {
                 "--json".to_string(),
                 "-s".to_string(),
                 "workspace-write".to_string(),
+                "--skip-git-repo-check".to_string(),
                 "--model".to_string(),
                 "gpt-5.3-codex".to_string(),
                 "-c".to_string(),
@@ -242,6 +245,7 @@ mod tests {
                 "--json".to_string(),
                 "-s".to_string(),
                 "workspace-write".to_string(),
+                "--skip-git-repo-check".to_string(),
                 "--profile".to_string(),
                 "atlas".to_string(),
                 "write tests".to_string()

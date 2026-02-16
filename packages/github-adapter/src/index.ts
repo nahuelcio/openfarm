@@ -68,7 +68,7 @@ export class GitHubPlatformAdapter implements PlatformAdapter {
       }
       // Log full error response for debugging
       const fullError = `GitHub API Error: ${errorBody.message || res.statusText}${errorDetails}`;
-      logger.error(
+      logger().error(
         {
           status: res.status,
           statusText: res.statusText,
@@ -154,7 +154,7 @@ export class GitHubPlatformAdapter implements PlatformAdapter {
           baseBranch = branch;
           foundValidBase = true;
           if (branch !== params.target) {
-            logger.info(
+            logger().info(
               {
                 owner: this.owner,
                 repo: this.repo,
@@ -187,7 +187,7 @@ export class GitHubPlatformAdapter implements PlatformAdapter {
 
       if (Array.isArray(existingPRs) && existingPRs.length > 0) {
         // PR already exists, return its URL
-        logger.info(
+        logger().info(
           { owner: this.owner, repo: this.repo, branch: params.source },
           "PR already exists, returning existing PR URL"
         );
@@ -196,7 +196,7 @@ export class GitHubPlatformAdapter implements PlatformAdapter {
 
       // Validate title and description before creating PR
       if (!params.title || params.title.trim().length === 0) {
-        logger.error(
+        logger().error(
           {
             owner: this.owner,
             repo: this.repo,
@@ -214,7 +214,7 @@ export class GitHubPlatformAdapter implements PlatformAdapter {
 
       // Description can be empty, but log it if it is
       if (!params.description || params.description.trim().length === 0) {
-        logger.warn(
+        logger().warn(
           {
             owner: this.owner,
             repo: this.repo,
@@ -229,7 +229,7 @@ export class GitHubPlatformAdapter implements PlatformAdapter {
         params.description && params.description.length > 100
           ? `${params.description.substring(0, 100)}...`
           : params.description || "(empty)";
-      logger.info(
+      logger().info(
         {
           owner: this.owner,
           repo: this.repo,
@@ -262,7 +262,7 @@ export class GitHubPlatformAdapter implements PlatformAdapter {
               : String(branchCheckError);
           if (attempt < 3) {
             const delay = 2 ** (attempt - 1) * 1000; // 1s, 2s
-            logger.warn(
+            logger().warn(
               {
                 owner: this.owner,
                 repo: this.repo,
@@ -273,7 +273,7 @@ export class GitHubPlatformAdapter implements PlatformAdapter {
             );
             await new Promise((resolve) => setTimeout(resolve, delay));
           } else {
-            logger.error(
+            logger().error(
               { owner: this.owner, repo: this.repo, branch: params.source },
               `Source branch '${params.source}' not found in remote after 3 attempts. The branch may not have been pushed successfully.`
             );
@@ -301,7 +301,7 @@ export class GitHubPlatformAdapter implements PlatformAdapter {
           compareResult.status === "identical" ||
           compareResult.ahead_by === 0
         ) {
-          logger.warn(
+          logger().warn(
             {
               owner: this.owner,
               repo: this.repo,
@@ -320,7 +320,7 @@ export class GitHubPlatformAdapter implements PlatformAdapter {
           );
         }
 
-        logger.info(
+        logger().info(
           {
             owner: this.owner,
             repo: this.repo,
@@ -334,7 +334,7 @@ export class GitHubPlatformAdapter implements PlatformAdapter {
       } catch (compareError) {
         // If we cannot compare branches, PR creation is likely to fail with Validation Failed.
         // Fail early with a clearer error so the workflow can retry after push propagation.
-        logger.warn(
+        logger().warn(
           {
             owner: this.owner,
             repo: this.repo,
@@ -363,7 +363,7 @@ export class GitHubPlatformAdapter implements PlatformAdapter {
         base: resolvedTargetBranch,
       };
 
-      logger.debug(
+      logger().debug(
         {
           owner: this.owner,
           repo: this.repo,
@@ -383,7 +383,7 @@ export class GitHubPlatformAdapter implements PlatformAdapter {
         }
       )) as any;
 
-      logger.info(
+      logger().info(
         {
           owner: this.owner,
           repo: this.repo,
@@ -423,7 +423,7 @@ export class GitHubPlatformAdapter implements PlatformAdapter {
       }
 
       // Log detailed error information
-      logger.error(
+      logger().error(
         {
           owner: this.owner,
           repo: this.repo,
@@ -444,7 +444,7 @@ export class GitHubPlatformAdapter implements PlatformAdapter {
         errorMessage.includes("Validation Failed") ||
         errorMessage.includes("No commits between")
       ) {
-        logger.warn(
+        logger().warn(
           {
             owner: this.owner,
             repo: this.repo,
@@ -466,7 +466,7 @@ export class GitHubPlatformAdapter implements PlatformAdapter {
               `/repos/${this.owner}/${this.repo}/pulls?head=${this.owner}:${params.source}&state=open`
             )) as any[];
             if (Array.isArray(existingPRs) && existingPRs.length > 0) {
-              logger.info(
+              logger().info(
                 { owner: this.owner, repo: this.repo, branch: params.source },
                 "PR found after retry (race condition)"
               );
@@ -502,7 +502,7 @@ export class GitHubPlatformAdapter implements PlatformAdapter {
               base: retryBaseBranch,
             };
 
-            logger.debug(
+            logger().debug(
               {
                 owner: this.owner,
                 repo: this.repo,
@@ -526,7 +526,7 @@ export class GitHubPlatformAdapter implements PlatformAdapter {
               }
             )) as any;
 
-            logger.info(
+            logger().info(
               {
                 owner: this.owner,
                 repo: this.repo,
@@ -542,7 +542,7 @@ export class GitHubPlatformAdapter implements PlatformAdapter {
               retryError instanceof Error
                 ? retryError.message
                 : String(retryError);
-            logger.warn(
+            logger().warn(
               {
                 owner: this.owner,
                 repo: this.repo,
@@ -561,7 +561,7 @@ export class GitHubPlatformAdapter implements PlatformAdapter {
                   `/repos/${this.owner}/${this.repo}/pulls?head=${this.owner}:${params.source}&state=open`
                 );
                 if (Array.isArray(existingPRs) && existingPRs.length > 0) {
-                  logger.info(
+                  logger().info(
                     {
                       owner: this.owner,
                       repo: this.repo,
@@ -648,13 +648,13 @@ export class GitHubPlatformAdapter implements PlatformAdapter {
         }
       );
 
-      logger.info(
+      logger().info(
         { owner: this.owner, repo: this.repo, issueNumber, updates },
         "Successfully updated GitHub issue"
       );
       return ok(undefined);
     } catch (error) {
-      logger.error(
+      logger().error(
         {
           owner: this.owner,
           repo: this.repo,

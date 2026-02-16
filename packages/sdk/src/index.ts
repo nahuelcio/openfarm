@@ -3,6 +3,7 @@
 
 // MCP Marketplace
 export * from "@openfarm/mcp-marketplace";
+export * from "@openfarm/memory-system";
 export { runLegacyCLI } from "./cli-legacy";
 // Main export
 export { OpenFarm } from "./open-farm";

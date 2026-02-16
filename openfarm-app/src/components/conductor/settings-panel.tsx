@@ -7,8 +7,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { AgentProvider, AppSettings, ProviderConfig } from "@/lib/store";
+import type { AgentProvider, AppSettings, ProviderConfig, AzureDevOpsConfig } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import { AzureDevOpsSettings } from "./azure-devops-settings";
 
 // --- Provider Card ---
 
@@ -228,6 +229,12 @@ export function SettingsPanel({
 									Models
 								</TabsTrigger>
 								<TabsTrigger
+									value="azure"
+									className="h-9 rounded-none border-b-2 border-transparent px-0 pb-2.5 pt-2 text-xs font-medium data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none text-muted-foreground"
+								>
+									Azure DevOps
+								</TabsTrigger>
+								<TabsTrigger
 									value="defaults"
 									className="h-9 rounded-none border-b-2 border-transparent px-0 pb-2.5 pt-2 text-xs font-medium data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none text-muted-foreground"
 								>
@@ -380,6 +387,20 @@ export function SettingsPanel({
 												))}
 										</div>
 									</div>
+								</div>
+							</ScrollArea>
+						</TabsContent>
+
+						{/* Azure DevOps tab */}
+						<TabsContent value="azure" className="flex-1 m-0 min-h-0">
+							<ScrollArea className="h-full">
+								<div className="p-5 space-y-5">
+									<AzureDevOpsSettings
+										config={settings.azureDevOps}
+										onConfigChange={(azureDevOps) =>
+											onSettingsChange({ ...settings, azureDevOps })
+										}
+									/>
 								</div>
 							</ScrollArea>
 						</TabsContent>

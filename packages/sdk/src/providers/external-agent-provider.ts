@@ -11,6 +11,7 @@ import type {
   ProviderCapabilities,
   ProviderConfig,
 } from "../provider-system/types";
+import { StatisticsCollector } from "./statistics-collector";
 import type { ExecutionOptions, ExecutionResult } from "../types";
 
 /**
@@ -244,12 +245,204 @@ export class ExternalAgentProvider {
    */
   async execute(options: ExecutionOptions): Promise<ExecutionResult> {
     const startTime = Date.now();
+    const inputTokenKeys = new Set([
+      "input_tokens",
+      "inputTokens",
+      "prompt_tokens",
+      "promptTokens",
+      "tokens_input",
+      "tokensInput",
+    ]);
+    const outputTokenKeys = new Set([
+      "output_tokens",
+      "outputTokens",
+      "completion_tokens",
+      "completionTokens",
+      "tokens_output",
+      "tokensOutput",
+    ]);
+    const creditKeys = new Set([
+      "credits_spent",
+      "creditsSpent",
+      "total_usd",
+      "totalUSD",
+      "cost_usd",
+      "costUSD",
+      "cost",
+    ]);
+    const filePathKeys = new Set(["filePath", "path", "targetPath"]);
+    const commandKeys = new Set(["command", "cmd"]);
+
+    const collectNumbersByKeys = (
+      value: unknown,
+      keys: Set<string>,
+      sink: number[]
+    ): void => {
+      if (value === null || value === undefined) {
+        return;
+      }
+      if (typeof value === "number" && Number.isFinite(value)) {
+        return;
+      }
+      if (typeof value === "string" || typeof value === "boolean") {
+        return;
+      }
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          collectNumbersByKeys(item, keys, sink);
+        }
+        return;
+      }
+
+      if (typeof value !== "object") {
+        return;
+      }
+
+      const record = value as Record<string, unknown>;
+      for (const [key, nested] of Object.entries(record)) {
+        if (keys.has(key)) {
+          if (typeof nested === "number" && Number.isFinite(nested)) {
+            sink.push(nested);
+          } else if (typeof nested === "string") {
+            const parsed = Number(nested);
+            if (Number.isFinite(parsed)) {
+              sink.push(parsed);
+            }
+          }
+        }
+        collectNumbersByKeys(nested, keys, sink);
+      }
+    };
+
+    const collectStringsByKeys = (
+      value: unknown,
+      keys: Set<string>,
+      sink: string[]
+    ): void => {
+      if (value === null || value === undefined) {
+        return;
+      }
+      if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+        return;
+      }
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          collectStringsByKeys(item, keys, sink);
+        }
+        return;
+      }
+      if (typeof value !== "object") {
+        return;
+      }
+
+      const record = value as Record<string, unknown>;
+      for (const [key, nested] of Object.entries(record)) {
+        if (keys.has(key) && typeof nested === "string" && nested.trim().length > 0) {
+          sink.push(nested.trim());
+        }
+        collectStringsByKeys(nested, keys, sink);
+      }
+    };
 
     try {
       // Use CLI from options if provided (from TUI), otherwise from config
       const cli = options.cli || this.config.cli;
       const args = options.args || this.config.args || [];
       const agentName = options.agentName || cli;
+      const statsCollector = new StatisticsCollector(options.model || agentName);
+      let tokensInput = 0;
+      let tokensOutput = 0;
+      let creditsSpent = 0;
+      const seenFiles = new Set<string>();
+      const seenCommands = new Set<string>();
+
+      const trackStructuredLine = (line: string) => {
+        const clean = line.trim();
+        if (!(clean.startsWith("{") && clean.endsWith("}"))) {
+          return;
+        }
+
+        let event: Record<string, unknown> | null = null;
+        try {
+          const parsed = JSON.parse(clean) as unknown;
+          if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+            event = parsed as Record<string, unknown>;
+          }
+        } catch {
+          return;
+        }
+        if (!event) {
+          return;
+        }
+
+        const type = typeof event.type === "string" ? event.type : "";
+        const item =
+          event.item && typeof event.item === "object" && !Array.isArray(event.item)
+            ? (event.item as Record<string, unknown>)
+            : undefined;
+        const part =
+          event.part && typeof event.part === "object" && !Array.isArray(event.part)
+            ? (event.part as Record<string, unknown>)
+            : undefined;
+
+        const itemType = typeof item?.type === "string" ? item.type.toLowerCase() : "";
+        const hasToolSignal =
+          type === "tool_use" ||
+          type === "tool_call" ||
+          itemType.includes("tool") ||
+          (typeof part?.tool === "string" && part.tool.trim().length > 0);
+        let toolSignalForEvent = hasToolSignal;
+        if (hasToolSignal) {
+          statsCollector.recordToolCall();
+        }
+
+        const fileCandidates: string[] = [];
+        collectStringsByKeys(event, filePathKeys, fileCandidates);
+        for (const filePath of fileCandidates) {
+          if (!seenFiles.has(filePath)) {
+            seenFiles.add(filePath);
+            statsCollector.recordFileChanged();
+          }
+        }
+
+        const commandCandidates: string[] = [];
+        collectStringsByKeys(event, commandKeys, commandCandidates);
+        for (const command of commandCandidates) {
+          if (!seenCommands.has(command)) {
+            seenCommands.add(command);
+            statsCollector.recordProcessCreated();
+            if (!toolSignalForEvent) {
+              statsCollector.recordToolCall();
+              toolSignalForEvent = true;
+            }
+          }
+        }
+
+        const inputCandidates: number[] = [];
+        collectNumbersByKeys(event, inputTokenKeys, inputCandidates);
+        if (inputCandidates.length > 0) {
+          tokensInput = Math.max(tokensInput, ...inputCandidates);
+        }
+
+        const outputCandidates: number[] = [];
+        collectNumbersByKeys(event, outputTokenKeys, outputCandidates);
+        if (outputCandidates.length > 0) {
+          tokensOutput = Math.max(tokensOutput, ...outputCandidates);
+        }
+
+        const creditCandidates: number[] = [];
+        collectNumbersByKeys(event, creditKeys, creditCandidates);
+        if (creditCandidates.length > 0) {
+          creditsSpent = Math.max(creditsSpent, ...creditCandidates);
+        }
+      };
+
+      const onEngineLog = (chunk: string) => {
+        for (const line of chunk.replaceAll("\r\n", "\n").split("\n")) {
+          trackStructuredLine(line);
+        }
+        options.onLog?.(chunk);
+      };
 
       // Create the external agent coding engine with output parsing
       const engine = await createCodingEngine({
@@ -260,7 +453,7 @@ export class ExternalAgentProvider {
         agentName,
         previewMode: false,
         chatOnly: false,
-        onLog: options.onLog,
+        onLog: onEngineLog,
       });
 
       // Execute the task
@@ -270,13 +463,35 @@ export class ExternalAgentProvider {
       );
 
       const duration = Date.now() - startTime;
+      const buildStatistics = () =>
+        statsCollector.getStatistics(tokensInput, tokensOutput, {
+          creditsSpent,
+          duration,
+        });
 
       if (result.ok) {
         const summary = result.value;
+
+        const changedFiles = [
+          ...(summary.filesModified || []),
+          ...(summary.filesCreated || []),
+          ...(summary.filesDeleted || []),
+        ];
+        for (const filePath of changedFiles) {
+          if (!seenFiles.has(filePath)) {
+            seenFiles.add(filePath);
+            statsCollector.recordFileChanged();
+          }
+        }
+        if (typeof summary.totalCost === "number" && Number.isFinite(summary.totalCost)) {
+          creditsSpent = Number(summary.totalCost.toFixed(6));
+        }
+
         return {
           success: true,
           output: summary.summary || "Task completed successfully",
           duration,
+          statistics: buildStatistics(),
         };
       }
       return {
@@ -284,6 +499,7 @@ export class ExternalAgentProvider {
         output: "",
         error: result.error?.message || "Execution failed",
         duration,
+        statistics: buildStatistics(),
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";

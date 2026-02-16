@@ -48,7 +48,7 @@ export class CircuitBreaker {
 
       if (this.halfOpenAttempts >= this.options.halfOpenAttempts) {
         this.transitionToClosed();
-        logger.info("Circuit breaker reset to closed state");
+        logger().info("Circuit breaker reset to closed state");
       }
     }
   }
@@ -77,7 +77,7 @@ export class CircuitBreaker {
   private transitionToOpen(): void {
     if (this.state !== "open") {
       this.state = "open";
-      logger.warn(
+      logger().warn(
         `Circuit breaker opened after ${this.failures} failures. Cooldown: ${this.options.cooldownMs}ms`
       );
     }
@@ -86,7 +86,7 @@ export class CircuitBreaker {
   private transitionToHalfOpen(): void {
     this.state = "half-open";
     this.halfOpenAttempts = 0;
-    logger.info("Circuit breaker moved to half-open state");
+    logger().info("Circuit breaker moved to half-open state");
   }
 
   getState(): CircuitBreakerState {

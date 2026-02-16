@@ -26,6 +26,7 @@ export interface ExecutionOptions {
 }
 
 export interface ExecutionStatistics {
+  creditsSpent?: number;
   toolCalls: number;
   model: string;
   filesChanged: number;
@@ -33,6 +34,7 @@ export interface ExecutionStatistics {
   requestId: string;
   tokensInput: number;
   tokensOutput: number;
+  duration?: number;
 }
 
 export interface ExecutionResult {

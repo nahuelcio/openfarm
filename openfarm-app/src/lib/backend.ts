@@ -276,8 +276,46 @@ async function webInvoke<T>(
 					repo: repoPath,
 					agents: [],
 				});
-				writeWebDb(db);
 			}
+			return { workspaces: db.workspaces, settings: db.settings } as T;
+		}
+		case "delete_workspace": {
+			const workspaceId = String(payload.workspaceId || "").trim();
+			console.log("Backend: delete_workspace called with ID:", workspaceId);
+
+			if (!workspaceId) {
+				console.error("Backend: Workspace ID is required");
+				throw new Error("Workspace ID is required");
+			}
+			const workspaceIndex = db.workspaces.findIndex(
+				(workspace) => workspace.id === workspaceId,
+			);
+			console.log("Backend: Workspace index found:", workspaceIndex);
+
+			if (workspaceIndex === -1) {
+				console.error("Backend: Workspace not found");
+				throw new Error("Workspace not found");
+			}
+			const workspace = db.workspaces[workspaceIndex];
+			console.log(
+				"Backend: Workspace found:",
+				workspace.name,
+				"agents:",
+				workspace.agents.length,
+			);
+
+			if (workspace.agents.length > 0) {
+				console.error("Backend: Cannot delete workspace with agents");
+				throw new Error("Cannot delete workspace with active agents");
+			}
+
+			console.log("Backend: Deleting workspace...");
+			db.workspaces.splice(workspaceIndex, 1);
+			writeWebDb(db);
+			console.log(
+				"Backend: Workspace deleted successfully, remaining workspaces:",
+				db.workspaces.length,
+			);
 			return { workspaces: db.workspaces, settings: db.settings } as T;
 		}
 		case "send_agent_message": {
@@ -474,6 +512,12 @@ export async function addLocalWorkspace(
 	return invoke<BootstrapState>("add_local_workspace", { repoPath });
 }
 
+export async function deleteWorkspace(
+	workspaceId: string,
+): Promise<BootstrapState> {
+	return invoke<BootstrapState>("delete_workspace", { workspaceId });
+}
+
 export async function sendAgentMessage(input: {
 	agentId: string;
 	message: string;
@@ -511,6 +555,15 @@ export async function saveSettings(
 
 export async function getProviderCatalog(): Promise<ProviderConfig[]> {
 	return invoke<ProviderConfig[]>("get_provider_catalog");
+}
+
+export async function getCurrentUser(): Promise<string> {
+	try {
+		return await invoke<string>("get_current_user");
+	} catch (error) {
+		console.error("Failed to get current user:", error);
+		return "Unknown User";
+	}
 }
 
 interface RawAgentEvent {

@@ -114,6 +114,51 @@ describe("ClaudeProvider", () => {
     expect(logs.some((msg) => msg.includes("Parser failed"))).toBe(true);
   });
 
+  it("collects real statistics from structured JSON output", async () => {
+    const execute = vi
+      .fn<(request: CommunicationRequest) => Promise<CommunicationResponse>>()
+      .mockResolvedValueOnce(
+        createCommunicationResponse({ body: "claude 1.0.0" })
+      )
+      .mockResolvedValueOnce(
+        createCommunicationResponse({
+          body: [
+            '{"type":"tool_use","tool_name":"Edit","tool_input":{"file_path":"src/service.ts"}}',
+            '{"type":"result","message":"done","usage":{"input_tokens":1200,"output_tokens":75},"cost_usd":0.2}',
+          ].join("\n"),
+        })
+      );
+
+    const provider = new ClaudeProvider(
+      {
+        type: "cli",
+        execute,
+        testConnection: vi.fn(async () => true),
+      } as CommunicationStrategy,
+      {
+        type: "stream",
+        parse: vi.fn(async () => "done"),
+        canHandle: vi.fn(() => true),
+      } as StreamResponseParser,
+      createConfigManager()
+    );
+
+    const result = await provider.execute({
+      task: "update service",
+      workspace: "/tmp/project",
+      model: "claude-sonnet-4",
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.statistics).toBeDefined();
+    expect(result.statistics?.toolCalls).toBe(1);
+    expect(result.statistics?.filesChanged).toBe(1);
+    expect(result.statistics?.tokensInput).toBe(1200);
+    expect(result.statistics?.tokensOutput).toBe(75);
+    expect(result.statistics?.creditsSpent).toBe(0.2);
+    expect(typeof result.statistics?.duration).toBe("number");
+  });
+
   it("fails when claude CLI is not available", async () => {
     const execute = vi
       .fn<(request: CommunicationRequest) => Promise<CommunicationResponse>>()

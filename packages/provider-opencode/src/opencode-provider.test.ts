@@ -207,6 +207,64 @@ describe("OpenCodeProvider", () => {
     expect(logs.some((msg) => msg.includes("⚠ warning: dry mode"))).toBe(true);
   });
 
+  it("collects real statistics from structured stream events", async () => {
+    const execute = vi
+      .fn<(request: CommunicationRequest) => Promise<CommunicationResponse>>()
+      .mockResolvedValueOnce(createCommunicationResponse({ body: "1.1.52" }))
+      .mockImplementationOnce(async (request) => {
+        request.onStdout?.(
+          '{"type":"tool_use","part":{"tool":"write","state":{"status":"completed","input":{"filePath":"src/app.ts"}}}}'
+        );
+        request.onStdout?.(
+          '{"type":"tool_use","part":{"tool":"bash","state":{"status":"completed","input":{"command":"bun test"}}}}'
+        );
+        request.onStdout?.(
+          '{"type":"turn.completed","usage":{"input_tokens":210,"output_tokens":55},"cost_usd":0.1234}'
+        );
+        return createCommunicationResponse({
+          body: '{"type":"text","part":{"text":"done"}}',
+        });
+      });
+
+    const provider = new OpenCodeProvider(
+      {
+        type: "cli",
+        execute,
+        testConnection: vi.fn(async () => true),
+      },
+      {
+        type: "stream",
+        parse: vi.fn(async () => "done"),
+        canHandle: vi.fn(() => true),
+      },
+      {
+        validate: vi.fn(() => true),
+        getValidationErrors: vi.fn(() => []),
+        getDefaults: vi.fn(() => ({})),
+        mergeWithDefaults: vi.fn(() => ({})),
+        getSchema: vi.fn(() => ({})),
+      },
+      { timeout: 10_000 },
+      "bunx opencode-ai"
+    );
+
+    const result = await provider.execute({
+      task: "update files",
+      workspace: "/tmp/openfarm",
+      model: "zai/glm-4.7",
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.statistics).toBeDefined();
+    expect(result.statistics?.toolCalls).toBe(2);
+    expect(result.statistics?.filesChanged).toBe(1);
+    expect(result.statistics?.processesCreated).toBe(1);
+    expect(result.statistics?.tokensInput).toBe(210);
+    expect(result.statistics?.tokensOutput).toBe(55);
+    expect(result.statistics?.creditsSpent).toBe(0.1234);
+    expect(typeof result.statistics?.duration).toBe("number");
+  });
+
   it("fails when OpenCode CLI is not available", async () => {
     const execute = vi
       .fn<(request: CommunicationRequest) => Promise<CommunicationResponse>>()

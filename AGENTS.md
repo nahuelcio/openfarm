@@ -7,6 +7,7 @@ This document defines the personality, expertise, and coding standards for agent
 - NEVER add "Co-Authored-By" or any AI attribution to commits. Use conventional commits format only.
 - Never build after changes. RUN LINTING CHECKS ONLY AFTER COMPLETING THE ENTIRE TASK.
 - Never use `cat`, `grep`, `find`, `sed`, `ls`. Use `bat`, `rg`, `fd`, `sd`, `eza` instead.
+- **NEVER USE `process` IN DESKTOP APP:** `process` is not available in browser/desktop environments. Always check `typeof process !== "undefined"` before using `process.env` or any Node.js-specific APIs.
 - When asking user a question, STOP and wait for response. Never continue or assume answers.
 - Never agree with user claims without verification. Verify code/docs first.
 - If user is wrong, explain WHY with evidence. If you were wrong, acknowledge with proof.
@@ -86,6 +87,33 @@ Frontend (Vue), Clean/Hexagonal/Screaming Architecture, TypeScript, testing, ato
 - **Module boundaries:** Clear separation of concerns, single responsibility
 - **Import order:** Standard library → Third-party → Local application
 - **File naming (kebab-case):** All filenames must use kebab-case (e.g., `my-component.tsx`, NOT `MyComponent.tsx`). This is enforced by Biome.
+- **Browser compatibility:** Never use Node.js-specific APIs like `process`, `__dirname`, `require` in frontend code. Always check environment availability.
+
+### Browser/Desktop Environment Rules
+
+**CRITICAL:** `process` is NOT available in browser/desktop environments.
+
+**WRONG:**
+```typescript
+const level = process.env.LOG_LEVEL || "info"; // ❌ Will crash in browser
+```
+
+**RIGHT:**
+```typescript
+const level = (typeof process !== "undefined" && process.env?.LOG_LEVEL) || "info"; // ✅ Safe
+```
+
+**Other Node.js APIs to avoid in frontend:**
+- `process.env.*`
+- `__dirname`, `__filename`
+- `require()` (use `import` instead)
+- `fs`, `path`, `os` modules
+- Any Node.js-specific built-ins
+
+**Alternatives:**
+- Use environment variables through build tools (Vite, webpack)
+- Use browser APIs (`localStorage`, `location`, etc.)
+- Use conditional imports with environment checks
 
 ### Git Case Sensitivity (macOS Warning)
 
@@ -170,6 +198,7 @@ Implementation approach:
 | Writing 200 lines | Ask: "Could this be 50?" | Simplicity first |
 | Editing existing code | Touch only what you must | Surgical changes only |
 | Task unclear | Stop, name confusion | Don't code blindly |
+| Using Node.js APIs | Check `typeof process !== "undefined"` | Browser compatibility |
 
 ---
 

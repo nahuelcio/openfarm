@@ -1,5 +1,6 @@
 mod agent_command;
 mod agent_config;
+mod memory_system;
 
 use directories;
 use flexi_logger::{Cleanup, Criterion, FileSpec, Logger, Naming};
@@ -20,9 +21,11 @@ use tauri::{
 
 use crate::agent_command::resolve_agent_command;
 use crate::agent_config::{
-    apply_agent_config_patch, detect_agent_configs, import_agent_config, list_agent_backups,
-    preview_agent_config_patch, rollback_config_patch, AgentProfileId,
+    AgentConfigPatchRequest, AgentProfileId, ConfigMcpServer, apply_agent_config_patch,
+    detect_agent_configs, import_agent_config, list_agent_backups, preview_agent_config_patch,
+    rollback_config_patch,
 };
+use crate::memory_system::*;
 
 pub struct Database {
     conn: Mutex<Connection>,
@@ -204,6 +207,16 @@ impl Database {
                 last_checked_at TEXT,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
+            )",
+            [],
+        )?;
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS installed_mcps (
+                id TEXT NOT NULL,
+                provider TEXT NOT NULL,
+                config TEXT NOT NULL,
+                installed_at TEXT NOT NULL,
+                PRIMARY KEY (id, provider)
             )",
             [],
         )?;
@@ -706,6 +719,56 @@ impl Database {
         conn.execute("DELETE FROM mcp_servers WHERE id = ?1", params![server_id])?;
         Ok(())
     }
+
+    pub fn load_installed_mcps(&self) -> Result<Vec<InstalledMcp>, rusqlite::Error> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT id, provider, config, installed_at FROM installed_mcps ORDER BY installed_at DESC",
+        )?;
+        let mcps = stmt
+            .query_map([], |row| {
+                let config_json: String = row.get(2)?;
+                let config = serde_json::from_str::<serde_json::Value>(&config_json)
+                    .unwrap_or_else(|_| serde_json::json!({}));
+                Ok(InstalledMcp {
+                    id: row.get(0)?,
+                    provider: row.get(1)?,
+                    config,
+                    installed_at: row.get(3)?,
+                })
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(mcps)
+    }
+
+    pub fn upsert_installed_mcp(&self, installed: &InstalledMcp) -> Result<(), rusqlite::Error> {
+        let conn = self.conn.lock().unwrap();
+        let config_json =
+            serde_json::to_string(&installed.config).unwrap_or_else(|_| "{}".to_string());
+        conn.execute(
+            "INSERT OR REPLACE INTO installed_mcps (id, provider, config, installed_at) VALUES (?1, ?2, ?3, ?4)",
+            params![
+                installed.id,
+                installed.provider,
+                config_json,
+                installed.installed_at
+            ],
+        )?;
+        Ok(())
+    }
+
+    pub fn delete_installed_mcp(
+        &self,
+        mcp_id: &str,
+        provider: &str,
+    ) -> Result<(), rusqlite::Error> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "DELETE FROM installed_mcps WHERE id = ?1 AND provider = ?2",
+            params![mcp_id, provider],
+        )?;
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -842,6 +905,15 @@ pub struct McpServer {
     pub last_checked_at: Option<String>,
     pub created_at: String,
     pub updated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InstalledMcp {
+    pub id: String,
+    pub provider: String,
+    pub config: serde_json::Value,
+    #[serde(rename = "installedAt")]
+    pub installed_at: String,
 }
 
 pub struct AgentPool {
@@ -1161,24 +1233,52 @@ fn parse_structured_agent_event(line: &str) -> Option<String> {
         return Some(format!("Error: {message}"));
     }
 
-    if event_type == "item.completed" {
-        let item_type = value
-            .get("item")
+    if event_type == "item.started" || event_type == "item.completed" {
+        let item = value.get("item");
+        let item_type = item
             .and_then(|item| item.get("type"))
             .and_then(|item| item.as_str())
             .unwrap_or_default();
         if item_type == "reasoning" {
             return None;
         }
-        if item_type != "agent_message" && !item_type.is_empty() {
+        if item_type == "agent_message" {
+            return item
+                .and_then(|item| item.get("text"))
+                .and_then(|item| item.as_str())
+                .map(|text| text.trim().to_string())
+                .filter(|text| !text.is_empty());
+        }
+        if item_type.is_empty() {
             return None;
         }
-        return value
-            .get("item")
-            .and_then(|item| item.get("text"))
+
+        let status = item
+            .and_then(|item| item.get("status"))
             .and_then(|item| item.as_str())
-            .map(|text| text.trim().to_string())
-            .filter(|text| !text.is_empty());
+            .unwrap_or(if event_type == "item.started" {
+                "in_progress"
+            } else {
+                "completed"
+            });
+        let detail = item
+            .and_then(|item| item.get("command"))
+            .and_then(|item| item.as_str())
+            .map(|command| {
+                let mut compact: String = command.chars().take(120).collect();
+                if command.chars().count() > 120 {
+                    compact.push_str("...");
+                }
+                compact
+            })
+            .unwrap_or_default();
+        let label = item_type.replace('_', "-");
+        let summary = if detail.is_empty() {
+            format!("Step: {label} ({status})")
+        } else {
+            format!("Step: {label} {detail} ({status})")
+        };
+        return Some(summary);
     }
 
     None
@@ -2025,7 +2125,7 @@ fn run_agent_via_bridge(
         model: provider.to_string(),
         files_changed: 0,
         processes_created: 0,
-        request_id: format!("bridge-{}-{}", agent_id, started_at.duration_since(Instant::now()).as_millis()),
+        request_id: format!("bridge-{}-{}", agent_id, chrono::Utc::now().timestamp_millis()),
         tokens_input: 0,
         tokens_output: 0,
         duration: 0,
@@ -3647,6 +3747,293 @@ fn list_workspace_files(
         .collect())
 }
 
+fn provider_to_profile(provider: &str) -> Option<AgentProfileId> {
+    match provider.trim().to_ascii_lowercase().as_str() {
+        "codex" => Some(AgentProfileId::Codex),
+        "claude-code" | "claude" => Some(AgentProfileId::ClaudeCode),
+        "opencode" | "external-agent" => Some(AgentProfileId::Opencode),
+        _ => None,
+    }
+}
+
+fn detect_openfarm_root() -> Option<PathBuf> {
+    if let Ok(value) = std::env::var("OPENFARM_REPO_ROOT") {
+        let candidate = PathBuf::from(value.trim());
+        if candidate
+            .join("packages/memory-system/src/mcp/memory-server.ts")
+            .exists()
+        {
+            return Some(candidate);
+        }
+    }
+
+    let mut candidates = Vec::<PathBuf>::new();
+    if let Ok(cwd) = std::env::current_dir() {
+        candidates.push(cwd);
+    }
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(parent) = exe.parent() {
+            candidates.push(parent.to_path_buf());
+        }
+    }
+
+    for candidate in candidates {
+        for ancestor in candidate.ancestors() {
+            if ancestor
+                .join("packages/memory-system/src/mcp/memory-server.ts")
+                .exists()
+            {
+                return Some(ancestor.to_path_buf());
+            }
+        }
+    }
+    None
+}
+
+fn to_env_key(raw: &str) -> String {
+    let mut output = String::new();
+    let mut previous_was_lower_or_digit = false;
+    for ch in raw.chars() {
+        if ch.is_ascii_alphanumeric() {
+            if ch.is_ascii_uppercase() && previous_was_lower_or_digit && !output.ends_with('_') {
+                output.push('_');
+            }
+            output.push(ch.to_ascii_uppercase());
+            previous_was_lower_or_digit = ch.is_ascii_lowercase() || ch.is_ascii_digit();
+            continue;
+        }
+        if !output.ends_with('_') {
+            output.push('_');
+        }
+        previous_was_lower_or_digit = false;
+    }
+    output.trim_matches('_').to_string()
+}
+
+fn parse_json_string_array(value: Option<&serde_json::Value>) -> Vec<String> {
+    value
+        .and_then(|entry| entry.as_array())
+        .map(|items| {
+            items
+                .iter()
+                .filter_map(|item| item.as_str().map(|value| value.trim().to_string()))
+                .filter(|value| !value.is_empty())
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default()
+}
+
+fn parse_json_string_map(value: Option<&serde_json::Value>) -> HashMap<String, String> {
+    value
+        .and_then(|entry| entry.as_object())
+        .map(|items| {
+            items
+                .iter()
+                .filter_map(|(key, value)| {
+                    value.as_str().map(|text| (key.clone(), text.trim().to_string()))
+                })
+                .filter(|(_, value)| !value.is_empty())
+                .collect::<HashMap<_, _>>()
+        })
+        .unwrap_or_default()
+}
+
+fn default_mcp_npm_package(mcp_id: &str) -> Option<&'static str> {
+    match mcp_id {
+        "context7" => Some("@upstash/context7-mcp"),
+        "figma" => Some("@modelcontextprotocol/server-figma"),
+        "github" => Some("@modelcontextprotocol/server-github"),
+        "linear" => Some("@modelcontextprotocol/server-linear"),
+        "notion" => Some("@notionhq/notion-mcp"),
+        "playwright" => Some("@modelcontextprotocol/server-playwright"),
+        "filesystem" => Some("@modelcontextprotocol/server-filesystem"),
+        "git" => Some("@modelcontextprotocol/server-git"),
+        "fetch" => Some("@modelcontextprotocol/server-fetch"),
+        "memory" => Some("@modelcontextprotocol/server-memory"),
+        _ => None,
+    }
+}
+
+fn build_mcp_server_from_install_request(
+    mcp_id: &str,
+    config: &serde_json::Value,
+    workspace_root: &str,
+) -> Result<ConfigMcpServer, String> {
+    let normalized_id = mcp_id.trim();
+    if normalized_id.is_empty() {
+        return Err("mcpId is required".to_string());
+    }
+
+    let config_object = config.as_object();
+    let mut command = config_object
+        .and_then(|object| object.get("command"))
+        .and_then(|value| value.as_str())
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| {
+            if normalized_id == "memory-system" {
+                "bunx".to_string()
+            } else {
+                "npx".to_string()
+            }
+        });
+
+    let mut args = parse_json_string_array(config_object.and_then(|object| object.get("args")));
+    if args.is_empty() {
+        if normalized_id == "memory-system" {
+            let root = detect_openfarm_root().ok_or_else(|| {
+                "Unable to locate OpenFarm repository root for memory-system MCP".to_string()
+            })?;
+            let script_path = root.join("packages/memory-system/src/mcp/memory-server.ts");
+            if !script_path.exists() {
+                return Err(format!(
+                    "Memory MCP script not found at {}",
+                    script_path.display()
+                ));
+            }
+            command = "bunx".to_string();
+            args.push("tsx".to_string());
+            args.push(script_path.to_string_lossy().to_string());
+        } else {
+            let package = default_mcp_npm_package(normalized_id).unwrap_or(normalized_id);
+            if command == "npx" {
+                args.push("-y".to_string());
+                args.push(package.to_string());
+            } else {
+                args.push(package.to_string());
+            }
+        }
+    }
+
+    let mut env = parse_json_string_map(config_object.and_then(|object| object.get("env")));
+    if let Some(object) = config_object {
+        for (key, value) in object {
+            if key == "command" || key == "args" || key == "env" || key == "workspaceRoot" {
+                continue;
+            }
+            if let Some(text) = value.as_str() {
+                let trimmed = text.trim();
+                if trimmed.is_empty() {
+                    continue;
+                }
+                let env_key = to_env_key(key);
+                if !env_key.is_empty() {
+                    env.insert(env_key, trimmed.to_string());
+                }
+            }
+        }
+    }
+    if normalized_id == "memory-system" {
+        env.insert(
+            "MEMORY_WORKSPACE_ROOT".to_string(),
+            workspace_root.to_string(),
+        );
+    }
+
+    Ok(ConfigMcpServer {
+        name: normalized_id.to_string(),
+        command,
+        args,
+        env,
+        enabled: true,
+    })
+}
+
+fn same_mcp_server(left: &ConfigMcpServer, right: &ConfigMcpServer) -> bool {
+    left.name == right.name
+        && left.command == right.command
+        && left.args == right.args
+        && left.env == right.env
+        && left.enabled == right.enabled
+}
+
+fn upsert_provider_mcp_server(provider: &str, server: ConfigMcpServer) -> Result<(), String> {
+    let Some(profile) = provider_to_profile(provider) else {
+        return Ok(());
+    };
+    let imported = import_agent_config(profile.clone())?;
+    let mut unified = imported.config;
+
+    let mut changed = false;
+    if let Some(existing) = unified
+        .mcp_servers
+        .iter_mut()
+        .find(|entry| entry.name == server.name)
+    {
+        if !same_mcp_server(existing, &server) {
+            *existing = server;
+            changed = true;
+        }
+    } else {
+        unified.mcp_servers.push(server);
+        changed = true;
+    }
+
+    if !changed {
+        return Ok(());
+    }
+
+    unified.mcp_servers.sort_by(|left, right| left.name.cmp(&right.name));
+    let result = apply_agent_config_patch(AgentConfigPatchRequest {
+        profile_id: profile,
+        config: unified,
+        expected_before_hash: None,
+    })?;
+    if result.success {
+        Ok(())
+    } else {
+        Err(result
+            .error_message
+            .unwrap_or_else(|| "Failed to update provider MCP config".to_string()))
+    }
+}
+
+fn remove_provider_mcp_server(provider: &str, mcp_name: &str) -> Result<(), String> {
+    let Some(profile) = provider_to_profile(provider) else {
+        return Ok(());
+    };
+    let imported = import_agent_config(profile.clone())?;
+    let mut unified = imported.config;
+    let before_len = unified.mcp_servers.len();
+    unified
+        .mcp_servers
+        .retain(|entry| entry.name != mcp_name.trim());
+    if unified.mcp_servers.len() == before_len {
+        return Ok(());
+    }
+
+    let result = apply_agent_config_patch(AgentConfigPatchRequest {
+        profile_id: profile,
+        config: unified,
+        expected_before_hash: None,
+    })?;
+    if result.success {
+        Ok(())
+    } else {
+        Err(result
+            .error_message
+            .unwrap_or_else(|| "Failed to update provider MCP config".to_string()))
+    }
+}
+
+fn ensure_memory_mcp_for_provider(provider: &str, workspace_root: &str) -> Result<(), String> {
+    let resolved_workspace = if workspace_root.trim().is_empty() {
+        std::env::current_dir()
+            .unwrap_or_else(|_| PathBuf::from("."))
+            .to_string_lossy()
+            .to_string()
+    } else {
+        workspace_root.trim().to_string()
+    };
+
+    let server = build_mcp_server_from_install_request(
+        "memory-system",
+        &serde_json::json!({}),
+        &resolved_workspace,
+    )?;
+    upsert_provider_mcp_server(provider, server)
+}
+
 #[tauri::command]
 fn get_mcp_servers(pool: State<AgentPool>) -> Vec<McpServer> {
     let servers = pool.mcp_servers.lock().unwrap();
@@ -3783,6 +4170,76 @@ fn check_mcp_server_health(server_id: String, pool: State<AgentPool>) -> Result<
     let mut servers = pool.mcp_servers.lock().unwrap();
     servers.insert(server_id, updated.clone());
     Ok(updated)
+}
+
+#[tauri::command]
+fn install_mcp(
+    mcp_id: String,
+    provider: String,
+    config: serde_json::Value,
+    pool: State<AgentPool>,
+) -> Result<Vec<InstalledMcp>, String> {
+    let normalized_id = mcp_id.trim().to_string();
+    let normalized_provider = provider.trim().to_string();
+    if normalized_id.is_empty() || normalized_provider.is_empty() {
+        return Err("mcpId and provider are required".to_string());
+    }
+
+    let workspace_root = config
+        .as_object()
+        .and_then(|object| object.get("workspaceRoot"))
+        .and_then(|value| value.as_str())
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| {
+            std::env::current_dir()
+                .unwrap_or_else(|_| PathBuf::from("."))
+                .to_string_lossy()
+                .to_string()
+        });
+
+    let server = build_mcp_server_from_install_request(&normalized_id, &config, &workspace_root)?;
+    upsert_provider_mcp_server(&normalized_provider, server)?;
+    let stored_config = if config.is_object() {
+        config.clone()
+    } else {
+        serde_json::json!({})
+    };
+
+    let entry = InstalledMcp {
+        id: normalized_id,
+        provider: normalized_provider,
+        config: stored_config,
+        installed_at: chrono::Utc::now().to_rfc3339(),
+    };
+    pool.db
+        .upsert_installed_mcp(&entry)
+        .map_err(|e| e.to_string())?;
+    pool.db.load_installed_mcps().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn uninstall_mcp(
+    mcp_id: String,
+    provider: String,
+    pool: State<AgentPool>,
+) -> Result<Vec<InstalledMcp>, String> {
+    let normalized_id = mcp_id.trim().to_string();
+    let normalized_provider = provider.trim().to_string();
+    if normalized_id.is_empty() || normalized_provider.is_empty() {
+        return Err("mcpId and provider are required".to_string());
+    }
+
+    remove_provider_mcp_server(&normalized_provider, &normalized_id)?;
+    pool.db
+        .delete_installed_mcp(&normalized_id, &normalized_provider)
+        .map_err(|e| e.to_string())?;
+    pool.db.load_installed_mcps().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn get_installed_mcps(pool: State<AgentPool>) -> Result<Vec<InstalledMcp>, String> {
+    pool.db.load_installed_mcps().map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -5014,6 +5471,53 @@ fn add_local_workspace(
 }
 
 #[tauri::command]
+fn delete_workspace(
+    workspace_id: String,
+    pool: State<AgentPool>,
+) -> Result<UiBootstrapState, String> {
+    let trimmed = workspace_id.trim();
+    if trimmed.is_empty() {
+        return Err("Workspace ID is required".to_string());
+    }
+
+    // Check if workspace exists
+    let workspace = {
+        let workspaces = pool.workspaces.lock().unwrap();
+        workspaces.get(trimmed).cloned()
+    };
+
+    let workspace = match workspace {
+        Some(ws) => ws,
+        None => return Err("Workspace not found".to_string()),
+    };
+
+    // Check if workspace has agents
+    let agents = pool.db.load_agents().map_err(|e| e.to_string())?;
+    let workspace_agents: Vec<_> = agents.iter()
+        .filter(|agent| agent.repo_path.as_ref() == Some(&workspace.repo_path))
+        .collect();
+    if !workspace_agents.is_empty() {
+        return Err("Cannot delete workspace with active agents".to_string());
+    }
+
+    // Delete worktree if it exists
+    if let Some(worktree_path) = &workspace.worktree_path {
+        cleanup_worktree(&workspace.repo_path, &workspace.branch_name, worktree_path);
+    }
+
+    // Delete from database
+    pool.db.delete_workspace(trimmed).map_err(|e| e.to_string())?;
+
+    // Remove from memory
+    {
+        let mut workspaces = pool.workspaces.lock().unwrap();
+        workspaces.remove(trimmed);
+    }
+
+    to_ui_bootstrap(&pool)
+}
+
+#[tauri::command]
 fn list_repository_branches(repo_path: String) -> Result<Vec<String>, String> {
     let trimmed = repo_path.trim();
     if trimmed.is_empty() {
@@ -5182,6 +5686,15 @@ fn send_agent_message(
     let selected_mode = mode_override
         .clone()
         .or_else(|| load_agent_mode(&pool, &agent_id));
+
+    if let Err(error) = ensure_memory_mcp_for_provider(&selected_provider, &workspace) {
+        log::warn!(
+            "Failed to ensure memory-system MCP for provider {}: {}",
+            selected_provider,
+            error
+        );
+    }
+
     let execution_context = build_execution_context(&pool, &snapshot, &message);
 
     let _ = pool.db.save_agent_event(
@@ -5415,6 +5928,25 @@ fn get_provider_catalog() -> Result<serde_json::Value, String> {
     Ok(merge_provider_agents_into_catalog(catalog, agents))
 }
 
+#[tauri::command]
+fn get_current_user() -> Result<String, String> {
+    match std::env::var("USER") {
+        Ok(user) => Ok(user),
+        Err(_) => {
+            // Fallback for Windows
+            std::env::var("USERNAME")
+                .or_else(|_| {
+                    // Ultimate fallback - try to get from whoami command
+                    std::process::Command::new("whoami")
+                        .output()
+                        .map(|output| String::from_utf8_lossy(&output.stdout).trim().to_string())
+                        .map_err(|e| e.to_string())
+                })
+                .or_else(|_| Ok("Unknown User".to_string()))
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
@@ -5476,10 +6008,50 @@ mod tests {
     }
 
     #[test]
+    fn parses_codex_command_execution_started_event() {
+        let line = r#"{"type":"item.started","item":{"id":"item_1","type":"command_execution","command":"/bin/zsh -lc 'fd --max-depth 1'","status":"in_progress"}}"#;
+        let value = parse_structured_agent_event(line);
+        assert_eq!(
+            value,
+            Some(
+                "Step: command-execution /bin/zsh -lc 'fd --max-depth 1' (in_progress)"
+                    .to_string()
+            )
+        );
+    }
+
+    #[test]
+    fn parses_codex_command_execution_completed_event() {
+        let line = r#"{"type":"item.completed","item":{"id":"item_1","type":"command_execution","command":"/bin/zsh -lc 'fd --max-depth 1'","status":"completed"}}"#;
+        let value = parse_structured_agent_event(line);
+        assert_eq!(
+            value,
+            Some(
+                "Step: command-execution /bin/zsh -lc 'fd --max-depth 1' (completed)"
+                    .to_string()
+            )
+        );
+    }
+
+    #[test]
     fn normalizes_codex_output_chunk() {
         let raw = "Reading prompt from stdin...\n{\"type\":\"thread.started\",\"thread_id\":\"x\"}\n{\"type\":\"item.completed\",\"item\":{\"id\":\"item_0\",\"type\":\"reasoning\",\"text\":\"thinking\"}}\n{\"type\":\"item.completed\",\"item\":{\"id\":\"item_1\",\"type\":\"agent_message\",\"text\":\"Hola.\"}}\n2026-02-15T00:48:00.251301Z ERROR codex_core::rollout::list: state db missing rollout path for thread x\n";
         let value = normalize_agent_output_chunk(raw);
         assert_eq!(value, vec!["Hola.".to_string()]);
+    }
+
+    #[test]
+    fn normalizes_codex_command_execution_as_step() {
+        let raw = "Reading prompt from stdin...\n{\"type\":\"item.started\",\"item\":{\"id\":\"item_1\",\"type\":\"command_execution\",\"command\":\"/bin/zsh -lc 'fd --max-depth 1'\",\"status\":\"in_progress\"}}\n{\"type\":\"item.completed\",\"item\":{\"id\":\"item_2\",\"type\":\"agent_message\",\"text\":\"18\"}}";
+        let value = normalize_agent_output_chunk(raw);
+        assert_eq!(
+            value,
+            vec![
+                "Step: command-execution /bin/zsh -lc 'fd --max-depth 1' (in_progress)"
+                    .to_string(),
+                "18".to_string(),
+            ]
+        );
     }
 
     #[test]
@@ -5590,6 +6162,9 @@ pub fn run() {
             update_mcp_server,
             delete_mcp_server,
             check_mcp_server_health,
+            install_mcp,
+            uninstall_mcp,
+            get_installed_mcps,
             detect_agent_configs,
             import_agent_config,
             preview_agent_config_patch,
@@ -5607,6 +6182,7 @@ pub fn run() {
             get_agent_stats,
             bootstrap_app_state,
             add_local_workspace,
+            delete_workspace,
             list_repository_branches,
             create_agent,
             create_agent_in_workspace,
@@ -5616,6 +6192,15 @@ pub fn run() {
             get_settings,
             save_settings,
             get_provider_catalog,
+            get_current_user,
+            create_memory,
+            read_memory,
+            search_memories,
+            list_memory_banks,
+            attach_shared_bank,
+            bind_workspace,
+            get_workspace_bindings,
+            set_multi_workspace_enabled,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

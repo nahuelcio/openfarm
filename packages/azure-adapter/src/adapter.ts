@@ -87,7 +87,7 @@ export class AzurePlatformAdapter implements PlatformAdapter {
   async postComment(id: string, text: string): Promise<Result<void>> {
     // Implementation for posting comments to Azure DevOps work items
     // For now, we can just log it or implement it if needed
-    logger.info({ id, text }, "Post comment to Azure DevOps (not implemented)");
+    logger().info({ id, text }, "Post comment to Azure DevOps (not implemented)");
     return ok(undefined);
   }
 

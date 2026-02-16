@@ -23,11 +23,13 @@ import { AdvancedSettingsPanel } from "@/components/conductor/advanced-settings-
 import { Titlebar } from "@/components/conductor/titlebar";
 import { McpConfigDialog, McpMarketplaceView } from "@/components/mcp";
 import { PlanReviewManager } from "@/components/plan-review";
+import { AzureDevOpsIntegration } from "@/components/azure";
 import {
 	addLocalWorkspace,
 	archiveAgentConversation,
 	bootstrapAppState,
 	createAgent,
+	deleteWorkspace,
 	getAgentEvents,
 	getInstalledMcps,
 	getProviderCatalog,
@@ -50,6 +52,7 @@ import {
 import type {
 	Agent,
 	AgentExecutionEvent,
+	EventExecutionStatistics,
 	AgentMode,
 	AgentProvider,
 	AgentStatus,
@@ -58,6 +61,7 @@ import type {
 	BootstrapState,
 	ProviderConfig,
 	QueuedInstruction,
+	ResponseStatistics,
 	Workspace,
 } from "@/lib/store";
 import { DEFAULT_SETTINGS } from "@/lib/store";
@@ -99,6 +103,54 @@ function findAgentContext(
 		}
 	}
 	return null;
+}
+
+function normalizeExecutionStatistics(
+	value: EventExecutionStatistics | undefined,
+): ResponseStatistics | undefined {
+	if (!value || typeof value !== "object") {
+		return undefined;
+	}
+
+	const readNumber = (...keys: string[]): number => {
+		for (const key of keys) {
+			const current = (value as Record<string, unknown>)[key];
+			if (typeof current === "number" && Number.isFinite(current)) {
+				return current;
+			}
+			if (typeof current === "string") {
+				const parsed = Number(current);
+				if (Number.isFinite(parsed)) {
+					return parsed;
+				}
+			}
+		}
+		return 0;
+	};
+
+	const readString = (...keys: string[]): string => {
+		for (const key of keys) {
+			const current = (value as Record<string, unknown>)[key];
+			if (typeof current === "string" && current.trim().length > 0) {
+				return current;
+			}
+		}
+		return "";
+	};
+
+	return {
+		creditsSpent: readNumber("creditsSpent", "credits_spent"),
+		toolCalls: readNumber("toolCalls", "tool_calls"),
+		model: readString("model") || "unknown",
+		filesChanged: readNumber("filesChanged", "files_changed"),
+		processesCreated: readNumber("processesCreated", "processes_created"),
+		requestId:
+			readString("requestId", "request_id") ||
+			`ui-${Date.now().toString()}`,
+		tokensInput: readNumber("tokensInput", "tokens_input"),
+		tokensOutput: readNumber("tokensOutput", "tokens_output"),
+		duration: readNumber("duration"),
+	};
 }
 
 function mergeSettingsWithCatalog(
@@ -212,6 +264,7 @@ export default function App() {
 	>({});
 	const [stoppingAgentId, setStoppingAgentId] = useState<string | null>(null);
 	const [planReviewOpen, setPlanReviewOpen] = useState(false);
+	const [azureDevOpsOpen, setAzureDevOpsOpen] = useState(false);
 	const queueDispatchingRef = useRef<Set<string>>(new Set());
 	const selectedAgentContext = useMemo(
 		() => findAgentContext(workspaces, selectedAgentId),
@@ -343,81 +396,168 @@ export default function App() {
 					// Don't refresh state - let the existing intervals handle it
 					// This prevents blocking the UI when user is interacting
 				}),
+				await subscribeAgentEvents("agent:output", async (payload) => {
+					const value = payload as { agent_id?: string; agentId?: string; chunk?: string };
+					const id = value.agent_id || value.agentId;
+					const chunk = value.chunk || "";
+					if (!id || !chunk) {
+						return;
+					}
+
+					setWorkspaces((prev) =>
+						prev.map((workspace) => ({
+							...workspace,
+							agents: workspace.agents.map((agent) => {
+								if (agent.id !== id) {
+									return agent;
+								}
+
+								const messages = [...agent.messages];
+								const thinkingIndex = messages
+									.map((message, index) => ({ message, index }))
+									.reverse()
+									.find(({ message }) => message.role === "agent" && message.thinking)?.index;
+
+								if (thinkingIndex === undefined) {
+									messages.push({
+										id: `m-${Date.now()}-stream`,
+										role: "agent",
+										content: chunk,
+										timestamp: new Date().toLocaleTimeString([], {
+											hour: "2-digit",
+											minute: "2-digit",
+										}),
+										thinking: true,
+									});
+								} else {
+									const current = messages[thinkingIndex];
+									if (current) {
+										const currentContent = current.content || "";
+										if (!currentContent.endsWith(chunk)) {
+											messages[thinkingIndex] = {
+												...current,
+												content: `${currentContent}${chunk}`,
+											};
+										}
+									}
+								}
+
+								return {
+									...agent,
+									status: "running",
+									messages,
+								};
+							}),
+						})),
+					);
+				}),
 				await subscribeAgentEvents("agent:completed", async (payload) => {
-					const value = payload as { agent_id?: string; agentId?: string; statistics?: any };
+					const value = payload as {
+						agent_id?: string;
+						agentId?: string;
+						statistics?: EventExecutionStatistics;
+					};
 					const id = value.agent_id || value.agentId;
 					if (!id) {
 						return;
 					}
-					
-					// Update agent with statistics if available
-					if (value.statistics) {
-						setWorkspaces((prev) =>
-							prev.map((workspace) => ({
-								...workspace,
-								agents: workspace.agents.map((agent) => {
-									if (agent.id === id) {
-										const lastMessage = agent.messages[agent.messages.length - 1];
-										if (lastMessage && lastMessage.role === "agent") {
-											return {
-												...agent,
-												messages: [
-													...agent.messages.slice(0, -1),
-													{
-														...lastMessage,
-														statistics: value.statistics,
-														thinking: false,
-													},
-												],
+					const normalizedStatistics = normalizeExecutionStatistics(
+						value.statistics,
+					);
+
+					setWorkspaces((prev) =>
+						prev.map((workspace) => ({
+							...workspace,
+							agents: workspace.agents.map((agent) => {
+								if (agent.id !== id) {
+									return agent;
+								}
+
+								const messages = agent.messages.map((message) =>
+									message.role === "agent" && message.thinking
+										? { ...message, thinking: false }
+										: message,
+								);
+
+								if (normalizedStatistics) {
+									for (let index = messages.length - 1; index >= 0; index -= 1) {
+										const current = messages[index];
+										if (current && current.role === "agent") {
+											messages[index] = {
+												...current,
+												statistics: normalizedStatistics,
+												thinking: false,
 											};
+											break;
 										}
 									}
-									return agent;
-								})
-							}))
-						);
-					}
-					
-					// Don't refresh state - let the existing intervals handle it
-					// This prevents blocking the UI when user is interacting
+								}
+
+								return {
+									...agent,
+									status: "completed",
+									messages,
+								};
+							}),
+						})),
+					);
+
+					// Load persisted final assistant message from backend.
+					void refreshState(id);
 				}),
 				await subscribeAgentEvents("agent:failed", async (payload) => {
-					const value = payload as { agent_id?: string; agentId?: string; statistics?: any };
+					const value = payload as {
+						agent_id?: string;
+						agentId?: string;
+						statistics?: EventExecutionStatistics;
+					};
 					const id = value.agent_id || value.agentId;
 					if (!id) {
 						return;
 					}
-					
-					// Update agent with statistics if available
-					if (value.statistics) {
-						setWorkspaces((prev) =>
-							prev.map((workspace) => ({
-								...workspace,
-								agents: workspace.agents.map((agent) => {
-									if (agent.id === id) {
-										const lastMessage = agent.messages[agent.messages.length - 1];
-										if (lastMessage && lastMessage.role === "agent") {
-											return {
-												...agent,
-												messages: [
-													...agent.messages.slice(0, -1),
-													{
-														...lastMessage,
-														statistics: value.statistics,
-														thinking: false,
-													},
-												],
+					const normalizedStatistics = normalizeExecutionStatistics(
+						value.statistics,
+					);
+
+					setWorkspaces((prev) =>
+						prev.map((workspace) => ({
+							...workspace,
+							agents: workspace.agents.map((agent) => {
+								if (agent.id !== id) {
+									return agent;
+								}
+
+								const messages = agent.messages.map((message) =>
+									message.role === "agent" && message.thinking
+										? { ...message, thinking: false }
+										: message,
+								);
+
+								if (normalizedStatistics) {
+									for (let index = messages.length - 1; index >= 0; index -= 1) {
+										const current = messages[index];
+										if (current && current.role === "agent") {
+											messages[index] = {
+												...current,
+												statistics: normalizedStatistics,
+												thinking: false,
 											};
+											break;
 										}
 									}
-									return agent;
-								})
-							}))
-						);
-					}
-					
-					// Don't refresh state - let the existing intervals handle it
-					// This prevents blocking the UI when user is interacting
+								}
+
+								return {
+									...agent,
+									status: "error",
+									messages,
+								};
+							}),
+						})),
+					);
+
+					// Load persisted final assistant/error message from backend.
+					void refreshState(id);
 				}),
 				await subscribeAgentEvents("agent:diff-updated", async (payload) => {
 					const value = payload as { agent_id?: string; agentId?: string };
@@ -494,6 +634,7 @@ export default function App() {
 		setIsLoadingChat(true);
 		
 		// Immediate UI update - NO backend calls for instant response
+		setAzureDevOpsOpen(false);
 		setSelectedAgentId(agent.id);
 		setSelectedSubthread(null);
 		
@@ -519,6 +660,7 @@ export default function App() {
 			setIsLoadingChat(true);
 			
 			// Immediate UI update - NO backend calls for instant response
+			setAzureDevOpsOpen(false);
 			setSelectedAgentId(agent.id);
 			setSelectedSubthread({
 				agentId: agent.id,
@@ -808,6 +950,27 @@ export default function App() {
 		}
 	}, [selectedAgent, syncState]);
 
+	const handleCreateAgentFromAzure = useCallback(
+		async (prompt: string, workItem: any) => {
+			// Create a new agent with the work item context
+			const next = await createAgent({
+				prompt: `${prompt}\n\nWork Item Context:\n- ID: ${workItem.id}\n- Title: ${workItem.title}\n- Description: ${workItem.description}\n- Type: ${workItem.workItemType}\n- Priority: ${workItem.priority}`,
+				repo: selectedAgent?.repo || workspaces[0]?.repo || "",
+				provider: settings.defaultProvider,
+				model: settings.defaultModel,
+			});
+			const createdAgentId =
+				next.workspaces
+					.flatMap((workspace) => workspace.agents)
+					.find((agent) => !workspaces.flatMap((ws) => ws.agents).some((existing) => existing.id === agent.id))?.id || null;
+			syncState(next, createdAgentId);
+			
+			// Close Azure view and go to the new agent
+			setAzureDevOpsOpen(false);
+		},
+		[selectedAgent, workspaces, settings.defaultProvider, settings.defaultModel, syncState],
+	);
+
 	const handleArchiveAgentFromSidebar = useCallback(
 		async (agent: Agent) => {
 			try {
@@ -852,6 +1015,54 @@ export default function App() {
 			}
 		}
 	}, [selectedAgentId, syncState]);
+
+	const handleDeleteWorkspace = useCallback(
+		async (workspace: Workspace) => {
+			console.log('handleDeleteWorkspace called for:', workspace.name, 'ID:', workspace.id);
+			console.log('Workspace agents count:', workspace.agents.length);
+			
+			// Additional confirmation for safety
+			const confirmed = window.confirm(
+				`Are you sure you want to delete the workspace "${workspace.name}"? This action cannot be undone.`,
+			);
+			console.log('User confirmed:', confirmed);
+			
+			if (!confirmed) {
+				console.log('User cancelled deletion');
+				return;
+			}
+
+			try {
+				console.log('Calling deleteWorkspace with ID:', workspace.id);
+				const next = await deleteWorkspace(workspace.id);
+				console.log('deleteWorkspace successful, new workspaces count:', next.workspaces.length);
+				
+				// Clear selection if the deleted workspace contained the selected agent
+				if (selectedAgentId) {
+					const agentStillExists = next.workspaces.some((ws) =>
+						ws.agents.some((agent) => agent.id === selectedAgentId),
+					);
+					console.log('Agent still exists after deletion:', agentStillExists);
+					if (!agentStillExists) {
+						console.log('Clearing agent selection');
+						syncState(next, null);
+					} else {
+						syncState(next, selectedAgentId);
+					}
+				} else {
+					syncState(next, null);
+				}
+			} catch (error) {
+				console.error('Error deleting workspace:', error);
+				const message =
+					error instanceof Error ? error.message : "Failed to delete workspace";
+				if (typeof window !== "undefined") {
+					window.alert(message);
+				}
+			}
+		},
+		[selectedAgentId, syncState],
+	);
 
 	const handleSettingsChange = useCallback(
 		async (nextSettings: AppSettings) => {
@@ -1118,8 +1329,10 @@ export default function App() {
 				}}
 				onOpenSettings={() => setSettingsOpen(true)}
 				onOpenMarketplace={() => setMarketplaceOpen(true)}
+				onOpenAzureDevOps={() => setAzureDevOpsOpen(true)}
 				onToggleSidebar={() => setSidebarOpen((value) => !value)}
 				sidebarOpen={sidebarOpen}
+				providers={settings.providers}
 			/>
 
 			<div className="flex flex-1 overflow-hidden relative">
@@ -1145,11 +1358,14 @@ export default function App() {
 						onSelectSubthread={handleSelectSubthread}
 						onSpawnAgentInWorkspace={handleSpawnAgentInWorkspace}
 						onArchiveAgent={handleArchiveAgentFromSidebar}
+						onDeleteWorkspace={handleDeleteWorkspace}
 						selectedAgentId={selectedAgentId}
 						selectedSubthread={selectedSubthread}
 						workspaces={workspaces}
 						onOpenPlanReview={() => setPlanReviewOpen(true)}
 						isSelectingAgent={isSelectingAgent}
+						settings={settings}
+						onSettingsChange={handleSettingsChange}
 					/>
 				</div>
 
@@ -1169,6 +1385,11 @@ export default function App() {
 					)}
 					{planReviewOpen ? (
 						<PlanReviewManager />
+					) : azureDevOpsOpen ? (
+						<AzureDevOpsIntegration 
+							config={settings.azureDevOps}
+							onAgentCreate={handleCreateAgentFromAzure}
+						/>
 					) : selectedAgent ? (
 						<AgentPanel
 							agent={selectedAgent}

@@ -1,6 +1,6 @@
-import { OpenFarm } from "@openfarm/sdk";
-import { getAvailableModels as getClaudeModels } from "@openfarm/provider-claude";
-import { getAvailableModels as getOpenCodeModels } from "@openfarm/provider-opencode";
+import { OpenFarm } from "../../../packages/sdk/src/open-farm";
+import { getAvailableModels as getClaudeModels } from "../../../packages/provider-claude/src/index";
+import { getAvailableModels as getOpenCodeModels } from "../../../packages/provider-opencode/src/index";
 import {
 	getCodexCatalog,
 	getCodexConfigSnapshot,
@@ -40,8 +40,76 @@ interface BridgeProviderCatalog {
 	defaultAgent?: string;
 }
 
+interface BridgeExecutionStatistics {
+	credits_spent: number;
+	tool_calls: number;
+	model: string;
+	files_changed: number;
+	processes_created: number;
+	request_id: string;
+	tokens_input: number;
+	tokens_output: number;
+	duration: number;
+}
+
 function emit(event: Record<string, unknown>): void {
 	process.stdout.write(`${JSON.stringify(event)}\n`);
+}
+
+function toFiniteNumber(value: unknown): number | null {
+	if (typeof value === "number" && Number.isFinite(value)) {
+		return value;
+	}
+	if (typeof value === "string") {
+		const parsed = Number(value);
+		if (Number.isFinite(parsed)) {
+			return parsed;
+		}
+	}
+	return null;
+}
+
+function normalizeBridgeStatistics(
+	statistics: unknown,
+	fallbackModel: string,
+	fallbackDuration: number,
+): BridgeExecutionStatistics | undefined {
+	if (!statistics || typeof statistics !== "object") {
+		return undefined;
+	}
+
+	const source = statistics as Record<string, unknown>;
+	const readNumber = (...keys: string[]): number => {
+		for (const key of keys) {
+			const value = toFiniteNumber(source[key]);
+			if (value !== null) {
+				return value;
+			}
+		}
+		return 0;
+	};
+	const readString = (...keys: string[]): string => {
+		for (const key of keys) {
+			const value = source[key];
+			if (typeof value === "string" && value.trim().length > 0) {
+				return value;
+			}
+		}
+		return "";
+	};
+
+	return {
+		credits_spent: readNumber("credits_spent", "creditsSpent"),
+		tool_calls: readNumber("tool_calls", "toolCalls"),
+		model: readString("model") || fallbackModel || "unknown",
+		files_changed: readNumber("files_changed", "filesChanged"),
+		processes_created: readNumber("processes_created", "processesCreated"),
+		request_id:
+			readString("request_id", "requestId") || `bridge-${Date.now().toString()}`,
+		tokens_input: readNumber("tokens_input", "tokensInput"),
+		tokens_output: readNumber("tokens_output", "tokensOutput"),
+		duration: readNumber("duration") || fallbackDuration,
+	};
 }
 
 async function readStdin(): Promise<string> {
@@ -248,21 +316,33 @@ async function main(): Promise<void> {
 	});
 
 	if (result.success) {
+		const statistics = normalizeBridgeStatistics(
+			result.statistics,
+			request.model || resolvedProvider,
+			result.duration,
+		);
 		emit({
 			type: "result",
 			success: true,
 			output: result.output || "",
 			duration: result.duration,
+			statistics,
 		});
 		return;
 	}
 
+	const statistics = normalizeBridgeStatistics(
+		result.statistics,
+		request.model || resolvedProvider,
+		result.duration,
+	);
 	emit({
 		type: "result",
 		success: false,
 		output: result.output || "",
 		error: result.error || "Bridge execution failed",
 		duration: result.duration,
+		statistics,
 	});
 	process.exitCode = 1;
 }

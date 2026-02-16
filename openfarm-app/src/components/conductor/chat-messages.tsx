@@ -426,10 +426,15 @@ const MessageBubble = memo(function MessageBubble({
 	}
 
 	// Agent message
-	const cleanedAgentContent = useMemo(
-		() => sanitizeAgentMessageContent(message.content),
-		[message.content]
-	);
+	const cleanedAgentContent = useMemo(() => {
+		if (message.thinking) {
+			return message.content
+				.replaceAll("\r\n", "\n")
+				.replaceAll("\r", "\n")
+				.trim();
+		}
+		return sanitizeAgentMessageContent(message.content);
+	}, [message.content, message.thinking]);
 	
 	const renderedHtml = useMemo(
 		() => renderMarkdownToHtml(cleanedAgentContent),

@@ -1,5 +1,6 @@
 import { type McpServer, mcpManager } from "@/lib/mcp-manager";
 import type { AgentProvider } from "@/lib/store";
+import { MemoryMcpIntegration, type MemoryMcpConfig } from "./memory-mcp-integration";
 
 export interface ProviderMcpIntegration {
 	provider: AgentProvider;
@@ -12,6 +13,15 @@ export interface ProviderMcpIntegration {
 export class ClaudeCodeMcpIntegration implements ProviderMcpIntegration {
 	provider: AgentProvider = "claude-code";
 	private initialized = false;
+	private memoryIntegration: MemoryMcpIntegration;
+
+	constructor() {
+		this.memoryIntegration = new MemoryMcpIntegration({
+			enabled: true,
+			workspaceRoot: "/Users/nahuelcioffi/Proyectos/openfarm", // TODO: Get from context
+			sharedBanks: [],
+		});
+	}
 
 	async initialize(): Promise<void> {
 		if (this.initialized) return;
@@ -20,6 +30,9 @@ export class ClaudeCodeMcpIntegration implements ProviderMcpIntegration {
 
 		// Load MCP servers for Claude Code
 		await mcpManager.loadServers();
+
+		// Initialize memory integration
+		await this.memoryIntegration.initialize();
 
 		this.initialized = true;
 		console.log("✅ Claude Code MCP Integration initialized");
@@ -52,6 +65,21 @@ export class ClaudeCodeMcpIntegration implements ProviderMcpIntegration {
 			}
 		}
 
+		// Add memory tools
+		const memoryTools = await this.memoryIntegration.getTools();
+		const memoryClaudeTools = memoryTools.map((tool) => ({
+			name: tool.name,
+			description: tool.description,
+			input_schema: tool.inputSchema,
+			type: "function",
+			function: {
+				name: tool.name,
+				description: tool.description,
+				parameters: tool.inputSchema,
+			},
+		}));
+		allTools.push(...memoryClaudeTools);
+
 		console.log(
 			`🔧 Found ${allTools.length} tools for Claude Code agent ${agentId}`,
 		);
@@ -68,6 +96,28 @@ export class ClaudeCodeMcpIntegration implements ProviderMcpIntegration {
 		}
 
 		const servers = mcpManager.getServersForProvider(this.provider);
+
+		// Check if this is a memory tool
+		const memoryTools = await this.memoryIntegration.getTools();
+		if (memoryTools.some((tool) => tool.name === toolName)) {
+			try {
+				console.log(
+					`🧠 Executing memory tool ${toolName} for Claude Code agent ${agentId}`,
+				);
+				const result = await this.memoryIntegration.callTool(toolName, args);
+				return {
+					type: "tool_result",
+					tool_use_id: `tool_${Date.now()}`,
+					content: result.content || [],
+				};
+			} catch (error) {
+				console.error(`❌ Memory tool execution failed:`, error);
+				return {
+					type: "error",
+					error: error instanceof Error ? error.message : "Unknown error",
+				};
+			}
+		}
 
 		// Find the server that has this tool
 		for (const server of servers) {
@@ -106,7 +156,7 @@ export class ClaudeCodeMcpIntegration implements ProviderMcpIntegration {
 
 	async cleanup(): Promise<void> {
 		console.log("🧹 Cleaning up Claude Code MCP Integration...");
-		// MCP Manager cleanup is handled globally
+		await this.memoryIntegration.cleanup();
 		this.initialized = false;
 	}
 }
@@ -114,12 +164,22 @@ export class ClaudeCodeMcpIntegration implements ProviderMcpIntegration {
 export class CodexMcpIntegration implements ProviderMcpIntegration {
 	provider: AgentProvider = "codex";
 	private initialized = false;
+	private memoryIntegration: MemoryMcpIntegration;
+
+	constructor() {
+		this.memoryIntegration = new MemoryMcpIntegration({
+			enabled: true,
+			workspaceRoot: "/Users/nahuelcioffi/Proyectos/openfarm", // TODO: Get from context
+			sharedBanks: [],
+		});
+	}
 
 	async initialize(): Promise<void> {
 		if (this.initialized) return;
 
 		console.log("🔧 Initializing Codex MCP Integration...");
 		await mcpManager.loadServers();
+		await this.memoryIntegration.initialize(); // Initialize memory integration
 		this.initialized = true;
 		console.log("✅ Codex MCP Integration initialized");
 	}
@@ -133,9 +193,9 @@ export class CodexMcpIntegration implements ProviderMcpIntegration {
 		const allTools: any[] = [];
 
 		for (const server of servers) {
-			if (server.connected) {
-				// Convert MCP tools to GitHub Copilot format
-				const copilotTools = server.tools.map((tool) => ({
+			try {
+				const tools = await mcpManager.getServerTools(server.name);
+				const copilotTools = tools.map((tool) => ({
 					name: tool.name,
 					description: tool.description,
 					parameters: tool.inputSchema,
@@ -147,8 +207,24 @@ export class CodexMcpIntegration implements ProviderMcpIntegration {
 					},
 				}));
 				allTools.push(...copilotTools);
+			} catch (error) {
+				console.error(`Failed to get tools from ${server.name}:`, error);
 			}
 		}
+
+		// Add memory tools
+		const memoryTools = await this.memoryIntegration.getTools();
+		const memoryCopilotTools = memoryTools.map((tool) => ({
+			name: tool.name,
+			description: tool.description,
+			parameters: tool.inputSchema,
+			function: {
+				name: tool.name,
+				description: tool.description,
+				parameters: tool.inputSchema,
+			},
+		}));
+		allTools.push(...memoryCopilotTools);
 
 		console.log(`🔧 Found ${allTools.length} tools for Codex agent ${agentId}`);
 		return allTools;
@@ -165,32 +241,48 @@ export class CodexMcpIntegration implements ProviderMcpIntegration {
 
 		const servers = mcpManager.getServersForProvider(this.provider);
 
-		for (const server of servers) {
-			if (
-				server.connected &&
-				server.tools.some((tool) => tool.name === toolName)
-			) {
-				try {
-					console.log(
-						`🔧 Executing tool ${toolName} for Codex agent ${agentId}`,
-					);
-					const result = await mcpManager.callTool(
-						server.config.id,
-						toolName,
-						args,
-					);
+		// Check if this is a memory tool
+		const memoryTools = await this.memoryIntegration.getTools();
+		if (memoryTools.some((tool) => tool.name === toolName)) {
+			try {
+				console.log(`🧠 Executing memory tool ${toolName} for Codex agent ${agentId}`);
+				const result = await this.memoryIntegration.callTool(toolName, args);
+				return {
+					type: "tool_result",
+					tool_use_id: `tool_${Date.now()}`,
+					content: result.content || [],
+				};
+			} catch (error) {
+				console.error(`Failed to execute memory tool ${toolName}:`, error);
+				return {
+					type: "tool_result",
+					tool_use_id: `tool_${Date.now()}`,
+					content: [
+						{
+							type: "text",
+							text: `Error executing memory tool: ${error}`,
+						},
+					],
+					is_error: true,
+				};
+			}
+		}
 
-					// Convert MCP result to GitHub Copilot format
-					return {
-						tool_call_id: `tool_${Date.now()}`,
-						result: result.content || [],
-					};
-				} catch (error) {
-					console.error(`❌ Tool execution failed:`, error);
-					return {
-						error: error instanceof Error ? error.message : "Unknown error",
-					};
-				}
+		for (const server of servers) {
+			try {
+				const result = await mcpManager.callTool(
+					server.name,
+					toolName,
+					args,
+				);
+				return {
+					type: "tool_result",
+					tool_use_id: `tool_${Date.now()}`,
+					content: result.content || [],
+				};
+			} catch (error) {
+				// Continue to next server if tool not found
+				continue;
 			}
 		}
 
@@ -199,6 +291,7 @@ export class CodexMcpIntegration implements ProviderMcpIntegration {
 
 	async cleanup(): Promise<void> {
 		console.log("🧹 Cleaning up Codex MCP Integration...");
+		await this.memoryIntegration.cleanup(); // Cleanup memory integration
 		this.initialized = false;
 	}
 }
@@ -206,12 +299,22 @@ export class CodexMcpIntegration implements ProviderMcpIntegration {
 export class OpenCodeMcpIntegration implements ProviderMcpIntegration {
 	provider: AgentProvider = "opencode";
 	private initialized = false;
+	private memoryIntegration: MemoryMcpIntegration;
+
+	constructor() {
+		this.memoryIntegration = new MemoryMcpIntegration({
+			enabled: true,
+			workspaceRoot: "/Users/nahuelcioffi/Proyectos/openfarm", // TODO: Get from context
+			sharedBanks: [],
+		});
+	}
 
 	async initialize(): Promise<void> {
 		if (this.initialized) return;
 
 		console.log("🔧 Initializing OpenCode MCP Integration...");
 		await mcpManager.loadServers();
+		await this.memoryIntegration.initialize(); // Initialize memory integration
 		this.initialized = true;
 		console.log("✅ OpenCode MCP Integration initialized");
 	}
@@ -239,6 +342,18 @@ export class OpenCodeMcpIntegration implements ProviderMcpIntegration {
 			}
 		}
 
+		// Add memory tools
+		const memoryTools = await this.memoryIntegration.getTools();
+		const memoryOpenCodeTools = memoryTools.map((tool) => ({
+			type: "function",
+			function: {
+				name: tool.name,
+				description: tool.description,
+				parameters: tool.inputSchema,
+			},
+		}));
+		allTools.push(...memoryOpenCodeTools);
+
 		console.log(
 			`🔧 Found ${allTools.length} tools for OpenCode agent ${agentId}`,
 		);
@@ -255,6 +370,33 @@ export class OpenCodeMcpIntegration implements ProviderMcpIntegration {
 		}
 
 		const servers = mcpManager.getServersForProvider(this.provider);
+
+		// Check if this is a memory tool
+		const memoryTools = await this.memoryIntegration.getTools();
+		if (memoryTools.some((tool) => tool.name === toolName)) {
+			try {
+				console.log(`🧠 Executing memory tool ${toolName} for OpenCode agent ${agentId}`);
+				const result = await this.memoryIntegration.callTool(toolName, args);
+				return {
+					type: "tool_result",
+					tool_use_id: `tool_${Date.now()}`,
+					content: result.content || [],
+				};
+			} catch (error) {
+				console.error(`Failed to execute memory tool ${toolName}:`, error);
+				return {
+					type: "tool_result",
+					tool_use_id: `tool_${Date.now()}`,
+					content: [
+						{
+							type: "text",
+							text: `Error executing memory tool: ${error}`,
+						},
+					],
+					is_error: true,
+				};
+			}
+		}
 
 		for (const server of servers) {
 			if (
@@ -295,6 +437,7 @@ export class OpenCodeMcpIntegration implements ProviderMcpIntegration {
 
 	async cleanup(): Promise<void> {
 		console.log("🧹 Cleaning up OpenCode MCP Integration...");
+		await this.memoryIntegration.cleanup(); // Cleanup memory integration
 		this.initialized = false;
 	}
 }
