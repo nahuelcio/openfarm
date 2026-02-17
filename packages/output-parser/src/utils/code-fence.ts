@@ -6,20 +6,20 @@
  * @returns true si está dentro de un code fence
  */
 export function isInsideCodeFence(text: string, position: number): boolean {
-  const fenceRegex = /```[\s\S]*?```/g;
-  let match: RegExpExecArray | null;
+	const fenceRegex = /```[\s\S]*?```/g;
+	let match: RegExpExecArray | null;
 
-  // biome-ignore lint/suspicious/noAssignInExpressions: necesario para iterar regex global
-  while ((match = fenceRegex.exec(text)) !== null) {
-    const start = match.index;
-    const end = start + match[0].length;
+	// biome-ignore lint/suspicious/noAssignInExpressions: necesario para iterar regex global
+	while ((match = fenceRegex.exec(text)) !== null) {
+		const start = match.index;
+		const end = start + match[0].length;
 
-    if (position >= start && position < end) {
-      return true;
-    }
-  }
+		if (position >= start && position < end) {
+			return true;
+		}
+	}
 
-  return false;
+	return false;
 }
 
 /**
@@ -29,40 +29,40 @@ export function isInsideCodeFence(text: string, position: number): boolean {
  * @returns Texto fuera de code fences (con marcadores de posición)
  */
 export function extractOutsideFences(text: string): string {
-  let result = text;
-  const fenceRegex = /```[\s\S]*?```/g;
-  let match: RegExpExecArray | null;
-  const fences: Array<{ start: number; end: number; content: string }> = [];
+	let result = text;
+	const fenceRegex = /```[\s\S]*?```/g;
+	let match: RegExpExecArray | null;
+	const fences: Array<{ start: number; end: number; content: string }> = [];
 
-  // biome-ignore lint/suspicious/noAssignInExpressions: necesario para iterar regex global
-  while ((match = fenceRegex.exec(text)) !== null) {
-    fences.push({
-      start: match.index,
-      end: match.index + match[0].length,
-      content: match[0],
-    });
-  }
+	// biome-ignore lint/suspicious/noAssignInExpressions: necesario para iterar regex global
+	while ((match = fenceRegex.exec(text)) !== null) {
+		fences.push({
+			start: match.index,
+			end: match.index + match[0].length,
+			content: match[0],
+		});
+	}
 
-  // Reemplazar fences con espacios para mantener posiciones
-  for (let i = fences.length - 1; i >= 0; i--) {
-    const fence = fences[i];
-    const spaces = " ".repeat(fence.end - fence.start);
-    result = result.slice(0, fence.start) + spaces + result.slice(fence.end);
-  }
+	// Reemplazar fences con espacios para mantener posiciones
+	for (let i = fences.length - 1; i >= 0; i--) {
+		const fence = fences[i];
+		const spaces = " ".repeat(fence.end - fence.start);
+		result = result.slice(0, fence.start) + spaces + result.slice(fence.end);
+	}
 
-  return result;
+	return result;
 }
 
 /**
  * Opciones para procesar code fences
  */
 export interface CodeFenceOptions {
-  /** Mantener el contenido de los fences (default: false) */
-  keepContent?: boolean;
-  /** Reemplazar con placeholder (default: true) */
-  usePlaceholder?: boolean;
-  /** String placeholder */
-  placeholder?: string;
+	/** Mantener el contenido de los fences (default: false) */
+	keepContent?: boolean;
+	/** Reemplazar con placeholder (default: true) */
+	usePlaceholder?: boolean;
+	/** String placeholder */
+	placeholder?: string;
 }
 
 /**
@@ -73,22 +73,22 @@ export interface CodeFenceOptions {
  * @returns Texto procesado
  */
 export function processCodeFences(
-  text: string,
-  options: CodeFenceOptions = {}
+	text: string,
+	options: CodeFenceOptions = {},
 ): string {
-  const {
-    keepContent = false,
-    usePlaceholder = true,
-    placeholder = "[CODE]",
-  } = options;
+	const {
+		keepContent = false,
+		usePlaceholder = true,
+		placeholder = "[CODE]",
+	} = options;
 
-  if (keepContent) {
-    return text;
-  }
+	if (keepContent) {
+		return text;
+	}
 
-  if (usePlaceholder) {
-    return text.replace(/```[\s\S]*?```/g, placeholder);
-  }
+	if (usePlaceholder) {
+		return text.replace(/```[\s\S]*?```/g, placeholder);
+	}
 
-  return text.replace(/```[\s\S]*?```/g, "");
+	return text.replace(/```[\s\S]*?```/g, "");
 }

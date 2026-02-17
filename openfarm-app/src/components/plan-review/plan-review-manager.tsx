@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlanReviewPanel } from "./plan-review-panel";
 
-// Tipos básicos (en producción vendrían de @openfarm/plan-review)
+// Tipos básicos locales para la UI de plan review.
 interface Plan {
 	id: string;
 	title: string;
@@ -52,7 +52,7 @@ export function PlanReviewManager({ className }: PlanReviewManagerProps) {
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
-	// Simular carga de planes (en producción vendría de @openfarm/plan-review)
+    // Simular carga de planes desde el backend.
 	useEffect(() => {
 		loadPlans();
 	}, []);

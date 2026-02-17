@@ -12,66 +12,66 @@
 
 // Completion Detector
 export {
-  CompletionDetector,
-  createDefaultCompletionDetector,
-  createGitChangesDetector,
+	CompletionDetector,
+	createDefaultCompletionDetector,
+	createGitChangesDetector,
 } from "./completion-detector";
 
 // Orchestrator
 export {
-  resumeTaskLoop,
-  runTaskLoop,
-  TaskLoopOrchestrator,
+	resumeTaskLoop,
+	runTaskLoop,
+	TaskLoopOrchestrator,
 } from "./orchestrator";
 // Prompt Builder
 export {
-  createDefaultPromptBuilder,
-  createPromptBuilder,
-  PROMPT_TEMPLATES,
-  PromptBuilder,
+	createDefaultPromptBuilder,
+	createPromptBuilder,
+	PROMPT_TEMPLATES,
+	PromptBuilder,
 } from "./prompt-builder";
 // Session Manager
 export {
-  addSessionLog,
-  createSession,
-  deleteSession,
-  generateSessionId,
-  getActiveSessions,
-  getRecentSessions,
-  getSession,
-  SessionManager,
-  saveSession,
-  updateSessionStatus,
+	addSessionLog,
+	createSession,
+	deleteSession,
+	generateSessionId,
+	getActiveSessions,
+	getRecentSessions,
+	getSession,
+	SessionManager,
+	saveSession,
+	updateSessionStatus,
 } from "./session-manager";
 // Task Selector
 export {
-  createDefaultTaskSelector,
-  filterTasks,
-  TaskSelector,
-  toTaskLoopTask,
+	createDefaultTaskSelector,
+	filterTasks,
+	TaskSelector,
+	toTaskLoopTask,
 } from "./task-selector";
 // Types
 export type {
-  CompletionDetectionStrategy,
-  CompletionDetectorConfig,
-  PromptBuilderConfig,
-  TaskExecutionResult,
-  TaskExecutor,
-  TaskLoopConfig,
-  TaskLoopEvent,
-  TaskLoopLogger,
-  TaskLoopRunOptions,
-  TaskLoopSession,
-  TaskLoopSessionStatus,
-  TaskLoopTask,
-  TaskLoopTaskStatus,
-  TaskSelectionStrategy,
-  TaskSelectorConfig,
+	CompletionDetectionStrategy,
+	CompletionDetectorConfig,
+	PromptBuilderConfig,
+	TaskExecutionResult,
+	TaskExecutor,
+	TaskLoopConfig,
+	TaskLoopEvent,
+	TaskLoopLogger,
+	TaskLoopRunOptions,
+	TaskLoopSession,
+	TaskLoopSessionStatus,
+	TaskLoopTask,
+	TaskLoopTaskStatus,
+	TaskSelectionStrategy,
+	TaskSelectorConfig,
 } from "./types";
 
 // Workflow Adapter
 export {
-  cleanupGitSetup,
-  executeGitSetup,
-  getAvailableWorkflows,
+	cleanupGitSetup,
+	executeGitSetup,
+	getAvailableWorkflows,
 } from "./workflow-adapter";

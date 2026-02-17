@@ -11,8 +11,8 @@ const JSON_EXTENSION_REGEX = /\.json$/;
  * Database configuration
  */
 export interface DbConfig {
-  dbPath: string;
-  originalDbPath?: string;
+	dbPath: string;
+	originalDbPath?: string;
 }
 
 /**
@@ -28,33 +28,33 @@ export interface DbConfig {
  * ```
  */
 export function createDbConfig(): DbConfig {
-  let dbPath = process.env.DB_PATH || "db.json";
-  const originalDbPath = dbPath;
+	let dbPath = process.env.DB_PATH || "db.json";
+	const originalDbPath = dbPath;
 
-  // Replace .json extension with .db
-  if (dbPath.endsWith(".json")) {
-    dbPath = dbPath.replace(JSON_EXTENSION_REGEX, ".db");
-  } else if (!dbPath.endsWith(".db")) {
-    dbPath = `${dbPath}.db`;
-  }
+	// Replace .json extension with .db
+	if (dbPath.endsWith(".json")) {
+		dbPath = dbPath.replace(JSON_EXTENSION_REGEX, ".db");
+	} else if (!dbPath.endsWith(".db")) {
+		dbPath = `${dbPath}.db`;
+	}
 
-  return {
-    dbPath,
-    originalDbPath,
-  };
+	return {
+		dbPath,
+		originalDbPath,
+	};
 }
 
 /**
  * Agent configuration from environment
  */
 export interface AgentEnvConfig {
-  copilotToken: string;
-  azureOrgUrl: string;
-  azureProject: string;
-  azurePat: string;
-  workDir: string;
-  gitUserName?: string;
-  gitUserEmail?: string;
+	copilotToken: string;
+	azureOrgUrl: string;
+	azureProject: string;
+	azurePat: string;
+	workDir: string;
+	gitUserName?: string;
+	gitUserEmail?: string;
 }
 
 /**
@@ -70,23 +70,23 @@ export interface AgentEnvConfig {
  * ```
  */
 export function createAgentConfig(): AgentEnvConfig {
-  return {
-    copilotToken: process.env.COPILOT_TOKEN || "",
-    azureOrgUrl: process.env.AZURE_ORG_URL || "",
-    azureProject: process.env.AZURE_PROJECT || "",
-    azurePat: process.env.AZURE_PAT || "",
-    workDir: process.env.WORK_DIR || "/tmp/minions-repos",
-    gitUserName: process.env.GIT_USER_NAME,
-    gitUserEmail: process.env.GIT_USER_EMAIL,
-  };
+	return {
+		copilotToken: process.env.COPILOT_TOKEN || "",
+		azureOrgUrl: process.env.AZURE_ORG_URL || "",
+		azureProject: process.env.AZURE_PROJECT || "",
+		azurePat: process.env.AZURE_PAT || "",
+		workDir: process.env.WORK_DIR || "/tmp/minions-repos",
+		gitUserName: process.env.GIT_USER_NAME,
+		gitUserEmail: process.env.GIT_USER_EMAIL,
+	};
 }
 
 /**
  * Copilot API configuration
  */
 export interface CopilotApiConfig {
-  copilotApiBase: string;
-  copilotApiUrl: string;
+	copilotApiBase: string;
+	copilotApiUrl: string;
 }
 
 /**
@@ -101,19 +101,19 @@ export interface CopilotApiConfig {
  * ```
  */
 export function createCopilotApiConfig(): CopilotApiConfig {
-  return {
-    copilotApiBase: process.env.COPILOT_API_BASE || "http://copilot-api:4141",
-    copilotApiUrl: process.env.COPILOT_API_URL || "http://copilot-api:4141/v1",
-  };
+	return {
+		copilotApiBase: process.env.COPILOT_API_BASE || "http://copilot-api:4141",
+		copilotApiUrl: process.env.COPILOT_API_URL || "http://copilot-api:4141/v1",
+	};
 }
 
 /**
  * Azure configuration from environment
  */
 export interface AzureEnvConfig {
-  orgUrl: string;
-  project: string;
-  pat: string;
+	orgUrl: string;
+	project: string;
+	pat: string;
 }
 
 /**
@@ -128,19 +128,19 @@ export interface AzureEnvConfig {
  * ```
  */
 export function createAzureConfig(): AzureEnvConfig {
-  return {
-    orgUrl: process.env.AZURE_ORG_URL || "",
-    project: process.env.AZURE_PROJECT || "",
-    pat: process.env.AZURE_PAT || "",
-  };
+	return {
+		orgUrl: process.env.AZURE_ORG_URL || "",
+		project: process.env.AZURE_PROJECT || "",
+		pat: process.env.AZURE_PAT || "",
+	};
 }
 
 /**
  * Git user configuration from environment
  */
 export interface GitUserConfig {
-  name: string;
-  email: string;
+	name: string;
+	email: string;
 }
 
 /**
@@ -155,18 +155,18 @@ export interface GitUserConfig {
  * ```
  */
 export function createGitUserConfig(): GitUserConfig {
-  return {
-    name: process.env.GIT_USER_NAME || "Minions Farm Agent",
-    email: process.env.GIT_USER_EMAIL || "minions-farm@automated.local",
-  };
+	return {
+		name: process.env.GIT_USER_NAME || "Minions Farm Agent",
+		email: process.env.GIT_USER_EMAIL || "minions-farm@automated.local",
+	};
 }
 
 /**
  * Webhook configuration from environment
  */
 export interface WebhookConfig {
-  enablePrCreation: boolean;
-  usePreviewMode: boolean;
+	enablePrCreation: boolean;
+	usePreviewMode: boolean;
 }
 
 /**
@@ -181,17 +181,17 @@ export interface WebhookConfig {
  * ```
  */
 export function createWebhookConfig(): WebhookConfig {
-  return {
-    enablePrCreation: process.env.ENABLE_PR_CREATION === "true",
-    usePreviewMode: process.env.WEBHOOK_PREVIEW_MODE !== "false",
-  };
+	return {
+		enablePrCreation: process.env.ENABLE_PR_CREATION === "true",
+		usePreviewMode: process.env.WEBHOOK_PREVIEW_MODE !== "false",
+	};
 }
 
 /**
  * Logger configuration from environment
  */
 export interface LoggerConfig {
-  level: string;
+	level: string;
 }
 
 /**
@@ -206,7 +206,7 @@ export interface LoggerConfig {
  * ```
  */
 export function createLoggerConfig(): LoggerConfig {
-  return {
-    level: process.env.LOG_LEVEL || "info",
-  };
+	return {
+		level: process.env.LOG_LEVEL || "info",
+	};
 }

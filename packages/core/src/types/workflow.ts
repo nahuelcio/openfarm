@@ -1,7 +1,7 @@
 import type {
-  StepStatus,
-  WorkflowPlanStatus,
-  WorkflowStatus,
+	StepStatus,
+	WorkflowPlanStatus,
+	WorkflowStatus,
 } from "../constants";
 import type { StepType } from "../constants/actions";
 
@@ -10,152 +10,152 @@ export type Expression = string;
 
 // Step configuration types for workflow steps
 export interface AgentCodeConfig {
-  prompt?: string;
-  provider?: "opencode" | "direct-llm" | "claude-code";
-  model?: string; // Model to use for this step (e.g., "opencode/gpt-5-nano", "opencode/grok-code-fast-1", "opencode/code-supernova", "gpt-5-mini")
-  maxIterations?: number;
-  previewMode?: boolean;
-  readOnly?: boolean; // Alias for previewMode
-  chatOnly?: boolean; // If true, ignores diffs and returns only text summary
+	prompt?: string;
+	provider?: "opencode" | "direct-llm" | "claude-code";
+	model?: string; // Model to use for this step (e.g., "opencode/gpt-5-nano", "opencode/grok-code-fast-1", "opencode/code-supernova", "gpt-5-mini")
+	maxIterations?: number;
+	previewMode?: boolean;
+	readOnly?: boolean; // Alias for previewMode
+	chatOnly?: boolean; // If true, ignores diffs and returns only text summary
 
-  // OpenCode specific fields
-  agent?: string;
-  skill?: string;
-  opencodeTemperature?: number;
-  opencodeMaxSteps?: number;
+	// OpenCode specific fields
+	agent?: string;
+	skill?: string;
+	opencodeTemperature?: number;
+	opencodeMaxSteps?: number;
 
-  // Legacy aliases for backward compatibility
-  opencodeAgent?: string;
-  opencodeSkill?: string;
+	// Legacy aliases for backward compatibility
+	opencodeAgent?: string;
+	opencodeSkill?: string;
 }
 
 export interface AgentAuthorConfig {
-  prompt?: string;
-  systemPrompt?: string;
-  model: string;
+	prompt?: string;
+	systemPrompt?: string;
+	model: string;
 }
 
 // Interface Genérica de Paso
 export interface WorkflowStep {
-  id: string;
-  type: StepType;
-  action: string;
-  config: Record<string, unknown>;
-  timeout?: number;
-  retryCount?: number;
-  continueOnError?: boolean;
-  model?: string;
-  prompt?: string;
+	id: string;
+	type: StepType;
+	action: string;
+	config: Record<string, unknown>;
+	timeout?: number;
+	retryCount?: number;
+	continueOnError?: boolean;
+	model?: string;
+	prompt?: string;
 }
 
 export interface BaseWorkflowStep {
-  id: string;
-  type: StepType;
-  continueOnError?: boolean;
-  model?: string;
-  prompt?: string;
-  config?: Record<string, unknown>;
-  action?: string;
+	id: string;
+	type: StepType;
+	continueOnError?: boolean;
+	model?: string;
+	prompt?: string;
+	config?: Record<string, unknown>;
+	action?: string;
 }
 
 export type ActionableWorkflowStep = WorkflowStep | ExtendedWorkflowStep;
 
 // Forward declaration for recursive types
 export type ExtendedWorkflowStep =
-  | WorkflowStep
-  | ConditionalStep
-  | LoopStep
-  | ParallelStep;
+	| WorkflowStep
+	| ConditionalStep
+	| LoopStep
+	| ParallelStep;
 
 // Conditional Step: if/switch statements
 export interface ConditionalStep extends Omit<BaseWorkflowStep, "type"> {
-  type: StepType.CONDITIONAL;
-  condition: Expression; // Expression to evaluate
-  if?: ExtendedWorkflowStep[]; // Steps to execute if condition is true
-  else?: ExtendedWorkflowStep[]; // Steps to execute if condition is false
-  switch?: Record<string, ExtendedWorkflowStep[]>; // Switch cases: { "case1": [...steps], "case2": [...steps] }
-  default?: ExtendedWorkflowStep[]; // Default case for switch
+	type: StepType.CONDITIONAL;
+	condition: Expression; // Expression to evaluate
+	if?: ExtendedWorkflowStep[]; // Steps to execute if condition is true
+	else?: ExtendedWorkflowStep[]; // Steps to execute if condition is false
+	switch?: Record<string, ExtendedWorkflowStep[]>; // Switch cases: { "case1": [...steps], "case2": [...steps] }
+	default?: ExtendedWorkflowStep[]; // Default case for switch
 }
 
 // Loop Step: while, for, retry
 export interface LoopStep extends Omit<BaseWorkflowStep, "type"> {
-  type: StepType.LOOP;
-  loopType: "while" | "for" | "retry";
-  condition?: Expression; // Condition for while loops
-  maxIterations?: number | Expression; // Maximum iterations
-  steps: ExtendedWorkflowStep[]; // Steps to execute in loop
-  breakOn?: Expression; // Condition to break early
-  onError?: "continue" | "break" | "fail"; // Behavior on error
+	type: StepType.LOOP;
+	loopType: "while" | "for" | "retry";
+	condition?: Expression; // Condition for while loops
+	maxIterations?: number | Expression; // Maximum iterations
+	steps: ExtendedWorkflowStep[]; // Steps to execute in loop
+	breakOn?: Expression; // Condition to break early
+	onError?: "continue" | "break" | "fail"; // Behavior on error
 }
 
 // Parallel Step: execute multiple steps concurrently
 export interface ParallelStep extends Omit<BaseWorkflowStep, "type"> {
-  type: StepType.PARALLEL;
-  steps: ExtendedWorkflowStep[]; // Steps to execute in parallel
-  maxConcurrency?: number; // Maximum concurrent executions (default: unlimited)
-  failFast?: boolean; // Stop all if one fails (default: false)
+	type: StepType.PARALLEL;
+	steps: ExtendedWorkflowStep[]; // Steps to execute in parallel
+	maxConcurrency?: number; // Maximum concurrent executions (default: unlimited)
+	failFast?: boolean; // Stop all if one fails (default: false)
 }
 
 // Workflow parameter definition
 export interface WorkflowParameter {
-  type: "string" | "number" | "boolean" | "object" | "array";
-  required?: boolean;
-  default?: Expression | unknown;
-  description?: string;
+	type: "string" | "number" | "boolean" | "object" | "array";
+	required?: boolean;
+	default?: Expression | unknown;
+	description?: string;
 }
 
 // Definition of Workflow
 export interface Workflow {
-  id: string;
-  name?: string;
-  description?: string;
-  extends?: string; // ID of parent workflow to inherit from
-  abstract?: boolean; // If true, workflow cannot be executed directly (inheritance-only via extends)
-  reusable?: boolean; // If true, workflow can be reused in other workflows
-  parameters?: Record<string, WorkflowParameter>; // Parameters for abstract workflows
-  variables?: Record<string, Expression | unknown>; // Workflow-level variables
-  steps: ExtendedWorkflowStep[];
-  createdAt?: string;
-  updatedAt?: string;
-  version?: string; // Optional version for workflow evolution
-  metadata?: Record<string, unknown>; // Additional metadata
+	id: string;
+	name?: string;
+	description?: string;
+	extends?: string; // ID of parent workflow to inherit from
+	abstract?: boolean; // If true, workflow cannot be executed directly (inheritance-only via extends)
+	reusable?: boolean; // If true, workflow can be reused in other workflows
+	parameters?: Record<string, WorkflowParameter>; // Parameters for abstract workflows
+	variables?: Record<string, Expression | unknown>; // Workflow-level variables
+	steps: ExtendedWorkflowStep[];
+	createdAt?: string;
+	updatedAt?: string;
+	version?: string; // Optional version for workflow evolution
+	metadata?: Record<string, unknown>; // Additional metadata
 }
 
 // Plan generated by planning step and approved/modified by human
 export interface WorkflowPlan {
-  content: string; // Plan original generado
-  createdAt?: string;
-  generatedAt: string;
-  approvedAt?: string;
-  approvedBy?: string;
-  modifiedContent?: string; // Plan modificado por el humano
-  comment?: string;
-  status: WorkflowPlanStatus;
+	content: string; // Plan original generado
+	createdAt?: string;
+	generatedAt: string;
+	approvedAt?: string;
+	approvedBy?: string;
+	modifiedContent?: string; // Plan modificado por el humano
+	comment?: string;
+	status: WorkflowPlanStatus;
 }
 
 // Execution of Workflow (persisted state)
 export interface WorkflowExecution {
-  id: string;
-  workflowId: string;
-  workItemId: string;
-  jobId: string; // Reference to existing Job
-  status: WorkflowStatus;
-  result?: string; // Final result of the execution (e.g., PR URL)
-  currentStepId?: string;
-  stepResults: Array<{
-    stepId: string;
-    status: StepStatus;
-    result?: string; // Step execution result (e.g., PR URL for create_pr)
-    startedAt?: string;
-    completedAt?: string;
-    error?: string;
-  }>;
-  plan?: WorkflowPlan; // Plan generado y aprobado
-  waitingMessage?: string; // Message for human.approval
-  worktreePath?: string; // Path to worktree for resume
-  branchName?: string; // Branch name for resume
-  resumeJobId?: string; // Job ID used to resume this execution (for idempotency)
-  createdAt: string;
-  updatedAt: string;
-  completedAt?: string;
+	id: string;
+	workflowId: string;
+	workItemId: string;
+	jobId: string; // Reference to existing Job
+	status: WorkflowStatus;
+	result?: string; // Final result of the execution (e.g., PR URL)
+	currentStepId?: string;
+	stepResults: Array<{
+		stepId: string;
+		status: StepStatus;
+		result?: string; // Step execution result (e.g., PR URL for create_pr)
+		startedAt?: string;
+		completedAt?: string;
+		error?: string;
+	}>;
+	plan?: WorkflowPlan; // Plan generado y aprobado
+	waitingMessage?: string; // Message for human.approval
+	worktreePath?: string; // Path to worktree for resume
+	branchName?: string; // Branch name for resume
+	resumeJobId?: string; // Job ID used to resume this execution (for idempotency)
+	createdAt: string;
+	updatedAt: string;
+	completedAt?: string;
 }

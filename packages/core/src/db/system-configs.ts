@@ -5,13 +5,13 @@ import { err, ok, type Result } from "@openfarm/result";
 import { parseJson, toJson } from "./utils";
 
 export interface SystemConfiguration {
-  id: string;
-  category: string;
-  configKey: string;
-  configValue: unknown;
-  description?: string;
-  createdAt: string;
-  updatedAt: string;
+	id: string;
+	category: string;
+	configKey: string;
+	configValue: unknown;
+	description?: string;
+	createdAt: string;
+	updatedAt: string;
 }
 
 /**
@@ -23,21 +23,21 @@ export interface SystemConfiguration {
  * @returns The configuration value or null if not found
  */
 export async function getSystemConfig(
-  db: SQL,
-  category: string,
-  configKey: string
+	db: SQL,
+	category: string,
+	configKey: string,
 ): Promise<unknown | null> {
-  const rows = (await db`
+	const rows = (await db`
     SELECT config_value FROM system_configurations
     WHERE category = ${category} AND config_key = ${configKey}
     LIMIT 1
   `) as any[];
 
-  if (rows.length === 0) {
-    return null;
-  }
+	if (rows.length === 0) {
+		return null;
+	}
 
-  return parseJson(rows[0].config_value);
+	return parseJson(rows[0].config_value);
 }
 
 /**
@@ -48,24 +48,24 @@ export async function getSystemConfig(
  * @returns Array of configurations
  */
 export async function getSystemConfigsByCategory(
-  db: SQL,
-  category: string
+	db: SQL,
+	category: string,
 ): Promise<SystemConfiguration[]> {
-  const rows = (await db`
+	const rows = (await db`
     SELECT * FROM system_configurations
     WHERE category = ${category}
     ORDER BY config_key
   `) as any[];
 
-  return rows.map((row) => ({
-    id: row.id,
-    category: row.category,
-    configKey: row.config_key,
-    configValue: parseJson(row.config_value),
-    description: row.description || undefined,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  }));
+	return rows.map((row) => ({
+		id: row.id,
+		category: row.category,
+		configKey: row.config_key,
+		configValue: parseJson(row.config_value),
+		description: row.description || undefined,
+		createdAt: row.created_at,
+		updatedAt: row.updated_at,
+	}));
 }
 
 /**
@@ -79,18 +79,18 @@ export async function getSystemConfigsByCategory(
  * @returns Result indicating success or failure
  */
 export async function setSystemConfig(
-  db: SQL,
-  category: string,
-  configKey: string,
-  configValue: unknown,
-  description?: string
+	db: SQL,
+	category: string,
+	configKey: string,
+	configValue: unknown,
+	description?: string,
 ): Promise<Result<void>> {
-  try {
-    const id = `${category}:${configKey}`;
-    const now = new Date().toISOString();
-    const valueJson = toJson(configValue);
+	try {
+		const id = `${category}:${configKey}`;
+		const now = new Date().toISOString();
+		const valueJson = toJson(configValue);
 
-    await db`
+		await db`
       INSERT INTO system_configurations (
         id, category, config_key, config_value, description, created_at, updated_at
       ) VALUES (
@@ -102,10 +102,10 @@ export async function setSystemConfig(
         updated_at = ${now}
     `;
 
-    return ok(undefined);
-  } catch (error) {
-    return err(error instanceof Error ? error : new Error(String(error)));
-  }
+		return ok(undefined);
+	} catch (error) {
+		return err(error instanceof Error ? error : new Error(String(error)));
+	}
 }
 
 /**
@@ -117,18 +117,18 @@ export async function setSystemConfig(
  * @returns Result indicating success or failure
  */
 export async function setSystemConfigs(
-  db: SQL,
-  category: string,
-  configs: Record<string, unknown>
+	db: SQL,
+	category: string,
+	configs: Record<string, unknown>,
 ): Promise<Result<void>> {
-  try {
-    const now = new Date().toISOString();
+	try {
+		const now = new Date().toISOString();
 
-    for (const [configKey, configValue] of Object.entries(configs)) {
-      const id = `${category}:${configKey}`;
-      const valueJson = toJson(configValue);
+		for (const [configKey, configValue] of Object.entries(configs)) {
+			const id = `${category}:${configKey}`;
+			const valueJson = toJson(configValue);
 
-      await db`
+			await db`
         INSERT INTO system_configurations (
           id, category, config_key, config_value, created_at, updated_at
         ) VALUES (
@@ -138,12 +138,12 @@ export async function setSystemConfigs(
           config_value = ${valueJson},
           updated_at = ${now}
       `;
-    }
+		}
 
-    return ok(undefined);
-  } catch (error) {
-    return err(error instanceof Error ? error : new Error(String(error)));
-  }
+		return ok(undefined);
+	} catch (error) {
+		return err(error instanceof Error ? error : new Error(String(error)));
+	}
 }
 
 /**
@@ -155,18 +155,18 @@ export async function setSystemConfigs(
  * @returns Result indicating success or failure
  */
 export async function deleteSystemConfig(
-  db: SQL,
-  category: string,
-  configKey: string
+	db: SQL,
+	category: string,
+	configKey: string,
 ): Promise<Result<void>> {
-  try {
-    await db`
+	try {
+		await db`
       DELETE FROM system_configurations
       WHERE category = ${category} AND config_key = ${configKey}
     `;
 
-    return ok(undefined);
-  } catch (error) {
-    return err(error instanceof Error ? error : new Error(String(error)));
-  }
+		return ok(undefined);
+	} catch (error) {
+		return err(error instanceof Error ? error : new Error(String(error)));
+	}
 }

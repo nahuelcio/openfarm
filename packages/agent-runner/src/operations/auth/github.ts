@@ -16,19 +16,19 @@
  * ```
  */
 export function authenticateGitHubUrl(
-  repositoryUrl: string,
-  credentials: string
+	repositoryUrl: string,
+	credentials: string,
 ): string {
-  try {
-    const urlObj = new URL(repositoryUrl);
-    urlObj.username = "x-access-token";
-    urlObj.password = credentials;
-    return urlObj.toString();
-  } catch (_e) {
-    // Fallback: manual replacement if URL parsing fails
-    return repositoryUrl.replace(
-      /^https:\/\//,
-      `https://x-access-token:${credentials}@`
-    );
-  }
+	try {
+		const urlObj = new URL(repositoryUrl);
+		urlObj.username = "x-access-token";
+		urlObj.password = credentials;
+		return urlObj.toString();
+	} catch (_e) {
+		// Fallback: manual replacement if URL parsing fails
+		return repositoryUrl.replace(
+			/^https:\/\//,
+			`https://x-access-token:${credentials}@`,
+		);
+	}
 }

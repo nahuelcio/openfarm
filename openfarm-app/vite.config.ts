@@ -20,6 +20,28 @@ export default defineConfig(async () => ({
     minify: "esbuild",
     sourcemap: false,
     rollupOptions: {
+      external: [
+        "@tauri-apps/api/core", 
+        "@tauri-apps/api/event",
+        "child_process",
+        "fs",
+        "path",
+        "util",
+        "crypto",
+        "os",
+        "url",
+        "node:fs",
+        "node:path",
+        "node:child_process",
+        "node:util",
+        "node:crypto",
+        "node:os",
+        "node:url",
+        "node:fs/promises",
+        "better-sqlite3",
+        "bindings",
+        "file-uri-to-path"
+      ],
       output: {
         manualChunks: {
           vendor: ["react", "react-dom"],

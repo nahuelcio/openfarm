@@ -12,6 +12,11 @@
 			"import": "./dist/index.mjs",
 			"require": "./dist/index.js"
 		},
+		"./runtime": {
+			"types": "./dist/runtime/index.d.ts",
+			"import": "./dist/runtime/index.mjs",
+			"require": "./dist/runtime/index.js"
+		},
 		"./package.json": "./package.json"
 	},
 	"bin": {
@@ -28,22 +33,16 @@
 		"test": "bunx vitest run",
 		"clean": "del /s /q dist build .turbo 2>nul || echo Clean complete",
 		"dev": "bun run src/cli.ts",
-		"loop": "bun run src/cli.ts task-loop",
-		"server": "bun run src/cli.ts remote-server",
-		"web": "bun run src/cli-web.ts",
-		"web:dev": "cd ../web-ui && bun run dev"
+		"loop": "bun run src/cli.ts task-loop"
 	},
 	"dependencies": {
 		"@openfarm/agent-runner": "workspace:*",
 		"@openfarm/agent-system": "workspace:*",
-		"@openfarm/context": "workspace:*",
 		"@openfarm/core": "workspace:*",
-		"@openfarm/git-worktree": "workspace:*",
+		"@openfarm/git": "workspace:*",
 		"@openfarm/mcp-marketplace": "workspace:*",
 		"@openfarm/memory-system": "workspace:*",
-		"@openfarm/remote-server": "workspace:*",
 		"@openfarm/task-loop": "workspace:*",
-		"@openfarm/web-ui": "workspace:*",
 		"@openfarm/workflow-engine": "workspace:*",
 		"ai": "^6.0.85",
 		"better-sqlite3": "^12.6.2",
@@ -69,7 +68,6 @@
 		"sdk",
 		"anthropic",
 		"openai",
-		"aider",
 		"claude-code"
 	],
 	"repository": {

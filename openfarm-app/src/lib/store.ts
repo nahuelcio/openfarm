@@ -68,6 +68,7 @@ export interface ExecutionStatistics {
 }
 
 export interface EventExecutionStatistics {
+	// Legacy snake_case fields (for backward compatibility)
 	credits_spent?: number;
 	tool_calls?: number;
 	model?: string;
@@ -77,6 +78,7 @@ export interface EventExecutionStatistics {
 	tokens_input?: number;
 	tokens_output?: number;
 	duration?: number;
+	// New camelCase fields (matching protocol)
 	creditsSpent?: number;
 	toolCalls?: number;
 	filesChanged?: number;
@@ -288,17 +290,17 @@ export const DEFAULT_SETTINGS: AppSettings = {
 			apiKey: "",
 			models: [
 				{
-					id: "codex-mini-latest",
-					name: "Codex Mini",
-					description: "Fast coding tasks",
+					id: "gpt-5-codex",
+					name: "GPT-5 Codex",
+					description: "Codex-optimized flagship model",
 				},
 				{
-					id: "o4-mini",
-					name: "o4-mini",
-					description: "Reasoning model",
+					id: "gpt-5-codex-mini",
+					name: "GPT-5 Codex Mini",
+					description: "Faster and cheaper Codex model",
 				},
 			],
-			defaultModel: "codex-mini-latest",
+			defaultModel: "gpt-5-codex-mini",
 			agents: [],
 			defaultAgent: "",
 		},
@@ -311,17 +313,32 @@ export const DEFAULT_SETTINGS: AppSettings = {
 			apiKey: "",
 			models: [
 				{
-					id: "gpt-4.1",
-					name: "GPT-4.1",
-					description: "OpenAI via OpenCode",
+					id: "openrouter/openai/gpt-4.1",
+					name: "openrouter/openai/gpt-4.1",
+					description: "OpenRouter via OpenCode",
 				},
 				{
-					id: "claude-sonnet-4-20250514",
-					name: "Claude Sonnet 4",
-					description: "Anthropic via OpenCode",
+					id: "openrouter/openai/gpt-5",
+					name: "openrouter/openai/gpt-5",
+					description: "OpenRouter via OpenCode",
+				},
+				{
+					id: "openrouter/anthropic/claude-sonnet-4.5",
+					name: "openrouter/anthropic/claude-sonnet-4.5",
+					description: "OpenRouter via OpenCode",
+				},
+				{
+					id: "github-copilot/gpt-5.2-codex",
+					name: "github-copilot/gpt-5.2-codex",
+					description: "GitHub Copilot via OpenCode",
+				},
+				{
+					id: "zai/glm-4.7",
+					name: "zai/glm-4.7",
+					description: "ZAI via OpenCode",
 				},
 			],
-			defaultModel: "gpt-4.1",
+			defaultModel: "openrouter/openai/gpt-4.1",
 			agents: [
 				{
 					id: "general",

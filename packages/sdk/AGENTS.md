@@ -1,5 +1,5 @@
 # Project Overview
-The OpenFarm SDK provides a unified interface for AI-powered code execution across multiple providers. It allows developers to integrate AI coding assistants into their applications through a consistent, modular API. The SDK handles provider discovery, lazy loading, and standardized execution flows, supporting providers such as Aider and Claude Code.
+The OpenFarm SDK provides a unified interface for AI-powered code execution across multiple providers. It allows developers to integrate AI coding assistants into their applications through a consistent, modular API. The SDK handles provider discovery, lazy loading, and standardized execution flows, supporting providers such as Claude Code, OpenCode, and external CLI agents (for example Codex).
 
 # Tech Stack
 - **Language**: TypeScript (ES2022)
@@ -26,7 +26,7 @@ The SDK follows a modular, extensible architecture designed for high performance
 ```
 src/
 ├── provider-system/ # Core provider registry and base classes
-├── providers/       # Built-in providers (e.g., direct-api)
+├── providers/       # Built-in providers (e.g., external-agent)
 ├── strategies/      # Communication patterns (HTTP, CLI)
 ├── parsers/         # Response format handlers
 ├── tui/             # OpenTUI-based terminal interface components
@@ -55,9 +55,8 @@ bun run type-check   # Run TypeScript compiler checks
 ```
 
 ### Environment Variables
-- `OPENFARM_API_URL`: Base URL for the Direct API provider
-- `OPENFARM_API_KEY`: Authentication key for API providers
-- `OPENFARM_PROVIDER`: Default provider to use (e.g., `external-agent`, `aider`)
+- `OPENFARM_API_KEY`: Authentication key for providers that need credentials
+- `OPENFARM_PROVIDER`: Default provider to use (e.g., `external-agent`, `claude`, `opencode`)
 - `OPENFARM_MODEL`: Default model identifier
 
 # Code Conventions
@@ -97,7 +96,7 @@ bun run type-check   # Run TypeScript compiler checks
 
 ### API Execution Flow
 ```typescript
-const openFarm = new OpenFarm({ defaultProvider: 'aider' });
+const openFarm = new OpenFarm({ defaultProvider: 'claude' });
 const result = await openFarm.execute({
   task: "Implement feature X",
   workspace: "./my-project"
@@ -116,7 +115,8 @@ The SDK uses standardized `ProviderError` types. All errors are normalized in th
 - **SQLite Persistence**: TUI executions and contexts are automatically persisted to `db.db` via `@openfarm/core`. Ensure the database is accessible in the working directory.
 
 # External Integrations
-- **Anthropic/OpenAI**: Supported via `direct-api` and specific provider packages.
-- **Aider**: Requires local `aider` CLI installation. Package: `@openfarm/provider-aider`
+- **Claude Code**: Requires provider package `@openfarm/provider-claude`.
+- **OpenCode**: Requires provider package `@openfarm/provider-opencode`.
+- **Codex**: Use provider `external-agent` with CLI `codex`.
 - **Claude Code**: Requires `@anthropic-ai/claude-code` global installation. Package: `@openfarm/provider-claude`
 - **OpenCode**: Requires `opencode` CLI installation. Package: `@openfarm/provider-opencode`

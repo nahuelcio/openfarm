@@ -16,10 +16,10 @@ import { addWorkflow, getWorkflow, getWorkflows, updateWorkflow } from "./crud";
  * File system interface for dependency injection
  */
 interface FileSystem {
-  existsSync(path: string): boolean;
-  readdirSync(path: string): string[];
-  readFileSync(path: string, encoding: "utf-8"): string;
-  cwd(): string;
+	existsSync(path: string): boolean;
+	readdirSync(path: string): string[];
+	readFileSync(path: string, encoding: "utf-8"): string;
+	cwd(): string;
 }
 
 /**
@@ -31,252 +31,252 @@ let _defaultFs: FileSystem | null = null;
  * Returns the default file system implementation
  */
 function getDefaultFs(): FileSystem {
-  if (!_defaultFs) {
-    // Dynamic require to avoid bundling in workflow functions
-    const { existsSync, readdirSync, readFileSync } = require("node:fs");
-    _defaultFs = {
-      existsSync,
-      readdirSync,
-      readFileSync,
-      cwd: () => process.cwd(),
-    };
-  }
-  return _defaultFs;
+	if (!_defaultFs) {
+		// Dynamic require to avoid bundling in workflow functions
+		const { existsSync, readdirSync, readFileSync } = require("node:fs");
+		_defaultFs = {
+			existsSync,
+			readdirSync,
+			readFileSync,
+			cwd: () => process.cwd(),
+		};
+	}
+	return _defaultFs;
 }
 
 /**
  * Builds list of possible paths to search for workflows directory
  */
 async function buildPossiblePaths(fileSystem: FileSystem): Promise<string[]> {
-  const { join, resolve } = await import("node:path");
-  const possiblePaths: string[] = [];
+	const { join, resolve } = await import("node:path");
+	const possiblePaths: string[] = [];
 
-  // Add the correct path for the current project structure FIRST (highest priority)
-  const cwd = fileSystem.cwd();
-  possiblePaths.push(join(cwd, "../core/workflows"));
-  possiblePaths.push(join(cwd, "../../packages/core/workflows"));
-  possiblePaths.push(join(cwd, "../../../packages/core/workflows"));
+	// Add the correct path for the current project structure FIRST (highest priority)
+	const cwd = fileSystem.cwd();
+	possiblePaths.push(join(cwd, "../core/workflows"));
+	possiblePaths.push(join(cwd, "../../packages/core/workflows"));
+	possiblePaths.push(join(cwd, "../../../packages/core/workflows"));
 
-  // Docker-specific paths
-  possiblePaths.push("/app/packages/core/workflows");
-  possiblePaths.push(join("/app", "packages", "core", "workflows"));
+	// Docker-specific paths
+	possiblePaths.push("/app/packages/core/workflows");
+	possiblePaths.push(join("/app", "packages", "core", "workflows"));
 
-  if (typeof __dirname !== "undefined") {
-    possiblePaths.push(join(__dirname, "../workflows"));
-    possiblePaths.push(join(__dirname, "../../workflows"));
-    possiblePaths.push(join(__dirname, "../../../workflows")); // Add this path
-    possiblePaths.push(join(__dirname, "../../../packages/core/workflows"));
-  }
+	if (typeof __dirname !== "undefined") {
+		possiblePaths.push(join(__dirname, "../workflows"));
+		possiblePaths.push(join(__dirname, "../../workflows"));
+		possiblePaths.push(join(__dirname, "../../../workflows")); // Add this path
+		possiblePaths.push(join(__dirname, "../../../packages/core/workflows"));
+	}
 
-  possiblePaths.push(join(cwd, "packages", "core", "workflows"));
-  possiblePaths.push(join(cwd, "..", "packages", "core", "workflows"));
-  possiblePaths.push(join(cwd, "../..", "packages", "core", "workflows"));
-  possiblePaths.push(join(cwd, "../../..", "packages", "core", "workflows"));
+	possiblePaths.push(join(cwd, "packages", "core", "workflows"));
+	possiblePaths.push(join(cwd, "..", "packages", "core", "workflows"));
+	possiblePaths.push(join(cwd, "../..", "packages", "core", "workflows"));
+	possiblePaths.push(join(cwd, "../../..", "packages", "core", "workflows"));
 
-  possiblePaths.push(
-    join(cwd, "node_modules", "@minions", "core", "workflows")
-  );
-  possiblePaths.push(
-    join(cwd, "..", "node_modules", "@minions", "core", "workflows")
-  );
+	possiblePaths.push(
+		join(cwd, "node_modules", "@minions", "core", "workflows"),
+	);
+	possiblePaths.push(
+		join(cwd, "..", "node_modules", "@minions", "core", "workflows"),
+	);
 
-  // Search up directory tree
-  try {
-    let currentPath = cwd;
-    const checkedPaths = new Set<string>();
-    let previousPath = "";
+	// Search up directory tree
+	try {
+		let currentPath = cwd;
+		const checkedPaths = new Set<string>();
+		let previousPath = "";
 
-    for (let i = 0; i < 10; i++) {
-      const packagesCorePath = join(
-        currentPath,
-        "packages",
-        "core",
-        "workflows"
-      );
-      const normalizedPath = packagesCorePath.replace(/\\/g, "/");
+		for (let i = 0; i < 10; i++) {
+			const packagesCorePath = join(
+				currentPath,
+				"packages",
+				"core",
+				"workflows",
+			);
+			const normalizedPath = packagesCorePath.replace(/\\/g, "/");
 
-      const hasPackageJson = fileSystem.existsSync(
-        join(currentPath, "package.json")
-      );
-      const hasPackagesDir = fileSystem.existsSync(
-        join(currentPath, "packages")
-      );
+			const hasPackageJson = fileSystem.existsSync(
+				join(currentPath, "package.json"),
+			);
+			const hasPackagesDir = fileSystem.existsSync(
+				join(currentPath, "packages"),
+			);
 
-      if (
-        (hasPackageJson || hasPackagesDir) &&
-        !checkedPaths.has(normalizedPath)
-      ) {
-        possiblePaths.push(packagesCorePath);
-        checkedPaths.add(normalizedPath);
-      }
+			if (
+				(hasPackageJson || hasPackagesDir) &&
+				!checkedPaths.has(normalizedPath)
+			) {
+				possiblePaths.push(packagesCorePath);
+				checkedPaths.add(normalizedPath);
+			}
 
-      const parentPath = join(currentPath, "..");
-      const realParentPath = resolve(parentPath);
-      const realCurrentPath = resolve(currentPath);
+			const parentPath = join(currentPath, "..");
+			const realParentPath = resolve(parentPath);
+			const realCurrentPath = resolve(currentPath);
 
-      if (
-        realParentPath === realCurrentPath ||
-        previousPath === realCurrentPath
-      ) {
-        break;
-      }
+			if (
+				realParentPath === realCurrentPath ||
+				previousPath === realCurrentPath
+			) {
+				break;
+			}
 
-      previousPath = realCurrentPath;
-      currentPath = parentPath;
-    }
-  } catch (searchError) {
-    logger.warn("Error during directory search:", searchError);
-  }
+			previousPath = realCurrentPath;
+			currentPath = parentPath;
+		}
+	} catch (searchError) {
+		logger.warn("Error during directory search:", searchError);
+	}
 
-  return possiblePaths;
+	return possiblePaths;
 }
 
 /**
  * Finds workflows directory by checking possible paths
  */
 function findWorkflowsDirectory(
-  possiblePaths: string[],
-  fileSystem: FileSystem
+	possiblePaths: string[],
+	fileSystem: FileSystem,
 ): string | null {
-  logger.debug(`Current working directory: ${fileSystem.cwd()}`);
-  logger.debug(
-    `Searching for workflows directory in ${possiblePaths.length} possible locations...`
-  );
+	logger.debug(`Current working directory: ${fileSystem.cwd()}`);
+	logger.debug(
+		`Searching for workflows directory in ${possiblePaths.length} possible locations...`,
+	);
 
-  for (const testPath of possiblePaths) {
-    logger.debug(`Checking: ${testPath}`);
-    if (fileSystem.existsSync(testPath)) {
-      logger.debug(`✓ Found workflows directory at: ${testPath}`);
-      return testPath;
-    }
-  }
+	for (const testPath of possiblePaths) {
+		logger.debug(`Checking: ${testPath}`);
+		if (fileSystem.existsSync(testPath)) {
+			logger.debug(`✓ Found workflows directory at: ${testPath}`);
+			return testPath;
+		}
+	}
 
-  return null;
+	return null;
 }
 
 /**
  * Validates workflow data structure
  */
 function validateWorkflowData(workflowData: unknown): boolean {
-  if (
-    !workflowData ||
-    typeof workflowData !== "object" ||
-    !("id" in workflowData) ||
-    !("name" in workflowData)
-  ) {
-    return false;
-  }
+	if (
+		!workflowData ||
+		typeof workflowData !== "object" ||
+		!("id" in workflowData) ||
+		!("name" in workflowData)
+	) {
+		return false;
+	}
 
-  const data = workflowData as {
-    steps?: unknown;
-    abstract?: boolean;
-    extends?: string;
-  };
+	const data = workflowData as {
+		steps?: unknown;
+		abstract?: boolean;
+		extends?: string;
+	};
 
-  // Abstract workflows or workflows with extends may not have steps yet
-  if (data.abstract || data.extends) {
-    return true;
-  }
+	// Abstract workflows or workflows with extends may not have steps yet
+	if (data.abstract || data.extends) {
+		return true;
+	}
 
-  // Non-abstract workflows must have steps
-  if (!("steps" in data)) {
-    return false;
-  }
+	// Non-abstract workflows must have steps
+	if (!("steps" in data)) {
+		return false;
+	}
 
-  const steps = data.steps;
-  return Array.isArray(steps) && steps.length > 0;
+	const steps = data.steps;
+	return Array.isArray(steps) && steps.length > 0;
 }
 
 /**
  * Loads workflow from JSON or YAML file
  */
 async function loadWorkflowFromFile(
-  filePath: string,
-  fileSystem: FileSystem,
-  now: string
+	filePath: string,
+	fileSystem: FileSystem,
+	now: string,
 ): Promise<Workflow | null> {
-  try {
-    const fileContent = fileSystem.readFileSync(filePath, "utf-8");
-    const fileName = filePath.split(PATH_SEPARATOR_REGEX).pop() || filePath;
-    let workflow: Workflow | null = null;
+	try {
+		const fileContent = fileSystem.readFileSync(filePath, "utf-8");
+		const fileName = filePath.split(PATH_SEPARATOR_REGEX).pop() || filePath;
+		let workflow: Workflow | null = null;
 
-    // Try YAML first
-    if (filePath.endsWith(".yaml") || filePath.endsWith(".yml")) {
-      try {
-        const { convertYAMLToWorkflow } = await import(
-          "@openfarm/core/workflow-dsl"
-        );
-        workflow = await convertYAMLToWorkflow(fileContent);
-      } catch (yamlError) {
-        logger.error(
-          `✗ Failed to parse YAML workflow file ${fileName}:`,
-          yamlError
-        );
-        return null;
-      }
-    } else {
-      // Try JSON
-      try {
-        const workflowData = JSON.parse(fileContent);
+		// Try YAML first
+		if (filePath.endsWith(".yaml") || filePath.endsWith(".yml")) {
+			try {
+				const { convertYAMLToWorkflow } = await import(
+					"@openfarm/core/workflow-dsl"
+				);
+				workflow = await convertYAMLToWorkflow(fileContent);
+			} catch (yamlError) {
+				logger.error(
+					`✗ Failed to parse YAML workflow file ${fileName}:`,
+					yamlError,
+				);
+				return null;
+			}
+		} else {
+			// Try JSON
+			try {
+				const workflowData = JSON.parse(fileContent);
 
-        if (!validateWorkflowData(workflowData)) {
-          logger.warn(
-            `Skipping invalid workflow file ${fileName}: missing required fields or invalid steps`
-          );
-          return null;
-        }
+				if (!validateWorkflowData(workflowData)) {
+					logger.warn(
+						`Skipping invalid workflow file ${fileName}: missing required fields or invalid steps`,
+					);
+					return null;
+				}
 
-        // Convert JSON workflow to Workflow format
-        const { convertJSONToWorkflow } = await import(
-          "@openfarm/core/workflow-dsl"
-        );
-        workflow = convertJSONToWorkflow(workflowData);
-      } catch (jsonError) {
-        logger.error(
-          `✗ Failed to parse JSON workflow file ${fileName}:`,
-          jsonError
-        );
-        return null;
-      }
-    }
+				// Convert JSON workflow to Workflow format
+				const { convertJSONToWorkflow } = await import(
+					"@openfarm/core/workflow-dsl"
+				);
+				workflow = convertJSONToWorkflow(workflowData);
+			} catch (jsonError) {
+				logger.error(
+					`✗ Failed to parse JSON workflow file ${fileName}:`,
+					jsonError,
+				);
+				return null;
+			}
+		}
 
-    if (!workflow) {
-      return null;
-    }
+		if (!workflow) {
+			return null;
+		}
 
-    // Ensure timestamps are set
-    if (!workflow.createdAt) {
-      workflow.createdAt = now;
-    }
-    if (!workflow.updatedAt) {
-      workflow.updatedAt = now;
-    }
+		// Ensure timestamps are set
+		if (!workflow.createdAt) {
+			workflow.createdAt = now;
+		}
+		if (!workflow.updatedAt) {
+			workflow.updatedAt = now;
+		}
 
-    return workflow;
-  } catch (parseError) {
-    const fileName = filePath.split(PATH_SEPARATOR_REGEX).pop() || filePath;
-    logger.error(`✗ Failed to load workflow file ${fileName}:`, parseError);
-    return null;
-  }
+		return workflow;
+	} catch (parseError) {
+		const fileName = filePath.split(PATH_SEPARATOR_REGEX).pop() || filePath;
+		logger.error(`✗ Failed to load workflow file ${fileName}:`, parseError);
+		return null;
+	}
 }
 
 /**
  * Saves workflows to database (add or update)
  */
 async function saveWorkflowsToDatabase(
-  db: SQL,
-  workflows: Workflow[]
+	db: SQL,
+	workflows: Workflow[],
 ): Promise<void> {
-  for (const workflow of workflows) {
-    const existing = await getWorkflow(db, workflow.id);
-    if (existing) {
-      await updateWorkflow(db, workflow.id, () => workflow);
-      logger.debug(`Updated workflow: ${workflow.id} from JSON file`);
-    } else {
-      await addWorkflow(db, workflow);
-      logger.debug(`Added workflow: ${workflow.id}`);
-    }
-  }
+	for (const workflow of workflows) {
+		const existing = await getWorkflow(db, workflow.id);
+		if (existing) {
+			await updateWorkflow(db, workflow.id, () => workflow);
+			logger.debug(`Updated workflow: ${workflow.id} from JSON file`);
+		} else {
+			await addWorkflow(db, workflow);
+			logger.debug(`Added workflow: ${workflow.id}`);
+		}
+	}
 }
 
 /**
@@ -296,133 +296,133 @@ async function saveWorkflowsToDatabase(
  * ```
  */
 export async function initializePredefinedWorkflows(
-  db: SQL,
-  fileSystem: FileSystem = getDefaultFs()
+	db: SQL,
+	fileSystem: FileSystem = getDefaultFs(),
 ): Promise<Result<void>> {
-  try {
-    const { join } = await import("node:path");
-    const now = new Date().toISOString();
+	try {
+		const { join } = await import("node:path");
+		const now = new Date().toISOString();
 
-    const possiblePaths = await buildPossiblePaths(fileSystem);
-    const workflowsDir = findWorkflowsDirectory(possiblePaths, fileSystem);
+		const possiblePaths = await buildPossiblePaths(fileSystem);
+		const workflowsDir = findWorkflowsDirectory(possiblePaths, fileSystem);
 
-    if (!workflowsDir) {
-      const errorMsg = `Workflows directory not found. Tried paths:\n${possiblePaths.map((p) => `  - ${p}`).join("\n")}\nCurrent working directory: ${fileSystem.cwd()}\n\nPlease ensure the workflows JSON files exist in packages/core/workflows/`;
-      logger.error(`${errorMsg}`);
-      return err(
-        new Error(
-          `Workflows directory not found. Checked ${possiblePaths.length} locations. Current working directory: ${fileSystem.cwd()}`
-        )
-      );
-    }
+		if (!workflowsDir) {
+			const errorMsg = `Workflows directory not found. Tried paths:\n${possiblePaths.map((p) => `  - ${p}`).join("\n")}\nCurrent working directory: ${fileSystem.cwd()}\n\nPlease ensure the workflows JSON files exist in packages/core/workflows/`;
+			logger.error(`${errorMsg}`);
+			return err(
+				new Error(
+					`Workflows directory not found. Checked ${possiblePaths.length} locations. Current working directory: ${fileSystem.cwd()}`,
+				),
+			);
+		}
 
-    const workflowFiles = fileSystem
-      .readdirSync(workflowsDir)
-      .filter(
-        (file: string) =>
-          file.endsWith(".json") ||
-          file.endsWith(".yaml") ||
-          file.endsWith(".yml")
-      )
-      .map((file: string) => join(workflowsDir, file));
+		const workflowFiles = fileSystem
+			.readdirSync(workflowsDir)
+			.filter(
+				(file: string) =>
+					file.endsWith(".json") ||
+					file.endsWith(".yaml") ||
+					file.endsWith(".yml"),
+			)
+			.map((file: string) => join(workflowsDir, file));
 
-    if (workflowFiles.length === 0) {
-      logger.warn("No workflow files (JSON/YAML) found in workflows directory");
-      return err(new Error(`No workflow files found in ${workflowsDir}`));
-    }
+		if (workflowFiles.length === 0) {
+			logger.warn("No workflow files (JSON/YAML) found in workflows directory");
+			return err(new Error(`No workflow files found in ${workflowsDir}`));
+		}
 
-    logger.debug(`Found ${workflowFiles.length} workflow file(s) (JSON/YAML)`);
+		logger.debug(`Found ${workflowFiles.length} workflow file(s) (JSON/YAML)`);
 
-    // First pass: Load all workflows (including those with extends)
-    const workflowsToAdd: Workflow[] = [];
-    const failedFiles: string[] = [];
-    for (const filePath of workflowFiles) {
-      const workflow = await loadWorkflowFromFile(filePath, fileSystem, now);
-      if (workflow) {
-        workflowsToAdd.push(workflow);
-        const fileName = filePath.split(PATH_SEPARATOR_REGEX).pop() || filePath;
-        logger.debug(`✓ Loaded workflow: ${workflow.id} from ${fileName}`);
-      } else {
-        const fileName = filePath.split(PATH_SEPARATOR_REGEX).pop() || filePath;
-        failedFiles.push(fileName);
-        logger.warn(`✗ Failed to load workflow from ${fileName}`);
-      }
-    }
+		// First pass: Load all workflows (including those with extends)
+		const workflowsToAdd: Workflow[] = [];
+		const failedFiles: string[] = [];
+		for (const filePath of workflowFiles) {
+			const workflow = await loadWorkflowFromFile(filePath, fileSystem, now);
+			if (workflow) {
+				workflowsToAdd.push(workflow);
+				const fileName = filePath.split(PATH_SEPARATOR_REGEX).pop() || filePath;
+				logger.debug(`✓ Loaded workflow: ${workflow.id} from ${fileName}`);
+			} else {
+				const fileName = filePath.split(PATH_SEPARATOR_REGEX).pop() || filePath;
+				failedFiles.push(fileName);
+				logger.warn(`✗ Failed to load workflow from ${fileName}`);
+			}
+		}
 
-    if (failedFiles.length > 0) {
-      logger.warn(
-        `Failed to load ${failedFiles.length} workflow file(s): ${failedFiles.join(", ")}`
-      );
-    }
+		if (failedFiles.length > 0) {
+			logger.warn(
+				`Failed to load ${failedFiles.length} workflow file(s): ${failedFiles.join(", ")}`,
+			);
+		}
 
-    if (workflowsToAdd.length === 0) {
-      logger.warn("No valid workflows loaded from JSON files");
-      return err(
-        new Error(`No valid workflows could be loaded from ${workflowsDir}`)
-      );
-    }
+		if (workflowsToAdd.length === 0) {
+			logger.warn("No valid workflows loaded from JSON files");
+			return err(
+				new Error(`No valid workflows could be loaded from ${workflowsDir}`),
+			);
+		}
 
-    // Second pass: Resolve inheritance for workflows that extend others
-    const { resolveWorkflowInheritance } = await import(
-      "@openfarm/core/workflow-dsl"
-    );
-    const resolvedWorkflows: Workflow[] = [];
+		// Second pass: Resolve inheritance for workflows that extend others
+		const { resolveWorkflowInheritance } = await import(
+			"@openfarm/core/workflow-dsl"
+		);
+		const resolvedWorkflows: Workflow[] = [];
 
-    for (const workflow of workflowsToAdd) {
-      if (workflow.extends) {
-        try {
-          // Resolve inheritance using all loaded workflows as context
-          const resolved = await resolveWorkflowInheritance(
-            workflow,
-            {
-              workItem: undefined,
-              stepResults: [],
-              execution: undefined,
-              variables: {},
-            },
-            {
-              db,
-              allWorkflows: workflowsToAdd,
-              workflowFilesPath: workflowsDir,
-            }
-          );
-          resolvedWorkflows.push(resolved);
-          logger.debug(
-            `✓ Resolved inheritance for workflow: ${workflow.id} (extends: ${workflow.extends})`
-          );
-        } catch (error) {
-          logger.error(
-            `✗ Failed to resolve inheritance for workflow ${workflow.id}:`,
-            error
-          );
-          // Still add the workflow without resolving (will fail at runtime if executed)
-          resolvedWorkflows.push(workflow);
-        }
-      } else {
-        // No inheritance, add as-is
-        resolvedWorkflows.push(workflow);
-      }
-    }
+		for (const workflow of workflowsToAdd) {
+			if (workflow.extends) {
+				try {
+					// Resolve inheritance using all loaded workflows as context
+					const resolved = await resolveWorkflowInheritance(
+						workflow,
+						{
+							workItem: undefined,
+							stepResults: [],
+							execution: undefined,
+							variables: {},
+						},
+						{
+							db,
+							allWorkflows: workflowsToAdd,
+							workflowFilesPath: workflowsDir,
+						},
+					);
+					resolvedWorkflows.push(resolved);
+					logger.debug(
+						`✓ Resolved inheritance for workflow: ${workflow.id} (extends: ${workflow.extends})`,
+					);
+				} catch (error) {
+					logger.error(
+						`✗ Failed to resolve inheritance for workflow ${workflow.id}:`,
+						error,
+					);
+					// Still add the workflow without resolving (will fail at runtime if executed)
+					resolvedWorkflows.push(workflow);
+				}
+			} else {
+				// No inheritance, add as-is
+				resolvedWorkflows.push(workflow);
+			}
+		}
 
-    logger.debug(
-      `Preparing to add/update ${resolvedWorkflows.length} workflow(s) (${workflowsToAdd.filter((w) => w.extends).length} with inheritance resolved)`
-    );
+		logger.debug(
+			`Preparing to add/update ${resolvedWorkflows.length} workflow(s) (${workflowsToAdd.filter((w) => w.extends).length} with inheritance resolved)`,
+		);
 
-    await saveWorkflowsToDatabase(db, resolvedWorkflows);
+		await saveWorkflowsToDatabase(db, resolvedWorkflows);
 
-    const verifyWorkflows = await getWorkflows(db);
-    const predefinedIds = resolvedWorkflows.map((w) => w.id);
-    const addedCount = verifyWorkflows.filter((w) =>
-      predefinedIds.includes(w.id)
-    ).length;
+		const verifyWorkflows = await getWorkflows(db);
+		const predefinedIds = resolvedWorkflows.map((w) => w.id);
+		const addedCount = verifyWorkflows.filter((w) =>
+			predefinedIds.includes(w.id),
+		).length;
 
-    logger.debug(
-      `Verification: Total workflows: ${verifyWorkflows.length}, Predefined workflows: ${addedCount}`
-    );
+		logger.debug(
+			`Verification: Total workflows: ${verifyWorkflows.length}, Predefined workflows: ${addedCount}`,
+		);
 
-    return ok(undefined);
-  } catch (error) {
-    logger.error("Error initializing predefined workflows:", error);
-    return err(error instanceof Error ? error : new Error(String(error)));
-  }
+		return ok(undefined);
+	} catch (error) {
+		logger.error("Error initializing predefined workflows:", error);
+		return err(error instanceof Error ? error : new Error(String(error)));
+	}
 }

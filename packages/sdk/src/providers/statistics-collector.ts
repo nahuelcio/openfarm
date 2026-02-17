@@ -45,7 +45,8 @@ export class StatisticsCollector {
 	): ExecutionStatistics {
 		const duration = overrides?.duration ?? Date.now() - this.startTime;
 		const creditsSpent =
-			typeof overrides?.creditsSpent === "number" && Number.isFinite(overrides.creditsSpent)
+			typeof overrides?.creditsSpent === "number" &&
+			Number.isFinite(overrides.creditsSpent)
 				? Number(overrides.creditsSpent.toFixed(6))
 				: 0;
 

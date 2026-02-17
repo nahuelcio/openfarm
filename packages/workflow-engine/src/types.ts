@@ -9,9 +9,9 @@
 
 import type { WorkflowContext } from "@openfarm/agent-runner";
 import type {
-  AgentConfiguration,
-  Workflow,
-  WorkflowEvent,
+	AgentConfiguration,
+	Workflow,
+	WorkflowEvent,
 } from "@openfarm/core";
 
 /**
@@ -19,7 +19,7 @@ import type {
  * Server implementation handles DB persistence, Inngest routing, SSE broadcast
  */
 export interface EventBus {
-  emit(event: WorkflowEvent): Promise<void>;
+	emit(event: WorkflowEvent): Promise<void>;
 }
 
 /**
@@ -27,9 +27,9 @@ export interface EventBus {
  * Server implementation adds SSE broadcast, file writes, etc.
  */
 export interface WorkflowLogger {
-  info(message: string): Promise<void>;
-  error(message: string): Promise<void>;
-  debug(message: string): Promise<void>;
+	info(message: string): Promise<void>;
+	error(message: string): Promise<void>;
+	debug(message: string): Promise<void>;
 }
 
 /**
@@ -37,11 +37,11 @@ export interface WorkflowLogger {
  * Server implementation uses Inngest waitForEvent
  */
 export interface ApprovalHandler {
-  waitForApproval(
-    stepId: string,
-    executionId: string,
-    options?: { timeout?: string }
-  ): Promise<{ approved: boolean; reason?: string }>;
+	waitForApproval(
+		stepId: string,
+		executionId: string,
+		options?: { timeout?: string },
+	): Promise<{ approved: boolean; reason?: string }>;
 }
 
 /**
@@ -49,47 +49,47 @@ export interface ApprovalHandler {
  * All dependencies are injected - allows testing without Inngest/SSE
  */
 export interface WorkflowEngineConfig {
-  db: unknown; // Database instance (from @openfarm/core/db)
-  eventBus: EventBus; // Event emission
-  logger: WorkflowLogger; // Logging with optional streaming
-  approvalHandler: ApprovalHandler; // Human approval mechanism
-  stepExecutor: StepExecutor; // Step execution dispatcher
-  errorHandler: ErrorHandler; // Error processing
+	db: unknown; // Database instance (from @openfarm/core/db)
+	eventBus: EventBus; // Event emission
+	logger: WorkflowLogger; // Logging with optional streaming
+	approvalHandler: ApprovalHandler; // Human approval mechanism
+	stepExecutor: StepExecutor; // Step execution dispatcher
+	errorHandler: ErrorHandler; // Error processing
 }
 
 /**
  * Configuration for step execution
  */
 export interface StepExecutionConfig {
-  jobId: string;
-  previewMode: boolean;
-  agentConfig: AgentConfiguration;
-  allWorkflows: unknown[];
+	jobId: string;
+	previewMode: boolean;
+	agentConfig: AgentConfiguration;
+	allWorkflows: unknown[];
 }
 
 /**
  * Request to execute a workflow
  */
 export interface WorkflowExecutionRequest {
-  executionId: string;
-  workflowId: string;
-  workItemId: string;
-  jobId: string;
-  context: WorkflowContext;
-  agentConfig: unknown;
-  previewMode: boolean;
+	executionId: string;
+	workflowId: string;
+	workItemId: string;
+	jobId: string;
+	context: WorkflowContext;
+	agentConfig: unknown;
+	previewMode: boolean;
 }
 
 /**
  * Result of workflow execution
  */
 export interface WorkflowExecutionResult {
-  success: boolean;
-  executionId: string;
-  completedSteps: number;
-  totalSteps: number;
-  error?: string;
-  result?: unknown;
+	success: boolean;
+	executionId: string;
+	completedSteps: number;
+	totalSteps: number;
+	error?: string;
+	result?: unknown;
 }
 
 /**
@@ -97,78 +97,78 @@ export interface WorkflowExecutionResult {
  * Implementation handles git, agent code, platform operations, etc.
  */
 export interface StepExecutor {
-  execute(
-    request: StepExecutionRequest,
-    context: ExecutionContext
-  ): Promise<StepExecutionResult>;
+	execute(
+		request: StepExecutionRequest,
+		context: ExecutionContext,
+	): Promise<StepExecutionResult>;
 }
 
 /**
  * Request for step execution
  */
 export interface StepExecutionRequest {
-  stepId: string;
-  stepType: string;
-  action: string;
-  params?: Record<string, unknown>;
+	stepId: string;
+	stepType: string;
+	action: string;
+	params?: Record<string, unknown>;
 }
 
 /**
  * Result of step execution
  */
 export interface StepExecutionResult {
-  success: boolean;
-  value?: unknown;
-  error?: Error;
+	success: boolean;
+	value?: unknown;
+	error?: Error;
 }
 
 /**
  * Context available during step execution
  */
 export interface ExecutionContext {
-  workflow: Workflow;
-  context: WorkflowContext;
-  jobId: string;
-  previewMode: boolean;
-  agentConfig: AgentConfiguration;
-  allWorkflows: Workflow[];
-  log: WorkflowLogger;
-  stepResults: unknown[];
+	workflow: Workflow;
+	context: WorkflowContext;
+	jobId: string;
+	previewMode: boolean;
+	agentConfig: AgentConfiguration;
+	allWorkflows: Workflow[];
+	log: WorkflowLogger;
+	stepResults: unknown[];
 }
 
 /**
  * Abstract error handler
  */
 export interface ErrorHandler {
-  handle(
-    error: unknown,
-    context: { executionId: string; stepId?: string; stage: string }
-  ): Promise<void>;
+	handle(
+		error: unknown,
+		context: { executionId: string; stepId?: string; stage: string },
+	): Promise<void>;
 }
 
 /**
  * Step status update options
  */
 export interface UpdateStepStatusOptions {
-  executionId: string;
-  stepId: string;
-  status: "RUNNING" | "COMPLETED" | "FAILED";
-  result?: unknown;
-  error?: Error;
-  startedAt?: string;
+	executionId: string;
+	stepId: string;
+	status: "RUNNING" | "COMPLETED" | "FAILED";
+	result?: unknown;
+	error?: Error;
+	startedAt?: string;
 }
 
 /**
  * Step event data
  */
 export interface StepEventData {
-  stepId: string;
-  stepType: string;
-  action: string;
-  status: "completed" | "failed";
-  result?: string;
-  error?: string;
-  startedAt: string;
-  completedAt: string;
-  durationMs: number;
+	stepId: string;
+	stepType: string;
+	action: string;
+	status: "completed" | "failed";
+	result?: string;
+	error?: string;
+	startedAt: string;
+	completedAt: string;
+	durationMs: number;
 }

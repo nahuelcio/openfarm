@@ -15,14 +15,14 @@
  * ```
  */
 export function parseJson<T>(jsonStr: string | null): T | null {
-  if (!jsonStr) {
-    return null;
-  }
-  try {
-    return JSON.parse(jsonStr) as T;
-  } catch {
-    return null;
-  }
+	if (!jsonStr) {
+		return null;
+	}
+	try {
+		return JSON.parse(jsonStr) as T;
+	} catch {
+		return null;
+	}
 }
 
 /**
@@ -42,8 +42,8 @@ export function parseJson<T>(jsonStr: string | null): T | null {
  * ```
  */
 export function toJson(value: unknown): string | null {
-  if (value === null || value === undefined) {
-    return null;
-  }
-  return JSON.stringify(value);
+	if (value === null || value === undefined) {
+		return null;
+	}
+	return JSON.stringify(value);
 }

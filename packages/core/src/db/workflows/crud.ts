@@ -20,37 +20,37 @@ import type { WorkflowRow } from "./types";
  * ```
  */
 export async function getWorkflows(db: SQL): Promise<Workflow[]> {
-  try {
-    const rows = await db`SELECT * FROM workflows`;
-    // Bun SQL returns an array directly
-    if (!Array.isArray(rows)) {
-      console.error(
-        "[DB] getWorkflows: rows is not an array:",
-        typeof rows,
-        rows
-      );
-      return [];
-    }
-    return rows.map((row: WorkflowRow) => ({
-      id: row.id,
-      name: row.name,
-      description: row.description || undefined,
-      steps: parseJson<WorkflowStep[]>(row.steps) || [],
-      variables: parseJson<Record<string, unknown>>(row.variables) || undefined,
-      parameters:
-        parseJson<Record<string, WorkflowParameter>>(row.parameters) ||
-        undefined,
-      extends: row.extends || undefined,
-      abstract: row.abstract === 1 ? true : undefined,
-      reusable: row.reusable === 1 ? true : undefined,
-      metadata: parseJson<Record<string, unknown>>(row.metadata) || undefined,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    }));
-  } catch (error) {
-    console.error("[DB] Error in getWorkflows:", error);
-    return [];
-  }
+	try {
+		const rows = await db`SELECT * FROM workflows`;
+		// Bun SQL returns an array directly
+		if (!Array.isArray(rows)) {
+			console.error(
+				"[DB] getWorkflows: rows is not an array:",
+				typeof rows,
+				rows,
+			);
+			return [];
+		}
+		return rows.map((row: WorkflowRow) => ({
+			id: row.id,
+			name: row.name,
+			description: row.description || undefined,
+			steps: parseJson<WorkflowStep[]>(row.steps) || [],
+			variables: parseJson<Record<string, unknown>>(row.variables) || undefined,
+			parameters:
+				parseJson<Record<string, WorkflowParameter>>(row.parameters) ||
+				undefined,
+			extends: row.extends || undefined,
+			abstract: row.abstract === 1 ? true : undefined,
+			reusable: row.reusable === 1 ? true : undefined,
+			metadata: parseJson<Record<string, unknown>>(row.metadata) || undefined,
+			createdAt: row.created_at,
+			updatedAt: row.updated_at,
+		}));
+	} catch (error) {
+		console.error("[DB] Error in getWorkflows:", error);
+		return [];
+	}
 }
 
 /**
@@ -70,31 +70,31 @@ export async function getWorkflows(db: SQL): Promise<Workflow[]> {
  * ```
  */
 export async function getWorkflow(
-  db: SQL,
-  workflowId: string
+	db: SQL,
+	workflowId: string,
 ): Promise<Workflow | undefined> {
-  const rows =
-    (await db`SELECT * FROM workflows WHERE id = ${workflowId}`) as WorkflowRow[];
-  const row = rows[0];
-  if (!row) {
-    return undefined;
-  }
+	const rows =
+		(await db`SELECT * FROM workflows WHERE id = ${workflowId}`) as WorkflowRow[];
+	const row = rows[0];
+	if (!row) {
+		return undefined;
+	}
 
-  return {
-    id: row.id,
-    name: row.name,
-    description: row.description || undefined,
-    steps: parseJson<WorkflowStep[]>(row.steps) || [],
-    variables: parseJson<Record<string, unknown>>(row.variables) || undefined,
-    parameters:
-      parseJson<Record<string, WorkflowParameter>>(row.parameters) || undefined,
-    extends: row.extends || undefined,
-    abstract: row.abstract === 1 ? true : undefined,
-    reusable: row.reusable === 1 ? true : undefined,
-    metadata: parseJson<Record<string, unknown>>(row.metadata) || undefined,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
+	return {
+		id: row.id,
+		name: row.name,
+		description: row.description || undefined,
+		steps: parseJson<WorkflowStep[]>(row.steps) || [],
+		variables: parseJson<Record<string, unknown>>(row.variables) || undefined,
+		parameters:
+			parseJson<Record<string, WorkflowParameter>>(row.parameters) || undefined,
+		extends: row.extends || undefined,
+		abstract: row.abstract === 1 ? true : undefined,
+		reusable: row.reusable === 1 ? true : undefined,
+		metadata: parseJson<Record<string, unknown>>(row.metadata) || undefined,
+		createdAt: row.created_at,
+		updatedAt: row.updated_at,
+	};
 }
 
 /**
@@ -117,11 +117,11 @@ export async function getWorkflow(
  * ```
  */
 export async function addWorkflow(
-  db: SQL,
-  workflow: Workflow
+	db: SQL,
+	workflow: Workflow,
 ): Promise<Result<void>> {
-  try {
-    await db`
+	try {
+		await db`
             INSERT INTO workflows (id, name, description, steps, variables, parameters, extends, abstract, reusable, metadata, created_at, updated_at)
             VALUES (
               ${workflow.id}, 
@@ -139,10 +139,10 @@ export async function addWorkflow(
             )
         `;
 
-    return ok(undefined);
-  } catch (error) {
-    return err(error instanceof Error ? error : new Error(String(error)));
-  }
+		return ok(undefined);
+	} catch (error) {
+		return err(error instanceof Error ? error : new Error(String(error)));
+	}
 }
 
 /**
@@ -165,19 +165,19 @@ export async function addWorkflow(
  * ```
  */
 export async function updateWorkflow(
-  db: SQL,
-  workflowId: string,
-  updater: (workflow: Workflow) => Workflow
+	db: SQL,
+	workflowId: string,
+	updater: (workflow: Workflow) => Workflow,
 ): Promise<Result<void>> {
-  try {
-    const currentWorkflow = await getWorkflow(db, workflowId);
-    if (!currentWorkflow) {
-      return err(new Error(`Workflow not found: ${workflowId}`));
-    }
+	try {
+		const currentWorkflow = await getWorkflow(db, workflowId);
+		if (!currentWorkflow) {
+			return err(new Error(`Workflow not found: ${workflowId}`));
+		}
 
-    const updatedWorkflow = updater(currentWorkflow);
+		const updatedWorkflow = updater(currentWorkflow);
 
-    await db`
+		await db`
             UPDATE workflows SET
                 name = ${updatedWorkflow.name}, 
                 description = ${updatedWorkflow.description || null}, 
@@ -192,10 +192,10 @@ export async function updateWorkflow(
             WHERE id = ${workflowId}
         `;
 
-    return ok(undefined);
-  } catch (error) {
-    return err(error instanceof Error ? error : new Error(String(error)));
-  }
+		return ok(undefined);
+	} catch (error) {
+		return err(error instanceof Error ? error : new Error(String(error)));
+	}
 }
 
 /**
@@ -215,15 +215,15 @@ export async function updateWorkflow(
  * ```
  */
 export async function deleteWorkflow(
-  db: SQL,
-  workflowId: string
+	db: SQL,
+	workflowId: string,
 ): Promise<Result<void>> {
-  try {
-    await db`DELETE FROM workflows WHERE id = ${workflowId}`;
-    return ok(undefined);
-  } catch (error) {
-    return err(error instanceof Error ? error : new Error(String(error)));
-  }
+	try {
+		await db`DELETE FROM workflows WHERE id = ${workflowId}`;
+		return ok(undefined);
+	} catch (error) {
+		return err(error instanceof Error ? error : new Error(String(error)));
+	}
 }
 
 /**
@@ -242,14 +242,14 @@ export async function deleteWorkflow(
  * ```
  */
 export async function deleteAllWorkflows(db: SQL): Promise<Result<number>> {
-  try {
-    const workflows = await getWorkflows(db);
-    const deletedCount = workflows.length;
-    await db`DELETE FROM workflows`;
-    return ok(deletedCount);
-  } catch (error) {
-    return err(error instanceof Error ? error : new Error(String(error)));
-  }
+	try {
+		const workflows = await getWorkflows(db);
+		const deletedCount = workflows.length;
+		await db`DELETE FROM workflows`;
+		return ok(deletedCount);
+	} catch (error) {
+		return err(error instanceof Error ? error : new Error(String(error)));
+	}
 }
 
 /**
@@ -262,26 +262,26 @@ export async function deleteAllWorkflows(db: SQL): Promise<Result<number>> {
  * @returns Result indicating success or failure
  */
 export async function syncWorkflowsToDatabase(
-  db: SQL,
-  workflowsToSync: Workflow[]
+	db: SQL,
+	workflowsToSync: Workflow[],
 ): Promise<Result<void>> {
-  try {
-    // Clear existing workflows
-    await deleteAllWorkflows(db);
+	try {
+		// Clear existing workflows
+		await deleteAllWorkflows(db);
 
-    // Add all workflows in parallel
-    const results = await Promise.all(
-      workflowsToSync.map((workflow) => addWorkflow(db, workflow))
-    );
+		// Add all workflows in parallel
+		const results = await Promise.all(
+			workflowsToSync.map((workflow) => addWorkflow(db, workflow)),
+		);
 
-    // Check if any failed
-    const failed = results.find((r) => !r.ok);
-    if (failed) {
-      return failed as Result<void>;
-    }
+		// Check if any failed
+		const failed = results.find((r) => !r.ok);
+		if (failed) {
+			return failed as Result<void>;
+		}
 
-    return ok(undefined);
-  } catch (error) {
-    return err(error instanceof Error ? error : new Error(String(error)));
-  }
+		return ok(undefined);
+	} catch (error) {
+		return err(error instanceof Error ? error : new Error(String(error)));
+	}
 }

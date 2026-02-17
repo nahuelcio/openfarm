@@ -187,15 +187,13 @@ export function AdvancedSettingsPanel({
 	settings,
 	onSettingsChange,
 }: SettingsPanelProps) {
-	if (!open) return null;
-
-	// Dialog states
+	// Dialog states - MOVED BEFORE EARLY RETURN
 	const [mcpDialogOpen, setMcpDialogOpen] = useState(false);
 	const [agentDialogOpen, setAgentDialogOpen] = useState(false);
 	const [hookDialogOpen, setHookDialogOpen] = useState(false);
 	const [subAgentDialogOpen, setSubAgentDialogOpen] = useState(false);
 
-	// Current editing states
+	// Current editing states - MOVED BEFORE EARLY RETURN
 	const [selectedProvider, setSelectedProvider] =
 		useState<AgentProvider | undefined>(undefined);
 	const [editingMcpServer, setEditingMcpServer] =
@@ -203,6 +201,8 @@ export function AdvancedSettingsPanel({
 	const [editingAgent, setEditingAgent] = useState<AgentConfig | undefined>(undefined);
 	const [editingHook, setEditingHook] = useState<HookConfig | undefined>(undefined);
 	const [editingSubAgent, setEditingSubAgent] = useState<SubAgentConfig | undefined>(undefined);
+
+	if (!open) return null;
 
 	const updateProvider = (
 		providerId: AgentProvider,

@@ -16,8 +16,8 @@
  */
 export { LlmError, LlmService, llmService } from "./llm-service";
 export type {
-  LlmCompletionParams,
-  LlmCompletionResult,
-  LlmError as LlmErrorType,
-  LlmProviderConfig,
+	LlmCompletionParams,
+	LlmCompletionResult,
+	LlmError as LlmErrorType,
+	LlmProviderConfig,
 } from "./types";

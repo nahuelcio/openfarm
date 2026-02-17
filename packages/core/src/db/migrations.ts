@@ -31,40 +31,40 @@ const DB_EXTENSION_REGEX = /\.db$/;
  * ```
  */
 export async function runMigrationIfNeeded(
-  db: SQL,
-  dbPath: string,
-  originalDbPath?: string,
-  fileSystem: FileSystem = getDefaultFileSystem()
+	db: SQL,
+	dbPath: string,
+	originalDbPath?: string,
+	fileSystem: FileSystem = getDefaultFileSystem(),
 ): Promise<void> {
-  // Try multiple possible JSON paths
-  const possibleJsonPaths = [
-    dbPath.replace(DB_EXTENSION_REGEX, ".json"), // If dbPath is db.db, try db.json
-    `${dbPath}.json`, // If dbPath doesn't have extension, try adding .json
-    `${dbPath.replace(DB_EXTENSION_REGEX, "")}.json`, // Another variant
-  ];
+	// Try multiple possible JSON paths
+	const possibleJsonPaths = [
+		dbPath.replace(DB_EXTENSION_REGEX, ".json"), // If dbPath is db.db, try db.json
+		`${dbPath}.json`, // If dbPath doesn't have extension, try adding .json
+		`${dbPath.replace(DB_EXTENSION_REGEX, "")}.json`, // Another variant
+	];
 
-  // Also try the original DB_PATH if it was .json
-  if (originalDbPath?.endsWith(".json")) {
-    possibleJsonPaths.unshift(originalDbPath);
-  }
+	// Also try the original DB_PATH if it was .json
+	if (originalDbPath?.endsWith(".json")) {
+		possibleJsonPaths.unshift(originalDbPath);
+	}
 
-  for (const jsonPath of possibleJsonPaths) {
-    if (
-      fileSystem.existsSync(jsonPath) &&
-      !fileSystem.existsSync(`${jsonPath}.migrated`)
-    ) {
-      logger.debug(`JSON file found at ${jsonPath}, starting migration...`);
-      const backupResult = backupJsonFile(jsonPath);
-      if (backupResult.ok) {
-        const migrationResult = await migrateFromJson(jsonPath, db);
-        if (migrationResult.ok) {
-          logger.debug("Migration completed successfully");
-        } else {
-          logger.error("Migration failed:", migrationResult.error.message);
-          // Continue anyway - empty database is fine
-        }
-      }
-      break; // Only migrate once
-    }
-  }
+	for (const jsonPath of possibleJsonPaths) {
+		if (
+			fileSystem.existsSync(jsonPath) &&
+			!fileSystem.existsSync(`${jsonPath}.migrated`)
+		) {
+			logger.debug(`JSON file found at ${jsonPath}, starting migration...`);
+			const backupResult = backupJsonFile(jsonPath);
+			if (backupResult.ok) {
+				const migrationResult = await migrateFromJson(jsonPath, db);
+				if (migrationResult.ok) {
+					logger.debug("Migration completed successfully");
+				} else {
+					logger.error("Migration failed:", migrationResult.error.message);
+					// Continue anyway - empty database is fine
+				}
+			}
+			break; // Only migrate once
+		}
+	}
 }

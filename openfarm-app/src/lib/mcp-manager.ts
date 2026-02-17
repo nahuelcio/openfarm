@@ -40,6 +40,9 @@ export interface McpServer {
 export class McpManager {
 	public servers: Map<string, McpServer> = new Map();
 	private initialized = false;
+	private lastSystemScan = 0;
+	private cachedSystemConfigs: any[] = [];
+	private readonly SYSTEM_SCAN_CACHE_MS = 60000; // Cache for 1 minute
 
 	constructor() {
 		this.initialize();
@@ -62,7 +65,7 @@ export class McpManager {
 			const installedData = localStorage.getItem("openfarm-installed-mcps");
 			const installedMcps = installedData ? JSON.parse(installedData) : [];
 
-			// 2. Scan system paths for MCP configurations
+			// 2. Scan system paths for MCP configurations (only if not already scanned recently)
 			const systemConfigs = await this.scanSystemConfigs();
 
 			// 3. Get MCP status (active/inactive)
@@ -114,8 +117,20 @@ export class McpManager {
 	 */
 	private async scanSystemConfigs(): Promise<any[]> {
 		try {
+			// Use cached results if available and recent
+			const now = Date.now();
+			if (this.cachedSystemConfigs.length > 0 && (now - this.lastSystemScan) < this.SYSTEM_SCAN_CACHE_MS) {
+				console.log(`🔍 Using cached system configs (${this.cachedSystemConfigs.length} found)`);
+				return this.cachedSystemConfigs;
+			}
+
 			const systemConfigs = await scanSystemMcpConfigs();
 			console.log(`🔍 Found ${systemConfigs.length} MCP configurations in system paths`);
+			
+			// Cache the results
+			this.cachedSystemConfigs = systemConfigs;
+			this.lastSystemScan = now;
+			
 			return systemConfigs;
 		} catch (error) {
 			console.log("⚠️ Could not scan system MCP configurations:", error);
@@ -142,6 +157,11 @@ export class McpManager {
 			};
 
 			this.servers.set(config.id, server);
+			
+			// Invalidate system scan cache when adding new servers
+			this.lastSystemScan = 0;
+			this.cachedSystemConfigs = [];
+			
 			console.log(`✅ MCP server configuration stored: ${config.name}`);
 
 		} catch (error) {

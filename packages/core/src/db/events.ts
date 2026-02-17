@@ -9,24 +9,24 @@ import { parseJson, toJson } from "./utils";
  * Interface for database row representation of a workflow event
  */
 interface WorkflowEventRow {
-  id: string;
-  execution_id: string;
-  event_type: string;
-  event_data: string;
-  timestamp: string;
-  sequence_number: number;
-  metadata: string | null;
+	id: string;
+	execution_id: string;
+	event_type: string;
+	event_data: string;
+	timestamp: string;
+	sequence_number: number;
+	metadata: string | null;
 }
 
 /**
  * Options for querying events
  */
 export interface GetEventsOptions {
-  eventType?: WorkflowEventType;
-  limit?: number;
-  offset?: number;
-  fromTimestamp?: string;
-  toTimestamp?: string;
+	eventType?: WorkflowEventType;
+	limit?: number;
+	offset?: number;
+	fromTimestamp?: string;
+	toTimestamp?: string;
 }
 
 /**
@@ -55,35 +55,35 @@ export interface GetEventsOptions {
  * ```
  */
 export async function addWorkflowEvent(
-  db: SQL,
-  event: WorkflowEvent,
-  existingTransaction?: SQL
+	db: SQL,
+	event: WorkflowEvent,
+	existingTransaction?: SQL,
 ): Promise<Result<void>> {
-  try {
-    const executeInTransaction = async (tx: SQL) => {
-      // Get the current max sequence number for this execution
-      const existingEvents = await tx`
+	try {
+		const executeInTransaction = async (tx: SQL) => {
+			// Get the current max sequence number for this execution
+			const existingEvents = await tx`
         SELECT MAX(sequence_number) as max_seq
         FROM workflow_events
         WHERE execution_id = ${event.executionId}
       `;
-      const maxSeq =
-        existingEvents &&
-        Array.isArray(existingEvents) &&
-        existingEvents.length > 0
-          ? (existingEvents[0]?.max_seq ?? -1)
-          : -1;
-      const nextSequence = maxSeq + 1;
+			const maxSeq =
+				existingEvents &&
+				Array.isArray(existingEvents) &&
+				existingEvents.length > 0
+					? (existingEvents[0]?.max_seq ?? -1)
+					: -1;
+			const nextSequence = maxSeq + 1;
 
-      // Ensure sequence number matches (or use calculated one)
-      const finalEvent = {
-        ...event,
-        sequenceNumber: nextSequence,
-      };
+			// Ensure sequence number matches (or use calculated one)
+			const finalEvent = {
+				...event,
+				sequenceNumber: nextSequence,
+			};
 
-      // Use INSERT OR IGNORE to handle duplicate IDs gracefully
-      // This can happen when Inngest retries a step and the same event is emitted again
-      await tx`
+			// Use INSERT OR IGNORE to handle duplicate IDs gracefully
+			// This can happen when Inngest retries a step and the same event is emitted again
+			await tx`
         INSERT OR IGNORE INTO workflow_events (
           id, execution_id, event_type, event_data, timestamp, sequence_number, metadata
         ) VALUES (
@@ -96,22 +96,22 @@ export async function addWorkflowEvent(
           ${finalEvent.metadata ? toJson(finalEvent.metadata) : null}
         )
       `;
-    };
+		};
 
-    if (existingTransaction) {
-      await executeInTransaction(existingTransaction);
-    } else {
-      await db.begin(async (tx: SQL) => {
-        await executeInTransaction(tx);
-      });
-    }
+		if (existingTransaction) {
+			await executeInTransaction(existingTransaction);
+		} else {
+			await db.begin(async (tx: SQL) => {
+				await executeInTransaction(tx);
+			});
+		}
 
-    return ok(undefined);
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error("[DB] Error in addWorkflowEvent:", errorMessage);
-    return err(new Error(`Failed to add workflow event: ${errorMessage}`));
-  }
+		return ok(undefined);
+	} catch (error) {
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		console.error("[DB] Error in addWorkflowEvent:", errorMessage);
+		return err(new Error(`Failed to add workflow event: ${errorMessage}`));
+	}
 }
 
 /**
@@ -129,117 +129,117 @@ export async function addWorkflowEvent(
  * ```
  */
 export async function getWorkflowEvents(
-  db: SQL,
-  executionId: string,
-  options: GetEventsOptions = {}
+	db: SQL,
+	executionId: string,
+	options: GetEventsOptions = {},
 ): Promise<WorkflowEvent[]> {
-  try {
-    const {
-      eventType,
-      limit,
-      offset = 0,
-      fromTimestamp,
-      toTimestamp,
-    } = options;
+	try {
+		const {
+			eventType,
+			limit,
+			offset = 0,
+			fromTimestamp,
+			toTimestamp,
+		} = options;
 
-    // Build conditions dynamically
-    const conditions: string[] = ["execution_id = $1"];
-    const params: unknown[] = [executionId];
-    let paramIndex = 2;
+		// Build conditions dynamically
+		const conditions: string[] = ["execution_id = $1"];
+		const params: unknown[] = [executionId];
+		let paramIndex = 2;
 
-    if (eventType) {
-      conditions.push(`event_type = $${paramIndex}`);
-      params.push(eventType);
-      paramIndex++;
-    }
+		if (eventType) {
+			conditions.push(`event_type = $${paramIndex}`);
+			params.push(eventType);
+			paramIndex++;
+		}
 
-    if (fromTimestamp) {
-      conditions.push(`timestamp >= $${paramIndex}`);
-      params.push(fromTimestamp);
-      paramIndex++;
-    }
+		if (fromTimestamp) {
+			conditions.push(`timestamp >= $${paramIndex}`);
+			params.push(fromTimestamp);
+			paramIndex++;
+		}
 
-    if (toTimestamp) {
-      conditions.push(`timestamp <= $${paramIndex}`);
-      params.push(toTimestamp);
-      paramIndex++;
-    }
+		if (toTimestamp) {
+			conditions.push(`timestamp <= $${paramIndex}`);
+			params.push(toTimestamp);
+			paramIndex++;
+		}
 
-    let query = `SELECT * FROM workflow_events WHERE ${conditions.join(" AND ")} ORDER BY sequence_number ASC`;
+		let query = `SELECT * FROM workflow_events WHERE ${conditions.join(" AND ")} ORDER BY sequence_number ASC`;
 
-    if (limit !== undefined) {
-      query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
-      params.push(limit, offset);
-    }
+		if (limit !== undefined) {
+			query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+			params.push(limit, offset);
+		}
 
-    // Use raw query with Bun SQL
-    const rows = await db.unsafe(query, params);
-    const eventsArray = Array.isArray(rows) ? rows : [];
+		// Use raw query with Bun SQL
+		const rows = await db.unsafe(query, params);
+		const eventsArray = Array.isArray(rows) ? rows : [];
 
-    return eventsArray.map((row: WorkflowEventRow) => {
-      const eventData = parseJson<unknown>(row.event_data);
-      const metadata = row.metadata
-        ? parseJson<Record<string, unknown>>(row.metadata)
-        : undefined;
+		return eventsArray.map((row: WorkflowEventRow) => {
+			const eventData = parseJson<unknown>(row.event_data);
+			const metadata = row.metadata
+				? parseJson<Record<string, unknown>>(row.metadata)
+				: undefined;
 
-      return {
-        id: row.id,
-        executionId: row.execution_id,
-        eventType: row.event_type as WorkflowEventType,
-        timestamp: row.timestamp,
-        sequenceNumber: row.sequence_number,
-        eventData: eventData as any, // Type assertion needed due to union type
-        metadata,
-      } as WorkflowEvent;
-    });
-  } catch (error) {
-    console.error("[DB] Error in getWorkflowEvents:", error);
-    // Fallback to simpler query if dynamic query fails
-    try {
-      const rows = await db`
+			return {
+				id: row.id,
+				executionId: row.execution_id,
+				eventType: row.event_type as WorkflowEventType,
+				timestamp: row.timestamp,
+				sequenceNumber: row.sequence_number,
+				eventData: eventData as any, // Type assertion needed due to union type
+				metadata,
+			} as WorkflowEvent;
+		});
+	} catch (error) {
+		console.error("[DB] Error in getWorkflowEvents:", error);
+		// Fallback to simpler query if dynamic query fails
+		try {
+			const rows = await db`
         SELECT * FROM workflow_events
         WHERE execution_id = ${executionId}
         ORDER BY sequence_number ASC
       `;
-      const eventsArray = Array.isArray(rows) ? rows : [];
-      return eventsArray
-        .filter((row: WorkflowEventRow) => {
-          if (options.eventType && row.event_type !== options.eventType) {
-            return false;
-          }
-          if (options.fromTimestamp && row.timestamp < options.fromTimestamp) {
-            return false;
-          }
-          if (options.toTimestamp && row.timestamp > options.toTimestamp) {
-            return false;
-          }
-          return true;
-        })
-        .slice(
-          options.offset || 0,
-          options.limit ? (options.offset || 0) + options.limit : undefined
-        )
-        .map((row: WorkflowEventRow) => {
-          const eventData = parseJson<unknown>(row.event_data);
-          const metadata = row.metadata
-            ? parseJson<Record<string, unknown>>(row.metadata)
-            : undefined;
+			const eventsArray = Array.isArray(rows) ? rows : [];
+			return eventsArray
+				.filter((row: WorkflowEventRow) => {
+					if (options.eventType && row.event_type !== options.eventType) {
+						return false;
+					}
+					if (options.fromTimestamp && row.timestamp < options.fromTimestamp) {
+						return false;
+					}
+					if (options.toTimestamp && row.timestamp > options.toTimestamp) {
+						return false;
+					}
+					return true;
+				})
+				.slice(
+					options.offset || 0,
+					options.limit ? (options.offset || 0) + options.limit : undefined,
+				)
+				.map((row: WorkflowEventRow) => {
+					const eventData = parseJson<unknown>(row.event_data);
+					const metadata = row.metadata
+						? parseJson<Record<string, unknown>>(row.metadata)
+						: undefined;
 
-          return {
-            id: row.id,
-            executionId: row.execution_id,
-            eventType: row.event_type as WorkflowEventType,
-            timestamp: row.timestamp,
-            sequenceNumber: row.sequence_number,
-            eventData: eventData as any,
-            metadata,
-          } as WorkflowEvent;
-        });
-    } catch (fallbackError) {
-      console.error("[DB] Error in getWorkflowEvents fallback:", fallbackError);
-      return [];
-    }
-  }
+					return {
+						id: row.id,
+						executionId: row.execution_id,
+						eventType: row.event_type as WorkflowEventType,
+						timestamp: row.timestamp,
+						sequenceNumber: row.sequence_number,
+						eventData: eventData as any,
+						metadata,
+					} as WorkflowEvent;
+				});
+		} catch (fallbackError) {
+			console.error("[DB] Error in getWorkflowEvents fallback:", fallbackError);
+			return [];
+		}
+	}
 }
 
 /**
@@ -257,59 +257,59 @@ export async function getWorkflowEvents(
  * ```
  */
 export async function getEventsByType(
-  db: SQL,
-  eventType: WorkflowEventType,
-  options: Omit<GetEventsOptions, "eventType"> = {}
+	db: SQL,
+	eventType: WorkflowEventType,
+	options: Omit<GetEventsOptions, "eventType"> = {},
 ): Promise<WorkflowEvent[]> {
-  try {
-    const { limit, offset = 0, fromTimestamp, toTimestamp } = options;
+	try {
+		const { limit, offset = 0, fromTimestamp, toTimestamp } = options;
 
-    // Use simple query with template literals and filter in memory for now
-    // This is simpler and more reliable than dynamic SQL construction
-    const rows = await db`
+		// Use simple query with template literals and filter in memory for now
+		// This is simpler and more reliable than dynamic SQL construction
+		const rows = await db`
       SELECT * FROM workflow_events
       WHERE event_type = ${eventType}
       ORDER BY timestamp DESC, sequence_number ASC
     `;
 
-    const eventsArray = Array.isArray(rows) ? rows : [];
+		const eventsArray = Array.isArray(rows) ? rows : [];
 
-    // Apply filters and pagination
-    const filtered = eventsArray.filter((row: WorkflowEventRow) => {
-      if (fromTimestamp && row.timestamp < fromTimestamp) {
-        return false;
-      }
-      if (toTimestamp && row.timestamp > toTimestamp) {
-        return false;
-      }
-      return true;
-    });
+		// Apply filters and pagination
+		const filtered = eventsArray.filter((row: WorkflowEventRow) => {
+			if (fromTimestamp && row.timestamp < fromTimestamp) {
+				return false;
+			}
+			if (toTimestamp && row.timestamp > toTimestamp) {
+				return false;
+			}
+			return true;
+		});
 
-    const paginated =
-      limit !== undefined
-        ? filtered.slice(offset, offset + limit)
-        : filtered.slice(offset);
+		const paginated =
+			limit !== undefined
+				? filtered.slice(offset, offset + limit)
+				: filtered.slice(offset);
 
-    return paginated.map((row: WorkflowEventRow) => {
-      const eventData = parseJson<unknown>(row.event_data);
-      const metadata = row.metadata
-        ? parseJson<Record<string, unknown>>(row.metadata)
-        : undefined;
+		return paginated.map((row: WorkflowEventRow) => {
+			const eventData = parseJson<unknown>(row.event_data);
+			const metadata = row.metadata
+				? parseJson<Record<string, unknown>>(row.metadata)
+				: undefined;
 
-      return {
-        id: row.id,
-        executionId: row.execution_id,
-        eventType: row.event_type as WorkflowEventType,
-        timestamp: row.timestamp,
-        sequenceNumber: row.sequence_number,
-        eventData: eventData as any,
-        metadata,
-      } as WorkflowEvent;
-    });
-  } catch (error) {
-    console.error("[DB] Error in getEventsByType:", error);
-    return [];
-  }
+			return {
+				id: row.id,
+				executionId: row.execution_id,
+				eventType: row.event_type as WorkflowEventType,
+				timestamp: row.timestamp,
+				sequenceNumber: row.sequence_number,
+				eventData: eventData as any,
+				metadata,
+			} as WorkflowEvent;
+		});
+	} catch (error) {
+		console.error("[DB] Error in getEventsByType:", error);
+		return [];
+	}
 }
 
 /**
@@ -327,101 +327,101 @@ export async function getEventsByType(
  * ```
  */
 export function replayEvents(events: WorkflowEvent[]): {
-  executionId: string;
-  workflowId?: string;
-  workItemId?: string;
-  jobId?: string;
-  status: string;
-  completedSteps: number;
-  failedSteps: number;
-  events: WorkflowEvent[];
-  timeline: Array<{
-    timestamp: string;
-    eventType: WorkflowEventType;
-    description: string;
-  }>;
+	executionId: string;
+	workflowId?: string;
+	workItemId?: string;
+	jobId?: string;
+	status: string;
+	completedSteps: number;
+	failedSteps: number;
+	events: WorkflowEvent[];
+	timeline: Array<{
+		timestamp: string;
+		eventType: WorkflowEventType;
+		description: string;
+	}>;
 } {
-  const sortedEvents = [...events].sort(
-    (a, b) => a.sequenceNumber - b.sequenceNumber
-  );
+	const sortedEvents = [...events].sort(
+		(a, b) => a.sequenceNumber - b.sequenceNumber,
+	);
 
-  let workflowId: string | undefined;
-  let workItemId: string | undefined;
-  let jobId: string | undefined;
-  let status = "unknown";
-  let completedSteps = 0;
-  let failedSteps = 0;
+	let workflowId: string | undefined;
+	let workItemId: string | undefined;
+	let jobId: string | undefined;
+	let status = "unknown";
+	let completedSteps = 0;
+	let failedSteps = 0;
 
-  const timeline: Array<{
-    timestamp: string;
-    eventType: WorkflowEventType;
-    description: string;
-  }> = [];
+	const timeline: Array<{
+		timestamp: string;
+		eventType: WorkflowEventType;
+		description: string;
+	}> = [];
 
-  for (const event of sortedEvents) {
-    // Extract initial context from started event
-    if (event.eventType === "workflow.started") {
-      workflowId = (event.eventData as any).workflowId;
-      workItemId = (event.eventData as any).workItemId;
-      jobId = (event.eventData as any).jobId;
-      status = "running";
-      timeline.push({
-        timestamp: event.timestamp,
-        eventType: event.eventType,
-        description: `Workflow started: ${workflowId}`,
-      });
-    } else if (event.eventType === "step.executed") {
-      const stepData = event.eventData as any;
-      if (stepData.status === "completed") {
-        completedSteps++;
-      } else if (stepData.status === "failed") {
-        failedSteps++;
-      }
-      timeline.push({
-        timestamp: event.timestamp,
-        eventType: event.eventType,
-        description: `Step ${stepData.stepId} ${stepData.status}: ${stepData.action}`,
-      });
-    } else if (event.eventType === "workflow.completed") {
-      status = "completed";
-      timeline.push({
-        timestamp: event.timestamp,
-        eventType: event.eventType,
-        description: "Workflow completed successfully",
-      });
-    } else if (event.eventType === "workflow.failed") {
-      status = "failed";
-      const failedData = event.eventData as any;
-      timeline.push({
-        timestamp: event.timestamp,
-        eventType: event.eventType,
-        description: `Workflow failed: ${failedData.errorMessage}`,
-      });
-    } else if (event.eventType === "workflow.cancelled") {
-      status = "cancelled";
-      timeline.push({
-        timestamp: event.timestamp,
-        eventType: event.eventType,
-        description: "Workflow cancelled",
-      });
-    } else {
-      timeline.push({
-        timestamp: event.timestamp,
-        eventType: event.eventType,
-        description: `${event.eventType} event`,
-      });
-    }
-  }
+	for (const event of sortedEvents) {
+		// Extract initial context from started event
+		if (event.eventType === "workflow.started") {
+			workflowId = (event.eventData as any).workflowId;
+			workItemId = (event.eventData as any).workItemId;
+			jobId = (event.eventData as any).jobId;
+			status = "running";
+			timeline.push({
+				timestamp: event.timestamp,
+				eventType: event.eventType,
+				description: `Workflow started: ${workflowId}`,
+			});
+		} else if (event.eventType === "step.executed") {
+			const stepData = event.eventData as any;
+			if (stepData.status === "completed") {
+				completedSteps++;
+			} else if (stepData.status === "failed") {
+				failedSteps++;
+			}
+			timeline.push({
+				timestamp: event.timestamp,
+				eventType: event.eventType,
+				description: `Step ${stepData.stepId} ${stepData.status}: ${stepData.action}`,
+			});
+		} else if (event.eventType === "workflow.completed") {
+			status = "completed";
+			timeline.push({
+				timestamp: event.timestamp,
+				eventType: event.eventType,
+				description: "Workflow completed successfully",
+			});
+		} else if (event.eventType === "workflow.failed") {
+			status = "failed";
+			const failedData = event.eventData as any;
+			timeline.push({
+				timestamp: event.timestamp,
+				eventType: event.eventType,
+				description: `Workflow failed: ${failedData.errorMessage}`,
+			});
+		} else if (event.eventType === "workflow.cancelled") {
+			status = "cancelled";
+			timeline.push({
+				timestamp: event.timestamp,
+				eventType: event.eventType,
+				description: "Workflow cancelled",
+			});
+		} else {
+			timeline.push({
+				timestamp: event.timestamp,
+				eventType: event.eventType,
+				description: `${event.eventType} event`,
+			});
+		}
+	}
 
-  return {
-    executionId: sortedEvents[0]?.executionId || "",
-    workflowId,
-    workItemId,
-    jobId,
-    status,
-    completedSteps,
-    failedSteps,
-    events: sortedEvents,
-    timeline,
-  };
+	return {
+		executionId: sortedEvents[0]?.executionId || "",
+		workflowId,
+		workItemId,
+		jobId,
+		status,
+		completedSteps,
+		failedSteps,
+		events: sortedEvents,
+		timeline,
+	};
 }

@@ -11,47 +11,47 @@ import { addColumnSafely } from "../src/db/utils/add-column-safely";
  */
 
 describe("schema-migrations", () => {
-  describe("addColumnSafely", () => {
-    it("should add column to table that doesn't have it yet", async () => {
-      const mockDb = {
-        exec: vi.fn().mockResolvedValue([]),
-      };
+	describe("addColumnSafely", () => {
+		it("should add column to table that doesn't have it yet", async () => {
+			const mockDb = {
+				exec: vi.fn().mockResolvedValue([]),
+			};
 
-      await addColumnSafely(
-        mockDb as any,
-        "test_table",
-        "new_column",
-        "new_column_def TEXT"
-      );
+			await addColumnSafely(
+				mockDb as any,
+				"test_table",
+				"new_column",
+				"new_column_def TEXT",
+			);
 
-      expect(mockDb.exec).toHaveBeenCalledWith(
-        "ALTER TABLE test_table ADD COLUMN new_column new_column_def TEXT"
-      );
-    });
+			expect(mockDb.exec).toHaveBeenCalledWith(
+				"ALTER TABLE test_table ADD COLUMN new_column new_column_def TEXT",
+			);
+		});
 
-    it("should handle duplicate column error gracefully", async () => {
-      const mockDb = {
-        exec: vi
-          .fn()
-          .mockRejectedValue(new Error("duplicate column name: new_column")),
-      };
+		it("should handle duplicate column error gracefully", async () => {
+			const mockDb = {
+				exec: vi
+					.fn()
+					.mockRejectedValue(new Error("duplicate column name: new_column")),
+			};
 
-      // Should not throw when column already exists (handled gracefully)
-      await expect(
-        addColumnSafely(mockDb as any, "test_table", "new_column", "TEXT")
-      ).resolves.toBeUndefined();
-    });
+			// Should not throw when column already exists (handled gracefully)
+			await expect(
+				addColumnSafely(mockDb as any, "test_table", "new_column", "TEXT"),
+			).resolves.toBeUndefined();
+		});
 
-    it("should handle unknown database errors", async () => {
-      const mockDb = {
-        exec: vi
-          .fn()
-          .mockRejectedValue(new Error("database connection failed")),
-      };
+		it("should handle unknown database errors", async () => {
+			const mockDb = {
+				exec: vi
+					.fn()
+					.mockRejectedValue(new Error("database connection failed")),
+			};
 
-      await expect(
-        addColumnSafely(mockDb as any, "test_table", "new_column", "TEXT")
-      ).rejects.toThrow("database connection failed");
-    });
-  });
+			await expect(
+				addColumnSafely(mockDb as any, "test_table", "new_column", "TEXT"),
+			).rejects.toThrow("database connection failed");
+		});
+	});
 });

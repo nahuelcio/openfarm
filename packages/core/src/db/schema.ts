@@ -16,21 +16,21 @@ import { addColumnSafely } from "./utils/add-column-safely";
  * ```
  */
 export async function createSchema(db: SQL): Promise<void> {
-  // Enable foreign keys
-  await db`PRAGMA foreign_keys = ON`;
+	// Enable foreign keys
+	await db`PRAGMA foreign_keys = ON`;
 
-  // Configure SQLite for better concurrency handling
-  // WAL mode allows multiple readers and one writer simultaneously
-  await db`PRAGMA journal_mode = WAL`;
+	// Configure SQLite for better concurrency handling
+	// WAL mode allows multiple readers and one writer simultaneously
+	await db`PRAGMA journal_mode = WAL`;
 
-  // Set busy timeout to 5 seconds (SQLite will retry locked operations)
-  await db`PRAGMA busy_timeout = 5000`;
+	// Set busy timeout to 5 seconds (SQLite will retry locked operations)
+	await db`PRAGMA busy_timeout = 5000`;
 
-  // Enable synchronous mode for better data integrity (NORMAL is a good balance)
-  await db`PRAGMA synchronous = NORMAL`;
+	// Enable synchronous mode for better data integrity (NORMAL is a good balance)
+	await db`PRAGMA synchronous = NORMAL`;
 
-  // Create jobs table
-  await db`
+	// Create jobs table
+	await db`
         CREATE TABLE IF NOT EXISTS jobs (
             id TEXT PRIMARY KEY,
             bug_id TEXT NOT NULL,
@@ -53,11 +53,11 @@ export async function createSchema(db: SQL): Promise<void> {
             workflow_execution_id TEXT
         )
     `;
-  await db`CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status)`;
-  await db`CREATE INDEX IF NOT EXISTS idx_jobs_workflow_execution_id ON jobs(workflow_execution_id)`;
+	await db`CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status)`;
+	await db`CREATE INDEX IF NOT EXISTS idx_jobs_workflow_execution_id ON jobs(workflow_execution_id)`;
 
-  // Create agent_configurations table
-  await db`
+	// Create agent_configurations table
+	await db`
         CREATE TABLE IF NOT EXISTS agent_configurations (
             id TEXT PRIMARY KEY,
             project TEXT,
@@ -80,10 +80,10 @@ export async function createSchema(db: SQL): Promise<void> {
             updated_at TEXT NOT NULL
         )
     `;
-  await db`CREATE INDEX IF NOT EXISTS idx_agent_configurations_enabled ON agent_configurations(enabled)`;
+	await db`CREATE INDEX IF NOT EXISTS idx_agent_configurations_enabled ON agent_configurations(enabled)`;
 
-  // Create local_work_items table
-  await db`
+	// Create local_work_items table
+	await db`
         CREATE TABLE IF NOT EXISTS local_work_items (
             id TEXT PRIMARY KEY,
             title TEXT NOT NULL,
@@ -112,21 +112,21 @@ export async function createSchema(db: SQL): Promise<void> {
         )
     `;
 
-  // Migration: Add priority column if it doesn't exist (for existing databases)
-  await addColumnSafely(
-    db,
-    "local_work_items",
-    "priority",
-    "TEXT DEFAULT 'medium' CHECK(priority IN ('low', 'medium', 'high', 'critical'))"
-  );
+	// Migration: Add priority column if it doesn't exist (for existing databases)
+	await addColumnSafely(
+		db,
+		"local_work_items",
+		"priority",
+		"TEXT DEFAULT 'medium' CHECK(priority IN ('low', 'medium', 'high', 'critical'))",
+	);
 
-  // Migration: Add assignee columns if they don't exist (for existing databases)
-  await addColumnSafely(db, "local_work_items", "assignee_id", "TEXT");
-  await addColumnSafely(db, "local_work_items", "assignee_name", "TEXT");
-  await addColumnSafely(db, "local_work_items", "assignee_avatar_url", "TEXT");
+	// Migration: Add assignee columns if they don't exist (for existing databases)
+	await addColumnSafely(db, "local_work_items", "assignee_id", "TEXT");
+	await addColumnSafely(db, "local_work_items", "assignee_name", "TEXT");
+	await addColumnSafely(db, "local_work_items", "assignee_avatar_url", "TEXT");
 
-  // Create integrations table
-  await db`
+	// Create integrations table
+	await db`
         CREATE TABLE IF NOT EXISTS integrations (
             id TEXT PRIMARY KEY,
             name TEXT NOT NULL,
@@ -141,8 +141,8 @@ export async function createSchema(db: SQL): Promise<void> {
         )
     `;
 
-  // Create workflows table
-  await db`
+	// Create workflows table
+	await db`
         CREATE TABLE IF NOT EXISTS workflows (
             id TEXT PRIMARY KEY,
             name TEXT NOT NULL,
@@ -159,8 +159,8 @@ export async function createSchema(db: SQL): Promise<void> {
         )
     `;
 
-  // Create workflow_executions table
-  await db`
+	// Create workflow_executions table
+	await db`
         CREATE TABLE IF NOT EXISTS workflow_executions (
             id TEXT PRIMARY KEY,
             workflow_id TEXT NOT NULL,
@@ -179,11 +179,11 @@ export async function createSchema(db: SQL): Promise<void> {
             completed_at TEXT
         )
     `;
-  await db`CREATE INDEX IF NOT EXISTS idx_workflow_executions_status ON workflow_executions(status)`;
-  await db`CREATE INDEX IF NOT EXISTS idx_workflow_executions_workflow_id ON workflow_executions(workflow_id)`;
+	await db`CREATE INDEX IF NOT EXISTS idx_workflow_executions_status ON workflow_executions(status)`;
+	await db`CREATE INDEX IF NOT EXISTS idx_workflow_executions_workflow_id ON workflow_executions(workflow_id)`;
 
-  // Create chat_sessions table
-  await db`
+	// Create chat_sessions table
+	await db`
         CREATE TABLE IF NOT EXISTS chat_sessions (
             id TEXT PRIMARY KEY,
             user_id TEXT NOT NULL,
@@ -197,10 +197,10 @@ export async function createSchema(db: SQL): Promise<void> {
             context TEXT
         )
     `;
-  await db`CREATE INDEX IF NOT EXISTS idx_chat_sessions_status ON chat_sessions(status)`;
+	await db`CREATE INDEX IF NOT EXISTS idx_chat_sessions_status ON chat_sessions(status)`;
 
-  // Create chat_messages table
-  await db`
+	// Create chat_messages table
+	await db`
         CREATE TABLE IF NOT EXISTS chat_messages (
             id TEXT PRIMARY KEY,
             session_id TEXT NOT NULL,
@@ -211,11 +211,11 @@ export async function createSchema(db: SQL): Promise<void> {
             job_id TEXT
         )
     `;
-  await db`CREATE INDEX IF NOT EXISTS idx_chat_messages_session_id ON chat_messages(session_id)`;
-  await db`CREATE INDEX IF NOT EXISTS idx_chat_messages_timestamp ON chat_messages(timestamp)`;
+	await db`CREATE INDEX IF NOT EXISTS idx_chat_messages_session_id ON chat_messages(session_id)`;
+	await db`CREATE INDEX IF NOT EXISTS idx_chat_messages_timestamp ON chat_messages(timestamp)`;
 
-  // Create project_context_summaries table
-  await db`
+	// Create project_context_summaries table
+	await db`
         CREATE TABLE IF NOT EXISTS project_context_summaries (
             id TEXT PRIMARY KEY,
             project_id TEXT NOT NULL,
@@ -231,13 +231,13 @@ export async function createSchema(db: SQL): Promise<void> {
             expires_at TEXT
         )
     `;
-  await db`CREATE INDEX IF NOT EXISTS idx_project_context_summaries_project_id ON project_context_summaries(project_id)`;
-  await db`CREATE INDEX IF NOT EXISTS idx_project_context_summaries_repository_url ON project_context_summaries(repository_url)`;
-  await db`CREATE INDEX IF NOT EXISTS idx_project_context_summaries_branch_name ON project_context_summaries(branch_name)`;
-  await db`CREATE INDEX IF NOT EXISTS idx_project_context_summaries_updated_at ON project_context_summaries(updated_at)`;
+	await db`CREATE INDEX IF NOT EXISTS idx_project_context_summaries_project_id ON project_context_summaries(project_id)`;
+	await db`CREATE INDEX IF NOT EXISTS idx_project_context_summaries_repository_url ON project_context_summaries(repository_url)`;
+	await db`CREATE INDEX IF NOT EXISTS idx_project_context_summaries_branch_name ON project_context_summaries(branch_name)`;
+	await db`CREATE INDEX IF NOT EXISTS idx_project_context_summaries_updated_at ON project_context_summaries(updated_at)`;
 
-  // Create enabled_models table for managing which models are enabled per provider and use type
-  await db`
+	// Create enabled_models table for managing which models are enabled per provider and use type
+	await db`
         CREATE TABLE IF NOT EXISTS enabled_models (
             id TEXT PRIMARY KEY,
             provider TEXT NOT NULL,
@@ -249,26 +249,26 @@ export async function createSchema(db: SQL): Promise<void> {
             UNIQUE(provider, model, use_type)
         )
     `;
-  await db`CREATE INDEX IF NOT EXISTS idx_enabled_models_provider ON enabled_models(provider)`;
-  await db`CREATE INDEX IF NOT EXISTS idx_enabled_models_enabled ON enabled_models(enabled)`;
+	await db`CREATE INDEX IF NOT EXISTS idx_enabled_models_provider ON enabled_models(provider)`;
+	await db`CREATE INDEX IF NOT EXISTS idx_enabled_models_enabled ON enabled_models(enabled)`;
 
-  // Migration: Add use_type column if it doesn't exist (for existing databases)
-  // MUST run BEFORE creating the use_type index
-  try {
-    // SQLite doesn't allow adding NOT NULL columns with CHECK constraints in ALTER TABLE
-    // when there's existing data. We add it without constraints first.
-    await db`ALTER TABLE enabled_models ADD COLUMN use_type TEXT DEFAULT 'coding'`;
-    // Update all existing rows to have the default value
-    await db`UPDATE enabled_models SET use_type = 'coding' WHERE use_type IS NULL`;
-  } catch (_error) {
-    // Column might already exist, ignore error
-  }
+	// Migration: Add use_type column if it doesn't exist (for existing databases)
+	// MUST run BEFORE creating the use_type index
+	try {
+		// SQLite doesn't allow adding NOT NULL columns with CHECK constraints in ALTER TABLE
+		// when there's existing data. We add it without constraints first.
+		await db`ALTER TABLE enabled_models ADD COLUMN use_type TEXT DEFAULT 'coding'`;
+		// Update all existing rows to have the default value
+		await db`UPDATE enabled_models SET use_type = 'coding' WHERE use_type IS NULL`;
+	} catch (_error) {
+		// Column might already exist, ignore error
+	}
 
-  // Create use_type index AFTER ensuring the column exists
-  await db`CREATE INDEX IF NOT EXISTS idx_enabled_models_use_type ON enabled_models(use_type)`;
+	// Create use_type index AFTER ensuring the column exists
+	await db`CREATE INDEX IF NOT EXISTS idx_enabled_models_use_type ON enabled_models(use_type)`;
 
-  // Create workflow_events table for event sourcing
-  await db`
+	// Create workflow_events table for event sourcing
+	await db`
         CREATE TABLE IF NOT EXISTS workflow_events (
             id TEXT PRIMARY KEY,
             execution_id TEXT NOT NULL,
@@ -279,14 +279,13 @@ export async function createSchema(db: SQL): Promise<void> {
             metadata TEXT
         )
     `;
-  await db`CREATE INDEX IF NOT EXISTS idx_workflow_events_execution_id ON workflow_events(execution_id)`;
-  await db`CREATE INDEX IF NOT EXISTS idx_workflow_events_type ON workflow_events(event_type)`;
-  await db`CREATE INDEX IF NOT EXISTS idx_workflow_events_timestamp ON workflow_events(timestamp)`;
-  await db`CREATE INDEX IF NOT EXISTS idx_workflow_events_execution_sequence ON workflow_events(execution_id, sequence_number)`;
+	await db`CREATE INDEX IF NOT EXISTS idx_workflow_events_execution_id ON workflow_events(execution_id)`;
+	await db`CREATE INDEX IF NOT EXISTS idx_workflow_events_type ON workflow_events(event_type)`;
+	await db`CREATE INDEX IF NOT EXISTS idx_workflow_events_timestamp ON workflow_events(timestamp)`;
+	await db`CREATE INDEX IF NOT EXISTS idx_workflow_events_execution_sequence ON workflow_events(execution_id, sequence_number)`;
 
-  
-  // Create generated_contexts table for storing AI-generated repository contexts
-  await db`
+	// Create generated_contexts table for storing AI-generated repository contexts
+	await db`
     CREATE TABLE IF NOT EXISTS generated_contexts (
       id TEXT PRIMARY KEY,
       workspace TEXT NOT NULL,
@@ -301,12 +300,12 @@ export async function createSchema(db: SQL): Promise<void> {
       created_at TEXT NOT NULL
     )
   `;
-  await db`CREATE INDEX IF NOT EXISTS idx_generated_contexts_workspace ON generated_contexts(workspace)`;
-  await db`CREATE INDEX IF NOT EXISTS idx_generated_contexts_git_hash ON generated_contexts(git_hash)`;
-  await db`CREATE INDEX IF NOT EXISTS idx_generated_contexts_created_at ON generated_contexts(created_at DESC)`;
+	await db`CREATE INDEX IF NOT EXISTS idx_generated_contexts_workspace ON generated_contexts(workspace)`;
+	await db`CREATE INDEX IF NOT EXISTS idx_generated_contexts_git_hash ON generated_contexts(git_hash)`;
+	await db`CREATE INDEX IF NOT EXISTS idx_generated_contexts_created_at ON generated_contexts(created_at DESC)`;
 
-  // Create system_configurations table for storing system-wide configurations
-  await db`
+	// Create system_configurations table for storing system-wide configurations
+	await db`
     CREATE TABLE IF NOT EXISTS system_configurations (
       id TEXT PRIMARY KEY,
       category TEXT NOT NULL,
@@ -318,11 +317,11 @@ export async function createSchema(db: SQL): Promise<void> {
       UNIQUE(category, config_key)
     )
   `;
-  await db`CREATE INDEX IF NOT EXISTS idx_system_configurations_category ON system_configurations(category)`;
-  await db`CREATE INDEX IF NOT EXISTS idx_system_configurations_key ON system_configurations(config_key)`;
+	await db`CREATE INDEX IF NOT EXISTS idx_system_configurations_category ON system_configurations(category)`;
+	await db`CREATE INDEX IF NOT EXISTS idx_system_configurations_key ON system_configurations(config_key)`;
 
-  // Create kanban_columns table for WIP limits and column configuration
-  await db`
+	// Create kanban_columns table for WIP limits and column configuration
+	await db`
     CREATE TABLE IF NOT EXISTS kanban_columns (
       id TEXT PRIMARY KEY,
       board_id TEXT NOT NULL DEFAULT 'default',
@@ -333,15 +332,15 @@ export async function createSchema(db: SQL): Promise<void> {
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
   `;
-  await db`CREATE INDEX IF NOT EXISTS idx_kanban_columns_board_id ON kanban_columns(board_id)`;
-  await db`CREATE INDEX IF NOT EXISTS idx_kanban_columns_lane_id ON kanban_columns(lane_id)`;
+	await db`CREATE INDEX IF NOT EXISTS idx_kanban_columns_board_id ON kanban_columns(board_id)`;
+	await db`CREATE INDEX IF NOT EXISTS idx_kanban_columns_lane_id ON kanban_columns(lane_id)`;
 
-  // Insert default columns if they don't exist
-  try {
-    const existingColumns =
-      await db`SELECT COUNT(*) as count FROM kanban_columns`;
-    if (existingColumns[0]?.count === 0) {
-      await db`
+	// Insert default columns if they don't exist
+	try {
+		const existingColumns =
+			await db`SELECT COUNT(*) as count FROM kanban_columns`;
+		if (existingColumns[0]?.count === 0) {
+			await db`
         INSERT INTO kanban_columns (id, board_id, name, lane_id, max_items, order_num) VALUES
           ('col-planned', 'default', 'Planned', 'planned', 50, 1),
           ('col-doing', 'default', 'Doing', 'doing', 10, 2),
@@ -349,13 +348,13 @@ export async function createSchema(db: SQL): Promise<void> {
           ('col-done', 'default', 'Done', 'done', NULL, 4),
           ('col-failed', 'default', 'Failed', 'failed', 10, 5)
       `;
-    }
-  } catch (_error) {
-    // Columns might already exist, ignore error
-  }
+		}
+	} catch (_error) {
+		// Columns might already exist, ignore error
+	}
 
-  // Create workflow_triggers table for automatic workflow execution
-  await db`
+	// Create workflow_triggers table for automatic workflow execution
+	await db`
     CREATE TABLE IF NOT EXISTS workflow_triggers (
       id TEXT PRIMARY KEY,
       column_id TEXT NOT NULL,
@@ -367,11 +366,11 @@ export async function createSchema(db: SQL): Promise<void> {
       FOREIGN KEY (column_id) REFERENCES kanban_columns(id)
     )
   `;
-  await db`CREATE INDEX IF NOT EXISTS idx_workflow_triggers_column_id ON workflow_triggers(column_id)`;
-  await db`CREATE INDEX IF NOT EXISTS idx_workflow_triggers_workflow_id ON workflow_triggers(workflow_id)`;
+	await db`CREATE INDEX IF NOT EXISTS idx_workflow_triggers_column_id ON workflow_triggers(column_id)`;
+	await db`CREATE INDEX IF NOT EXISTS idx_workflow_triggers_workflow_id ON workflow_triggers(workflow_id)`;
 
-  // Create external_sync_configs table for bidirectional sync configuration
-  await db`
+	// Create external_sync_configs table for bidirectional sync configuration
+	await db`
     CREATE TABLE IF NOT EXISTS external_sync_configs (
       id TEXT PRIMARY KEY,
       board_id TEXT NOT NULL DEFAULT 'default',
@@ -382,11 +381,11 @@ export async function createSchema(db: SQL): Promise<void> {
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
   `;
-  await db`CREATE INDEX IF NOT EXISTS idx_external_sync_configs_board_id ON external_sync_configs(board_id)`;
-  await db`CREATE INDEX IF NOT EXISTS idx_external_sync_configs_provider ON external_sync_configs(provider)`;
+	await db`CREATE INDEX IF NOT EXISTS idx_external_sync_configs_board_id ON external_sync_configs(board_id)`;
+	await db`CREATE INDEX IF NOT EXISTS idx_external_sync_configs_provider ON external_sync_configs(provider)`;
 
-  // Create work_item_transitions table for tracking metrics
-  await db`
+	// Create work_item_transitions table for tracking metrics
+	await db`
     CREATE TABLE IF NOT EXISTS work_item_transitions (
       id TEXT PRIMARY KEY,
       work_item_id TEXT NOT NULL,
@@ -396,12 +395,12 @@ export async function createSchema(db: SQL): Promise<void> {
       FOREIGN KEY (work_item_id) REFERENCES local_work_items(id)
     )
   `;
-  await db`CREATE INDEX IF NOT EXISTS idx_transitions_work_item ON work_item_transitions(work_item_id)`;
-  await db`CREATE INDEX IF NOT EXISTS idx_transitions_date ON work_item_transitions(transitioned_at)`;
-  await db`CREATE INDEX IF NOT EXISTS idx_transitions_to_lane ON work_item_transitions(to_lane)`;
+	await db`CREATE INDEX IF NOT EXISTS idx_transitions_work_item ON work_item_transitions(work_item_id)`;
+	await db`CREATE INDEX IF NOT EXISTS idx_transitions_date ON work_item_transitions(transitioned_at)`;
+	await db`CREATE INDEX IF NOT EXISTS idx_transitions_to_lane ON work_item_transitions(to_lane)`;
 
-  // Create notifications table for in-app notifications
-  await db`
+	// Create notifications table for in-app notifications
+	await db`
     CREATE TABLE IF NOT EXISTS notifications (
       id TEXT PRIMARY KEY,
       user_id TEXT,
@@ -414,11 +413,11 @@ export async function createSchema(db: SQL): Promise<void> {
       FOREIGN KEY (work_item_id) REFERENCES local_work_items(id)
     )
   `;
-  await db`CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, read, created_at)`;
-  await db`CREATE INDEX IF NOT EXISTS idx_notifications_type ON notifications(type)`;
-  await db`CREATE INDEX IF NOT EXISTS idx_notifications_work_item ON notifications(work_item_id)`;
+	await db`CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, read, created_at)`;
+	await db`CREATE INDEX IF NOT EXISTS idx_notifications_type ON notifications(type)`;
+	await db`CREATE INDEX IF NOT EXISTS idx_notifications_work_item ON notifications(work_item_id)`;
 
-  await db`
+	await db`
     CREATE TABLE IF NOT EXISTS opencode_agents (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
@@ -431,9 +430,9 @@ export async function createSchema(db: SQL): Promise<void> {
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
   `;
-  await db`CREATE INDEX IF NOT EXISTS idx_opencode_agents_mode ON opencode_agents(mode)`;
+	await db`CREATE INDEX IF NOT EXISTS idx_opencode_agents_mode ON opencode_agents(mode)`;
 
-  await db`
+	await db`
     CREATE TABLE IF NOT EXISTS opencode_skills (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
@@ -445,8 +444,8 @@ export async function createSchema(db: SQL): Promise<void> {
     )
   `;
 
-  // Create task_loop_sessions table for task loop persistence
-  await db`
+	// Create task_loop_sessions table for task loop persistence
+	await db`
     CREATE TABLE IF NOT EXISTS task_loop_sessions (
       id TEXT PRIMARY KEY,
       status TEXT NOT NULL CHECK(status IN ('idle', 'running', 'paused', 'completed', 'failed', 'resuming')),
@@ -463,11 +462,11 @@ export async function createSchema(db: SQL): Promise<void> {
       metadata TEXT
     )
   `;
-  await db`CREATE INDEX IF NOT EXISTS idx_task_loop_sessions_status ON task_loop_sessions(status)`;
-  await db`CREATE INDEX IF NOT EXISTS idx_task_loop_sessions_updated_at ON task_loop_sessions(updated_at DESC)`;
+	await db`CREATE INDEX IF NOT EXISTS idx_task_loop_sessions_status ON task_loop_sessions(status)`;
+	await db`CREATE INDEX IF NOT EXISTS idx_task_loop_sessions_updated_at ON task_loop_sessions(updated_at DESC)`;
 
-  // Create session_checkpoints table for resumable sessions quick lookup
-  await db`
+	// Create session_checkpoints table for resumable sessions quick lookup
+	await db`
     CREATE TABLE IF NOT EXISTS session_checkpoints (
       session_id TEXT PRIMARY KEY,
       session_type TEXT NOT NULL CHECK(session_type IN ('task-loop')),
@@ -484,11 +483,11 @@ export async function createSchema(db: SQL): Promise<void> {
       FOREIGN KEY (session_id) REFERENCES task_loop_sessions(id) ON DELETE CASCADE
     )
   `;
-  await db`CREATE INDEX IF NOT EXISTS idx_session_checkpoints_status ON session_checkpoints(status)`;
-  await db`CREATE INDEX IF NOT EXISTS idx_session_checkpoints_updated_at ON session_checkpoints(updated_at DESC)`;
+	await db`CREATE INDEX IF NOT EXISTS idx_session_checkpoints_status ON session_checkpoints(status)`;
+	await db`CREATE INDEX IF NOT EXISTS idx_session_checkpoints_updated_at ON session_checkpoints(updated_at DESC)`;
 
-  // Create execution_logs table for persisted task loop logs
-  await db`
+	// Create execution_logs table for persisted task loop logs
+	await db`
     CREATE TABLE IF NOT EXISTS execution_logs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       session_id TEXT NOT NULL,
@@ -500,11 +499,11 @@ export async function createSchema(db: SQL): Promise<void> {
       FOREIGN KEY (session_id) REFERENCES task_loop_sessions(id) ON DELETE CASCADE
     )
   `;
-  await db`CREATE INDEX IF NOT EXISTS idx_execution_logs_session_id ON execution_logs(session_id)`;
-  await db`CREATE INDEX IF NOT EXISTS idx_execution_logs_timestamp ON execution_logs(timestamp DESC)`;
+	await db`CREATE INDEX IF NOT EXISTS idx_execution_logs_session_id ON execution_logs(session_id)`;
+	await db`CREATE INDEX IF NOT EXISTS idx_execution_logs_timestamp ON execution_logs(timestamp DESC)`;
 
-  // Create remote_instances table for TUI remote instance persistence
-  await db`
+	// Create remote_instances table for TUI remote instance persistence
+	await db`
     CREATE TABLE IF NOT EXISTS remote_instances (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
@@ -514,5 +513,5 @@ export async function createSchema(db: SQL): Promise<void> {
       updated_at TEXT NOT NULL
     )
   `;
-  await db`CREATE INDEX IF NOT EXISTS idx_remote_instances_name ON remote_instances(name)`;
+	await db`CREATE INDEX IF NOT EXISTS idx_remote_instances_name ON remote_instances(name)`;
 }

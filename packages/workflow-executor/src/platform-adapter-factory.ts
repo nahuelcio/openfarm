@@ -8,25 +8,25 @@
  */
 
 import type {
-  CreatePRParams,
-  PlatformAdapter,
+	CreatePRParams,
+	PlatformAdapter,
 } from "@openfarm/core/types/adapters";
 import type { Integration, WorkItem } from "@openfarm/core/types/domain";
 import { err, ok, type Result } from "@openfarm/result";
 
 /** Configuration for Azure DevOps adapter */
 export interface AzureAdapterConfig {
-  orgUrl: string;
-  project: string;
-  pat: string;
-  repoId?: string;
+	orgUrl: string;
+	project: string;
+	pat: string;
+	repoId?: string;
 }
 
 /** Configuration for GitHub adapter */
 export interface GitHubAdapterConfig {
-  token: string;
-  owner: string;
-  repo: string;
+	token: string;
+	owner: string;
+	repo: string;
 }
 
 /** Platform type detection result */
@@ -45,29 +45,29 @@ export type PlatformType = "azure" | "github" | "unknown";
  * ```
  */
 export function detectPlatformType(workItem: WorkItem): PlatformType {
-  // First check the source field (most reliable)
-  if (workItem.source === "github") {
-    return "github";
-  }
-  if (workItem.source === "azure-devops") {
-    return "azure";
-  }
+	// First check the source field (most reliable)
+	if (workItem.source === "github") {
+		return "github";
+	}
+	if (workItem.source === "azure-devops") {
+		return "azure";
+	}
 
-  // Fallback to URL detection
-  const repoUrl = workItem.repositoryUrl?.toLowerCase() || "";
+	// Fallback to URL detection
+	const repoUrl = workItem.repositoryUrl?.toLowerCase() || "";
 
-  if (repoUrl.includes("github.com")) {
-    return "github";
-  }
+	if (repoUrl.includes("github.com")) {
+		return "github";
+	}
 
-  if (
-    repoUrl.includes("dev.azure.com") ||
-    repoUrl.includes("visualstudio.com")
-  ) {
-    return "azure";
-  }
+	if (
+		repoUrl.includes("dev.azure.com") ||
+		repoUrl.includes("visualstudio.com")
+	) {
+		return "azure";
+	}
 
-  return "unknown";
+	return "unknown";
 }
 
 /**
@@ -83,29 +83,29 @@ export function detectPlatformType(workItem: WorkItem): PlatformType {
  * ```
  */
 export function parseGitHubUrl(
-  url: string
+	url: string,
 ): Result<{ owner: string; repo: string }> {
-  // Handle various GitHub URL formats:
-  // - https://github.com/owner/repo.git
-  // - https://github.com/owner/repo
-  // - git@github.com:owner/repo.git
-  // - github.com/owner/repo
+	// Handle various GitHub URL formats:
+	// - https://github.com/owner/repo.git
+	// - https://github.com/owner/repo
+	// - git@github.com:owner/repo.git
+	// - github.com/owner/repo
 
-  const patterns = [
-    // HTTPS format
-    /github\.com[/:]([^/]+)\/([^/.]+)(?:\.git)?$/i,
-    // SSH format
-    /git@github\.com:([^/]+)\/([^/.]+)(?:\.git)?$/i,
-  ];
+	const patterns = [
+		// HTTPS format
+		/github\.com[/:]([^/]+)\/([^/.]+)(?:\.git)?$/i,
+		// SSH format
+		/git@github\.com:([^/]+)\/([^/.]+)(?:\.git)?$/i,
+	];
 
-  for (const pattern of patterns) {
-    const match = url.match(pattern);
-    if (match?.[1] && match[2]) {
-      return ok({ owner: match[1], repo: match[2] });
-    }
-  }
+	for (const pattern of patterns) {
+		const match = url.match(pattern);
+		if (match?.[1] && match[2]) {
+			return ok({ owner: match[1], repo: match[2] });
+		}
+	}
 
-  return err(new Error(`Cannot parse GitHub URL: ${url}`));
+	return err(new Error(`Cannot parse GitHub URL: ${url}`));
 }
 
 /**
@@ -116,23 +116,23 @@ export function parseGitHubUrl(
  * @returns Result containing the platform adapter or an error
  */
 export async function createGitHubAdapter(
-  integration: Integration,
-  workItem: WorkItem
+	integration: Integration,
+	workItem: WorkItem,
 ): Promise<Result<PlatformAdapter>> {
-  if (!workItem.repositoryUrl) {
-    return err(new Error("Repository URL is required for GitHub adapter"));
-  }
+	if (!workItem.repositoryUrl) {
+		return err(new Error("Repository URL is required for GitHub adapter"));
+	}
 
-  const parseResult = parseGitHubUrl(workItem.repositoryUrl);
-  if (!parseResult.ok) {
-    return parseResult;
-  }
+	const parseResult = parseGitHubUrl(workItem.repositoryUrl);
+	if (!parseResult.ok) {
+		return parseResult;
+	}
 
-  const { owner, repo } = parseResult.value;
+	const { owner, repo } = parseResult.value;
 
-  // Dynamic import to avoid bundling issues
-  const { GitHubPlatformAdapter } = await import("@openfarm/github-adapter");
-  return ok(new GitHubPlatformAdapter(integration, owner, repo));
+	// Dynamic import to avoid bundling issues
+	const { GitHubPlatformAdapter } = await import("@openfarm/github-adapter");
+	return ok(new GitHubPlatformAdapter(integration, owner, repo));
 }
 
 /**
@@ -143,25 +143,25 @@ export async function createGitHubAdapter(
  * @returns Result containing the platform adapter or an error
  */
 export async function createAzureAdapter(
-  integration: Integration,
-  workItem: WorkItem
+	integration: Integration,
+	workItem: WorkItem,
 ): Promise<Result<PlatformAdapter>> {
-  if (!integration.organization) {
-    return err(
-      new Error("Organization URL is required for Azure DevOps adapter")
-    );
-  }
+	if (!integration.organization) {
+		return err(
+			new Error("Organization URL is required for Azure DevOps adapter"),
+		);
+	}
 
-  // Dynamic import to avoid bundling issues
-  const { AzurePlatformAdapter } = await import("@openfarm/azure-adapter");
+	// Dynamic import to avoid bundling issues
+	const { AzurePlatformAdapter } = await import("@openfarm/azure-adapter");
 
-  return ok(
-    new AzurePlatformAdapter(
-      integration,
-      workItem.project,
-      workItem.azureRepositoryId
-    )
-  );
+	return ok(
+		new AzurePlatformAdapter(
+			integration,
+			workItem.project,
+			workItem.azureRepositoryId,
+		),
+	);
 }
 
 /**
@@ -172,48 +172,48 @@ export async function createAzureAdapter(
  * @returns A platform adapter that uses direct API calls
  */
 export function createAzureFallbackAdapter(
-  config: AzureAdapterConfig,
-  workItem: WorkItem
+	config: AzureAdapterConfig,
+	workItem: WorkItem,
 ): PlatformAdapter {
-  return {
-    getName: () => "Azure DevOps Adapter (Fallback)",
+	return {
+		getName: () => "Azure DevOps Adapter (Fallback)",
 
-    testConnection: async () => ok(true),
+		testConnection: async () => ok(true),
 
-    getWorkItem: async (id: string) => {
-      const { processWorkItemBatch } = await import("@openfarm/azure-adapter");
-      const res = await processWorkItemBatch(config, [id]);
+		getWorkItem: async (id: string) => {
+			const { processWorkItemBatch } = await import("@openfarm/azure-adapter");
+			const res = await processWorkItemBatch(config, [id]);
 
-      if (!res.ok) {
-        return err(res.error);
-      }
-      const item = res.value[0];
-      if (!item) {
-        return err(new Error(`Work item ${id} not found`));
-      }
-      return ok(item);
-    },
+			if (!res.ok) {
+				return err(res.error);
+			}
+			const item = res.value[0];
+			if (!item) {
+				return err(new Error(`Work item ${id} not found`));
+			}
+			return ok(item);
+		},
 
-    createPullRequest: async (params: CreatePRParams) => {
-      const { createPr } = await import("@openfarm/azure-adapter");
-      const prConfig = {
-        ...config,
-        repoId: workItem.azureRepositoryId,
-      };
-      return createPr(
-        prConfig,
-        params.title,
-        params.description || "",
-        params.source,
-        params.target
-      );
-    },
+		createPullRequest: async (params: CreatePRParams) => {
+			const { createPr } = await import("@openfarm/azure-adapter");
+			const prConfig = {
+				...config,
+				repoId: workItem.azureRepositoryId,
+			};
+			return createPr(
+				prConfig,
+				params.title,
+				params.description || "",
+				params.source,
+				params.target,
+			);
+		},
 
-    postComment: async (id: string, text: string) => {
-      const { postComment } = await import("@openfarm/azure-adapter");
-      return postComment(config, id, text);
-    },
-  };
+		postComment: async (id: string, text: string) => {
+			const { postComment } = await import("@openfarm/azure-adapter");
+			return postComment(config, id, text);
+		},
+	};
 }
 
 /**
@@ -224,159 +224,159 @@ export function createAzureFallbackAdapter(
  * @returns Result containing a platform adapter or an error
  */
 export function createGitHubFallbackAdapter(
-  token: string,
-  workItem: WorkItem
+	token: string,
+	workItem: WorkItem,
 ): Result<PlatformAdapter> {
-  if (!workItem.repositoryUrl) {
-    return err(new Error("Repository URL is required for GitHub fallback"));
-  }
+	if (!workItem.repositoryUrl) {
+		return err(new Error("Repository URL is required for GitHub fallback"));
+	}
 
-  const parseResult = parseGitHubUrl(workItem.repositoryUrl);
-  if (!parseResult.ok) {
-    return parseResult;
-  }
+	const parseResult = parseGitHubUrl(workItem.repositoryUrl);
+	if (!parseResult.ok) {
+		return parseResult;
+	}
 
-  const { owner, repo } = parseResult.value;
+	const { owner, repo } = parseResult.value;
 
-  // Create a minimal integration object for the adapter
-  const _integration: Integration = {
-    id: "fallback-github",
-    name: "GitHub Fallback",
-    type: "github",
-    credentials: token,
-    createdAt: new Date().toISOString(),
-  };
+	// Create a minimal integration object for the adapter
+	const _integration: Integration = {
+		id: "fallback-github",
+		name: "GitHub Fallback",
+		type: "github",
+		credentials: token,
+		createdAt: new Date().toISOString(),
+	};
 
-  // Import synchronously is not possible, so we create inline adapter
-  const adapter: PlatformAdapter = {
-    getName: () => `GitHub (${owner}/${repo}) [Fallback]`,
+	// Import synchronously is not possible, so we create inline adapter
+	const adapter: PlatformAdapter = {
+		getName: () => `GitHub (${owner}/${repo}) [Fallback]`,
 
-    testConnection: async () => {
-      try {
-        const res = await fetch("https://api.github.com/user", {
-          headers: {
-            Authorization: `token ${token}`,
-            Accept: "application/vnd.github.v3+json",
-            "User-Agent": "Minions-Farm-Agent",
-          },
-        });
-        return res.ok ? ok(true) : err(new Error(`HTTP ${res.status}`));
-      } catch (error) {
-        return err(error instanceof Error ? error : new Error(String(error)));
-      }
-    },
+		testConnection: async () => {
+			try {
+				const res = await fetch("https://api.github.com/user", {
+					headers: {
+						Authorization: `token ${token}`,
+						Accept: "application/vnd.github.v3+json",
+						"User-Agent": "Minions-Farm-Agent",
+					},
+				});
+				return res.ok ? ok(true) : err(new Error(`HTTP ${res.status}`));
+			} catch (error) {
+				return err(error instanceof Error ? error : new Error(String(error)));
+			}
+		},
 
-    getWorkItem: async (id: string) => {
-      try {
-        const res = await fetch(
-          `https://api.github.com/repos/${owner}/${repo}/issues/${id}`,
-          {
-            headers: {
-              Authorization: `token ${token}`,
-              Accept: "application/vnd.github.v3+json",
-              "User-Agent": "Minions-Farm-Agent",
-            },
-          }
-        );
+		getWorkItem: async (id: string) => {
+			try {
+				const res = await fetch(
+					`https://api.github.com/repos/${owner}/${repo}/issues/${id}`,
+					{
+						headers: {
+							Authorization: `token ${token}`,
+							Accept: "application/vnd.github.v3+json",
+							"User-Agent": "Minions-Farm-Agent",
+						},
+					},
+				);
 
-        if (!res.ok) {
-          return err(new Error(`GitHub API Error: ${res.statusText}`));
-        }
+				if (!res.ok) {
+					return err(new Error(`GitHub API Error: ${res.statusText}`));
+				}
 
-        const data = (await res.json()) as Record<string, unknown>;
-        const workItem: WorkItem = {
-          id: String(data.number),
-          title: String(data.title || ""),
-          description: String(data.body || ""),
-          acceptanceCriteria: "",
-          workItemType: "Task",
-          source: "github",
-          status: data.state === "open" ? "new" : "completed",
-          project: repo,
-          repositoryUrl: `https://github.com/${owner}/${repo}.git`,
-        };
+				const data = (await res.json()) as Record<string, unknown>;
+				const workItem: WorkItem = {
+					id: String(data.number),
+					title: String(data.title || ""),
+					description: String(data.body || ""),
+					acceptanceCriteria: "",
+					workItemType: "Task",
+					source: "github",
+					status: data.state === "open" ? "new" : "completed",
+					project: repo,
+					repositoryUrl: `https://github.com/${owner}/${repo}.git`,
+				};
 
-        return ok(workItem);
-      } catch (error) {
-        return err(error instanceof Error ? error : new Error(String(error)));
-      }
-    },
+				return ok(workItem);
+			} catch (error) {
+				return err(error instanceof Error ? error : new Error(String(error)));
+			}
+		},
 
-    createPullRequest: async (params: CreatePRParams) => {
-      try {
-        const res = await fetch(
-          `https://api.github.com/repos/${owner}/${repo}/pulls`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: `token ${token}`,
-              Accept: "application/vnd.github.v3+json",
-              "User-Agent": "Minions-Farm-Agent",
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              title: params.title,
-              body: params.description,
-              head: params.source,
-              base: params.target,
-            }),
-          }
-        );
+		createPullRequest: async (params: CreatePRParams) => {
+			try {
+				const res = await fetch(
+					`https://api.github.com/repos/${owner}/${repo}/pulls`,
+					{
+						method: "POST",
+						headers: {
+							Authorization: `token ${token}`,
+							Accept: "application/vnd.github.v3+json",
+							"User-Agent": "Minions-Farm-Agent",
+							"Content-Type": "application/json",
+						},
+						body: JSON.stringify({
+							title: params.title,
+							body: params.description,
+							head: params.source,
+							base: params.target,
+						}),
+					},
+				);
 
-        if (!res.ok) {
-          const errorBody = await res.json().catch(() => ({}));
-          return err(
-            new Error(
-              `GitHub API Error: ${(errorBody as { message?: string }).message || res.statusText}`
-            )
-          );
-        }
+				if (!res.ok) {
+					const errorBody = await res.json().catch(() => ({}));
+					return err(
+						new Error(
+							`GitHub API Error: ${(errorBody as { message?: string }).message || res.statusText}`,
+						),
+					);
+				}
 
-        const data = (await res.json()) as { html_url: string };
-        return ok(data.html_url);
-      } catch (error) {
-        return err(error instanceof Error ? error : new Error(String(error)));
-      }
-    },
+				const data = (await res.json()) as { html_url: string };
+				return ok(data.html_url);
+			} catch (error) {
+				return err(error instanceof Error ? error : new Error(String(error)));
+			}
+		},
 
-    postComment: async (id: string, text: string) => {
-      try {
-        const res = await fetch(
-          `https://api.github.com/repos/${owner}/${repo}/issues/${id}/comments`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: `token ${token}`,
-              Accept: "application/vnd.github.v3+json",
-              "User-Agent": "Minions-Farm-Agent",
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ body: text }),
-          }
-        );
+		postComment: async (id: string, text: string) => {
+			try {
+				const res = await fetch(
+					`https://api.github.com/repos/${owner}/${repo}/issues/${id}/comments`,
+					{
+						method: "POST",
+						headers: {
+							Authorization: `token ${token}`,
+							Accept: "application/vnd.github.v3+json",
+							"User-Agent": "Minions-Farm-Agent",
+							"Content-Type": "application/json",
+						},
+						body: JSON.stringify({ body: text }),
+					},
+				);
 
-        if (!res.ok) {
-          return err(new Error(`GitHub API Error: ${res.statusText}`));
-        }
+				if (!res.ok) {
+					return err(new Error(`GitHub API Error: ${res.statusText}`));
+				}
 
-        return ok(undefined);
-      } catch (error) {
-        return err(error instanceof Error ? error : new Error(String(error)));
-      }
-    },
-  };
+				return ok(undefined);
+			} catch (error) {
+				return err(error instanceof Error ? error : new Error(String(error)));
+			}
+		},
+	};
 
-  return ok(adapter);
+	return ok(adapter);
 }
 
 /** Options for creating a fallback platform adapter */
 export interface CreateFallbackAdapterOptions {
-  /** The work item to create the adapter for */
-  workItem: WorkItem;
-  /** Azure DevOps configuration (optional) */
-  azureConfig?: AzureAdapterConfig;
-  /** GitHub token (optional) */
-  githubToken?: string;
+	/** The work item to create the adapter for */
+	workItem: WorkItem;
+	/** Azure DevOps configuration (optional) */
+	azureConfig?: AzureAdapterConfig;
+	/** GitHub token (optional) */
+	githubToken?: string;
 }
 
 /**
@@ -402,42 +402,42 @@ export interface CreateFallbackAdapterOptions {
  * ```
  */
 export function createFallbackAdapter(
-  options: CreateFallbackAdapterOptions
+	options: CreateFallbackAdapterOptions,
 ): Result<PlatformAdapter> {
-  const { workItem, azureConfig, githubToken } = options;
-  const platformType = detectPlatformType(workItem);
+	const { workItem, azureConfig, githubToken } = options;
+	const platformType = detectPlatformType(workItem);
 
-  switch (platformType) {
-    case "github": {
-      if (!githubToken) {
-        return err(
-          new Error(
-            "GitHub token is required for GitHub repositories. " +
-              "Set GITHUB_TOKEN or COPILOT_TOKEN environment variable."
-          )
-        );
-      }
-      return createGitHubFallbackAdapter(githubToken, workItem);
-    }
+	switch (platformType) {
+		case "github": {
+			if (!githubToken) {
+				return err(
+					new Error(
+						"GitHub token is required for GitHub repositories. " +
+							"Set GITHUB_TOKEN or COPILOT_TOKEN environment variable.",
+					),
+				);
+			}
+			return createGitHubFallbackAdapter(githubToken, workItem);
+		}
 
-    case "azure": {
-      if (!azureConfig) {
-        return err(
-          new Error(
-            "Azure DevOps configuration is required for Azure repositories. " +
-              "Set AZURE_ORG_URL, AZURE_PROJECT, and AZURE_PAT environment variables."
-          )
-        );
-      }
-      return ok(createAzureFallbackAdapter(azureConfig, workItem));
-    }
+		case "azure": {
+			if (!azureConfig) {
+				return err(
+					new Error(
+						"Azure DevOps configuration is required for Azure repositories. " +
+							"Set AZURE_ORG_URL, AZURE_PROJECT, and AZURE_PAT environment variables.",
+					),
+				);
+			}
+			return ok(createAzureFallbackAdapter(azureConfig, workItem));
+		}
 
-    default:
-      return err(
-        new Error(
-          `Cannot detect platform type for repository: ${workItem.repositoryUrl}. ` +
-            "Supported platforms: GitHub, Azure DevOps."
-        )
-      );
-  }
+		default:
+			return err(
+				new Error(
+					`Cannot detect platform type for repository: ${workItem.repositoryUrl}. ` +
+						"Supported platforms: GitHub, Azure DevOps.",
+				),
+			);
+	}
 }

@@ -18,19 +18,19 @@ import type { Integration } from "../types";
  * ```
  */
 export async function getIntegrations(db: SQL): Promise<Integration[]> {
-  const rows = (await db`SELECT * FROM integrations`) as any[];
-  return rows.map((row) => ({
-    id: row.id,
-    name: row.name,
-    type: row.type as Integration["type"],
-    credentials: row.credentials,
-    organization: row.organization || undefined,
-    gitUserName: row.git_user_name || undefined,
-    gitUserEmail: row.git_user_email || undefined,
-    createdAt: row.created_at,
-    lastTestedAt: row.last_tested_at || undefined,
-    lastTestStatus: row.last_test_status || undefined,
-  }));
+	const rows = (await db`SELECT * FROM integrations`) as any[];
+	return rows.map((row) => ({
+		id: row.id,
+		name: row.name,
+		type: row.type as Integration["type"],
+		credentials: row.credentials,
+		organization: row.organization || undefined,
+		gitUserName: row.git_user_name || undefined,
+		gitUserEmail: row.git_user_email || undefined,
+		createdAt: row.created_at,
+		lastTestedAt: row.last_tested_at || undefined,
+		lastTestStatus: row.last_test_status || undefined,
+	}));
 }
 
 /**
@@ -50,28 +50,28 @@ export async function getIntegrations(db: SQL): Promise<Integration[]> {
  * ```
  */
 export async function getIntegration(
-  db: SQL,
-  integrationId: string
+	db: SQL,
+	integrationId: string,
 ): Promise<Integration | undefined> {
-  const rows =
-    (await db`SELECT * FROM integrations WHERE id = ${integrationId}`) as any[];
-  const row = rows[0];
-  if (!row) {
-    return undefined;
-  }
+	const rows =
+		(await db`SELECT * FROM integrations WHERE id = ${integrationId}`) as any[];
+	const row = rows[0];
+	if (!row) {
+		return undefined;
+	}
 
-  return {
-    id: row.id,
-    name: row.name,
-    type: row.type as Integration["type"],
-    credentials: row.credentials,
-    organization: row.organization || undefined,
-    gitUserName: row.git_user_name || undefined,
-    gitUserEmail: row.git_user_email || undefined,
-    createdAt: row.created_at,
-    lastTestedAt: row.last_tested_at || undefined,
-    lastTestStatus: row.last_test_status || undefined,
-  };
+	return {
+		id: row.id,
+		name: row.name,
+		type: row.type as Integration["type"],
+		credentials: row.credentials,
+		organization: row.organization || undefined,
+		gitUserName: row.git_user_name || undefined,
+		gitUserEmail: row.git_user_email || undefined,
+		createdAt: row.created_at,
+		lastTestedAt: row.last_tested_at || undefined,
+		lastTestStatus: row.last_test_status || undefined,
+	};
 }
 
 /**
@@ -94,11 +94,11 @@ export async function getIntegration(
  * ```
  */
 export async function addIntegration(
-  db: SQL,
-  integration: Integration
+	db: SQL,
+	integration: Integration,
 ): Promise<Result<void>> {
-  try {
-    await db`
+	try {
+		await db`
             INSERT INTO integrations (
                 id, name, type, credentials, organization, git_user_name,
                 git_user_email, created_at, last_tested_at, last_test_status
@@ -111,10 +111,10 @@ export async function addIntegration(
             )
         `;
 
-    return ok(undefined);
-  } catch (error) {
-    return err(error instanceof Error ? error : new Error(String(error)));
-  }
+		return ok(undefined);
+	} catch (error) {
+		return err(error instanceof Error ? error : new Error(String(error)));
+	}
 }
 
 /**
@@ -137,19 +137,19 @@ export async function addIntegration(
  * ```
  */
 export async function updateIntegration(
-  db: SQL,
-  integrationId: string,
-  updater: (integration: Integration) => Integration
+	db: SQL,
+	integrationId: string,
+	updater: (integration: Integration) => Integration,
 ): Promise<Result<void>> {
-  try {
-    const currentIntegration = await getIntegration(db, integrationId);
-    if (!currentIntegration) {
-      return err(new Error(`Integration not found: ${integrationId}`));
-    }
+	try {
+		const currentIntegration = await getIntegration(db, integrationId);
+		if (!currentIntegration) {
+			return err(new Error(`Integration not found: ${integrationId}`));
+		}
 
-    const updatedIntegration = updater(currentIntegration);
+		const updatedIntegration = updater(currentIntegration);
 
-    await db`
+		await db`
             UPDATE integrations SET
                 name = ${updatedIntegration.name}, 
                 type = ${updatedIntegration.type}, 
@@ -162,10 +162,10 @@ export async function updateIntegration(
             WHERE id = ${integrationId}
         `;
 
-    return ok(undefined);
-  } catch (error) {
-    return err(error instanceof Error ? error : new Error(String(error)));
-  }
+		return ok(undefined);
+	} catch (error) {
+		return err(error instanceof Error ? error : new Error(String(error)));
+	}
 }
 
 /**
@@ -185,13 +185,13 @@ export async function updateIntegration(
  * ```
  */
 export async function deleteIntegration(
-  db: SQL,
-  integrationId: string
+	db: SQL,
+	integrationId: string,
 ): Promise<Result<void>> {
-  try {
-    await db`DELETE FROM integrations WHERE id = ${integrationId}`;
-    return ok(undefined);
-  } catch (error) {
-    return err(error instanceof Error ? error : new Error(String(error)));
-  }
+	try {
+		await db`DELETE FROM integrations WHERE id = ${integrationId}`;
+		return ok(undefined);
+	} catch (error) {
+		return err(error instanceof Error ? error : new Error(String(error)));
+	}
 }

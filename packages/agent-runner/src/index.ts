@@ -6,8 +6,8 @@ export { defaultFileSystem } from "@openfarm/core/db/connection";
 export { CircuitBreaker } from "@openfarm/utils";
 // Engine factory and types
 export {
-  type CodingEngineFactoryOptions,
-  createCodingEngine,
+	type CodingEngineFactoryOptions,
+	createCodingEngine,
 } from "./engines/factory";
 // Workflow Engine
 export type { WorkflowContext } from "./engines/workflow/types";
@@ -20,31 +20,31 @@ export { authenticateRepository } from "./operations/auth/authenticate";
 // Operations - Git
 export { ensureMainRepo } from "./operations/git/ensure";
 export {
-  createWorktree,
-  removeWorktree,
+	createWorktree,
+	removeWorktree,
 } from "./operations/git/worktree";
 // Orchestration
 export type {
-  ExecuteOptions,
-  ExecuteResult,
-  Orchestrator,
-  WorkspaceInfo,
-  WorkspaceProvisionConfig,
+	ExecuteOptions,
+	ExecuteResult,
+	Orchestrator,
+	WorkspaceInfo,
+	WorkspaceProvisionConfig,
 } from "./orchestration/orchestrator";
 // Services - OpenCode
 export {
-  type AuthStatus,
-  type DeviceCode,
-  getOpenCodeAuthAdapter,
-  type OAuthCallbackResult,
-  type OAuthCompletionCallback,
-  OpenCodeAuthAdapter,
-  type OpenCodeAuthAdapterConfig,
-  resetOpenCodeAuthAdapter,
+	type AuthStatus,
+	type DeviceCode,
+	getOpenCodeAuthAdapter,
+	type OAuthCallbackResult,
+	type OAuthCompletionCallback,
+	OpenCodeAuthAdapter,
+	type OpenCodeAuthAdapterConfig,
+	resetOpenCodeAuthAdapter,
 } from "./services/opencode-auth";
 export {
-  getOpenCodeServerStatus,
-  getOpenCodeServerUrl,
-  startOpenCodeServer,
-  stopOpenCodeServer,
+	getOpenCodeServerStatus,
+	getOpenCodeServerUrl,
+	startOpenCodeServer,
+	stopOpenCodeServer,
 } from "./services/opencode-server";

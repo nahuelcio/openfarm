@@ -3,30 +3,30 @@ type SQL = any;
 
 // Type for database row results
 interface WorkItemRow {
-  id: string;
-  title: string;
-  description: string | null;
-  acceptance_criteria: string | null;
-  work_item_type: string;
-  source: string;
-  status: string;
-  assigned_agent_id: string | null;
-  pr_url: string | null;
-  branch_name: string | null;
-  project: string;
-  repository_url: string | null;
-  azure_repository_id: string | null;
-  azure_repository_project: string | null;
-  tags: string | null;
-  state: string | null;
-  assigned_to: string | null;
-  assignee_id: string | null;
-  assignee_name: string | null;
-  assignee_avatar_url: string | null;
-  priority: string | null;
-  pre_instructions: string | null;
-  original_work_item_id: string | null;
-  workflow_id: string | null;
+	id: string;
+	title: string;
+	description: string | null;
+	acceptance_criteria: string | null;
+	work_item_type: string;
+	source: string;
+	status: string;
+	assigned_agent_id: string | null;
+	pr_url: string | null;
+	branch_name: string | null;
+	project: string;
+	repository_url: string | null;
+	azure_repository_id: string | null;
+	azure_repository_project: string | null;
+	tags: string | null;
+	state: string | null;
+	assigned_to: string | null;
+	assignee_id: string | null;
+	assignee_name: string | null;
+	assignee_avatar_url: string | null;
+	priority: string | null;
+	pre_instructions: string | null;
+	original_work_item_id: string | null;
+	workflow_id: string | null;
 }
 
 import { err, ok, type Result } from "@openfarm/result";
@@ -47,39 +47,39 @@ import { parseJson, toJson } from "./utils";
  * ```
  */
 export async function getLocalWorkItems(db: SQL): Promise<WorkItem[]> {
-  const rows = (await db`SELECT * FROM local_work_items`) as WorkItemRow[];
-  return rows.map((row) => ({
-    id: row.id,
-    title: row.title,
-    description: row.description || "",
-    acceptanceCriteria: row.acceptance_criteria || "",
-    workItemType: row.work_item_type,
-    source: row.source as WorkItem["source"],
-    status: row.status as WorkItem["status"],
-    assignedAgentId: row.assigned_agent_id || undefined,
-    prUrl: row.pr_url || undefined,
-    branchName: row.branch_name || undefined,
-    defaultBranch: row.branch_name || undefined,
-    project: row.project,
-    repositoryUrl: row.repository_url || undefined,
-    azureRepositoryId: row.azure_repository_id || undefined,
-    azureRepositoryProject: row.azure_repository_project || undefined,
-    tags: parseJson<string[]>(row.tags) || undefined,
-    state: row.state || undefined,
-    assignedTo: row.assigned_to || undefined, // Keep for backward compatibility
-    assignee:
-      row.assignee_id && row.assignee_name
-        ? {
-            id: row.assignee_id,
-            name: row.assignee_name,
-            avatarUrl: row.assignee_avatar_url || undefined,
-          }
-        : undefined,
-    priority: (row.priority as WorkItem["priority"]) || "medium",
-    preInstructions: row.pre_instructions || undefined,
-    originalWorkItemId: row.original_work_item_id || undefined,
-    workflowId: row.workflow_id || undefined,
-  }));
+	const rows = (await db`SELECT * FROM local_work_items`) as WorkItemRow[];
+	return rows.map((row) => ({
+		id: row.id,
+		title: row.title,
+		description: row.description || "",
+		acceptanceCriteria: row.acceptance_criteria || "",
+		workItemType: row.work_item_type,
+		source: row.source as WorkItem["source"],
+		status: row.status as WorkItem["status"],
+		assignedAgentId: row.assigned_agent_id || undefined,
+		prUrl: row.pr_url || undefined,
+		branchName: row.branch_name || undefined,
+		defaultBranch: row.branch_name || undefined,
+		project: row.project,
+		repositoryUrl: row.repository_url || undefined,
+		azureRepositoryId: row.azure_repository_id || undefined,
+		azureRepositoryProject: row.azure_repository_project || undefined,
+		tags: parseJson<string[]>(row.tags) || undefined,
+		state: row.state || undefined,
+		assignedTo: row.assigned_to || undefined, // Keep for backward compatibility
+		assignee:
+			row.assignee_id && row.assignee_name
+				? {
+						id: row.assignee_id,
+						name: row.assignee_name,
+						avatarUrl: row.assignee_avatar_url || undefined,
+					}
+				: undefined,
+		priority: (row.priority as WorkItem["priority"]) || "medium",
+		preInstructions: row.pre_instructions || undefined,
+		originalWorkItemId: row.original_work_item_id || undefined,
+		workflowId: row.workflow_id || undefined,
+	}));
 }
 
 /**
@@ -99,48 +99,48 @@ export async function getLocalWorkItems(db: SQL): Promise<WorkItem[]> {
  * ```
  */
 export async function getLocalWorkItem(
-  db: SQL,
-  workItemId: string
+	db: SQL,
+	workItemId: string,
 ): Promise<WorkItem | undefined> {
-  const rows =
-    (await db`SELECT * FROM local_work_items WHERE id = ${workItemId}`) as WorkItemRow[];
-  const row = rows[0];
-  if (!row) {
-    return undefined;
-  }
+	const rows =
+		(await db`SELECT * FROM local_work_items WHERE id = ${workItemId}`) as WorkItemRow[];
+	const row = rows[0];
+	if (!row) {
+		return undefined;
+	}
 
-  return {
-    id: row.id,
-    title: row.title,
-    description: row.description || "",
-    acceptanceCriteria: row.acceptance_criteria || "",
-    workItemType: row.work_item_type,
-    source: row.source as WorkItem["source"],
-    status: row.status as WorkItem["status"],
-    assignedAgentId: row.assigned_agent_id || undefined,
-    prUrl: row.pr_url || undefined,
-    branchName: row.branch_name || undefined,
-    defaultBranch: row.branch_name || undefined,
-    project: row.project,
-    repositoryUrl: row.repository_url || undefined,
-    azureRepositoryId: row.azure_repository_id || undefined,
-    azureRepositoryProject: row.azure_repository_project || undefined,
-    tags: parseJson<string[]>(row.tags) || undefined,
-    state: row.state || undefined,
-    assignedTo: row.assigned_to || undefined, // Keep for backward compatibility
-    assignee:
-      row.assignee_id && row.assignee_name
-        ? {
-            id: row.assignee_id,
-            name: row.assignee_name,
-            avatarUrl: row.assignee_avatar_url || undefined,
-          }
-        : undefined,
-    priority: (row.priority as WorkItem["priority"]) || "medium",
-    preInstructions: row.pre_instructions || undefined,
-    originalWorkItemId: row.original_work_item_id || undefined,
-    workflowId: row.workflow_id || undefined,
-  };
+	return {
+		id: row.id,
+		title: row.title,
+		description: row.description || "",
+		acceptanceCriteria: row.acceptance_criteria || "",
+		workItemType: row.work_item_type,
+		source: row.source as WorkItem["source"],
+		status: row.status as WorkItem["status"],
+		assignedAgentId: row.assigned_agent_id || undefined,
+		prUrl: row.pr_url || undefined,
+		branchName: row.branch_name || undefined,
+		defaultBranch: row.branch_name || undefined,
+		project: row.project,
+		repositoryUrl: row.repository_url || undefined,
+		azureRepositoryId: row.azure_repository_id || undefined,
+		azureRepositoryProject: row.azure_repository_project || undefined,
+		tags: parseJson<string[]>(row.tags) || undefined,
+		state: row.state || undefined,
+		assignedTo: row.assigned_to || undefined, // Keep for backward compatibility
+		assignee:
+			row.assignee_id && row.assignee_name
+				? {
+						id: row.assignee_id,
+						name: row.assignee_name,
+						avatarUrl: row.assignee_avatar_url || undefined,
+					}
+				: undefined,
+		priority: (row.priority as WorkItem["priority"]) || "medium",
+		preInstructions: row.pre_instructions || undefined,
+		originalWorkItemId: row.original_work_item_id || undefined,
+		workflowId: row.workflow_id || undefined,
+	};
 }
 
 /**
@@ -164,11 +164,11 @@ export async function getLocalWorkItem(
  * ```
  */
 export async function addLocalWorkItem(
-  db: SQL,
-  workItem: WorkItem
+	db: SQL,
+	workItem: WorkItem,
 ): Promise<Result<void>> {
-  try {
-    await db`
+	try {
+		await db`
             INSERT INTO local_work_items (
                 id, title, description, acceptance_criteria, work_item_type, source,
                 status, assigned_agent_id, pr_url, branch_name, project, repository_url,
@@ -187,10 +187,10 @@ export async function addLocalWorkItem(
             )
         `;
 
-    return ok(undefined);
-  } catch (error) {
-    return err(error instanceof Error ? error : new Error(String(error)));
-  }
+		return ok(undefined);
+	} catch (error) {
+		return err(error instanceof Error ? error : new Error(String(error)));
+	}
 }
 
 /**
@@ -215,25 +215,25 @@ export async function addLocalWorkItem(
  * Helper to validate work item exists before update
  */
 async function validateWorkItemExists(
-  db: SQL,
-  workItemId: string
+	db: SQL,
+	workItemId: string,
 ): Promise<Result<WorkItem>> {
-  const currentItem = await getLocalWorkItem(db, workItemId);
-  if (!currentItem) {
-    return err(new Error(`Work item not found: ${workItemId}`));
-  }
-  return ok(currentItem);
+	const currentItem = await getLocalWorkItem(db, workItemId);
+	if (!currentItem) {
+		return err(new Error(`Work item not found: ${workItemId}`));
+	}
+	return ok(currentItem);
 }
 
 /**
  * Helper to execute work item update
  */
 async function executeWorkItemUpdate(
-  db: SQL,
-  workItemId: string,
-  updatedItem: WorkItem
+	db: SQL,
+	workItemId: string,
+	updatedItem: WorkItem,
 ): Promise<void> {
-  await db`
+	await db`
     UPDATE local_work_items SET
       title = ${updatedItem.title}, 
       description = ${updatedItem.description || null}, 
@@ -263,23 +263,23 @@ async function executeWorkItemUpdate(
 }
 
 export async function updateLocalWorkItem(
-  db: SQL,
-  workItemId: string,
-  updater: (item: WorkItem) => WorkItem
+	db: SQL,
+	workItemId: string,
+	updater: (item: WorkItem) => WorkItem,
 ): Promise<Result<void>> {
-  try {
-    const validationResult = await validateWorkItemExists(db, workItemId);
-    if (!validationResult.ok) {
-      return err(validationResult.error);
-    }
+	try {
+		const validationResult = await validateWorkItemExists(db, workItemId);
+		if (!validationResult.ok) {
+			return err(validationResult.error);
+		}
 
-    const updatedItem = updater(validationResult.value);
-    await executeWorkItemUpdate(db, workItemId, updatedItem);
+		const updatedItem = updater(validationResult.value);
+		await executeWorkItemUpdate(db, workItemId, updatedItem);
 
-    return ok(undefined);
-  } catch (error) {
-    return err(error instanceof Error ? error : new Error(String(error)));
-  }
+		return ok(undefined);
+	} catch (error) {
+		return err(error instanceof Error ? error : new Error(String(error)));
+	}
 }
 
 /**
@@ -299,19 +299,19 @@ export async function updateLocalWorkItem(
  * ```
  */
 export async function deleteLocalWorkItem(
-  db: SQL,
-  workItemId: string
+	db: SQL,
+	workItemId: string,
 ): Promise<Result<void>> {
-  try {
-    await db`DELETE FROM workflow_executions WHERE work_item_id = ${workItemId}`;
-    await db`DELETE FROM work_item_transitions WHERE work_item_id = ${workItemId}`;
-    await db`DELETE FROM notifications WHERE work_item_id = ${workItemId}`;
-    await db`DELETE FROM local_work_items WHERE id = ${workItemId}`;
+	try {
+		await db`DELETE FROM workflow_executions WHERE work_item_id = ${workItemId}`;
+		await db`DELETE FROM work_item_transitions WHERE work_item_id = ${workItemId}`;
+		await db`DELETE FROM notifications WHERE work_item_id = ${workItemId}`;
+		await db`DELETE FROM local_work_items WHERE id = ${workItemId}`;
 
-    return ok(undefined);
-  } catch (error) {
-    return err(error instanceof Error ? error : new Error(String(error)));
-  }
+		return ok(undefined);
+	} catch (error) {
+		return err(error instanceof Error ? error : new Error(String(error)));
+	}
 }
 
 export { getLocalWorkItem as getWorkItem };

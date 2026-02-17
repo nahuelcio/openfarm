@@ -1,136 +1,136 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  buildConfigMap,
-  type ConfigEntry,
-  getConfigValue,
-  getProviderApiKeyFromMap,
-  OpenCodeConfigService,
-  resolveEnvModel,
-  resolveEnvProviderApiKey,
-  resolveStepModel,
-  resolveStepProvider,
+	buildConfigMap,
+	type ConfigEntry,
+	getConfigValue,
+	getProviderApiKeyFromMap,
+	OpenCodeConfigService,
+	resolveEnvModel,
+	resolveEnvProviderApiKey,
+	resolveStepModel,
+	resolveStepProvider,
 } from "../src/services/opencode-config";
 
 const baseEntries: ConfigEntry[] = [
-  { configKey: "server.defaultProvider", configValue: "copilot" },
-  { configKey: "server.defaultModel", configValue: "copilot/gpt-4o-mini" },
-  { configKey: "providers.copilot.apiKey", configValue: "base-copilot" },
-  { configKey: "providers.copilot.apiBase", configValue: "http://copilot" },
-  { configKey: "providers.copilot.token", configValue: "token-123" },
-  { configKey: "providers.anthropic.apiKey", configValue: "anthro" },
-  { configKey: "providers.openrouter.apiKey", configValue: "router" },
-  {
-    configKey: "server.overrides.anthropic.apiKey",
-    configValue: "server-override",
-  },
+	{ configKey: "server.defaultProvider", configValue: "copilot" },
+	{ configKey: "server.defaultModel", configValue: "copilot/gpt-4o-mini" },
+	{ configKey: "providers.copilot.apiKey", configValue: "base-copilot" },
+	{ configKey: "providers.copilot.apiBase", configValue: "http://copilot" },
+	{ configKey: "providers.copilot.token", configValue: "token-123" },
+	{ configKey: "providers.anthropic.apiKey", configValue: "anthro" },
+	{ configKey: "providers.openrouter.apiKey", configValue: "router" },
+	{
+		configKey: "server.overrides.anthropic.apiKey",
+		configValue: "server-override",
+	},
 ];
 
 describe("OpenCodeConfigService helpers", () => {
-  const originalEnv = process.env;
+	const originalEnv = process.env;
 
-  beforeEach(() => {
-    process.env = { ...originalEnv };
-  });
+	beforeEach(() => {
+		process.env = { ...originalEnv };
+	});
 
-  afterEach(() => {
-    process.env = originalEnv;
-  });
+	afterEach(() => {
+		process.env = originalEnv;
+	});
 
-  it("buildConfigMap parses JSON values", () => {
-    const entries: ConfigEntry[] = [
-      { configKey: "server.defaultProvider", configValue: "copilot" },
-    ];
-    const map = buildConfigMap(entries);
+	it("buildConfigMap parses JSON values", () => {
+		const entries: ConfigEntry[] = [
+			{ configKey: "server.defaultProvider", configValue: "copilot" },
+		];
+		const map = buildConfigMap(entries);
 
-    expect(map.get("server.defaultProvider")).toBe("copilot");
-  });
+		expect(map.get("server.defaultProvider")).toBe("copilot");
+	});
 
-  it("getConfigValue returns default when missing", () => {
-    const map = buildConfigMap([]);
-    expect(getConfigValue(map, "server.defaultModel", "fallback")).toBe(
-      "fallback"
-    );
-  });
+	it("getConfigValue returns default when missing", () => {
+		const map = buildConfigMap([]);
+		expect(getConfigValue(map, "server.defaultModel", "fallback")).toBe(
+			"fallback",
+		);
+	});
 
-  it("getProviderApiKeyFromMap prefers overrides", () => {
-    const map = buildConfigMap(baseEntries);
-    expect(getProviderApiKeyFromMap(map, "anthropic", "server")).toBe(
-      "server-override"
-    );
-  });
+	it("getProviderApiKeyFromMap prefers overrides", () => {
+		const map = buildConfigMap(baseEntries);
+		expect(getProviderApiKeyFromMap(map, "anthropic", "server")).toBe(
+			"server-override",
+		);
+	});
 
-  it("resolveEnvProviderApiKey reads provider env", () => {
-    process.env.ANTHROPIC_API_KEY = "env-anthropic";
-    process.env.OPENROUTER_API_KEY = "env-router";
-    process.env.COPILOT_TOKEN = "env-copilot";
+	it("resolveEnvProviderApiKey reads provider env", () => {
+		process.env.ANTHROPIC_API_KEY = "env-anthropic";
+		process.env.OPENROUTER_API_KEY = "env-router";
+		process.env.COPILOT_TOKEN = "env-copilot";
 
-    expect(resolveEnvProviderApiKey("anthropic")).toBe("env-anthropic");
-    expect(resolveEnvProviderApiKey("openrouter")).toBe("env-router");
-    expect(resolveEnvProviderApiKey("copilot")).toBe("env-copilot");
-  });
+		expect(resolveEnvProviderApiKey("anthropic")).toBe("env-anthropic");
+		expect(resolveEnvProviderApiKey("openrouter")).toBe("env-router");
+		expect(resolveEnvProviderApiKey("copilot")).toBe("env-copilot");
+	});
 
-  it("resolveEnvModel returns OPENCODE_DEFAULT_MODEL", () => {
-    process.env.OPENCODE_DEFAULT_MODEL = "opencode/grok-code-fast-1";
-    expect(resolveEnvModel()).toBe("opencode/grok-code-fast-1");
-  });
+	it("resolveEnvModel returns OPENCODE_DEFAULT_MODEL", () => {
+		process.env.OPENCODE_DEFAULT_MODEL = "opencode/grok-code-fast-1";
+		expect(resolveEnvModel()).toBe("opencode/grok-code-fast-1");
+	});
 
-  it("resolveStepProvider maps opencode to copilot", () => {
-    expect(resolveStepProvider({ provider: "opencode" })).toBe("copilot");
-    expect(resolveStepProvider({ provider: "claude-code" })).toBeNull();
-  });
+	it("resolveStepProvider maps opencode to copilot", () => {
+		expect(resolveStepProvider({ provider: "opencode" })).toBe("copilot");
+		expect(resolveStepProvider({ provider: "claude-code" })).toBeNull();
+	});
 
-  it("resolveStepModel uses step model when provided", () => {
-    expect(resolveStepModel({ model: "custom" })).toBe("custom");
-  });
+	it("resolveStepModel uses step model when provided", () => {
+		expect(resolveStepModel({ model: "custom" })).toBe("custom");
+	});
 });
 
 describe("OpenCodeConfigService resolveModel", () => {
-  const service = new OpenCodeConfigService({});
-  const originalEnv = process.env;
+	const service = new OpenCodeConfigService({});
+	const originalEnv = process.env;
 
-  beforeEach(() => {
-    process.env = { ...originalEnv };
-    vi.spyOn(
-      service as unknown as { loadConfigMap: () => Promise<unknown> },
-      "loadConfigMap"
-    ).mockResolvedValue(buildConfigMap(baseEntries));
-  });
+	beforeEach(() => {
+		process.env = { ...originalEnv };
+		vi.spyOn(
+			service as unknown as { loadConfigMap: () => Promise<unknown> },
+			"loadConfigMap",
+		).mockResolvedValue(buildConfigMap(baseEntries));
+	});
 
-  afterEach(() => {
-    process.env = originalEnv;
-    vi.restoreAllMocks();
-  });
+	afterEach(() => {
+		process.env = originalEnv;
+		vi.restoreAllMocks();
+	});
 
-  it("uses step config when provided", async () => {
-    const resolved = await service.resolveModel("server", {
-      provider: "opencode",
-      model: "opencode/custom",
-    });
+	it("uses step config when provided", async () => {
+		const resolved = await service.resolveModel("server", {
+			provider: "opencode",
+			model: "opencode/custom",
+		});
 
-    expect(resolved.provider).toBe("copilot");
-    expect(resolved.model).toBe("opencode/custom");
-  });
+		expect(resolved.provider).toBe("copilot");
+		expect(resolved.model).toBe("opencode/custom");
+	});
 
-  it("uses agent config when provider is opencode", async () => {
-    const resolved = await service.resolveModel("server", undefined, {
-      provider: "opencode",
-      model: "opencode/agent-model",
-      id: "cfg",
-      enabled: true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
+	it("uses agent config when provider is opencode", async () => {
+		const resolved = await service.resolveModel("server", undefined, {
+			provider: "opencode",
+			model: "opencode/agent-model",
+			id: "cfg",
+			enabled: true,
+			createdAt: new Date().toISOString(),
+			updatedAt: new Date().toISOString(),
+		});
 
-    // Uses OPENCODE_DEFAULTS.server.defaultProvider which is "zai"
-    expect(resolved.provider).toBe("zai");
-    expect(resolved.model).toBe("opencode/agent-model");
-  });
+		// Uses OPENCODE_DEFAULTS.server.defaultProvider which is "zai"
+		expect(resolved.provider).toBe("zai");
+		expect(resolved.model).toBe("opencode/agent-model");
+	});
 
-  it("falls back to env model then default", async () => {
-    process.env.OPENCODE_DEFAULT_MODEL = "opencode/env-model";
-    const resolved = await service.resolveModel("server");
+	it("falls back to env model then default", async () => {
+		process.env.OPENCODE_DEFAULT_MODEL = "opencode/env-model";
+		const resolved = await service.resolveModel("server");
 
-    expect(resolved.provider).toBe("copilot");
-    expect(resolved.model).toBe("opencode/env-model");
-  });
+		expect(resolved.provider).toBe("copilot");
+		expect(resolved.model).toBe("opencode/env-model");
+	});
 });

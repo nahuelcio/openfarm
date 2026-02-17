@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 import {
 	AlertCircle,
 	Archive,
@@ -19,7 +21,7 @@ import {
 	Trash2,
 	User,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+
 import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
@@ -28,6 +30,7 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
+
 import { getCurrentUser } from "@/lib/backend";
 import type {
 	Agent,
@@ -38,8 +41,9 @@ import type {
 } from "@/lib/store";
 import { extractSubthreads } from "@/lib/subthreads";
 import { cn } from "@/lib/utils";
-import { UserSettingsDialog } from "./user-settings-dialog";
+
 import { MemoryDialog } from "../memory/memory-dialog";
+import { UserSettingsDialog } from "./user-settings-dialog";
 
 function StatusIcon({ status }: { status: AgentStatus }) {
 	switch (status) {
@@ -202,17 +206,18 @@ export function AppSidebar({
 	const formatUsername = (username: string) => {
 		return username
 			.toLowerCase()
-			.split(' ')
-			.map(word => word.charAt(0).toUpperCase() + word.slice(1))
-			.join(' ');
+			.split(" ")
+			.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+			.join(" ");
 	};
 
 	const getInitials = (username: string) => {
 		return username
-			.split(' ')
-			.map(word => word.charAt(0).toUpperCase())
+			.toLowerCase()
+			.split(" ")
+			.map((word) => word.charAt(0).toUpperCase())
 			.slice(0, 2)
-			.join('');
+			.join("");
 	};
 
 	useEffect(() => {
@@ -381,7 +386,10 @@ export function AppSidebar({
 										const isParentSelected = selectedAgentId === agent.id;
 										return (
 											<div key={agent.id}>
-												<button
+												<div
+													role="button"
+													tabIndex={isSelectingAgent ? -1 : 0}
+													aria-disabled={isSelectingAgent}
 													className={cn(
 														"flex w-full items-start gap-2.5 px-4 pl-9 py-2 text-left transition-colors group",
 														isParentSelected
@@ -393,7 +401,14 @@ export function AppSidebar({
 													onClick={() =>
 														!isSelectingAgent && onSelectAgent(agent)
 													}
-													disabled={isSelectingAgent}
+													onKeyDown={(event) => {
+														if (event.key === "Enter" || event.key === " ") {
+															event.preventDefault();
+															if (!isSelectingAgent) {
+																onSelectAgent(agent);
+															}
+														}
+													}}
 												>
 													<StatusIcon status={agent.status} />
 													<div className="flex-1 min-w-0">
@@ -451,7 +466,7 @@ export function AppSidebar({
 															</DropdownMenuContent>
 														</DropdownMenu>
 													)}
-												</button>
+												</div>
 												{subthreads.length > 0 && (
 													<div className="ml-12 mr-2 mb-1 rounded border border-border/60 bg-sidebar-accent/20 px-1.5 py-1">
 														<div className="px-1 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">

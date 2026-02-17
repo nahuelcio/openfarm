@@ -35,7 +35,10 @@ export class StatisticsCollector {
 		this.processesCreated++;
 	}
 
-	getStatistics(tokensInput: number, tokensOutput: number): ExecutionStatistics {
+	getStatistics(
+		tokensInput: number,
+		tokensOutput: number,
+	): ExecutionStatistics {
 		const duration = Date.now() - this.startTime;
 		const creditsSpent = this.calculateCredits(tokensInput, tokensOutput);
 

@@ -3,8 +3,8 @@
  * Basado en el patrón estándar de escape sequences
  */
 const ANSI_ESCAPE_REGEX =
-  // biome-ignore lint/suspicious/noControlCharactersInRegex: necesario para detectar códigos ANSI
-  /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g;
+	// biome-ignore lint/suspicious/noControlCharactersInRegex: necesario para detectar códigos ANSI
+	/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g;
 
 /**
  * Elimina códigos ANSI del texto
@@ -18,7 +18,7 @@ const ANSI_ESCAPE_REGEX =
  * ```
  */
 export function stripAnsi(text: string): string {
-  return text.replace(ANSI_ESCAPE_REGEX, "");
+	return text.replace(ANSI_ESCAPE_REGEX, "");
 }
 
 /**
@@ -28,5 +28,5 @@ export function stripAnsi(text: string): string {
  * @returns true si contiene códigos ANSI
  */
 export function hasAnsi(text: string): boolean {
-  return ANSI_ESCAPE_REGEX.test(text);
+	return ANSI_ESCAPE_REGEX.test(text);
 }

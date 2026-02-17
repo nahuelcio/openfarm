@@ -74,7 +74,11 @@ export function McpStatusIndicator({
 				}
 
 				setMcpServers(allServers);
-				console.log(`🔧 Loaded ${allServers.size} real MCP servers`);
+				// Only log when the count actually changes to reduce spam
+				const currentCount = allServers.size;
+				if (currentCount !== mcpServers.size) {
+					console.log(`🔧 Loaded ${currentCount} real MCP servers`);
+				}
 			} catch (error) {
 				console.error("Failed to load MCP servers:", error);
 			}
@@ -82,11 +86,11 @@ export function McpStatusIndicator({
 
 		loadMcpServers();
 
-		// Update servers periodically to get real-time status
-		const interval = setInterval(loadMcpServers, 5000); // Update every 5 seconds
+		// Update servers less frequently to reduce spam
+		const interval = setInterval(loadMcpServers, 60000); // Update every 60 seconds
 
 		return () => clearInterval(interval);
-	}, [providers]);
+	}, [providers, mcpServers.size]); // Add mcpServers.size dependency to detect changes
 
 	// Get MCP status (active/inactive) from localStorage
 	const getMcpStatus = (mcpId: string, provider: AgentProvider) => {

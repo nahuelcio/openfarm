@@ -17,21 +17,21 @@ import { removeWorktree } from "../git/worktree";
  * ```
  */
 export async function cleanupRepository(
-  mainRepoPath: string,
-  worktreePath: string,
-  execAsync?: ExecFunction,
-  log?: (message: string) => Promise<void>
+	mainRepoPath: string,
+	worktreePath: string,
+	execAsync?: ExecFunction,
+	log?: (message: string) => Promise<void>,
 ): Promise<void> {
-  try {
-    if (execAsync) {
-      await removeWorktree(mainRepoPath, worktreePath, undefined, execAsync);
-      if (log) {
-        await log(`Cleaned up worktree: ${worktreePath}`);
-      }
-    }
-  } catch (cleanupError) {
-    if (log) {
-      await log(`Warning: Failed to cleanup worktree: ${cleanupError}`);
-    }
-  }
+	try {
+		if (execAsync) {
+			await removeWorktree(mainRepoPath, worktreePath, undefined, execAsync);
+			if (log) {
+				await log(`Cleaned up worktree: ${worktreePath}`);
+			}
+		}
+	} catch (cleanupError) {
+		if (log) {
+			await log(`Warning: Failed to cleanup worktree: ${cleanupError}`);
+		}
+	}
 }

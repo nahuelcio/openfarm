@@ -1,4 +1,3 @@
-mod agent_command;
 mod agent_config;
 mod memory_system;
 
@@ -6,26 +5,148 @@ use directories;
 use flexi_logger::{Cleanup, Criterion, FileSpec, Logger, Naming};
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap};
 use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
 use std::process::{Command, Output, Stdio};
 use std::sync::mpsc;
 use std::sync::Mutex;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     AppHandle, Emitter, Manager, State,
 };
 
-use crate::agent_command::resolve_agent_command;
 use crate::agent_config::{
     AgentConfigPatchRequest, AgentProfileId, ConfigMcpServer, apply_agent_config_patch,
     detect_agent_configs, import_agent_config, list_agent_backups, preview_agent_config_patch,
     rollback_config_patch,
 };
 use crate::memory_system::*;
+
+// Bridge structures for TypeScript-first runtime
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct TsRuntimeBridgeRequest {
+    kind: String,
+    request: Option<TsRuntimeAgentRequest>,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct TsRuntimeAgentRequest {
+    request_id: String,
+    agent_id: String,
+    provider: String,
+    model: Option<String>,
+    agent_mode: Option<String>,
+    task: String,
+    workspace: Option<String>,
+    context: Option<String>,
+    attachments: Option<Vec<TsRuntimeAgentAttachment>>,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct TsRuntimeAgentAttachment {
+    id: String,
+    name: String,
+    r#type: String, // "type" is reserved in Rust
+    size: String,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct TsRuntimeAgentResult {
+    request_id: String,
+    agent_id: String,
+    success: bool,
+    output: Option<String>,
+    error: Option<String>,
+    duration: u64,
+    statistics: Option<TsRuntimeExecutionStatistics>,
+    completed_at: String,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct TsRuntimeExecutionStatistics {
+    credits_spent: f64,
+    tool_calls: u32,
+    model: String,
+    files_changed: u32,
+    processes_created: u32,
+    request_id: String,
+    tokens_input: u32,
+    tokens_output: u32,
+    duration: u64,
+}
+
+struct BridgeExecutionResult {
+    output: String,
+    duration: u64,
+    statistics: Option<TsRuntimeExecutionStatistics>,
+}
+
+fn map_execution_statistics(stats: ExecutionStatistics) -> TsRuntimeExecutionStatistics {
+    TsRuntimeExecutionStatistics {
+        credits_spent: stats.credits_spent,
+        tool_calls: stats.tool_calls,
+        model: stats.model,
+        files_changed: stats.files_changed,
+        processes_created: stats.processes_created,
+        request_id: stats.request_id,
+        tokens_input: stats.tokens_input,
+        tokens_output: stats.tokens_output,
+        duration: stats.duration,
+    }
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct TsRuntimeBridgeResponse {
+    r#type: String, // "type" is reserved in Rust
+    providers: Option<Vec<TsRuntimeProviderInfo>>,
+    chunk: Option<String>,
+    success: Option<bool>,
+    output: Option<String>,
+    error: Option<String>,
+    duration: Option<u64>,
+    statistics: Option<TsRuntimeExecutionStatistics>,
+    message: Option<String>,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct TsRuntimeProviderInfo {
+    id: String,
+    name: String,
+    description: String,
+    color: String,
+    connected: bool,
+    api_key: String,
+    models: Vec<TsRuntimeModelInfo>,
+    default_model: String,
+    agents: Option<Vec<TsRuntimeAgentInfo>>,
+    default_agent: Option<String>,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct TsRuntimeModelInfo {
+    id: String,
+    name: String,
+    description: String,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct TsRuntimeAgentInfo {
+    id: String,
+    name: String,
+    description: String,
+}
 
 pub struct Database {
     conn: Mutex<Connection>,
@@ -1527,7 +1648,8 @@ fn spawn_agent_internal(
     if !git_status(&workspace, &["rev-parse", "--is-inside-work-tree"])? {
         return Err("Workspace is not a valid git repository".to_string());
     }
-    let _ = resolve_agent_command(&provider, &task, model.as_deref(), agent_mode.as_deref())?;
+    // Note: Command resolution is now handled by the TypeScript SDK
+    // This validation will be done in the TS runtime
 
     // Check max agents limit
     if enforce_limit {
@@ -1796,11 +1918,9 @@ struct BridgeRequest {
     provider: String,
     model: Option<String>,
     agent: Option<String>,
-    cli: Option<String>,
-    args: Option<Vec<String>>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct ExecutionStatistics {
     credits_spent: f64,
     tool_calls: u32,
@@ -1811,16 +1931,6 @@ struct ExecutionStatistics {
     tokens_input: u32,
     tokens_output: u32,
     duration: u64,
-}
-
-fn normalize_provider_for_bridge(provider: &str) -> (String, Option<String>, Option<Vec<String>>) {
-    match provider.trim().to_lowercase().as_str() {
-        "claude-code" | "claude" => ("claude".to_string(), None, None),
-        "opencode" | "external-agent" => ("opencode".to_string(), None, None),
-        "codex" => ("external-agent".to_string(), Some("codex".to_string()), None),
-        "aider" => ("aider".to_string(), None, None),
-        other => (other.to_string(), None, None),
-    }
 }
 
 fn host_target_triple() -> Option<&'static str> {
@@ -1887,154 +1997,6 @@ fn resolve_bridge_binary() -> PathBuf {
     PathBuf::from("openfarm-bridge")
 }
 
-fn timeout_from_env(name: &str, default_secs: u64) -> Duration {
-    let value = std::env::var(name)
-        .ok()
-        .and_then(|raw| raw.parse::<u64>().ok())
-        .filter(|v| *v > 0)
-        .unwrap_or(default_secs);
-    Duration::from_secs(value)
-}
-
-fn agent_total_timeout() -> Duration {
-    timeout_from_env("OPENFARM_AGENT_TOTAL_TIMEOUT_SECS", 1800)
-}
-
-fn agent_idle_timeout() -> Duration {
-    timeout_from_env("OPENFARM_AGENT_IDLE_TIMEOUT_SECS", 180)
-}
-
-fn stream_and_emit(
-    agent_id: &str,
-    app: &AppHandle,
-    mut child: std::process::Child,
-) -> Result<String, String> {
-    {
-        let state = app.state::<AgentPool>();
-        let mut pids = state.pids.lock().unwrap();
-        pids.insert(agent_id.to_string(), child.id());
-    }
-
-    let stdout = child
-        .stdout
-        .take()
-        .ok_or_else(|| "Failed to capture stdout".to_string())?;
-    let stderr = child
-        .stderr
-        .take()
-        .ok_or_else(|| "Failed to capture stderr".to_string())?;
-
-    let (tx, rx) = mpsc::channel::<String>();
-    let tx_out = tx.clone();
-    std::thread::spawn(move || {
-        let reader = BufReader::new(stdout);
-        for line in reader.lines().map_while(Result::ok) {
-            let Some(clean) = normalize_agent_stream_line(&line) else {
-                continue;
-            };
-            let _ = tx_out.send(format!("{clean}\n"));
-        }
-    });
-
-    let tx_err = tx.clone();
-    std::thread::spawn(move || {
-        let reader = BufReader::new(stderr);
-        for line in reader.lines().map_while(Result::ok) {
-            let Some(clean) = normalize_agent_stream_line(&line) else {
-                continue;
-            };
-            let _ = tx_err.send(format!("{clean}\n"));
-        }
-    });
-    drop(tx);
-
-    let total_timeout = agent_total_timeout();
-    let idle_timeout = agent_idle_timeout();
-    let started_at = Instant::now();
-    let mut last_activity_at = started_at;
-    let mut combined = String::new();
-    let mut last_chunk = String::new();
-    let mut exit_status: Option<std::process::ExitStatus> = None;
-    loop {
-        match rx.recv_timeout(Duration::from_millis(500)) {
-            Ok(chunk) => {
-                last_activity_at = Instant::now();
-                if chunk == last_chunk {
-                    continue;
-                }
-                last_chunk = chunk.clone();
-                combined.push_str(&chunk);
-                let state = app.state::<AgentPool>();
-                emit_and_store_event(
-                    app,
-                    &state,
-                    "agent:output",
-                    serde_json::json!({
-                        "agent_id": agent_id,
-                        "chunk": chunk
-                    }),
-                );
-            }
-            Err(mpsc::RecvTimeoutError::Timeout) => {
-                if let Some(status) = child.try_wait().map_err(|e| e.to_string())? {
-                    exit_status = Some(status);
-                    break;
-                }
-                let now = Instant::now();
-                if now.duration_since(started_at) >= total_timeout {
-                    terminate_process_tree(child.id());
-                    let _ = child.wait();
-                    {
-                        let state = app.state::<AgentPool>();
-                        let mut pids = state.pids.lock().unwrap();
-                        pids.remove(agent_id);
-                    }
-                    return Err(format!(
-                        "Agent timed out after {}s",
-                        total_timeout.as_secs()
-                    ));
-                }
-                if now.duration_since(last_activity_at) >= idle_timeout {
-                    terminate_process_tree(child.id());
-                    let _ = child.wait();
-                    {
-                        let state = app.state::<AgentPool>();
-                        let mut pids = state.pids.lock().unwrap();
-                        pids.remove(agent_id);
-                    }
-                    return Err(format!(
-                        "Agent produced no output for {}s and was stopped",
-                        idle_timeout.as_secs()
-                    ));
-                }
-            }
-            Err(mpsc::RecvTimeoutError::Disconnected) => break,
-        }
-    }
-
-    let status = if let Some(value) = exit_status {
-        value
-    } else {
-        child.wait().map_err(|e| e.to_string())?
-    };
-    {
-        let state = app.state::<AgentPool>();
-        let mut pids = state.pids.lock().unwrap();
-        pids.remove(agent_id);
-    }
-
-    if status.success() {
-        Ok(combined)
-    } else if combined.is_empty() {
-        Err(format!(
-            "Agent process failed with exit code {:?}",
-            status.code()
-        ))
-    } else {
-        Err(combined)
-    }
-}
-
 fn run_agent_via_bridge(
     agent_id: &str,
     task: &str,
@@ -2044,8 +2006,7 @@ fn run_agent_via_bridge(
     agent_mode: Option<&str>,
     workspace: &str,
     app: &AppHandle,
-) -> Result<String, String> {
-    let (mapped_provider, cli, args) = normalize_provider_for_bridge(provider);
+) -> Result<BridgeExecutionResult, String> {
     let request = BridgeRequest {
         task: task.to_string(),
         context: context
@@ -2053,16 +2014,18 @@ fn run_agent_via_bridge(
             .filter(|value| !value.is_empty())
             .map(|value| value.to_string()),
         workspace: workspace.to_string(),
-        provider: mapped_provider,
+        provider: provider.to_string(),
         model: model.map(|value| value.to_string()),
         agent: agent_mode
             .map(|value| value.trim())
             .filter(|value| !value.is_empty())
             .map(|value| value.to_string()),
-        cli,
-        args,
     };
-    let payload = serde_json::to_string(&request).map_err(|e| e.to_string())?;
+    let payload = serde_json::to_string(&serde_json::json!({
+        "kind": "execute",
+        "request": request,
+    }))
+    .map_err(|e| e.to_string())?;
 
     let bridge_bin = resolve_bridge_binary();
     let mut child = Command::new(&bridge_bin)
@@ -2110,195 +2073,141 @@ fn run_agent_via_bridge(
     });
     drop(tx);
 
-    let total_timeout = agent_total_timeout();
-    let idle_timeout = agent_idle_timeout();
-    let started_at = Instant::now();
-    let mut last_activity_at = started_at;
     let mut combined = String::new();
     let mut bridge_error = String::new();
     let mut last_emitted_line = String::new();
     let mut final_result: Option<Result<String, String>> = None;
-    let mut exit_status: Option<std::process::ExitStatus> = None;
-    let mut execution_stats = ExecutionStatistics {
-        credits_spent: 0.0,
-        tool_calls: 0,
-        model: provider.to_string(),
-        files_changed: 0,
-        processes_created: 0,
-        request_id: format!("bridge-{}-{}", agent_id, chrono::Utc::now().timestamp_millis()),
-        tokens_input: 0,
-        tokens_output: 0,
-        duration: 0,
-    };
-    loop {
-        match rx.recv_timeout(Duration::from_millis(500)) {
-            Ok((is_stderr, line)) => {
-                last_activity_at = Instant::now();
-                if is_stderr {
-                    bridge_error.push_str(&line);
-                    bridge_error.push('\n');
-                    continue;
-                }
-                let value = serde_json::from_str::<serde_json::Value>(&line)
-                    .unwrap_or_else(|_| serde_json::json!({}));
-                let kind = value.get("type").and_then(|v| v.as_str()).unwrap_or("log");
-                
-                // Track statistics from bridge responses
-                if let Some(stats) = value.get("statistics") {
-                    if let Ok(parsed_stats) = serde_json::from_value::<ExecutionStatistics>(stats.clone()) {
-                        execution_stats = parsed_stats;
+    let mut execution_stats: Option<ExecutionStatistics> = None;
+    let mut execution_duration_ms = 0_u64;
+    while let Ok((is_stderr, line)) = rx.recv() {
+        if is_stderr {
+            bridge_error.push_str(&line);
+            bridge_error.push('\n');
+            continue;
+        }
+
+        let value = serde_json::from_str::<serde_json::Value>(&line)
+            .unwrap_or_else(|_| serde_json::json!({}));
+        let kind = value.get("type").and_then(|v| v.as_str()).unwrap_or("log");
+
+        if let Some(stats) = value.get("statistics") {
+            if let Ok(parsed_stats) = serde_json::from_value::<ExecutionStatistics>(stats.clone()) {
+                execution_stats = Some(parsed_stats);
+            }
+        }
+
+        if kind == "log" {
+            let chunk = value
+                .get("chunk")
+                .and_then(|v| v.as_str())
+                .unwrap_or_default()
+                .to_string();
+            if !chunk.is_empty() {
+                for normalized in normalize_agent_output_chunk(&chunk) {
+                    if normalized == last_emitted_line {
+                        continue;
                     }
-                }
-                
-                if kind == "log" {
-                    let chunk = value
-                        .get("chunk")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or_default()
-                        .to_string();
-                    if !chunk.is_empty() {
-                        for normalized in normalize_agent_output_chunk(&chunk) {
-                            if normalized == last_emitted_line {
-                                continue;
-                            }
-                            last_emitted_line = normalized.clone();
-                            let with_newline = format!("{normalized}\n");
-                            combined.push_str(&with_newline);
-                            let state = app.state::<AgentPool>();
-                            emit_and_store_event(
-                                app,
-                                &state,
-                                "agent:output",
-                                serde_json::json!({
-                                    "agent_id": agent_id,
-                                    "chunk": with_newline
-                                }),
-                            );
-                        }
-                    }
-                    continue;
-                }
-                if kind == "result" {
-                    let success = value
-                        .get("success")
-                        .and_then(|v| v.as_bool())
-                        .unwrap_or(false);
-                    let output_text = value
-                        .get("output")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or_default()
-                        .to_string();
-                    if !output_text.is_empty() {
-                        for normalized in normalize_agent_output_chunk(&output_text) {
-                            if normalized == last_emitted_line {
-                                continue;
-                            }
-                            last_emitted_line = normalized.clone();
-                            combined.push_str(&normalized);
-                            combined.push('\n');
-                        }
-                    }
-                    if success {
-                        final_result = Some(Ok(combined.clone()));
-                        break;
-                    }
-                    let error = value
-                        .get("error")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("Bridge execution failed")
-                        .to_string();
-                    final_result = Some(Err(if combined.is_empty() {
-                        error
-                    } else {
-                        format!("{combined}\n{error}")
-                    }));
-                    break;
-                }
-                if kind == "error" {
-                    let error = value
-                        .get("message")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("Bridge error")
-                        .to_string();
-                    final_result = Some(Err(error));
-                    break;
+                    last_emitted_line = normalized.clone();
+                    let with_newline = format!("{normalized}\n");
+                    combined.push_str(&with_newline);
+                    let state = app.state::<AgentPool>();
+                    emit_and_store_event(
+                        app,
+                        &state,
+                        "agent:output",
+                        serde_json::json!({
+                            "agent_id": agent_id,
+                            "chunk": with_newline
+                        }),
+                    );
                 }
             }
-            Err(mpsc::RecvTimeoutError::Timeout) => {
-                if let Some(status) = child.try_wait().map_err(|e| e.to_string())? {
-                    exit_status = Some(status);
-                    break;
-                }
-                let now = Instant::now();
-                if now.duration_since(started_at) >= total_timeout {
-                    terminate_process_tree(child.id());
-                    let _ = child.wait();
-                    {
-                        let state = app.state::<AgentPool>();
-                        let mut pids = state.pids.lock().unwrap();
-                        pids.remove(agent_id);
+            continue;
+        }
+
+        if kind == "result" {
+            execution_duration_ms = value
+                .get("duration")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(execution_duration_ms);
+            let success = value
+                .get("success")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
+            let output_text = value
+                .get("output")
+                .and_then(|v| v.as_str())
+                .unwrap_or_default()
+                .to_string();
+            if !output_text.is_empty() {
+                for normalized in normalize_agent_output_chunk(&output_text) {
+                    if normalized == last_emitted_line {
+                        continue;
                     }
-                    return Err(format!(
-                        "Agent timed out after {}s",
-                        total_timeout.as_secs()
-                    ));
-                }
-                if now.duration_since(last_activity_at) >= idle_timeout {
-                    terminate_process_tree(child.id());
-                    let _ = child.wait();
-                    {
-                        let state = app.state::<AgentPool>();
-                        let mut pids = state.pids.lock().unwrap();
-                        pids.remove(agent_id);
-                    }
-                    return Err(format!(
-                        "Agent produced no output for {}s and was stopped",
-                        idle_timeout.as_secs()
-                    ));
+                    last_emitted_line = normalized.clone();
+                    combined.push_str(&normalized);
+                    combined.push('\n');
                 }
             }
-            Err(mpsc::RecvTimeoutError::Disconnected) => break,
+            if success {
+                final_result = Some(Ok(combined.clone()));
+                break;
+            }
+            let error = value
+                .get("error")
+                .and_then(|v| v.as_str())
+                .unwrap_or("Bridge execution failed")
+                .to_string();
+            final_result = Some(Err(if combined.is_empty() {
+                error
+            } else {
+                format!("{combined}\n{error}")
+            }));
+            break;
+        }
+
+        if kind == "error" {
+            let error = value
+                .get("message")
+                .and_then(|v| v.as_str())
+                .unwrap_or("Bridge error")
+                .to_string();
+            final_result = Some(Err(error));
+            break;
         }
     }
 
-    if let Some(result) = final_result {
-        // Calculate final duration
-        execution_stats.duration = started_at.elapsed().as_millis() as u64;
-        
-        if child
-            .try_wait()
-            .map_err(|e| e.to_string())?
-            .is_none()
-        {
-            terminate_process_tree(child.id());
-            let _ = child.wait();
-        }
-        {
-            let state = app.state::<AgentPool>();
-            let mut pids = state.pids.lock().unwrap();
-            pids.remove(agent_id);
-        }
-        
-        // Store execution statistics in database
-        let _ = app.state::<AgentPool>().db.save_agent_event(
-            agent_id,
-            "agent:statistics",
-            &serde_json::to_value(&execution_stats).unwrap_or_else(|_| serde_json::json!({})),
-        );
-        
-        return result;
-    }
-
-    let status = if let Some(value) = exit_status {
-        value
-    } else {
-        child.wait().map_err(|e| e.to_string())?
-    };
+    let status = child.wait().map_err(|e| e.to_string())?;
     {
         let state = app.state::<AgentPool>();
         let mut pids = state.pids.lock().unwrap();
         pids.remove(agent_id);
     }
+
+    let runtime_statistics = execution_stats.clone().map(map_execution_statistics);
+    if execution_duration_ms == 0 {
+        execution_duration_ms = runtime_statistics
+            .as_ref()
+            .map(|stats| stats.duration)
+            .unwrap_or(0);
+    }
+
+    if let Some(stats) = execution_stats {
+        let _ = app.state::<AgentPool>().db.save_agent_event(
+            agent_id,
+            "agent:statistics",
+            &serde_json::to_value(&stats).unwrap_or_else(|_| serde_json::json!({})),
+        );
+    }
+
+    if let Some(result) = final_result {
+        return result.map(|output| BridgeExecutionResult {
+            output,
+            duration: execution_duration_ms,
+            statistics: runtime_statistics,
+        });
+    }
+
     if !status.success() {
         let message = if bridge_error.trim().is_empty() {
             format!("Bridge exited with {:?}", status.code())
@@ -2309,36 +2218,18 @@ fn run_agent_via_bridge(
     }
 
     if combined.trim().is_empty() {
-        Ok("Bridge execution completed".to_string())
+        Ok(BridgeExecutionResult {
+            output: "Bridge execution completed".to_string(),
+            duration: execution_duration_ms,
+            statistics: runtime_statistics,
+        })
     } else {
-        Ok(combined)
+        Ok(BridgeExecutionResult {
+            output: combined,
+            duration: execution_duration_ms,
+            statistics: runtime_statistics,
+        })
     }
-}
-
-fn run_agent_via_cli(
-    agent_id: &str,
-    task: &str,
-    context: Option<&str>,
-    provider: &str,
-    model: Option<&str>,
-    agent_mode: Option<&str>,
-    workspace: &str,
-    app: &AppHandle,
-) -> Result<String, String> {
-    let resolved_task = context
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-        .map(|value| format!("{value}\n\n{task}"))
-        .unwrap_or_else(|| task.to_string());
-    let resolved = resolve_agent_command(provider, &resolved_task, model, agent_mode)?;
-    let child = Command::new(&resolved.program)
-        .args(&resolved.args)
-        .current_dir(workspace)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .map_err(|e| e.to_string())?;
-    stream_and_emit(agent_id, app, child)
 }
 
 fn run_agent(
@@ -2351,7 +2242,7 @@ fn run_agent(
     workspace: &str,
     app: &AppHandle,
 ) -> Result<String, String> {
-    match run_agent_via_bridge(
+    run_agent_via_bridge(
         agent_id,
         task,
         context,
@@ -2360,16 +2251,8 @@ fn run_agent(
         agent_mode,
         workspace,
         app,
-    ) {
-        Ok(output) => Ok(output),
-        Err(bridge_err) => {
-            log::warn!(
-                "Bridge execution failed, falling back to CLI: {}",
-                bridge_err
-            );
-            run_agent_via_cli(agent_id, task, context, provider, model, agent_mode, workspace, app)
-        }
-    }
+    )
+    .map(|result| result.output)
 }
 
 fn load_provider_catalog_via_bridge() -> Result<serde_json::Value, String> {
@@ -2425,142 +2308,6 @@ fn load_provider_catalog_via_bridge() -> Result<serde_json::Value, String> {
     } else {
         Err(stderr)
     }
-}
-
-fn provider_agents_from_local_configs() -> HashMap<String, Vec<String>> {
-    let mut by_provider = HashMap::new();
-    let profiles = [
-        ("codex", AgentProfileId::Codex),
-        ("claude-code", AgentProfileId::ClaudeCode),
-        ("opencode", AgentProfileId::Opencode),
-    ];
-
-    for (provider, profile) in profiles {
-        if let Ok(imported) = import_agent_config(profile) {
-            let mut agents = imported
-                .config
-                .agents
-                .into_iter()
-                .map(|value| value.trim().to_string())
-                .filter(|value| !value.is_empty())
-                .collect::<Vec<_>>();
-            agents.sort();
-            agents.dedup();
-            by_provider.insert(provider.to_string(), agents);
-        }
-    }
-
-    by_provider
-}
-
-fn merge_provider_agents_into_catalog(
-    catalog: serde_json::Value,
-    by_provider: HashMap<String, Vec<String>>,
-) -> serde_json::Value {
-    let mut providers = catalog.as_array().cloned().unwrap_or_default();
-    for provider in &mut providers {
-        let Some(object) = provider.as_object_mut() else {
-            continue;
-        };
-        let provider_id = object
-            .get("id")
-            .and_then(|value| value.as_str())
-            .unwrap_or_default()
-            .to_string();
-        let local_agents = by_provider.get(&provider_id).cloned().unwrap_or_default();
-        let local_set = local_agents.iter().cloned().collect::<HashSet<_>>();
-
-        let mut existing_names = HashMap::<String, String>::new();
-        let mut existing_descriptions = HashMap::<String, String>::new();
-        let mut existing_agent_ids = Vec::<String>::new();
-        if let Some(existing) = object.get("agents").and_then(|value| value.as_array()) {
-            for item in existing {
-                if let Some(id) = item
-                    .get("id")
-                    .and_then(|value| value.as_str())
-                    .or_else(|| item.as_str())
-                    .map(|value| value.trim())
-                    .filter(|value| !value.is_empty())
-                {
-                    let id_string = id.to_string();
-                    existing_agent_ids.push(id_string.clone());
-                    let name = item
-                        .get("name")
-                        .and_then(|value| value.as_str())
-                        .map(|value| value.trim().to_string())
-                        .filter(|value| !value.is_empty())
-                        .unwrap_or_else(|| id_string.clone());
-                    let description = item
-                        .get("description")
-                        .and_then(|value| value.as_str())
-                        .map(|value| value.trim().to_string())
-                        .filter(|value| !value.is_empty())
-                        .unwrap_or_else(|| "Agent mode".to_string());
-                    existing_names.insert(id_string.clone(), name);
-                    existing_descriptions.insert(id_string, description);
-                }
-            }
-        }
-
-        let mut merged_agents = Vec::<String>::new();
-        let mut seen = HashSet::<String>::new();
-        for candidate in existing_agent_ids.iter().chain(local_agents.iter()) {
-            let normalized = candidate.trim();
-            if normalized.is_empty() {
-                continue;
-            }
-            if seen.insert(normalized.to_string()) {
-                merged_agents.push(normalized.to_string());
-            }
-        }
-
-        let serialized = merged_agents
-            .iter()
-            .map(|agent| {
-                let name = existing_names
-                    .get(agent)
-                    .cloned()
-                    .unwrap_or_else(|| agent.clone());
-                let description = if local_set.contains(agent) {
-                    "Agent loaded from local CLI config".to_string()
-                } else {
-                    existing_descriptions
-                        .get(agent)
-                        .cloned()
-                        .unwrap_or_else(|| "Agent mode".to_string())
-                };
-                serde_json::json!({
-                    "id": agent,
-                    "name": name,
-                    "description": description
-                })
-            })
-            .collect::<Vec<_>>();
-        object.insert("agents".to_string(), serde_json::Value::Array(serialized));
-
-        let default_from_existing = object
-            .get("defaultAgent")
-            .and_then(|value| value.as_str())
-            .map(|value| value.trim().to_string())
-            .filter(|value| !value.is_empty() && merged_agents.contains(value));
-        let default_agent = if local_agents.is_empty() {
-            default_from_existing
-                .or_else(|| merged_agents.first().cloned())
-                .unwrap_or_default()
-        } else {
-            local_agents
-                .first()
-                .cloned()
-                .or(default_from_existing)
-                .or_else(|| merged_agents.first().cloned())
-                .unwrap_or_default()
-        };
-        object.insert(
-            "defaultAgent".to_string(),
-            serde_json::Value::String(default_agent),
-        );
-    }
-    serde_json::Value::Array(providers)
 }
 
 fn default_branch_for_repo(repo_path: &str) -> String {
@@ -4740,10 +4487,10 @@ fn default_ui_settings() -> serde_json::Value {
           "connected": true,
           "apiKey": "",
           "models": [
-            {"id": "codex-mini-latest", "name": "Codex Mini", "description": "Fast coding tasks"},
-            {"id": "o4-mini", "name": "o4-mini", "description": "Reasoning model"}
+            {"id": "gpt-5-codex", "name": "GPT-5 Codex", "description": "Codex-optimized flagship model"},
+            {"id": "gpt-5-codex-mini", "name": "GPT-5 Codex Mini", "description": "Faster and cheaper Codex model"}
           ],
-          "defaultModel": "codex-mini-latest"
+          "defaultModel": "gpt-5-codex-mini"
         },
         {
           "id": "opencode",
@@ -4753,10 +4500,13 @@ fn default_ui_settings() -> serde_json::Value {
           "connected": true,
           "apiKey": "",
           "models": [
-            {"id": "gpt-4.1", "name": "GPT-4.1", "description": "OpenAI via OpenCode"},
-            {"id": "claude-sonnet-4-20250514", "name": "Claude Sonnet 4", "description": "Anthropic via OpenCode"}
+            {"id": "openrouter/openai/gpt-4.1", "name": "openrouter/openai/gpt-4.1", "description": "OpenRouter via OpenCode"},
+            {"id": "openrouter/openai/gpt-5", "name": "openrouter/openai/gpt-5", "description": "OpenRouter via OpenCode"},
+            {"id": "openrouter/anthropic/claude-sonnet-4.5", "name": "openrouter/anthropic/claude-sonnet-4.5", "description": "OpenRouter via OpenCode"},
+            {"id": "github-copilot/gpt-5.2-codex", "name": "github-copilot/gpt-5.2-codex", "description": "GitHub Copilot via OpenCode"},
+            {"id": "zai/glm-4.7", "name": "zai/glm-4.7", "description": "ZAI via OpenCode"}
           ],
-          "defaultModel": "gpt-4.1"
+          "defaultModel": "openrouter/openai/gpt-4.1"
         }
       ],
       "defaultProvider": "claude-code",
@@ -5923,9 +5673,7 @@ fn save_settings(
 
 #[tauri::command]
 fn get_provider_catalog() -> Result<serde_json::Value, String> {
-    let catalog = load_provider_catalog_via_bridge()?;
-    let agents = provider_agents_from_local_configs();
-    Ok(merge_provider_agents_into_catalog(catalog, agents))
+    load_provider_catalog_via_bridge()
 }
 
 #[tauri::command]
@@ -6069,6 +5817,107 @@ mod tests {
     }
 }
 
+// TypeScript-first runtime bridge functions
+#[tauri::command]
+async fn execute_agent_via_bridge(
+    request: TsRuntimeBridgeRequest,
+    app: AppHandle,
+    _pool: State<'_, AgentPool>,
+) -> Result<TsRuntimeAgentResult, String> {
+    match request.kind.as_str() {
+        "execute" => {
+            let runtime_request = request.request.ok_or("Missing runtime request")?;
+            let agent_id = &runtime_request.agent_id;
+            let task = &runtime_request.task;
+            let provider = &runtime_request.provider;
+            let model = runtime_request.model.as_deref();
+            let agent_mode = runtime_request.agent_mode.as_deref();
+            let workspace = runtime_request.workspace.as_deref().unwrap_or(".");
+            let context = runtime_request.context.as_deref();
+
+            match run_agent_via_bridge(
+                agent_id,
+                task,
+                context,
+                provider,
+                model,
+                agent_mode,
+                workspace,
+                &app,
+            ) {
+                Ok(result) => {
+                    Ok(TsRuntimeAgentResult {
+                        request_id: runtime_request.request_id,
+                        agent_id: runtime_request.agent_id,
+                        success: true,
+                        output: Some(result.output),
+                        error: None,
+                        duration: result.duration,
+                        statistics: result.statistics,
+                        completed_at: chrono::Utc::now().to_rfc3339(),
+                    })
+                }
+                Err(error) => {
+                    Ok(TsRuntimeAgentResult {
+                        request_id: runtime_request.request_id,
+                        agent_id: runtime_request.agent_id,
+                        success: false,
+                        output: None,
+                        error: Some(error),
+                        duration: 0,
+                        statistics: None,
+                        completed_at: chrono::Utc::now().to_rfc3339(),
+                    })
+                }
+            }
+        }
+        _ => Err("Unsupported bridge request kind".to_string()),
+    }
+}
+
+#[tauri::command]
+async fn get_bridge_catalog(
+    request: TsRuntimeBridgeRequest,
+) -> Result<TsRuntimeBridgeResponse, String> {
+    match request.kind.as_str() {
+        "catalog" => {
+            let providers_value = load_provider_catalog_via_bridge();
+            match providers_value.and_then(|value| {
+                serde_json::from_value::<Vec<TsRuntimeProviderInfo>>(value)
+                    .map_err(|error| format!("Invalid bridge catalog payload: {}", error))
+            }) {
+                Ok(providers) => {
+                    Ok(TsRuntimeBridgeResponse {
+                        r#type: "catalog".to_string(),
+                        providers: Some(providers),
+                        chunk: None,
+                        success: None,
+                        output: None,
+                        error: None,
+                        duration: None,
+                        statistics: None,
+                        message: None,
+                    })
+                }
+                Err(error) => {
+                    Ok(TsRuntimeBridgeResponse {
+                        r#type: "error".to_string(),
+                        providers: None,
+                        chunk: None,
+                        success: None,
+                        output: None,
+                        error: None,
+                        duration: None,
+                        statistics: None,
+                        message: Some(error),
+                    })
+                }
+            }
+        }
+        _ => Err("Unsupported bridge request kind".to_string()),
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     init_logging();
@@ -6196,6 +6045,9 @@ pub fn run() {
             create_memory,
             read_memory,
             search_memories,
+            // New TypeScript-first runtime bridge commands
+            execute_agent_via_bridge,
+            get_bridge_catalog,
             list_memory_banks,
             attach_shared_bank,
             bind_workspace,

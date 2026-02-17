@@ -26,10 +26,8 @@
 		"@openfarm/result": "workspace:*",
 		"@openfarm/logger": "workspace:*",
 		"@openfarm/mcp-marketplace": "workspace:*",
-		"@openfarm/types": "workspace:*",
 		"@openfarm/utils": "workspace:*",
-		"@openfarm/git-worktree": "workspace:*",
-		"@openfarm/git-adapter": "workspace:*",
+		"@openfarm/git": "workspace:*",
 		"ai": "^4.0.0"
 	},
 	"devDependencies": {

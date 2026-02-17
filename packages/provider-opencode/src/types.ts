@@ -1,3 +1,3 @@
 export interface OpenCodeConfig {
-  timeout?: number;
+	timeout?: number;
 }

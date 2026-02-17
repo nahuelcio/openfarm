@@ -22,7 +22,6 @@
 			"@openfarm/git-worktree": ["../git-worktree/src"],
 			"@openfarm/result": ["../result/src"],
 			"@openfarm/logger": ["../logger/src"],
-			"@openfarm/types": ["../types/src"],
 			"@openfarm/utils": ["../utils/src"]
 		}
 	},

@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
-    "@openfarm/provider-aider": "file:../packages/provider-aider",
+    "@openai/codex-sdk": "^0.101.0",
     "@openfarm/provider-claude": "file:../packages/provider-claude",
     "@openfarm/provider-opencode": "file:../packages/provider-opencode",
     "@openfarm/sdk": "file:../packages/sdk",

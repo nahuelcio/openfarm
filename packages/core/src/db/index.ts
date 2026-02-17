@@ -33,26 +33,26 @@ export * from "./workflows/index";
 
 // Import types needed locally
 import type {
-  AgentConfiguration,
-  Integration,
-  Job,
-  Workflow,
-  WorkflowExecution,
-  WorkItem,
+	AgentConfiguration,
+	Integration,
+	Job,
+	Workflow,
+	WorkflowExecution,
+	WorkItem,
 } from "../types";
 // Import functions needed for convenience wrappers
 import {
-  findAgentConfiguration,
-  getAgentConfigurations,
+	findAgentConfiguration,
+	getAgentConfigurations,
 } from "./agent-configs";
 
 export type {
-  AgentConfiguration,
-  Integration,
-  Job,
-  Workflow,
-  WorkflowExecution,
-  WorkItem,
+	AgentConfiguration,
+	Integration,
+	Job,
+	Workflow,
+	WorkflowExecution,
+	WorkItem,
 } from "../types";
 // Re-export types
 export type { DbConfig, DbFileSystem, FileSystem } from "./connection";
@@ -60,12 +60,12 @@ export type { DbConfig, DbFileSystem, FileSystem } from "./connection";
 // For backwards compatibility
 export type LowdbInstance = SQL;
 export interface Data {
-  jobs: Job[];
-  agentConfigurations: AgentConfiguration[];
-  localWorkItems: WorkItem[];
-  integrations: Integration[];
-  workflows: Workflow[];
-  workflowExecutions: WorkflowExecution[];
+	jobs: Job[];
+	agentConfigurations: AgentConfiguration[];
+	localWorkItems: WorkItem[];
+	integrations: Integration[];
+	workflows: Workflow[];
+	workflowExecutions: WorkflowExecution[];
 }
 
 /**
@@ -112,88 +112,88 @@ let pendingRejecters: Array<(error: Error) => void> = [];
  * ```
  */
 export const getDb = (): Promise<SQL> => {
-  // If instance is ready, return it immediately
-  if (initState === "ready" && dbInstance !== null) {
-    return Promise.resolve(dbInstance);
-  }
+	// If instance is ready, return it immediately
+	if (initState === "ready" && dbInstance !== null) {
+		return Promise.resolve(dbInstance);
+	}
 
-  // If initialization is in progress, queue this request
-  if (initState === "initializing") {
-    return new Promise((resolve, reject) => {
-      pendingResolvers.push(resolve);
-      pendingRejecters.push(reject);
-    });
-  }
+	// If initialization is in progress, queue this request
+	if (initState === "initializing") {
+		return new Promise((resolve, reject) => {
+			pendingResolvers.push(resolve);
+			pendingRejecters.push(reject);
+		});
+	}
 
-  // If in error state, allow retry
-  if (initState === "error") {
-    initState = "uninitialized";
-    dbInstance = null;
-    dbInitializationPromise = null;
-  }
+	// If in error state, allow retry
+	if (initState === "error") {
+		initState = "uninitialized";
+		dbInstance = null;
+		dbInitializationPromise = null;
+	}
 
-  // Start new initialization
-  initState = "initializing";
-  let dbPath = process.env.DB_PATH || "db.json";
-  // Replace .json extension with .db
-  if (dbPath.endsWith(".json")) {
-    dbPath = dbPath.replace(JSON_EXTENSION_REGEX, ".db");
-  } else if (!dbPath.endsWith(".db")) {
-    dbPath = `${dbPath}.db`;
-  }
+	// Start new initialization
+	initState = "initializing";
+	let dbPath = process.env.DB_PATH || "db.json";
+	// Replace .json extension with .db
+	if (dbPath.endsWith(".json")) {
+		dbPath = dbPath.replace(JSON_EXTENSION_REGEX, ".db");
+	} else if (!dbPath.endsWith(".db")) {
+		dbPath = `${dbPath}.db`;
+	}
 
-  dbInitializationPromise = (async () => {
-    try {
-      // Import defaultFileSystem locally to avoid bundling it in workflow functions
-      const { defaultFileSystem } = await import("./connection");
-      const result = await createDb({
-        dbPath,
-        originalDbPath: process.env.DB_PATH,
-        fileSystem: defaultFileSystem,
-      });
-      // Type assertion needed because createDb returns Result<any> to avoid bundler issues
-      const instance = match(
-        result as Result<SQL>,
-        (value) => value,
-        (error) => {
-          throw error;
-        }
-      );
+	dbInitializationPromise = (async () => {
+		try {
+			// Import defaultFileSystem locally to avoid bundling it in workflow functions
+			const { defaultFileSystem } = await import("./connection");
+			const result = await createDb({
+				dbPath,
+				originalDbPath: process.env.DB_PATH,
+				fileSystem: defaultFileSystem,
+			});
+			// Type assertion needed because createDb returns Result<any> to avoid bundler issues
+			const instance = match(
+				result as Result<SQL>,
+				(value) => value,
+				(error) => {
+					throw error;
+				},
+			);
 
-      // Store the instance and mark as ready
-      dbInstance = instance;
-      initState = "ready";
+			// Store the instance and mark as ready
+			dbInstance = instance;
+			initState = "ready";
 
-      // Resolve all pending requests
-      for (const resolve of pendingResolvers) {
-        resolve(instance);
-      }
-      pendingResolvers = [];
-      pendingRejecters = [];
+			// Resolve all pending requests
+			for (const resolve of pendingResolvers) {
+				resolve(instance);
+			}
+			pendingResolvers = [];
+			pendingRejecters = [];
 
-      return instance;
-    } catch (error) {
-      // On error, mark as error state and reject all pending requests
-      initState = "error";
-      dbInstance = null;
+			return instance;
+		} catch (error) {
+			// On error, mark as error state and reject all pending requests
+			initState = "error";
+			dbInstance = null;
 
-      const errorToThrow =
-        error instanceof Error ? error : new Error(String(error));
+			const errorToThrow =
+				error instanceof Error ? error : new Error(String(error));
 
-      for (const reject of pendingRejecters) {
-        reject(errorToThrow);
-      }
-      pendingResolvers = [];
-      pendingRejecters = [];
+			for (const reject of pendingRejecters) {
+				reject(errorToThrow);
+			}
+			pendingResolvers = [];
+			pendingRejecters = [];
 
-      throw errorToThrow;
-    } finally {
-      // Clear initialization promise regardless of success/failure
-      dbInitializationPromise = null;
-    }
-  })();
+			throw errorToThrow;
+		} finally {
+			// Clear initialization promise regardless of success/failure
+			dbInitializationPromise = null;
+		}
+	})();
 
-  return dbInitializationPromise;
+	return dbInitializationPromise;
 };
 
 /**
@@ -212,19 +212,19 @@ export const getDb = (): Promise<SQL> => {
  * ```
  */
 export const resetDb = async (): Promise<void> => {
-  if (dbInstance) {
-    try {
-      const closeResult = await closeDb(dbInstance);
-      if (!closeResult.ok) {
-        logger.warn("Error closing database:", closeResult.error.message);
-      }
-    } catch (error) {
-      // Ignore errors when closing
-      logger.warn("Error closing database:", error);
-    }
-  }
-  dbInstance = null;
-  dbInitializationPromise = null;
+	if (dbInstance) {
+		try {
+			const closeResult = await closeDb(dbInstance);
+			if (!closeResult.ok) {
+				logger.warn("Error closing database:", closeResult.error.message);
+			}
+		} catch (error) {
+			// Ignore errors when closing
+			logger.warn("Error closing database:", error);
+		}
+	}
+	dbInstance = null;
+	dbInitializationPromise = null;
 };
 
 // Re-export closeDb (createDb is not exported to avoid bundling issues in workflows)
@@ -258,11 +258,11 @@ export const db = dbInstance;
  * ```
  */
 export async function getAgentConfiguration(
-  project?: string,
-  repositoryId?: string,
-  repositoryUrl?: string
+	project?: string,
+	repositoryId?: string,
+	repositoryUrl?: string,
 ): Promise<AgentConfiguration | null> {
-  const db = await getDb();
-  const configs = await getAgentConfigurations(db);
-  return findAgentConfiguration(configs, project, repositoryId, repositoryUrl);
+	const db = await getDb();
+	const configs = await getAgentConfigurations(db);
+	return findAgentConfiguration(configs, project, repositoryId, repositoryUrl);
 }

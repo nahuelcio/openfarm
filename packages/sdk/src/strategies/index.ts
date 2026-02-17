@@ -6,18 +6,18 @@
  */
 
 export {
-  CliCommunicationStrategy,
-  type CliConfig,
+	CliCommunicationStrategy,
+	type CliConfig,
 } from "./cli-strategy";
 export {
-  type HttpAuthConfig,
-  HttpCommunicationStrategy,
-  type HttpConfig,
+	type HttpAuthConfig,
+	HttpCommunicationStrategy,
+	type HttpConfig,
 } from "./http-strategy";
 export type {
-  CliExecutionOptions,
-  CommunicationRequest,
-  CommunicationResponse,
-  CommunicationStrategy,
-  HttpRequestOptions,
+	CliExecutionOptions,
+	CommunicationRequest,
+	CommunicationResponse,
+	CommunicationStrategy,
+	HttpRequestOptions,
 } from "./types";

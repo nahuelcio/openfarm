@@ -1,5 +1,3 @@
-import { invoke as tauriInvoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
 import { getProviderMcpIntegration } from "./provider-mcp-integration";
 import type {
 	Agent,
@@ -459,20 +457,14 @@ async function webInvoke<T>(
 }
 
 async function invoke<T>(
-	command: string,
-	payload: Record<string, unknown> = {},
+    command: string,
+    payload: Record<string, unknown> = {},
 ): Promise<T> {
 	if (isTauriRuntime()) {
-		try {
-			return await tauriInvoke<T>(command, payload);
-		} catch (error) {
-			const message = String(error);
-			if (message.includes("IPC") || message.includes("tauri")) {
-				return webInvoke<T>(command, payload);
-			}
-			throw error;
-		}
+		const { invoke: tauriInvoke } = await import("@tauri-apps/api/core");
+		return tauriInvoke<T>(command, payload);
 	}
+
 	return webInvoke<T>(command, payload);
 }
 
@@ -628,18 +620,10 @@ export async function pickRepositoryDirectory(): Promise<string | null> {
 }
 
 export async function subscribeAgentEvents(
-	event: AgentEventType,
-	handler: (payload: unknown) => void,
+    _event: AgentEventType,
+    _handler: (payload: unknown) => void,
 ): Promise<() => void> {
-	if (!isTauriRuntime()) {
-		return () => {};
-	}
-	const unlisten = await listen(event, (value) => {
-		handler(value.payload);
-	});
-	return () => {
-		unlisten();
-	};
+    return () => {};
 }
 
 export async function installMcp(config: {

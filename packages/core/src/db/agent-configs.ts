@@ -19,30 +19,30 @@ import { parseJson, toJson } from "./utils";
  * ```
  */
 export async function getAgentConfigurations(
-  db: SQL
+	db: SQL,
 ): Promise<AgentConfiguration[]> {
-  const rows = (await db`SELECT * FROM agent_configurations`) as any[];
-  return rows.map((row) => ({
-    id: row.id,
-    project: row.project || undefined,
-    repositoryId: row.repository_id || undefined,
-    repositoryUrl: row.repository_url || undefined,
-    model: row.model,
-    fallbackModel: row.fallback_model || undefined,
-    rules: parseJson<AgentConfiguration["rules"]>(row.rules) || undefined,
-    mcpServers: parseJson<string[]>(row.mcp_servers) || undefined,
-    prompt: row.prompt || undefined,
-    enabled: row.enabled === 1,
-    branchNamingPattern: row.branch_naming_pattern || undefined,
-    defaultBranch: row.default_branch || undefined,
-    createPullRequest: row.create_pull_request === 1,
-    pushBranch: row.push_branch === 1,
-    workflowId: row.workflow_id || undefined,
-    provider: (row.provider as AgentConfiguration["provider"]) || undefined,
-    containerName: row.container_name || undefined,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  }));
+	const rows = (await db`SELECT * FROM agent_configurations`) as any[];
+	return rows.map((row) => ({
+		id: row.id,
+		project: row.project || undefined,
+		repositoryId: row.repository_id || undefined,
+		repositoryUrl: row.repository_url || undefined,
+		model: row.model,
+		fallbackModel: row.fallback_model || undefined,
+		rules: parseJson<AgentConfiguration["rules"]>(row.rules) || undefined,
+		mcpServers: parseJson<string[]>(row.mcp_servers) || undefined,
+		prompt: row.prompt || undefined,
+		enabled: row.enabled === 1,
+		branchNamingPattern: row.branch_naming_pattern || undefined,
+		defaultBranch: row.default_branch || undefined,
+		createPullRequest: row.create_pull_request === 1,
+		pushBranch: row.push_branch === 1,
+		workflowId: row.workflow_id || undefined,
+		provider: (row.provider as AgentConfiguration["provider"]) || undefined,
+		containerName: row.container_name || undefined,
+		createdAt: row.created_at,
+		updatedAt: row.updated_at,
+	}));
 }
 
 /**
@@ -59,31 +59,31 @@ export async function getAgentConfigurations(
  * ```
  */
 export async function getEnabledAgentConfigurations(
-  db: SQL
+	db: SQL,
 ): Promise<AgentConfiguration[]> {
-  const rows =
-    (await db`SELECT * FROM agent_configurations WHERE enabled = 1`) as any[];
-  return rows.map((row) => ({
-    id: row.id,
-    project: row.project || undefined,
-    repositoryId: row.repository_id || undefined,
-    repositoryUrl: row.repository_url || undefined,
-    model: row.model,
-    fallbackModel: row.fallback_model || undefined,
-    rules: parseJson<AgentConfiguration["rules"]>(row.rules) || undefined,
-    mcpServers: parseJson<string[]>(row.mcp_servers) || undefined,
-    prompt: row.prompt || undefined,
-    enabled: true,
-    branchNamingPattern: row.branch_naming_pattern || undefined,
-    defaultBranch: row.default_branch || undefined,
-    createPullRequest: row.create_pull_request === 1,
-    pushBranch: row.push_branch === 1,
-    workflowId: row.workflow_id || undefined,
-    provider: (row.provider as AgentConfiguration["provider"]) || undefined,
-    containerName: row.container_name || undefined,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  }));
+	const rows =
+		(await db`SELECT * FROM agent_configurations WHERE enabled = 1`) as any[];
+	return rows.map((row) => ({
+		id: row.id,
+		project: row.project || undefined,
+		repositoryId: row.repository_id || undefined,
+		repositoryUrl: row.repository_url || undefined,
+		model: row.model,
+		fallbackModel: row.fallback_model || undefined,
+		rules: parseJson<AgentConfiguration["rules"]>(row.rules) || undefined,
+		mcpServers: parseJson<string[]>(row.mcp_servers) || undefined,
+		prompt: row.prompt || undefined,
+		enabled: true,
+		branchNamingPattern: row.branch_naming_pattern || undefined,
+		defaultBranch: row.default_branch || undefined,
+		createPullRequest: row.create_pull_request === 1,
+		pushBranch: row.push_branch === 1,
+		workflowId: row.workflow_id || undefined,
+		provider: (row.provider as AgentConfiguration["provider"]) || undefined,
+		containerName: row.container_name || undefined,
+		createdAt: row.created_at,
+		updatedAt: row.updated_at,
+	}));
 }
 
 /**
@@ -117,78 +117,78 @@ export async function getEnabledAgentConfigurations(
  * Helper to find config by repository ID
  */
 function findConfigByRepositoryId(
-  configs: AgentConfiguration[],
-  repositoryId: string
+	configs: AgentConfiguration[],
+	repositoryId: string,
 ): AgentConfiguration | null {
-  return configs.find((c) => c.repositoryId === repositoryId) || null;
+	return configs.find((c) => c.repositoryId === repositoryId) || null;
 }
 
 /**
  * Helper to find config by repository URL
  */
 function findConfigByRepositoryUrl(
-  configs: AgentConfiguration[],
-  repositoryUrl: string
+	configs: AgentConfiguration[],
+	repositoryUrl: string,
 ): AgentConfiguration | null {
-  return configs.find((c) => c.repositoryUrl === repositoryUrl) || null;
+	return configs.find((c) => c.repositoryUrl === repositoryUrl) || null;
 }
 
 /**
  * Helper to find config by project
  */
 function findConfigByProject(
-  configs: AgentConfiguration[],
-  project: string
+	configs: AgentConfiguration[],
+	project: string,
 ): AgentConfiguration | null {
-  return (
-    configs.find(
-      (c) => c.project === project && !c.repositoryId && !c.repositoryUrl
-    ) || null
-  );
+	return (
+		configs.find(
+			(c) => c.project === project && !c.repositoryId && !c.repositoryUrl,
+		) || null
+	);
 }
 
 /**
  * Helper to find global config
  */
 function findGlobalConfig(
-  configs: AgentConfiguration[]
+	configs: AgentConfiguration[],
 ): AgentConfiguration | null {
-  return (
-    configs.find((c) => !(c.project || c.repositoryId || c.repositoryUrl)) ||
-    null
-  );
+	return (
+		configs.find((c) => !(c.project || c.repositoryId || c.repositoryUrl)) ||
+		null
+	);
 }
 
 export function findAgentConfiguration(
-  configs: AgentConfiguration[],
-  project?: string,
-  repositoryId?: string,
-  repositoryUrl?: string
+	configs: AgentConfiguration[],
+	project?: string,
+	repositoryId?: string,
+	repositoryUrl?: string,
 ): AgentConfiguration | null {
-  const enabledConfigs = configs.filter((c) => c.enabled);
+	const enabledConfigs = configs.filter((c) => c.enabled);
 
-  if (repositoryId) {
-    const config = findConfigByRepositoryId(enabledConfigs, repositoryId);
-    if (config) {
-      return config;
-    }
-  }
+	if (repositoryId) {
+		const config = findConfigByRepositoryId(enabledConfigs, repositoryId);
+		if (config) {
+			return config;
+		}
+	}
 
-  if (repositoryUrl) {
-    const config = findConfigByRepositoryUrl(enabledConfigs, repositoryUrl);
-    if (config) {
-      return config;
-    }
-  }
+	if (repositoryUrl) {
+		const config = findConfigByRepositoryUrl(enabledConfigs, repositoryUrl);
+		if (config) {
+			return config;
+		}
+	}
 
-  if (project) {
-    const config = findConfigByProject(enabledConfigs, project);
-    if (config) {
-      return config;
-    }
-  }
+	if (project) {
+		const config = findConfigByProject(enabledConfigs, project);
+		if (config) {
+			return config;
+		}
+	}
 
-  return findGlobalConfig(enabledConfigs);
+	return findGlobalConfig(enabledConfigs);
 }
 
 /**
@@ -211,11 +211,11 @@ export function findAgentConfiguration(
  * ```
  */
 export async function addAgentConfiguration(
-  db: SQL,
-  config: AgentConfiguration
+	db: SQL,
+	config: AgentConfiguration,
 ): Promise<Result<void>> {
-  try {
-    await db`
+	try {
+		await db`
             INSERT INTO agent_configurations (
                 id, project, repository_id, repository_url, model, fallback_model,
                 rules, mcp_servers, prompt, enabled, branch_naming_pattern,
@@ -233,10 +233,10 @@ export async function addAgentConfiguration(
             )
         `;
 
-    return ok(undefined);
-  } catch (error) {
-    return err(error instanceof Error ? error : new Error(String(error)));
-  }
+		return ok(undefined);
+	} catch (error) {
+		return err(error instanceof Error ? error : new Error(String(error)));
+	}
 }
 
 /**
@@ -259,20 +259,20 @@ export async function addAgentConfiguration(
  * ```
  */
 export async function updateAgentConfiguration(
-  db: SQL,
-  configId: string,
-  updater: (config: AgentConfiguration) => AgentConfiguration
+	db: SQL,
+	configId: string,
+	updater: (config: AgentConfiguration) => AgentConfiguration,
 ): Promise<Result<void>> {
-  try {
-    const configs = await getAgentConfigurations(db);
-    const currentConfig = configs.find((c) => c.id === configId);
-    if (!currentConfig) {
-      return err(new Error(`Agent configuration not found: ${configId}`));
-    }
+	try {
+		const configs = await getAgentConfigurations(db);
+		const currentConfig = configs.find((c) => c.id === configId);
+		if (!currentConfig) {
+			return err(new Error(`Agent configuration not found: ${configId}`));
+		}
 
-    const updatedConfig = updater(currentConfig);
+		const updatedConfig = updater(currentConfig);
 
-    await db`
+		await db`
             UPDATE agent_configurations SET
                 project = ${updatedConfig.project || null}, 
                 repository_id = ${updatedConfig.repositoryId || null}, 
@@ -294,10 +294,10 @@ export async function updateAgentConfiguration(
             WHERE id = ${configId}
         `;
 
-    return ok(undefined);
-  } catch (error) {
-    return err(error instanceof Error ? error : new Error(String(error)));
-  }
+		return ok(undefined);
+	} catch (error) {
+		return err(error instanceof Error ? error : new Error(String(error)));
+	}
 }
 
 /**
@@ -317,13 +317,13 @@ export async function updateAgentConfiguration(
  * ```
  */
 export async function deleteAgentConfiguration(
-  db: SQL,
-  configId: string
+	db: SQL,
+	configId: string,
 ): Promise<Result<void>> {
-  try {
-    await db`DELETE FROM agent_configurations WHERE id = ${configId}`;
-    return ok(undefined);
-  } catch (error) {
-    return err(error instanceof Error ? error : new Error(String(error)));
-  }
+	try {
+		await db`DELETE FROM agent_configurations WHERE id = ${configId}`;
+		return ok(undefined);
+	} catch (error) {
+		return err(error instanceof Error ? error : new Error(String(error)));
+	}
 }
