@@ -68,9 +68,9 @@ describe("unified-parser", () => {
 		};
 
 		const output = [
-			"{\"type\":\"tool_use\",\"part\":{\"tool\":\"Edit\",\"state\":{\"input\":{\"filePath\":\"src/a.ts\",\"command\":\"bun test\"}}}}",
-			"{\"usage\":{\"input_tokens\":10,\"outputTokens\":20,\"credits_spent\":0.12}}",
-			"{\"usage\":{\"inputTokens\":12,\"completion_tokens\":18,\"total_cost\":0.25}}",
+			'{"type":"tool_use","part":{"tool":"Edit","state":{"input":{"filePath":"src/a.ts","command":"bun test"}}}}',
+			'{"usage":{"input_tokens":10,"outputTokens":20,"credits_spent":0.12}}',
+			'{"usage":{"inputTokens":12,"completion_tokens":18,"total_cost":0.25}}',
 			"not-json-line",
 		].join("\n");
 

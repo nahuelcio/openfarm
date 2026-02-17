@@ -363,8 +363,9 @@ fn location_for_profile(profile: &AgentProfileId) -> Result<AgentConfigLocation,
 
 fn normalized_from_value(profile: &AgentProfileId, value: &Value) -> UnifiedAgentConfig {
     let providers = value
-        .get("providers")
+        .get("enabled_providers")
         .and_then(|v| v.as_array())
+        .or_else(|| value.get("providers").and_then(|v| v.as_array()))
         .map(|arr| {
             arr.iter()
                 .filter_map(|v| v.as_str().map(|s| s.to_string()))
@@ -452,14 +453,26 @@ fn normalized_from_value(profile: &AgentProfileId, value: &Value) -> UnifiedAgen
                         }
                     }
                 }
+            } else if let Some(cmd) = item.get("command").and_then(|v| v.as_str()) {
+                command = cmd.to_string();
+                args = item
+                    .get("args")
+                    .and_then(|v| v.as_array())
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(|x| x.as_str().map(|s| s.to_string()))
+                            .collect::<Vec<_>>()
+                    })
+                    .unwrap_or_default();
             }
             let enabled = item
                 .get("enabled")
                 .and_then(|v| v.as_bool())
                 .unwrap_or(true);
             let env = item
-                .get("env")
+                .get("environment")
                 .and_then(|v| v.as_object())
+                .or_else(|| item.get("env").and_then(|v| v.as_object()))
                 .map(|o| {
                     o.iter()
                         .map(|(k, v)| (k.clone(), v.as_str().unwrap_or_default().to_string()))
@@ -481,11 +494,22 @@ fn normalized_from_value(profile: &AgentProfileId, value: &Value) -> UnifiedAgen
 
     let skills = value
         .get("skills")
-        .and_then(|v| v.as_array())
-        .map(|arr| {
-            arr.iter()
-                .filter_map(|item| item.as_str().map(|s| s.to_string()))
-                .collect::<Vec<_>>()
+        .and_then(|v| {
+            if let Some(arr) = v.as_array() {
+                return Some(
+                    arr.iter()
+                        .filter_map(|item| item.as_str().map(|s| s.to_string()))
+                        .collect::<Vec<_>>(),
+                );
+            }
+
+            v.as_object().and_then(|obj| {
+                obj.get("paths").and_then(|paths| paths.as_array()).map(|arr| {
+                    arr.iter()
+                        .filter_map(|item| item.as_str().map(|s| s.to_string()))
+                        .collect::<Vec<_>>()
+                })
+            })
         })
         .unwrap_or_default();
 
@@ -603,7 +627,7 @@ fn apply_unified_on_value(
             env_item.insert(k.clone(), Value::String(v.clone()));
         }
         if !env_item.is_empty() {
-            item.insert("env".to_string(), Value::Object(env_item));
+            item.insert("environment".to_string(), Value::Object(env_item));
         }
         opencode_mcp_map.insert(server.name.clone(), Value::Object(item));
     }
@@ -638,6 +662,26 @@ fn apply_unified_on_value(
     obj.insert("plugins".to_string(), Value::Object(plugins));
 
     if matches!(profile, AgentProfileId::Opencode) {
+        obj.insert(
+            "enabled_providers".to_string(),
+            Value::Array(
+                config
+                    .providers
+                    .iter()
+                    .map(|p| Value::String(p.clone()))
+                    .collect(),
+            ),
+        );
+        obj.insert(
+            "skills".to_string(),
+            serde_json::json!({ "paths": config.skills }),
+        );
+
+        obj.remove("providers");
+        obj.remove("env");
+        obj.remove("defaultModel");
+        obj.remove("agents");
+        obj.remove("plugins");
         obj.remove("mcpServers");
     }
     if matches!(profile, AgentProfileId::Codex | AgentProfileId::ClaudeCode) {

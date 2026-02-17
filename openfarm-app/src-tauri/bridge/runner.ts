@@ -5,7 +5,7 @@
  * Executes only Codex, Claude Code and OpenCode through the SDK.
  */
 
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { OpenFarm } from "@openfarm/sdk";
 
 interface RuntimeExecuteRequest {
@@ -71,14 +71,6 @@ interface NormalizedExecuteRequest {
 function createRequestId(prefix: string): string {
     return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
-
-const OPENCODE_FALLBACK_MODELS = [
-    "openrouter/openai/gpt-4.1",
-    "openrouter/openai/gpt-5",
-    "openrouter/anthropic/claude-sonnet-4.5",
-    "github-copilot/gpt-5.2-codex",
-    "zai/glm-4.7",
-] as const;
 
 const OPENCODE_DEFAULT_MODEL_CANDIDATES = [
     "openrouter/openai/gpt-4.1",
@@ -165,10 +157,7 @@ function getOpenCodeCatalog(): {
         }
     }
 
-    const modelIds =
-        discoveredModels.length > 0
-            ? discoveredModels
-            : [...OPENCODE_FALLBACK_MODELS];
+    const modelIds = discoveredModels;
     const models = modelIds.map((id) => ({
         id,
         name: id,
@@ -178,9 +167,223 @@ function getOpenCodeCatalog(): {
     const defaultModel =
         OPENCODE_DEFAULT_MODEL_CANDIDATES.find((id) => modelSet.has(id)) ||
         modelIds[0] ||
-        "openrouter/openai/gpt-4.1";
+        "";
 
     return { models, defaultModel };
+}
+
+function getCodexModelCommands(): Array<{ cmd: string; args: string[] }> {
+    const configured =
+        typeof process !== "undefined" && process.env?.CODEX_COMMAND
+            ? process.env.CODEX_COMMAND.trim()
+            : "";
+
+    if (!configured || configured === "undefined" || configured === "null") {
+        return [
+            { cmd: "codex", args: ["app-server", "--listen", "stdio://"] },
+            { cmd: "bunx", args: ["codex", "app-server", "--listen", "stdio://"] },
+        ];
+    }
+
+    if (configured === "bunx") {
+        return [{ cmd: "bunx", args: ["codex", "app-server", "--listen", "stdio://"] }];
+    }
+
+    return [{ cmd: configured, args: ["app-server", "--listen", "stdio://"] }];
+}
+
+async function requestCodexCatalogFromCommand(
+    cmd: string,
+    args: string[],
+): Promise<{
+    models: ProviderCatalogItem["models"];
+    defaultModel: string;
+} | null> {
+    return await new Promise((resolve) => {
+        const child = spawn(cmd, args, {
+            stdio: ["pipe", "pipe", "pipe"],
+        });
+
+        let settled = false;
+        let stdoutBuffer = "";
+
+        const finish = (
+            value: {
+                models: ProviderCatalogItem["models"];
+                defaultModel: string;
+            } | null,
+        ) => {
+            if (settled) {
+                return;
+            }
+            settled = true;
+            clearTimeout(timeoutHandle);
+            try {
+                child.kill("SIGTERM");
+            } catch {
+                // noop
+            }
+            resolve(value);
+        };
+
+        const timeoutHandle = setTimeout(() => {
+            finish(null);
+        }, 5000);
+
+        child.on("error", () => {
+            finish(null);
+        });
+
+        child.on("exit", () => {
+            finish(null);
+        });
+
+        child.stdout.setEncoding("utf8");
+        child.stdout.on("data", (chunk: string) => {
+            stdoutBuffer += chunk;
+
+            while (true) {
+                const newLineIndex = stdoutBuffer.indexOf("\n");
+                if (newLineIndex === -1) {
+                    break;
+                }
+
+                const line = stdoutBuffer.slice(0, newLineIndex).trim();
+                stdoutBuffer = stdoutBuffer.slice(newLineIndex + 1);
+                if (!line) {
+                    continue;
+                }
+
+                let message: Record<string, unknown>;
+                try {
+                    message = JSON.parse(line) as Record<string, unknown>;
+                } catch {
+                    continue;
+                }
+
+                const id = message.id;
+                if (id !== 2) {
+                    continue;
+                }
+
+                if (message.error) {
+                    finish(null);
+                    return;
+                }
+
+                const result =
+                    message.result && typeof message.result === "object"
+                        ? (message.result as Record<string, unknown>)
+                        : null;
+                const data = result && Array.isArray(result.data) ? result.data : [];
+                if (data.length === 0) {
+                    finish(null);
+                    return;
+                }
+
+                const models: ProviderCatalogItem["models"] = [];
+                const seenIds = new Set<string>();
+                let defaultModel = "";
+
+                for (const candidate of data) {
+                    if (!candidate || typeof candidate !== "object") {
+                        continue;
+                    }
+                    const model = candidate as Record<string, unknown>;
+                    const idValue = model.model ?? model.id;
+                    const modelId = typeof idValue === "string" ? idValue.trim() : "";
+                    if (!modelId || seenIds.has(modelId)) {
+                        continue;
+                    }
+                    seenIds.add(modelId);
+
+                    const displayNameValue = model.displayName ?? modelId;
+                    const descriptionValue = model.description;
+                    const isDefault = model.isDefault === true;
+
+                    models.push({
+                        id: modelId,
+                        name:
+                            typeof displayNameValue === "string" &&
+                            displayNameValue.trim().length > 0
+                                ? displayNameValue.trim()
+                                : modelId,
+                        description:
+                            typeof descriptionValue === "string" &&
+                            descriptionValue.trim().length > 0
+                                ? descriptionValue.trim()
+                                : "OpenAI Codex model",
+                    });
+
+                    if (!defaultModel && isDefault) {
+                        defaultModel = modelId;
+                    }
+                }
+
+                if (models.length === 0) {
+                    finish(null);
+                    return;
+                }
+
+                finish({
+                    models,
+                    defaultModel: defaultModel || models[0].id,
+                });
+                return;
+            }
+        });
+
+        child.stdin.write(
+            `${JSON.stringify({
+                jsonrpc: "2.0",
+                id: 1,
+                method: "initialize",
+                params: {
+                    protocolVersion: "2024-11-05",
+                    clientInfo: {
+                        name: "openfarm-bridge",
+                        version: "0.1.0",
+                    },
+                    capabilities: {},
+                },
+            })}\n`,
+        );
+        child.stdin.write(
+            `${JSON.stringify({
+                jsonrpc: "2.0",
+                method: "notifications/initialized",
+                params: {},
+            })}\n`,
+        );
+        child.stdin.write(
+            `${JSON.stringify({
+                jsonrpc: "2.0",
+                id: 2,
+                method: "model/list",
+                params: {
+                    limit: 200,
+                },
+            })}\n`,
+        );
+    });
+}
+
+async function getCodexCatalog(): Promise<{
+    models: ProviderCatalogItem["models"];
+    defaultModel: string;
+}> {
+    const attemptedCommands: string[] = [];
+    for (const { cmd, args } of getCodexModelCommands()) {
+        attemptedCommands.push([cmd, ...args].join(" "));
+        const discovered = await requestCodexCatalogFromCommand(cmd, args);
+        if (discovered && discovered.models.length > 0) {
+            return discovered;
+        }
+    }
+
+    throw new Error(
+        `Codex model list failed. Tried: ${attemptedCommands.join(" | ") || "none"}`,
+    );
 }
 
 function emit(event: Record<string, unknown>): void {
@@ -250,9 +453,17 @@ function normalizeProvider(inputProvider?: string): {
     };
 }
 
-function getCatalog(): ProviderCatalogItem[] {
+async function getCatalog(): Promise<ProviderCatalogItem[]> {
     const openCodeCatalog = getOpenCodeCatalog();
-    return [
+
+    let codexCatalog: { models: ProviderCatalogItem["models"]; defaultModel: string } | null = null;
+    try {
+        codexCatalog = await getCodexCatalog();
+    } catch {
+        // Codex unavailable — omit from catalog
+    }
+
+    const items: ProviderCatalogItem[] = [
         {
             id: "claude-code",
             name: "Claude Code",
@@ -276,28 +487,6 @@ function getCatalog(): ProviderCatalogItem[] {
             defaultAgent: "claude-code",
         },
         {
-            id: "codex",
-            name: "Codex",
-            description: "OpenAI Codex CLI agent",
-            color: "#10a37f",
-            connected: true,
-            apiKey: "",
-            models: [
-                {
-                    id: "gpt-5-codex",
-                    name: "GPT-5 Codex",
-                    description: "Codex-optimized flagship model",
-                },
-                {
-                    id: "gpt-5-codex-mini",
-                    name: "GPT-5 Codex Mini",
-                    description: "Faster and cheaper Codex model",
-                },
-            ],
-            defaultModel: "gpt-5-codex-mini",
-            defaultAgent: "codex",
-        },
-        {
             id: "opencode",
             name: "OpenCode",
             description: "OpenCode CLI agent",
@@ -309,6 +498,22 @@ function getCatalog(): ProviderCatalogItem[] {
             defaultAgent: "opencode",
         },
     ];
+
+    if (codexCatalog) {
+        items.splice(1, 0, {
+            id: "codex",
+            name: "Codex",
+            description: "OpenAI Codex CLI agent",
+            color: "#10a37f",
+            connected: true,
+            apiKey: "",
+            models: codexCatalog.models,
+            defaultModel: codexCatalog.defaultModel,
+            defaultAgent: "codex",
+        });
+    }
+
+    return items;
 }
 
 function buildCodexPrompt(task: string, context?: string): string {
@@ -363,7 +568,7 @@ async function executeCodexWithSdk(
     const selectedModel =
         normalized.model && normalized.model.trim().length > 0
             ? normalized.model.trim()
-            : "gpt-5-codex-mini";
+            : undefined;
 
     const commandExecutionIds = new Set<string>();
     const toolCallIds = new Set<string>();
@@ -379,7 +584,7 @@ async function executeCodexWithSdk(
     const buildStatistics = (duration: number): BridgeExecutionStatistics => ({
         credits_spent: 0,
         tool_calls: toolCalls,
-        model: selectedModel,
+        model: selectedModel || "default",
         files_changed: changedFilePaths.size,
         processes_created: commandExecutionIds.size,
         request_id: requestId,
@@ -406,11 +611,14 @@ async function executeCodexWithSdk(
     try {
         const { Codex } = await import("@openai/codex-sdk");
         const codex = new Codex();
-        const thread = codex.startThread({
-            model: selectedModel,
+        const threadOptions: Parameters<typeof codex.startThread>[0] = {
             workingDirectory: workspace,
             modelReasoningEffort: "medium",
-        });
+        };
+        if (selectedModel) {
+            threadOptions.model = selectedModel;
+        }
+        const thread = codex.startThread(threadOptions);
         const prompt = buildCodexPrompt(normalized.task, normalized.context);
         const { events } = await thread.runStreamed(prompt, {
             signal: abortController.signal,
@@ -565,7 +773,7 @@ async function main(): Promise<void> {
         if (isCatalogRequest(request)) {
             emit({
                 type: "catalog",
-                providers: getCatalog(),
+                providers: await getCatalog(),
             });
             return;
         }

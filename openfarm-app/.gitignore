@@ -25,3 +25,5 @@ src-tauri/binaries/openfarm-bridge*
 *.njsproj
 *.sln
 *.sw?
+
+.tmp-codex-protocol

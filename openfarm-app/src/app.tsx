@@ -7,6 +7,28 @@ import {
 } from "@openfarm/mcp-marketplace/browser";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+// Helpers to update a single agent inside the workspaces array without
+// copying every workspace/agent on every event.
+function updateAgentInWorkspaces(
+	workspaces: Workspace[],
+	agentId: string,
+	updater: (agent: Agent) => Agent,
+): Workspace[] {
+	let changed = false;
+	const next = workspaces.map((workspace) => {
+		let wsChanged = false;
+		const agents = workspace.agents.map((agent) => {
+			if (agent.id !== agentId) return agent;
+			wsChanged = true;
+			return updater(agent);
+		});
+		if (!wsChanged) return workspace;
+		changed = true;
+		return { ...workspace, agents };
+	});
+	return changed ? next : workspaces;
+}
+
 // Simple debounce utility
 function debounce<T extends (...args: any[]) => void>(func: T, wait: number): T {
 	let timeout: NodeJS.Timeout;
@@ -266,15 +288,15 @@ export default function App() {
 	const [planReviewOpen, setPlanReviewOpen] = useState(false);
 	const [azureDevOpsOpen, setAzureDevOpsOpen] = useState(false);
 	const queueDispatchingRef = useRef<Set<string>>(new Set());
+	const selectedAgentIdRef = useRef(selectedAgentId);
+	// Keep ref in sync so effects can read without depending on it
+	useEffect(() => {
+		selectedAgentIdRef.current = selectedAgentId;
+	}, [selectedAgentId]);
+
 	const selectedAgentContext = useMemo(
 		() => findAgentContext(workspaces, selectedAgentId),
 		[workspaces, selectedAgentId],
-	);
-	
-	// Memoized findAgentContext to prevent recalculations
-	const memoizedFindAgentContext = useMemo(
-		() => findAgentContext,
-		[]
 	);
 	const selectedAgent = selectedAgentContext?.agent || null;
 	const selectedSubthreadName =
@@ -294,13 +316,24 @@ export default function App() {
 		);
 	}, [selectedAgent, selectedSubthreadName]);
 	const selectedWorkspaceId = selectedAgentContext?.workspace.id;
-	const selectedWorkspaceAgents = selectedAgentContext?.workspace.agents || [];
-	const selectedQueuedInstructions = selectedAgent
-		? queuedInstructionsByAgent[selectedAgent.id] || []
-		: [];
-	const selectedAgentEvents = selectedAgent
-		? agentEventsByAgent[selectedAgent.id] || []
-		: [];
+	const selectedWorkspaceAgents = useMemo(
+		() => selectedAgentContext?.workspace.agents || [],
+		[selectedAgentContext],
+	);
+	const selectedQueuedInstructions = useMemo(
+		() =>
+			selectedAgent
+				? queuedInstructionsByAgent[selectedAgent.id] || []
+				: [],
+		[selectedAgent, queuedInstructionsByAgent],
+	);
+	const selectedAgentEvents = useMemo(
+		() =>
+			selectedAgent
+				? agentEventsByAgent[selectedAgent.id] || []
+				: [],
+		[selectedAgent, agentEventsByAgent],
+	);
 	const selectedLogsLoading = selectedAgent
 		? Boolean(logsLoadingByAgent[selectedAgent.id])
 		: false;
@@ -357,45 +390,25 @@ export default function App() {
 			if (!mounted) {
 				return;
 			}
-			// Only sync state if no agent is currently selected
-			if (!selectedAgentId) {
+			if (!selectedAgentIdRef.current) {
 				syncState(state);
 			} else {
-				// Just update workspaces and settings, preserve selection
 				setWorkspaces(state.workspaces);
 				setSettings(state.settings);
 			}
-			// Mark app as loaded
 			setIsAppLoading(false);
 		})();
 
 		const active = setInterval(() => {
-			// Only refresh if no agent is selected to avoid interfering with user interaction
-			if (!selectedAgentId) {
+			if (!selectedAgentIdRef.current) {
 				debouncedRefreshState();
 			}
-		}, 30000); // Increased to 30 seconds - much less frequent
-
-		// Handle window resize for responsive sidebar
-		const handleResize = () => {
-			if (typeof window !== 'undefined') {
-				const isMobile = window.innerWidth < 768;
-				if (isMobile && sidebarOpen) {
-					// Optionally close sidebar on mobile when resizing down
-					// setSidebarOpen(false);
-				}
-			}
-		};
-
-		window.addEventListener('resize', handleResize);
+		}, 30000);
 
 		let unsubs: Array<() => void> = [];
 		void (async () => {
 			unsubs = [
-				await subscribeAgentEvents("agent:started", () => {
-					// Don't refresh state - let the existing intervals handle it
-					// This prevents blocking the UI when user is interacting
-				}),
+				await subscribeAgentEvents("agent:started", () => {}),
 				await subscribeAgentEvents("agent:output", async (payload) => {
 					const value = payload as { agent_id?: string; agentId?: string; chunk?: string };
 					const id = value.agent_id || value.agentId;
@@ -405,50 +418,48 @@ export default function App() {
 					}
 
 					setWorkspaces((prev) =>
-						prev.map((workspace) => ({
-							...workspace,
-							agents: workspace.agents.map((agent) => {
-								if (agent.id !== id) {
-									return agent;
+						updateAgentInWorkspaces(prev, id, (agent) => {
+							const messages = agent.messages;
+							let thinkingIndex = -1;
+							for (let i = messages.length - 1; i >= 0; i -= 1) {
+								if (messages[i]?.role === "agent" && messages[i]?.thinking) {
+									thinkingIndex = i;
+									break;
 								}
+							}
 
-								const messages = [...agent.messages];
-								const thinkingIndex = messages
-									.map((message, index) => ({ message, index }))
-									.reverse()
-									.find(({ message }) => message.role === "agent" && message.thinking)?.index;
-
-								if (thinkingIndex === undefined) {
-									messages.push({
-										id: `m-${Date.now()}-stream`,
-										role: "agent",
-										content: chunk,
-										timestamp: new Date().toLocaleTimeString([], {
-											hour: "2-digit",
-											minute: "2-digit",
-										}),
-										thinking: true,
-									});
-								} else {
-									const current = messages[thinkingIndex];
-									if (current) {
-										const currentContent = current.content || "";
-										if (!currentContent.endsWith(chunk)) {
-											messages[thinkingIndex] = {
-												...current,
-												content: `${currentContent}${chunk}`,
-											};
-										}
-									}
-								}
-
+							if (thinkingIndex === -1) {
 								return {
 									...agent,
 									status: "running",
-									messages,
+									messages: [
+										...messages,
+										{
+											id: `m-${Date.now()}-stream`,
+											role: "agent",
+											content: chunk,
+											timestamp: new Date().toLocaleTimeString([], {
+												hour: "2-digit",
+												minute: "2-digit",
+											}),
+											thinking: true,
+										},
+									],
 								};
-							}),
-						})),
+							}
+
+							const current = messages[thinkingIndex];
+							if (!current) return agent;
+							const currentContent = current.content || "";
+							if (currentContent.endsWith(chunk)) return agent;
+
+							const nextMessages = messages.slice();
+							nextMessages[thinkingIndex] = {
+								...current,
+								content: `${currentContent}${chunk}`,
+							};
+							return { ...agent, status: "running", messages: nextMessages };
+						}),
 					);
 				}),
 				await subscribeAgentEvents("agent:completed", async (payload) => {
@@ -466,43 +477,31 @@ export default function App() {
 					);
 
 					setWorkspaces((prev) =>
-						prev.map((workspace) => ({
-							...workspace,
-							agents: workspace.agents.map((agent) => {
-								if (agent.id !== id) {
-									return agent;
-								}
+						updateAgentInWorkspaces(prev, id, (agent) => {
+							const messages = agent.messages.map((message) =>
+								message.role === "agent" && message.thinking
+									? { ...message, thinking: false }
+									: message,
+							);
 
-								const messages = agent.messages.map((message) =>
-									message.role === "agent" && message.thinking
-										? { ...message, thinking: false }
-										: message,
-								);
-
-								if (normalizedStatistics) {
-									for (let index = messages.length - 1; index >= 0; index -= 1) {
-										const current = messages[index];
-										if (current && current.role === "agent") {
-											messages[index] = {
-												...current,
-												statistics: normalizedStatistics,
-												thinking: false,
-											};
-											break;
-										}
+							if (normalizedStatistics) {
+								for (let index = messages.length - 1; index >= 0; index -= 1) {
+									const current = messages[index];
+									if (current && current.role === "agent") {
+										messages[index] = {
+											...current,
+											statistics: normalizedStatistics,
+											thinking: false,
+										};
+										break;
 									}
 								}
+							}
 
-								return {
-									...agent,
-									status: "completed",
-									messages,
-								};
-							}),
-						})),
+							return { ...agent, status: "completed", messages };
+						}),
 					);
 
-					// Load persisted final assistant message from backend.
 					void refreshState(id);
 				}),
 				await subscribeAgentEvents("agent:failed", async (payload) => {
@@ -520,43 +519,31 @@ export default function App() {
 					);
 
 					setWorkspaces((prev) =>
-						prev.map((workspace) => ({
-							...workspace,
-							agents: workspace.agents.map((agent) => {
-								if (agent.id !== id) {
-									return agent;
-								}
+						updateAgentInWorkspaces(prev, id, (agent) => {
+							const messages = agent.messages.map((message) =>
+								message.role === "agent" && message.thinking
+									? { ...message, thinking: false }
+									: message,
+							);
 
-								const messages = agent.messages.map((message) =>
-									message.role === "agent" && message.thinking
-										? { ...message, thinking: false }
-										: message,
-								);
-
-								if (normalizedStatistics) {
-									for (let index = messages.length - 1; index >= 0; index -= 1) {
-										const current = messages[index];
-										if (current && current.role === "agent") {
-											messages[index] = {
-												...current,
-												statistics: normalizedStatistics,
-												thinking: false,
-											};
-											break;
-										}
+							if (normalizedStatistics) {
+								for (let index = messages.length - 1; index >= 0; index -= 1) {
+									const current = messages[index];
+									if (current && current.role === "agent") {
+										messages[index] = {
+											...current,
+											statistics: normalizedStatistics,
+											thinking: false,
+										};
+										break;
 									}
 								}
+							}
 
-								return {
-									...agent,
-									status: "error",
-									messages,
-								};
-							}),
-						})),
+							return { ...agent, status: "error", messages };
+						}),
 					);
 
-					// Load persisted final assistant/error message from backend.
 					void refreshState(id);
 				}),
 				await subscribeAgentEvents("agent:diff-updated", async (payload) => {
@@ -567,11 +554,9 @@ export default function App() {
 					}
 					const diffs = await loadAgentDiffs(id);
 					setWorkspaces((prev) =>
-						prev.map((workspace) => ({
-							...workspace,
-							agents: workspace.agents.map((agent) =>
-								agent.id === id ? { ...agent, diffs } : agent,
-							),
+						updateAgentInWorkspaces(prev, id, (agent) => ({
+							...agent,
+							diffs,
 						})),
 					);
 				}),
@@ -581,24 +566,46 @@ export default function App() {
 		return () => {
 			mounted = false;
 			clearInterval(active);
-			window.removeEventListener('resize', handleResize);
 			for (const unlisten of unsubs) {
 				unlisten();
 			}
 		};
-	}, [refreshState, selectedAgentId, syncState, sidebarOpen]);
+	}, [refreshState, syncState, debouncedRefreshState]);
 
 	useEffect(() => {
 		void (async () => {
 			const persisted = await getSettings();
-			const catalog = await getProviderCatalog().catch(() => []);
-			if (catalog.length > 0) {
+			try {
+				const catalog = await getProviderCatalog();
+				if (catalog.length === 0) {
+					throw new Error("Provider catalog returned no models");
+				}
 				const merged = mergeSettingsWithCatalog(persisted, catalog);
 				setSettings(merged);
 				await saveSettings(merged).catch(() => {});
 				return;
+			} catch (error) {
+				console.error("Failed to load provider catalog", error);
+				const message =
+					error instanceof Error
+						? error.message
+						: "Failed to load provider catalog";
+				const withoutCatalog = {
+					...persisted,
+					providers: persisted.providers.map((provider) => ({
+						...provider,
+						models: [],
+						defaultModel: "",
+					})),
+					defaultModel: "",
+				};
+				setSettings(withoutCatalog);
+				if (typeof window !== "undefined") {
+					window.alert(
+						`No se pudo cargar el catálogo real de modelos. ${message}`,
+					);
+				}
 			}
-			setSettings(persisted);
 		})();
 
 		// Cargar MCPs instalados
@@ -623,59 +630,69 @@ export default function App() {
 		})();
 	}, []);
 
+	const isSelectingRef = useRef(false);
+	const isLoadingChatRef = useRef(false);
+
 	const handleSelectAgent = useCallback((agent: Agent) => {
-		// Don't do anything if this agent is already selected or we're already selecting
-		if (selectedAgentId === agent.id || isSelectingAgent || isLoadingChat) {
+		if (selectedAgentIdRef.current === agent.id || isSelectingRef.current || isLoadingChatRef.current) {
 			return;
 		}
-		
-		// Set loading states for visual feedback
+
+		isSelectingRef.current = true;
+		isLoadingChatRef.current = true;
 		setIsSelectingAgent(true);
 		setIsLoadingChat(true);
-		
-		// Immediate UI update - NO backend calls for instant response
+
 		setAzureDevOpsOpen(false);
 		setSelectedAgentId(agent.id);
 		setSelectedSubthread(null);
-		
-		// Clear loading states after a short delay (simulates loading)
-		// This gives visual feedback that something is happening
+
 		requestAnimationFrame(() => {
 			setTimeout(() => {
+				isSelectingRef.current = false;
+				isLoadingChatRef.current = false;
 				setIsSelectingAgent(false);
 				setIsLoadingChat(false);
 			}, 150);
 		});
-	}, [selectedAgentId, isSelectingAgent, isLoadingChat]);
+	}, []);
+
+	const selectedSubthreadRef = useRef(selectedSubthread);
+	useEffect(() => {
+		selectedSubthreadRef.current = selectedSubthread;
+	}, [selectedSubthread]);
 
 	const handleSelectSubthread = useCallback(
 		(agent: Agent, subthreadName: string) => {
-			// Don't do anything if this subthread is already selected or we're already selecting
-			if (selectedAgentId === agent.id && selectedSubthread?.name === subthreadName) {
+			if (
+				selectedAgentIdRef.current === agent.id &&
+				selectedSubthreadRef.current?.name === subthreadName
+			) {
 				return;
 			}
-			
-			// Set loading states for visual feedback
+
+			isSelectingRef.current = true;
+			isLoadingChatRef.current = true;
 			setIsSelectingAgent(true);
 			setIsLoadingChat(true);
-			
-			// Immediate UI update - NO backend calls for instant response
+
 			setAzureDevOpsOpen(false);
 			setSelectedAgentId(agent.id);
 			setSelectedSubthread({
 				agentId: agent.id,
 				name: subthreadName,
 			});
-			
-			// Clear loading states after a short delay
+
 			requestAnimationFrame(() => {
 				setTimeout(() => {
+					isSelectingRef.current = false;
+					isLoadingChatRef.current = false;
 					setIsSelectingAgent(false);
 					setIsLoadingChat(false);
 				}, 150);
 			});
 		},
-		[selectedAgentId, selectedSubthread],
+		[],
 	);
 
 	const dispatchMessageToAgent = useCallback(
@@ -854,29 +871,21 @@ export default function App() {
 		const agentId = selectedAgent.id;
 		setStoppingAgentId(agentId);
 		setWorkspaces((prev) =>
-			prev.map((workspace) => ({
-				...workspace,
-				agents: workspace.agents.map((agent) => {
-					if (agent.id !== agentId) {
-						return agent;
-					}
-					return {
-						...agent,
-						status: "error",
-						messages: [
-							...agent.messages,
-							{
-								id: `m-${Date.now()}-stop`,
-								role: "system",
-								content: "Stop requested. Terminating execution...",
-								timestamp: new Date().toLocaleTimeString([], {
-									hour: "2-digit",
-									minute: "2-digit",
-								}),
-							},
-						],
-					};
-				}),
+			updateAgentInWorkspaces(prev, agentId, (agent) => ({
+				...agent,
+				status: "error",
+				messages: [
+					...agent.messages,
+					{
+						id: `m-${Date.now()}-stop`,
+						role: "system",
+						content: "Stop requested. Terminating execution...",
+						timestamp: new Date().toLocaleTimeString([], {
+							hour: "2-digit",
+							minute: "2-digit",
+						}),
+					},
+				],
 			})),
 		);
 		try {
@@ -1215,6 +1224,17 @@ export default function App() {
 		});
 	}, [workspaces]);
 
+	// Close marketplace on Escape key
+	useEffect(() => {
+		const handleKeyDown = (e: KeyboardEvent) => {
+			if (e.key === "Escape" && marketplaceOpen) {
+				setMarketplaceOpen(false);
+			}
+		};
+		window.addEventListener("keydown", handleKeyDown);
+		return () => window.removeEventListener("keydown", handleKeyDown);
+	}, [marketplaceOpen]);
+
 	// Initialize MCP Manager
 	useEffect(() => {
 		const initializeMcpSystem = async () => {
@@ -1443,9 +1463,42 @@ export default function App() {
 			/>
 
 			{marketplaceOpen && (
-				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-					<div className="h-[80vh] w-[90vw] max-w-4xl overflow-hidden rounded-lg border bg-background shadow-xl">
-						<McpMarketplaceView
+				<div
+					className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+					onClick={(e) => {
+						if (e.target === e.currentTarget) {
+							setMarketplaceOpen(false);
+						}
+					}}
+				>
+					<div className="h-[80vh] w-[90vw] max-w-4xl overflow-hidden rounded-lg border bg-background shadow-xl flex flex-col">
+						{/* Header with close button */}
+						<div className="flex items-center justify-between border-b px-4 py-3">
+							<h2 className="text-lg font-semibold">MCP Marketplace</h2>
+							<button
+								onClick={() => setMarketplaceOpen(false)}
+								className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+								aria-label="Close"
+							>
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									width="20"
+									height="20"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									strokeWidth="2"
+									strokeLinecap="round"
+									strokeLinejoin="round"
+								>
+									<path d="M18 6 6 18" />
+									<path d="m6 6 12 12" />
+								</svg>
+							</button>
+						</div>
+						{/* Content */}
+						<div className="flex-1 overflow-auto p-6">
+							<McpMarketplaceView
 							catalog={getMcps()}
 							installed={installedMcps.map((mcp) => ({
 								id: `${mcp.id}-${mcp.provider}`,

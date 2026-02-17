@@ -62,10 +62,9 @@ export class BridgeClient {
 			const { invoke } = await import("@tauri-apps/api/core");
 
 			// Call the Rust backend which will delegate to the TS bridge
-			const result = (await invoke(
-				"execute_agent_via_bridge",
-				{ request: bridgeRequest },
-			)) as AgentRuntimeResult;
+			const result = (await invoke("execute_agent_via_bridge", {
+				request: bridgeRequest,
+			})) as AgentRuntimeResult;
 
 			return result;
 		} catch (error) {
@@ -115,10 +114,9 @@ export class BridgeClient {
 			// Dynamic import to avoid bundling issues
 			const { invoke } = await import("@tauri-apps/api/core");
 
-			const response = (await invoke(
-				"get_bridge_catalog",
-				{ request: bridgeRequest },
-			)) as BridgeResponse;
+			const response = (await invoke("get_bridge_catalog", {
+				request: bridgeRequest,
+			})) as BridgeResponse;
 			return response.providers || [];
 		} catch (error) {
 			console.error("Failed to get provider catalog:", error);

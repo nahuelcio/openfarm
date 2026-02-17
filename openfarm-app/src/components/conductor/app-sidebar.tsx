@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 
 import {
 	AlertCircle,
@@ -165,6 +165,164 @@ function ProviderBadge({ provider }: { provider: AgentProvider }) {
 		</span>
 	);
 }
+
+interface AgentItemProps {
+	agent: Agent;
+	selectedAgentId: string | null;
+	selectedSubthread: { agentId: string; name: string } | null;
+	onSelectAgent: (agent: Agent) => void;
+	onSelectSubthread: (agent: Agent, subthreadName: string) => void;
+	onArchiveAgent?: (agent: Agent) => void;
+	isSelectingAgent: boolean;
+}
+
+const AgentItem = memo(function AgentItem({
+	agent,
+	selectedAgentId,
+	selectedSubthread,
+	onSelectAgent,
+	onSelectSubthread,
+	onArchiveAgent,
+	isSelectingAgent,
+}: AgentItemProps) {
+	const subthreads = useMemo(() => extractSubthreads(agent), [agent]);
+	const isParentSelected = selectedAgentId === agent.id;
+
+	return (
+		<div>
+			<div
+				role="button"
+				tabIndex={isSelectingAgent ? -1 : 0}
+				aria-disabled={isSelectingAgent}
+				className={cn(
+					"flex w-full items-start gap-2.5 px-4 pl-9 py-2 text-left transition-colors group",
+					isParentSelected
+						? "bg-sidebar-accent"
+						: "hover:bg-sidebar-accent/50",
+					isSelectingAgent &&
+						"opacity-50 cursor-not-allowed",
+				)}
+				onClick={() =>
+					!isSelectingAgent && onSelectAgent(agent)
+				}
+				onKeyDown={(event) => {
+					if (event.key === "Enter" || event.key === " ") {
+						event.preventDefault();
+						if (!isSelectingAgent) {
+							onSelectAgent(agent);
+						}
+					}
+				}}
+			>
+				<StatusIcon status={agent.status} />
+				<div className="flex-1 min-w-0">
+					<div className="flex items-center gap-2">
+						<span
+							className={cn(
+								"text-[13px] truncate block",
+								isParentSelected
+									? "text-sidebar-accent-foreground font-medium"
+									: "text-sidebar-foreground",
+							)}
+						>
+							{agent.name}
+						</span>
+					</div>
+					<div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+						<span className="rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground shrink-0">
+							Principal
+						</span>
+						<div className="flex items-center gap-1 text-[11px] text-muted-foreground min-w-0">
+							<GitBranch className="h-3 w-3 shrink-0" />
+							<span className="truncate max-w-[60px] sm:max-w-[80px] md:max-w-[100px]">
+								{agent.branch}
+							</span>
+						</div>
+						<ProviderBadge provider={agent.provider} />
+					</div>
+				</div>
+				<StatusLabel status={agent.status} />
+				{onArchiveAgent && (
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<Button
+								variant="ghost"
+								size="icon"
+								className="h-6 w-6 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-opacity"
+								onClick={(e) => e.stopPropagation()}
+							>
+								<MoreHorizontal className="h-3.5 w-3.5" />
+								<span className="sr-only">
+									Agent options
+								</span>
+							</Button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="end">
+							<DropdownMenuItem
+								onClick={(e) => {
+									e.stopPropagation();
+									onArchiveAgent(agent);
+								}}
+							>
+								<Archive className="h-3.5 w-3.5 mr-2" />
+								Archive chat
+							</DropdownMenuItem>
+						</DropdownMenuContent>
+					</DropdownMenu>
+				)}
+			</div>
+			{subthreads.length > 0 && (
+				<div className="ml-12 mr-2 mb-1 rounded border border-border/60 bg-sidebar-accent/20 px-1.5 py-1">
+					<div className="px-1 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+						Subagentes
+					</div>
+					{subthreads.map((thread) => {
+						const isSubthreadSelected =
+							selectedSubthread?.agentId === agent.id &&
+							selectedSubthread.name === thread.name;
+						return (
+							<button
+								key={thread.id}
+								className={cn(
+									"flex w-full min-w-0 items-center gap-2 rounded px-1.5 py-1.5 text-left transition-colors",
+										isSubthreadSelected
+										? "bg-sidebar-accent text-sidebar-accent-foreground"
+										: "hover:bg-sidebar-accent/50",
+										isSelectingAgent &&
+											"opacity-50 cursor-not-allowed",
+									)}
+									onClick={() =>
+										!isSelectingAgent &&
+										onSelectSubthread(agent, thread.name)
+									}
+									disabled={isSelectingAgent}
+									title={`${thread.lastUpdate} ${thread.preview ? `\u2022 ${thread.preview}` : ""}`}
+									type="button"
+								>
+									<SubthreadStatusDot
+										status={thread.status}
+									/>
+									<span
+										className={cn(
+											"min-w-0 flex-1 truncate text-[11px] font-medium",
+											isSubthreadSelected
+												? "text-sidebar-accent-foreground"
+												: "text-sidebar-foreground",
+										)}
+									>
+										@{thread.name}
+									</span>
+									<SubthreadStatusLabel
+										status={thread.status}
+									/>
+								</button>
+							);
+						})}
+					</div>
+				)}
+			</div>
+		);
+	});
 
 interface AppSidebarProps {
 	workspaces: Workspace[];
@@ -381,144 +539,18 @@ export function AppSidebar({
 							{/* Agent list */}
 							{isExpanded && (
 								<div className="pb-1">
-									{workspace.agents.map((agent) => {
-										const subthreads = extractSubthreads(agent);
-										const isParentSelected = selectedAgentId === agent.id;
-										return (
-											<div key={agent.id}>
-												<div
-													role="button"
-													tabIndex={isSelectingAgent ? -1 : 0}
-													aria-disabled={isSelectingAgent}
-													className={cn(
-														"flex w-full items-start gap-2.5 px-4 pl-9 py-2 text-left transition-colors group",
-														isParentSelected
-															? "bg-sidebar-accent"
-															: "hover:bg-sidebar-accent/50",
-														isSelectingAgent &&
-															"opacity-50 cursor-not-allowed",
-													)}
-													onClick={() =>
-														!isSelectingAgent && onSelectAgent(agent)
-													}
-													onKeyDown={(event) => {
-														if (event.key === "Enter" || event.key === " ") {
-															event.preventDefault();
-															if (!isSelectingAgent) {
-																onSelectAgent(agent);
-															}
-														}
-													}}
-												>
-													<StatusIcon status={agent.status} />
-													<div className="flex-1 min-w-0">
-														<div className="flex items-center gap-2">
-															<span
-																className={cn(
-																	"text-[13px] truncate block",
-																	isParentSelected
-																		? "text-sidebar-accent-foreground font-medium"
-																		: "text-sidebar-foreground",
-																)}
-															>
-																{agent.name}
-															</span>
-														</div>
-														<div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-															<span className="rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground shrink-0">
-																Principal
-															</span>
-															<div className="flex items-center gap-1 text-[11px] text-muted-foreground min-w-0">
-																<GitBranch className="h-3 w-3 shrink-0" />
-																<span className="truncate max-w-[60px] sm:max-w-[80px] md:max-w-[100px]">
-																	{agent.branch}
-																</span>
-															</div>
-															<ProviderBadge provider={agent.provider} />
-														</div>
-													</div>
-													<StatusLabel status={agent.status} />
-													{onArchiveAgent && (
-														<DropdownMenu>
-															<DropdownMenuTrigger asChild>
-																<Button
-																	variant="ghost"
-																	size="icon"
-																	className="h-6 w-6 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-opacity"
-																	onClick={(e) => e.stopPropagation()}
-																>
-																	<MoreHorizontal className="h-3.5 w-3.5" />
-																	<span className="sr-only">
-																		Agent options
-																	</span>
-																</Button>
-															</DropdownMenuTrigger>
-															<DropdownMenuContent align="end">
-																<DropdownMenuItem
-																	onClick={(e) => {
-																		e.stopPropagation();
-																		onArchiveAgent(agent);
-																	}}
-																>
-																	<Archive className="h-3.5 w-3.5 mr-2" />
-																	Archive chat
-																</DropdownMenuItem>
-															</DropdownMenuContent>
-														</DropdownMenu>
-													)}
-												</div>
-												{subthreads.length > 0 && (
-													<div className="ml-12 mr-2 mb-1 rounded border border-border/60 bg-sidebar-accent/20 px-1.5 py-1">
-														<div className="px-1 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-															Subagentes
-														</div>
-														{subthreads.map((thread) => {
-															const isSubthreadSelected =
-																selectedSubthread?.agentId === agent.id &&
-																selectedSubthread.name === thread.name;
-															return (
-																<button
-																	key={thread.id}
-																	className={cn(
-																		"flex w-full min-w-0 items-center gap-2 rounded px-1.5 py-1.5 text-left transition-colors",
-																			isSubthreadSelected
-																				? "bg-sidebar-accent text-sidebar-accent-foreground"
-																				: "hover:bg-sidebar-accent/50",
-																			isSelectingAgent &&
-																				"opacity-50 cursor-not-allowed",
-																		)}
-																		onClick={() =>
-																			!isSelectingAgent &&
-																			onSelectSubthread(agent, thread.name)
-																		}
-																		disabled={isSelectingAgent}
-																		title={`${thread.lastUpdate} ${thread.preview ? `• ${thread.preview}` : ""}`}
-																		type="button"
-																	>
-																		<SubthreadStatusDot
-																			status={thread.status}
-																		/>
-																		<span
-																			className={cn(
-																				"min-w-0 flex-1 truncate text-[11px] font-medium",
-																				isSubthreadSelected
-																					? "text-sidebar-accent-foreground"
-																					: "text-sidebar-foreground",
-																			)}
-																		>
-																			@{thread.name}
-																		</span>
-																		<SubthreadStatusLabel
-																			status={thread.status}
-																		/>
-																	</button>
-																);
-															})}
-														</div>
-													)}
-												</div>
-											);
-										})}
+									{workspace.agents.map((agent) => (
+									<AgentItem
+										key={agent.id}
+										agent={agent}
+										selectedAgentId={selectedAgentId}
+										selectedSubthread={selectedSubthread}
+										onSelectAgent={onSelectAgent}
+										onSelectSubthread={onSelectSubthread}
+										onArchiveAgent={onArchiveAgent}
+										isSelectingAgent={isSelectingAgent}
+									/>
+								))}
 									</div>
 								)}
 							</div>

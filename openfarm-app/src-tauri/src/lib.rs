@@ -1945,6 +1945,54 @@ fn host_target_triple() -> Option<&'static str> {
     }
 }
 
+fn enriched_path_env() -> String {
+    let current = std::env::var("PATH").unwrap_or_default();
+    let home = std::env::var("HOME").unwrap_or_default();
+    if home.is_empty() {
+        return current;
+    }
+
+    let extra_dirs: &[&str] = &[
+        ".bun/bin",
+        ".local/bin",
+        ".cargo/bin",
+        ".nvm/current/bin",
+        ".volta/bin",
+        ".fnm/current/bin",
+        ".proto/shims",
+        "go/bin",
+        ".deno/bin",
+    ];
+
+    let mut parts: Vec<String> = Vec::new();
+    for dir in extra_dirs {
+        let full = format!("{home}/{dir}");
+        if std::path::Path::new(&full).is_dir() && !current.contains(&full) {
+            parts.push(full);
+        }
+    }
+
+    if let Ok(brew) = std::env::var("HOMEBREW_PREFIX") {
+        let brew_bin = format!("{brew}/bin");
+        if std::path::Path::new(&brew_bin).is_dir() && !current.contains(&brew_bin) {
+            parts.push(brew_bin);
+        }
+    } else {
+        for prefix in &["/opt/homebrew/bin", "/usr/local/bin"] {
+            if std::path::Path::new(prefix).is_dir() && !current.contains(prefix) {
+                parts.push(prefix.to_string());
+            }
+        }
+    }
+
+    if parts.is_empty() {
+        return current;
+    }
+
+    parts.push(current);
+    parts.join(":")
+}
+
 fn resolve_bridge_binary() -> PathBuf {
     if let Ok(explicit) = std::env::var("OPENFARM_BRIDGE_BIN") {
         let path = PathBuf::from(explicit);
@@ -2029,6 +2077,7 @@ fn run_agent_via_bridge(
 
     let bridge_bin = resolve_bridge_binary();
     let mut child = Command::new(&bridge_bin)
+        .env("PATH", enriched_path_env())
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -2259,6 +2308,7 @@ fn load_provider_catalog_via_bridge() -> Result<serde_json::Value, String> {
     let payload = serde_json::json!({ "kind": "catalog" }).to_string();
     let bridge_bin = resolve_bridge_binary();
     let mut child = Command::new(&bridge_bin)
+        .env("PATH", enriched_path_env())
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())

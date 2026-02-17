@@ -79,10 +79,7 @@ export function parseProviderOutput(
 /**
  * Parse a single line from provider output
  */
-function parseProviderLine(
-	line: string,
-	stats: RuntimeStatsAccumulator,
-): void {
+function parseProviderLine(line: string, stats: RuntimeStatsAccumulator): void {
 	const event = parseJsonRecord(line);
 	if (!event) {
 		return;
@@ -97,7 +94,7 @@ function parseProviderLine(
 		}
 	}
 
-	// Track commands  
+	// Track commands
 	const commandCandidates: string[] = [];
 	collectStringsByKeys(event, COMMAND_KEYS, commandCandidates);
 	for (const command of commandCandidates) {
@@ -244,7 +241,8 @@ export function hasToolSignal(event: Record<string, unknown>): boolean {
 	const type = typeof event.type === "string" ? event.type : "";
 	const item = asRecord(event.item);
 	const part = asRecord(event.part);
-	const itemType = typeof item?.type === "string" ? item.type.toLowerCase() : "";
+	const itemType =
+		typeof item?.type === "string" ? item.type.toLowerCase() : "";
 
 	return (
 		type === "tool_use" ||
