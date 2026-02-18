@@ -760,10 +760,10 @@ export function PromptInput({
 						className="h-8 min-w-[120px] rounded-xl border border-border bg-secondary px-3 text-xs font-medium text-foreground focus:border-primary/40 focus:outline-none"
 					>
 						{availableProviders.map((candidate) => (
-							<option key={candidate.id} value={candidate.id}>
-								{candidate.name}
-							</option>
-						))}
+						<option key={candidate.id} value={candidate.id}>
+							{candidate.name}
+						</option>
+					))}
 					</select>
 
 					{availableAgents.length > 0 && (

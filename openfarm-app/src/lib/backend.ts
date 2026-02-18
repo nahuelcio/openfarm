@@ -620,10 +620,17 @@ export async function pickRepositoryDirectory(): Promise<string | null> {
 }
 
 export async function subscribeAgentEvents(
-    _event: AgentEventType,
-    _handler: (payload: unknown) => void,
+	event: AgentEventType,
+	handler: (payload: unknown) => void,
 ): Promise<() => void> {
-    return () => {};
+	if (isTauriRuntime()) {
+		const { listen } = await import("@tauri-apps/api/event");
+		const unlisten = await listen<unknown>(event, (tauriEvent) => {
+			handler(tauriEvent.payload);
+		});
+		return unlisten;
+	}
+	return () => {};
 }
 
 export async function installMcp(config: {

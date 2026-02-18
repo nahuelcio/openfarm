@@ -648,16 +648,15 @@ export default function App() {
 	}, []);
 
 	const isSelectingRef = useRef(false);
-	const isLoadingChatRef = useRef(false);
 
 	const handleSelectAgent = useCallback((agent: Agent) => {
-		if (selectedAgentIdRef.current === agent.id || isSelectingRef.current || isLoadingChatRef.current) {
+		if (selectedAgentIdRef.current === agent.id || isSelectingRef.current) {
 			return;
 		}
 
 		isSelectingRef.current = true;
-		isLoadingChatRef.current = true;
 		setIsSelectingAgent(true);
+		// Reducir el tiempo de loading para no bloquear el streaming
 		setIsLoadingChat(true);
 
 		setAzureDevOpsOpen(false);
@@ -667,10 +666,10 @@ export default function App() {
 		requestAnimationFrame(() => {
 			setTimeout(() => {
 				isSelectingRef.current = false;
-				isLoadingChatRef.current = false;
 				setIsSelectingAgent(false);
+				// Reducir tiempo de loading a 50ms para no interferir con streaming
 				setIsLoadingChat(false);
-			}, 150);
+			}, 50);
 		});
 	}, []);
 
@@ -689,8 +688,8 @@ export default function App() {
 			}
 
 			isSelectingRef.current = true;
-			isLoadingChatRef.current = true;
 			setIsSelectingAgent(true);
+			// Reducir el tiempo de loading para no bloquear el streaming
 			setIsLoadingChat(true);
 
 			setAzureDevOpsOpen(false);
@@ -703,10 +702,10 @@ export default function App() {
 			requestAnimationFrame(() => {
 				setTimeout(() => {
 					isSelectingRef.current = false;
-					isLoadingChatRef.current = false;
 					setIsSelectingAgent(false);
+					// Reducir tiempo de loading a 50ms para no interferir con streaming
 					setIsLoadingChat(false);
-				}, 150);
+				}, 50);
 			});
 		},
 		[],
@@ -714,6 +713,16 @@ export default function App() {
 
 	const dispatchMessageToAgent = useCallback(
 		async (agentId: string, payload: MessagePayload) => {
+			// No bloquear la UI durante el streaming
+			// Solo actualizar el estado del agente a "running" inmediatamente
+			setWorkspaces(prev => prev.map(workspace => ({
+				...workspace,
+				agents: workspace.agents.map(agent => 
+					agent.id === agentId ? { ...agent, status: "running" as const } : agent
+				)
+			})));
+			
+			// Enviar mensaje y obtener respuesta
 			const next = await sendAgentMessage({
 				agentId,
 				message: payload.message,
@@ -722,6 +731,8 @@ export default function App() {
 				model: payload.model,
 				agentMode: payload.agentMode,
 			});
+			
+			// Actualizar estado completo con la respuesta
 			syncState(next, selectedAgentId);
 		},
 		[selectedAgentId, syncState],
@@ -758,7 +769,8 @@ export default function App() {
 				enqueueInstruction(selectedAgent.id, payload);
 				return;
 			}
-			await dispatchMessageToAgent(selectedAgent.id, payload);
+			// Iniciar envío sin esperar a que complete para no bloquear UI
+			void dispatchMessageToAgent(selectedAgent.id, payload);
 		},
 		[dispatchMessageToAgent, enqueueInstruction, selectedAgent],
 	);
