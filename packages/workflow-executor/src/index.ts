@@ -2,17 +2,6 @@
  * OpenFarm Workflow Executor
  */
 
-export {
-	WorkflowExecutor,
-	agentExecutor,
-	commandExecutor,
-	createDefaultExecutors,
-	executeWorkflow,
-	gitExecutor,
-	humanExecutor,
-	platformExecutor,
-} from "./core";
-
 export type {
 	StepExecutor,
 	StepResult,
@@ -20,4 +9,15 @@ export type {
 	WorkflowContext,
 	WorkflowResult,
 	WorkflowStep,
+} from "./core";
+
+export {
+	agentExecutor,
+	commandExecutor,
+	createDefaultExecutors,
+	executeWorkflow,
+	gitExecutor,
+	humanExecutor,
+	platformExecutor,
+	WorkflowExecutor,
 } from "./core";

@@ -1,6 +1,8 @@
 import { existsSync, unlinkSync } from "node:fs";
 import { logger } from "@openfarm/logger";
 
+const _logger = logger();
+
 /**
  * Interface for tracking temporary files.
  */
@@ -82,7 +84,7 @@ export class TempFileManager {
 			try {
 				unlinkSync(filePath);
 			} catch (error) {
-				logger.warn({ error, filePath }, "Failed to cleanup temporary file");
+				_logger.warn({ error, filePath }, "Failed to cleanup temporary file");
 			}
 		}
 

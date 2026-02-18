@@ -31,15 +31,21 @@ export class BridgeClient {
 	 * Detect if running in Tauri environment
 	 */
 	private detectTauriEnvironment(): boolean {
-		if (typeof globalThis === "undefined" || !("window" in globalThis)) {
+		try {
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const anyGlobal = globalThis as any;
+			if (!anyGlobal.window) {
+				return false;
+			}
+			const candidate = anyGlobal.window as Record<string, unknown>;
+			return Boolean(
+				candidate.__TAURI_INTERNALS__ ||
+					candidate.__TAURI__ ||
+					candidate.__TAURI_IPC__,
+			);
+		} catch {
 			return false;
 		}
-		const candidate = globalThis.window as unknown as Record<string, unknown>;
-		return Boolean(
-			candidate.__TAURI_INTERNALS__ ||
-				candidate.__TAURI__ ||
-				candidate.__TAURI_IPC__,
-		);
 	}
 
 	/**

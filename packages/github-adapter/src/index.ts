@@ -1,0 +1,1 @@
+export { GitHubPlatformAdapter } from "./adapter";

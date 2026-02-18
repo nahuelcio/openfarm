@@ -5,9 +5,9 @@
  * DESPUÉS: ~200 líneas, 1 archivo, funciones puras
  */
 
-import { OpenFarm, spawnWithStreaming } from "@openfarm/sdk";
 import type { Result } from "@openfarm/result";
 import { err, ok } from "@openfarm/result";
+import { OpenFarm, spawnWithStreaming } from "@openfarm/sdk";
 
 // ============================================================================
 // TIPOS MÍNIMOS

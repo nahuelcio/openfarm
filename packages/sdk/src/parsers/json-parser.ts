@@ -5,8 +5,11 @@
  * Supports nested JSON objects, arrays, and various JSON content types.
  */
 
-import type { CommunicationResponse, ResponseParser } from "./types";
-import type { JsonParserOptions } from "./types";
+import type {
+	CommunicationResponse,
+	JsonParserOptions,
+	ResponseParser,
+} from "./types";
 
 /**
  * Parser for JSON responses with comprehensive error handling and validation.

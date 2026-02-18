@@ -32,18 +32,13 @@
 		"type-check": "bunx tsc -p tsconfig.json --noEmit",
 		"test": "bunx vitest run",
 		"clean": "del /s /q dist build .turbo 2>nul || echo Clean complete",
-		"dev": "bun run src/cli.ts",
-		"loop": "bun run src/cli.ts task-loop"
+		"dev": "bun run src/cli.ts"
 	},
 	"dependencies": {
-		"@openfarm/agent-runner": "workspace:*",
-		"@openfarm/agent-system": "workspace:*",
 		"@openfarm/core": "workspace:*",
 		"@openfarm/git": "workspace:*",
 		"@openfarm/mcp-marketplace": "workspace:*",
 		"@openfarm/memory-system": "workspace:*",
-		"@openfarm/task-loop": "workspace:*",
-		"@openfarm/workflow-engine": "workspace:*",
 		"ai": "^6.0.85",
 		"better-sqlite3": "^12.6.2",
 		"chalk": "5.6.2",

@@ -292,7 +292,7 @@ export class OpenCodeProvider implements Provider {
 	}
 
 	private buildCliArgs(options: ExecutionOptions): string[] {
-		const args = ["run"];
+		const args = ["run", options.task];
 
 		const serverUrl = this.readEnv("OPENCODE_SERVER_URL");
 		if (serverUrl) {

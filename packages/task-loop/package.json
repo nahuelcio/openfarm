@@ -21,9 +21,6 @@
 	},
 	"dependencies": {
 		"@openfarm/core": "workspace:*",
-		"@openfarm/workflow-engine": "workspace:*",
-		"@openfarm/workflow-executor": "workspace:*",
-		"@openfarm/agent-runner": "workspace:*",
 		"@openfarm/git": "workspace:*",
 		"@openfarm/result": "workspace:*",
 		"@openfarm/logger": "workspace:*",
