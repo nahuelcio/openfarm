@@ -31,10 +31,10 @@ export class BridgeClient {
 	 * Detect if running in Tauri environment
 	 */
 	private detectTauriEnvironment(): boolean {
-		if (typeof window === "undefined") {
+		if (typeof globalThis === "undefined" || !("window" in globalThis)) {
 			return false;
 		}
-		const candidate = window as unknown as Record<string, unknown>;
+		const candidate = globalThis.window as unknown as Record<string, unknown>;
 		return Boolean(
 			candidate.__TAURI_INTERNALS__ ||
 				candidate.__TAURI__ ||
@@ -59,6 +59,7 @@ export class BridgeClient {
 			};
 
 			// Dynamic import to avoid bundling issues
+			// @ts-expect-error - Tauri API only available in desktop environment
 			const { invoke } = await import("@tauri-apps/api/core");
 
 			// Call the Rust backend which will delegate to the TS bridge
@@ -112,6 +113,7 @@ export class BridgeClient {
 			};
 
 			// Dynamic import to avoid bundling issues
+			// @ts-expect-error - Tauri API only available in desktop environment
 			const { invoke } = await import("@tauri-apps/api/core");
 
 			const response = (await invoke("get_bridge_catalog", {

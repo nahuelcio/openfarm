@@ -1164,6 +1164,62 @@ export default function App() {
 		[],
 	);
 
+	const handleMcpUninstall = useCallback(async (id: string) => {
+		const [catalogEntryId] = id.split("-");
+		const mcp = installedMcps.find((m) => m.id === catalogEntryId);
+		if (!mcp) {
+			return;
+		}
+
+		try {
+			const updatedMcps = await uninstallMcp({
+				mcpId: mcp.id,
+				provider: mcp.provider,
+			});
+			setInstalledMcps(updatedMcps);
+			console.log("MCP uninstalled successfully:", id);
+		} catch (error) {
+			console.log(
+				"MCP commands not available, using localStorage fallback",
+			);
+			// Usar localStorage fallback
+			try {
+				const existingData = localStorage.getItem(
+					"openfarm-installed-mcps",
+				);
+				const mcps = existingData ? JSON.parse(existingData) : [];
+
+				// Filtrar para remover el MCP específico
+				const updatedMcps = mcps.filter(
+					(mcpItem: any) =>
+						!(mcpItem.id === mcp.id && mcpItem.provider === mcp.provider),
+				);
+
+				localStorage.setItem(
+					"openfarm-installed-mcps",
+					JSON.stringify(updatedMcps),
+				);
+				setInstalledMcps(updatedMcps);
+				console.log(
+					"MCP uninstalled successfully via localStorage:",
+					id,
+				);
+			} catch (localStorageError) {
+				console.error(
+					"Failed to uninstall MCP:",
+					localStorageError,
+				);
+				const message =
+					localStorageError instanceof Error
+						? localStorageError.message
+						: "Failed to uninstall MCP";
+				if (typeof window !== "undefined") {
+					window.alert(message);
+				}
+			}
+		}
+	}, [installedMcps]);
+
 	useEffect(() => {
 		const validAgentIds = new Set(
 			workspaces.flatMap((workspace) =>
@@ -1499,89 +1555,38 @@ export default function App() {
 						{/* Content */}
 						<div className="flex-1 overflow-auto p-6">
 							<McpMarketplaceView
-							catalog={getMcps()}
-							installed={installedMcps.map((mcp) => ({
-								id: `${mcp.id}-${mcp.provider}`,
-								catalogEntryId: mcp.id,
-							}))}
-							onInstall={handleMcpInstall}
-							onUninstall={async (id) => {
-								const [catalogEntryId] = id.split("-");
-								const mcp = installedMcps.find((m) => m.id === catalogEntryId);
-								if (mcp) {
-									try {
-										const updatedMcps = await uninstallMcp({
-											mcpId: mcp.id,
-											provider: mcp.provider,
-										});
-										setInstalledMcps(updatedMcps);
-										console.log("MCP uninstalled successfully:", id);
-									} catch (error) {
-										console.log(
-											"MCP commands not available, using localStorage fallback",
-										);
-										// Usar localStorage fallback
-										try {
-											const existingData = localStorage.getItem(
-												"openfarm-installed-mcps",
-											);
-											const mcps = existingData ? JSON.parse(existingData) : [];
-
-											// Filtrar para remover el MCP específico
-											const updatedMcps = mcps.filter(
-												(mcp: any) =>
-													!(mcp.id === mcp.id && mcp.provider === mcp.provider),
-											);
-
-											localStorage.setItem(
-												"openfarm-installed-mcps",
-												JSON.stringify(updatedMcps),
-											);
-											setInstalledMcps(updatedMcps);
-											console.log(
-												"MCP uninstalled successfully via localStorage:",
-												id,
-											);
-										} catch (localStorageError) {
-											console.error(
-												"Failed to uninstall MCP:",
-												localStorageError,
-											);
-											const message =
-												localStorageError instanceof Error
-													? localStorageError.message
-													: "Failed to uninstall MCP";
-											if (typeof window !== "undefined") {
-												window.alert(message);
-											}
-										}
-									}
-								}
-							}}
-						/>
+								catalog={getMcps()}
+								installed={installedMcps.map((mcp) => ({
+									id: `${mcp.id}-${mcp.provider}`,
+									catalogEntryId: mcp.id,
+								}))}
+								onInstall={handleMcpInstall}
+								onUninstall={handleMcpUninstall}
+							/>
+						</div>
 					</div>
 				</div>
-			)}
+				)}
 
-			{selectedMcpId && (
-				<McpConfigDialog
-					open={mcpConfigOpen}
-					onClose={() => {
-						setMcpConfigOpen(false);
-						setSelectedMcpId(null);
-					}}
-					onSubmit={handleMcpConfigSubmit}
-					mcpId={selectedMcpId}
-					mcpName={
-						getMcps().find((mcp) => mcp.id === selectedMcpId)?.name || ""
-					}
-					mcpConfigSchema={
-						getMcps().find((mcp) => mcp.id === selectedMcpId)?.configSchema ||
-						{}
-					}
-					providers={settings.providers}
-				/>
-			)}
+				{selectedMcpId && (
+					<McpConfigDialog
+						open={mcpConfigOpen}
+						onClose={() => {
+							setMcpConfigOpen(false);
+							setSelectedMcpId(null);
+						}}
+						onSubmit={handleMcpConfigSubmit}
+						mcpId={selectedMcpId}
+						mcpName={
+							getMcps().find((mcp) => mcp.id === selectedMcpId)?.name || ""
+						}
+						mcpConfigSchema={
+							getMcps().find((mcp) => mcp.id === selectedMcpId)?.configSchema ||
+							{}
+						}
+						providers={settings.providers}
+					/>
+				)}
 		</div>
 	);
 }

@@ -116,6 +116,15 @@ function getOpenCodeModelCommands(): Array<{ cmd: string; args: string[] }> {
 }
 
 function describeOpenCodeModel(modelId: string): string {
+    if (modelId.startsWith("minimax-coding-plan/")) {
+        return "MiniMax Coding Plan via OpenCode";
+    }
+    if (modelId.startsWith("minimax/")) {
+        return "MiniMax via OpenCode";
+    }
+    if (modelId.startsWith("kimi-for-coding/")) {
+        return "Kimi for Coding via OpenCode";
+    }
     if (modelId.startsWith("openrouter/")) {
         return "OpenRouter via OpenCode";
     }
@@ -424,9 +433,9 @@ function isCatalogRequest(value: IncomingRequest): value is CatalogRequest {
 }
 
 function normalizeProvider(inputProvider?: string): {
-    openFarmProvider: "claude" | "opencode" | "external-agent";
-    providerId: "claude-code" | "opencode" | "codex";
-    cli: "claude" | "opencode" | "codex";
+    openFarmProvider: "claude" | "opencode" | "kimi" | "codex";
+    providerId: "claude-code" | "opencode" | "kimi" | "codex";
+    cli: "claude" | "opencode" | "kimi" | "codex";
 } {
     const provider = (inputProvider || "").trim().toLowerCase();
 
@@ -438,9 +447,17 @@ function normalizeProvider(inputProvider?: string): {
         };
     }
 
-    if (provider === "codex" || provider === "external-agent") {
+    if (provider === "kimi") {
         return {
-            openFarmProvider: "external-agent",
+            openFarmProvider: "kimi",
+            providerId: "kimi",
+            cli: "kimi",
+        };
+    }
+
+    if (provider === "codex") {
+        return {
+            openFarmProvider: "codex",
             providerId: "codex",
             cli: "codex",
         };
@@ -535,12 +552,8 @@ async function executeWithOpenFarm(
 
     const result = await openFarm.execute({
         task: normalized.task,
-        context: normalized.context,
         workspace: normalized.workspace,
-        provider: provider.openFarmProvider,
         model: normalized.model,
-        cli: provider.cli,
-        agentName: normalized.agent || provider.providerId,
         onLog: (chunk) => {
             if (typeof chunk === "string" && chunk.trim().length > 0) {
                 emit({ type: "log", chunk });
@@ -796,13 +809,7 @@ async function main(): Promise<void> {
         }
 
         const provider = normalizeProvider(normalized.provider);
-        let result: BridgeExecutionResponse;
-
-        if (provider.providerId === "codex") {
-            result = await executeCodexWithSdk(normalized);
-        } else {
-            result = await executeWithOpenFarm(normalized, provider);
-        }
+        const result = await executeWithOpenFarm(normalized, provider);
 
         emit({
             type: "result",

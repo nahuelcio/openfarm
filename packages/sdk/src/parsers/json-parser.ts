@@ -8,7 +8,7 @@
 import type {
 	CommunicationResponse,
 	ResponseParser,
-} from "../provider-system/types";
+} from "./types";
 import type { JsonParserOptions } from "./types";
 
 /**
