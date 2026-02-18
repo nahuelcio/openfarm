@@ -441,7 +441,9 @@ export class CodexProvider implements Provider {
 			const thread = codex.startThread(threadOptions);
 			const { events } = await thread.runStreamed(request.task);
 
-			for await (const event of events as AsyncGenerator<Record<string, unknown>>) {
+			for await (const event of events as AsyncGenerator<
+				Record<string, unknown>
+			>) {
 				request.onLog?.(JSON.stringify(event));
 				const eventType = typeof event.type === "string" ? event.type : "";
 
@@ -451,9 +453,13 @@ export class CodexProvider implements Provider {
 							? (event.usage as Record<string, unknown>)
 							: null;
 					const nextInput =
-						usage && typeof usage.input_tokens === "number" ? usage.input_tokens : 0;
+						usage && typeof usage.input_tokens === "number"
+							? usage.input_tokens
+							: 0;
 					const nextOutput =
-						usage && typeof usage.output_tokens === "number" ? usage.output_tokens : 0;
+						usage && typeof usage.output_tokens === "number"
+							? usage.output_tokens
+							: 0;
 					tokensInput = Math.max(tokensInput, nextInput);
 					tokensOutput = Math.max(tokensOutput, nextOutput);
 					continue;
@@ -473,7 +479,8 @@ export class CodexProvider implements Provider {
 
 				if (eventType === "error") {
 					failureMessage =
-						(typeof event.message === "string" && event.message) || "Codex stream error";
+						(typeof event.message === "string" && event.message) ||
+						"Codex stream error";
 					continue;
 				}
 
@@ -504,7 +511,9 @@ export class CodexProvider implements Provider {
 
 				if (itemType === "command_execution") {
 					const fallbackKey =
-						typeof item.command === "string" ? item.command : `cmd-${Date.now()}`;
+						typeof item.command === "string"
+							? item.command
+							: `cmd-${Date.now()}`;
 					const commandKey = itemId || fallbackKey;
 					if (!commandExecutionIds.has(commandKey)) {
 						commandExecutionIds.add(commandKey);
@@ -532,7 +541,8 @@ export class CodexProvider implements Provider {
 
 				if (itemType === "error" && !failureMessage) {
 					failureMessage =
-						(typeof item.message === "string" && item.message) || "Codex item error";
+						(typeof item.message === "string" && item.message) ||
+						"Codex item error";
 				}
 			}
 
@@ -541,7 +551,8 @@ export class CodexProvider implements Provider {
 
 			return {
 				success: !hasFailure,
-				output: finalResponse || (hasFailure ? "" : "Task completed successfully"),
+				output:
+					finalResponse || (hasFailure ? "" : "Task completed successfully"),
 				error: hasFailure ? failureMessage : undefined,
 				duration,
 				statistics: buildStatistics(),
@@ -601,8 +612,11 @@ export class OpenFarm {
 		this.registry = createDefaultRegistry();
 	}
 
-	async execute(options: ExecuteRequest & { provider?: string }): Promise<ExecuteResult> {
-		const providerType = options.provider ?? this.config.defaultProvider ?? "claude";
+	async execute(
+		options: ExecuteRequest & { provider?: string },
+	): Promise<ExecuteResult> {
+		const providerType =
+			options.provider ?? this.config.defaultProvider ?? "claude";
 		const provider = this.registry.get(providerType);
 
 		if (!provider) {

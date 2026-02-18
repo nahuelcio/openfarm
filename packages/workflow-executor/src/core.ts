@@ -145,7 +145,11 @@ export async function executeWorkflow(
 // EJECUTORES ESPECÍFICOS (una función por tipo, ~20 líneas cada una)
 // ============================================================================
 
-export const agentExecutor: StepExecutor = async (step, context, previousResults) => {
+export const agentExecutor: StepExecutor = async (
+	step,
+	context,
+	previousResults,
+) => {
 	const start = Date.now();
 	const config = step.config || {};
 	const provider = (config.provider as string) || "claude";
@@ -274,7 +278,9 @@ export const humanExecutor: StepExecutor = async (step) => {
 
 	// Placeholder para aprobaciones humanas
 	// En el futuro esto se conecta al sistema de aprobaciones
-	console.log(`[Human Approval Required] ${step.config?.prompt || "Approval needed"}`);
+	console.log(
+		`[Human Approval Required] ${step.config?.prompt || "Approval needed"}`,
+	);
 
 	return ok({
 		stepId: step.id,
@@ -315,7 +321,13 @@ export class WorkflowExecutor {
 		onStepStart?: (step: WorkflowStep) => void,
 		onStepComplete?: (step: WorkflowStep, result: StepResult) => void,
 	): Promise<WorkflowResult> {
-		return executeWorkflow(workflow, context, this.executors, onStepStart, onStepComplete);
+		return executeWorkflow(
+			workflow,
+			context,
+			this.executors,
+			onStepStart,
+			onStepComplete,
+		);
 	}
 
 	registerExecutor(type: string, executor: StepExecutor): void {

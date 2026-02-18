@@ -5,10 +5,7 @@
  * Handles JSON events mixed with plain text output from CLI tools like Aider and OpenCode.
  */
 
-import type {
-	CommunicationResponse,
-	ResponseParser,
-} from "./types";
+import type { CommunicationResponse, ResponseParser } from "./types";
 import type { StreamParserOptions } from "./types";
 
 /**
