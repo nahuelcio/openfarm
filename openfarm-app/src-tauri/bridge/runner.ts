@@ -27,6 +27,12 @@ interface CatalogRequest {
 
 type IncomingRequest = RuntimeExecuteRequest | CatalogRequest;
 
+interface AgentCatalogItem {
+    id: string;
+    name: string;
+    description: string;
+}
+
 interface ProviderCatalogItem {
     id: "claude-code" | "codex" | "opencode";
     name: string;
@@ -36,6 +42,7 @@ interface ProviderCatalogItem {
     apiKey: string;
     models: Array<{ id: string; name: string; description: string }>;
     defaultModel: string;
+    agents?: AgentCatalogItem[];
     defaultAgent: string;
 }
 
@@ -143,9 +150,80 @@ function describeOpenCodeModel(modelId: string): string {
     return "OpenCode provider model";
 }
 
+function getOpenCodeAgentCommands(): Array<{ cmd: string; args: string[] }> {
+    const configured =
+        typeof process !== "undefined" && process.env?.OPENCODE_COMMAND
+            ? process.env.OPENCODE_COMMAND.trim()
+            : "";
+
+    if (!configured || configured === "undefined" || configured === "null") {
+        return [
+            { cmd: "opencode", args: ["agent", "list"] },
+            { cmd: "bunx", args: ["opencode-ai", "agent", "list"] },
+            { cmd: "opencode-ai", args: ["agent", "list"] },
+        ];
+    }
+
+    if (configured === "bunx") {
+        return [{ cmd: "bunx", args: ["opencode-ai", "agent", "list"] }];
+    }
+
+    return [{ cmd: configured, args: ["agent", "list"] }];
+}
+
+function parseOpenCodeAgentList(output: string): AgentCatalogItem[] {
+    const agents: AgentCatalogItem[] = [];
+    const lines = output.split("\n");
+    
+    for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        
+        // Parse agent name from line (e.g., "atlas" or "build (primary)")
+        const match = trimmed.match(/^(\w+)(?:\s*\(([^)]+)\))?/);
+        if (match) {
+            const id = match[1];
+            const primary = match[2];
+            agents.push({
+                id,
+                name: id,
+                description: primary ? `Primary agent` : `OpenCode ${id} agent`,
+            });
+        }
+    }
+    
+    return agents;
+}
+
+function getOpenCodeAgents(): AgentCatalogItem[] {
+    for (const { cmd, args } of getOpenCodeAgentCommands()) {
+        const result = spawnSync(cmd, args, {
+            encoding: "utf8",
+            timeout: 5000,
+            stdio: ["ignore", "pipe", "ignore"],
+        });
+
+        if (result.status !== 0 || !result.stdout) {
+            continue;
+        }
+
+        const agents = parseOpenCodeAgentList(result.stdout);
+        if (agents.length > 0) {
+            return agents;
+        }
+    }
+    
+    // Fallback to default agents
+    return [
+        { id: "general", name: "general", description: "Default OpenCode agent" },
+        { id: "plan", name: "plan", description: "Planning-focused agent" },
+    ];
+}
+
 function getOpenCodeCatalog(): {
     models: ProviderCatalogItem["models"];
     defaultModel: string;
+    agents: AgentCatalogItem[];
 } {
     let discoveredModels: string[] = [];
     for (const { cmd, args } of getOpenCodeModelCommands()) {
@@ -177,8 +255,10 @@ function getOpenCodeCatalog(): {
         OPENCODE_DEFAULT_MODEL_CANDIDATES.find((id) => modelSet.has(id)) ||
         modelIds[0] ||
         "";
+    
+    const agents = getOpenCodeAgents();
 
-    return { models, defaultModel };
+    return { models, defaultModel, agents };
 }
 
 function getCodexModelCommands(): Array<{ cmd: string; args: string[] }> {
@@ -512,7 +592,8 @@ async function getCatalog(): Promise<ProviderCatalogItem[]> {
             apiKey: "",
             models: openCodeCatalog.models,
             defaultModel: openCodeCatalog.defaultModel,
-            defaultAgent: "opencode",
+            agents: openCodeCatalog.agents,
+            defaultAgent: openCodeCatalog.agents[0]?.id || "general",
         },
     ];
 

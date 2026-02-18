@@ -408,7 +408,24 @@ export default function App() {
 		let unsubs: Array<() => void> = [];
 		void (async () => {
 			unsubs = [
-				await subscribeAgentEvents("agent:started", () => {}),
+				await subscribeAgentEvents("agent:started", (payload) => {
+					const value = payload as { agent_id?: string; agentId?: string };
+					const id = value.agent_id || value.agentId;
+					if (!id) return;
+
+					// Limpiar mensajes thinking pendientes del agente anterior
+					setWorkspaces((prev) =>
+						updateAgentInWorkspaces(prev, id, (agent) => ({
+							...agent,
+							status: "running",
+							messages: agent.messages.map((msg) =>
+								msg.role === "agent" && msg.thinking
+									? { ...msg, thinking: false }
+									: msg
+							),
+						}))
+					);
+				}),
 				await subscribeAgentEvents("agent:output", async (payload) => {
 					const value = payload as { agent_id?: string; agentId?: string; chunk?: string };
 					const id = value.agent_id || value.agentId;

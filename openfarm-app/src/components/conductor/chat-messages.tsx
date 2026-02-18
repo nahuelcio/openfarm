@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { memo, useMemo } from "react";
 import { StatisticsDialog } from "@/components/conductor/statistics-dialog";
+import { AgentProgress } from "@/components/conductor/agent-progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { AgentMessage, Attachment } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -452,21 +453,24 @@ const MessageBubble = memo(function MessageBubble({
 			</div>
 			<div className="flex-1 min-w-0">
 				{message.thinking && (
-					<div className="flex items-center gap-2 mb-2">
-						<div className="flex items-center gap-1">
-							<span className="h-1 w-1 rounded-full bg-primary animate-pulse-dot" />
-							<span
-								className="h-1 w-1 rounded-full bg-primary animate-pulse-dot"
-								style={{ animationDelay: "0.2s" }}
-							/>
-							<span
-								className="h-1 w-1 rounded-full bg-primary animate-pulse-dot"
-								style={{ animationDelay: "0.4s" }}
-							/>
+					<div className="space-y-2 mb-3">
+						<div className="flex items-center gap-2">
+							<div className="flex items-center gap-1">
+								<span className="h-1 w-1 rounded-full bg-primary animate-pulse-dot" />
+								<span
+									className="h-1 w-1 rounded-full bg-primary animate-pulse-dot"
+									style={{ animationDelay: "0.2s" }}
+								/>
+								<span
+									className="h-1 w-1 rounded-full bg-primary animate-pulse-dot"
+									style={{ animationDelay: "0.4s" }}
+								/>
+							</div>
+							<span className="text-[11px] text-muted-foreground">
+								Thinking...
+							</span>
 						</div>
-						<span className="text-[11px] text-muted-foreground">
-							Thinking...
-						</span>
+						<AgentProgress content={message.content} />
 					</div>
 				)}
 				<div

@@ -226,7 +226,6 @@ export class OpenCodeProvider implements Provider {
 
 		const args = [
 			"run",
-			"--prompt",
 			request.task,
 			...(request.model ? ["--model", request.model] : []),
 		];
